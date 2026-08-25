@@ -30,14 +30,24 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
+# env files
 .env*.local
+.env
+.env.production
 
 # typescript
 *.tsbuildinfo
 
+# dev
 example
+DEV.md
 
 # generated native folders
 /ios
 /android
+
+# EAS local credentials
+credentials.json
+
+# claudecode personal local override
+.claude/settings.local.json
