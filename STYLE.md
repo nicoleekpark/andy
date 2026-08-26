@@ -17,6 +17,8 @@ The subject is _personal memory-keeping_ — closer to marginalia in a well-love
 | `line`  | `#B8B3A8` | dividers, borders                                                        |
 | `alert` | `#A8503E` | errors only — muted, not a bright red                                    |
 
+**Light only.** There is no dark palette, and `app.json` pins `userInterfaceStyle: "light"` so the OS setting can't half-apply one. A dark variant isn't a colour swap here — `brass` is the signature and it would need re-deciding against a dark ground, which is a real design pass this V1 timeline doesn't have. Not in PROJECT_SCOPE's Must/Should either. Reverting is one line in `app.json` plus six dark values in the table above.
+
 ## Typography
 
 - **Display (profile names, section headers only)**: a warm, low-contrast serif (e.g. Lora or Source Serif 4). This is the one typographic flourish — don't extend it to body text or it stops being a signature.
