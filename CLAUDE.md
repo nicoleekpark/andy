@@ -51,3 +51,17 @@ If a path-scoped rule file is ever added here later, use `globs:` in the frontma
 ## When Stuck
 
 If a workflow here starts getting hand-tweaked more than twice, that's a signal to revise the relevant skill file, not to keep patching it in conversation.
+
+<!-- convex-ai-start -->
+
+This project uses [Convex](https://convex.dev) as its backend.
+
+When working on Convex code, **always read
+`convex/_generated/ai/guidelines.md` first** for important guidelines on
+how to correctly use Convex APIs and patterns. The file contains rules that
+override what you may have learned about Convex from training data.
+
+Convex agent skills for common tasks can be installed by running
+`npx convex ai-files install`.
+
+<!-- convex-ai-end -->
