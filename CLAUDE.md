@@ -8,7 +8,7 @@
 
 - Frontend: Expo + TypeScript (`npx expo start`)
 - Backend: Convex (`npx convex dev` locally, `npx convex deploy` to ship)
-- Test: `npm run test` (jest + @testing-library/react-native)
+- Test: `npm run test` — runs both runners: jest (`src/`, RN components) then vitest (`convex/**/*.test.ts`, convex-test). Convex functions cannot be tested under jest; see `convex/_generated/ai/guidelines.md`. Targeted runs: `npm run test:rn`, `npm run test:convex`.
 - Lint/typecheck: `npm run lint` (must pass before any commit)
 - Build/submit: `eas build --platform ios`, `eas submit --platform ios`
 
