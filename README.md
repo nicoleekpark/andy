@@ -30,8 +30,8 @@ Convex's own docs describe Convex Auth as beta and recommend Clerk or Auth0 for 
 ## Setup
 
 ```bash
-npm run reset-project     # one-time: moves the default example routes to app-example/,
-                           # leaves app/ blank to build on. Run this before Day 1 if not done already.
+# Already done: the create-expo-app demo scaffold was moved aside to example/ (kept for
+# reference, not built or type-checked), and the one-time reset-project script was removed.
 npm install
 npx expo lint              # sets up ESLint if not already configured —
                            # small-commit-flow's lint step needs this working from Day 1

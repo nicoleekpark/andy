@@ -32,8 +32,8 @@ Convex 공식 문서 자체가 Convex Auth를 베타라고 설명하고 프로�
 ## 셋업
 
 ```bash
-npm run reset-project      # 1회성: 기본 예시 라우트를 app-example/로 옮기고 app/을 비워서 시작 가능하게 함.
-                           # 아직 안 했으면 Day 1 전에 실행할 것.
+# 완료됨: create-expo-app 데모 스캐폴드는 example/ 로 옮겨져 있고(참고용, 빌드·타입체크 대상 아님),
+# 1회성 스크립트였던 reset-project 는 제거됨.
 npm install
 npx expo lint               # ESLint 아직 설정 안 됐으면 설정함 —
                            # small-commit-flow의 lint 단계가 Day 1부터 이게 되어 있어야 함
