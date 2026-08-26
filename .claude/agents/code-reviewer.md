@@ -1,5 +1,5 @@
 ---
-name: cody
+name: code-reviewer
 description: Use after a feature slice is implemented and tests pass, before it's committed. Reviews the diff constructively for DRY violations, adherence to PROJECT_SCOPE.md's Must/Should Have scope and CLAUDE.md's Scope Discipline rule, consistency with existing codebase patterns, and obvious bugs or edge cases. Not a pass/fail gate like app-store-reviewer — gives constructive suggestions, and the main thread decides what to act on.
 tools: Read, Grep, Glob, Bash
 model: sonnet

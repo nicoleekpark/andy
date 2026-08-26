@@ -1,5 +1,5 @@
 ---
-name: doc
+name: docs-verifier
 description: Use before writing code against Clerk, EventKit, WidgetKit, or any other library/API outside Expo's and Convex's own ecosystems whose exact current syntax you're not fully certain of. For Expo SDK APIs, prefer the official Expo MCP Server / Expo Skills plugin. For Convex, prefer `convex/_generated/ai/guidelines.md` (read this first for any Convex work — it explicitly overrides training-data assumptions) and the installed `convex-*` skills (convex-docs, convex-reviewer, convex-quickstart, etc.) over a general web search. Use this subagent for everything those don't cover.
 tools: WebSearch, WebFetch
 model: sonnet

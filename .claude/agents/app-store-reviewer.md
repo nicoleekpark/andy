@@ -1,5 +1,5 @@
 ---
-name: steve
+name: app-store-reviewer
 description: Use before any EAS submit / App Store Connect submission, and any time contacts, microphone, calendar, photos, or notification permissions are added or changed. Reviews permission usage strings, privacy manifest, and Info.plist/app.json config against App Store Review Guidelines for apps that access Contacts, Calendar, Photos, and record audio. Not a general code reviewer — submission-readiness only.
 tools: Read, Grep, Glob
 model: sonnet
