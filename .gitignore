@@ -40,7 +40,8 @@ yarn-error.*
 
 # dev
 example
-DEV.md
+dev/
+*.dev.md
 
 # generated native folders
 /ios
