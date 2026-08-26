@@ -44,7 +44,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint && tsc --noEmit",
+    "lint": "expo lint convex src && tsc --noEmit",
     "test": "jest --passWithNoTests && vitest run --passWithNoTests",
     "test:watch": "jest --watchAll",
     "test:convex": "vitest run --passWithNoTests",

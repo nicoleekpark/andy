@@ -5,6 +5,8 @@ const expoConfig = require("eslint-config-expo/flat");
 module.exports = defineConfig([
   expoConfig,
   {
-    ignores: ["dist/*"],
+    // convex/_generated is machine-generated and ships its own /* eslint-disable */
+    // headers; example/ is the archived create-expo-app scaffold, not built code.
+    ignores: ["dist/*", "convex/_generated/*", "example/*"],
   }
 ]);
