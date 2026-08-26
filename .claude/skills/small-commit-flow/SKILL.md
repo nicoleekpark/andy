@@ -14,7 +14,14 @@ This repo ships fast because every change is small, tested, and reversible. Foll
 5. **Delegate to the `security-reviewer` subagent** if the slice touches data access, auth, or an external API call. This is a blocking gate — do not proceed past a 🛑 block.
 6. **Delegate to the `code-reviewer` subagent** for a constructive pass — DRY, scope adherence against `PROJECT_SCOPE.md`, consistency, obvious bugs. Act on anything flagged as "must fix before committing"; use judgment on the rest.
 7. **Run lint/typecheck** (`npm run lint`) — must be clean.
-8. **Commit** with a conventional-commits message (`feat: ...`, `fix: ...`, `chore: ...`) describing exactly this slice — nothing else staged.
-9. **Report back** a one-line summary of what shipped, not a full diff dump, unless asked.
+8. **Do NOT commit — Nicole commits.** Never run `git commit` (or `git add` to pre-stage) in this repo. Stop here and hand the slice over instead. Leave the working tree untouched so they can read the raw diff themselves.
+9. **Report back so they can review, then wait.** The report is the deliverable of this step, not a formality:
+   - what changed, file by file, and **why** — including anything discovered mid-slice that wasn't in the plan
+   - the commands they can run to verify it themselves (`npm run lint`, `npm run test`, …) with the results you actually got
+   - what you deliberately deferred, and to which slice
+   - a **suggested conventional-commits message** (`feat: ...`, `fix: ...`, `chore: ...`) that accurately describes exactly this slice
+   - if unrelated changes are sitting in the working tree, say so and suggest one message per commit so they can split them
+
+   Then stop. Don't start the next slice until they confirm the commit landed.
 
 If a request would naturally touch more than ~3 files or two concerns (e.g. "add voice capture and also wire up the widget"), split it into separate slices and confirm the order with the user before proceeding — don't decide silently that it's "one feature."
