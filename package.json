@@ -32,6 +32,8 @@
   },
   "devDependencies": {
     "@edge-runtime/vm": "^5.0.0",
+    "@testing-library/react-native": "^14.0.1",
+    "@types/jest": "^29.5.14",
     "@types/react": "~19.2.2",
     "convex-test": "^0.0.56",
     "eslint": "^9.0.0",
@@ -45,10 +47,10 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint convex src && tsc --noEmit && tsc --noEmit -p convex/tsconfig.json",
-    "test": "jest --passWithNoTests && vitest run --passWithNoTests",
+    "test": "jest && vitest run",
     "test:watch": "jest --watchAll",
-    "test:convex": "vitest run --passWithNoTests",
-    "test:rn": "jest --passWithNoTests"
+    "test:convex": "vitest run",
+    "test:rn": "jest"
   },
   "jest": {
     "preset": "jest-expo",
