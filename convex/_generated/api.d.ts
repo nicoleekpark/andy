@@ -8,6 +8,8 @@
  * @module
  */
 
+import type * as extraction from "../extraction.js";
+import type * as extractionPrompt from "../extractionPrompt.js";
 import type * as users from "../users.js";
 
 import type {
@@ -17,6 +19,8 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  extraction: typeof extraction;
+  extractionPrompt: typeof extractionPrompt;
   users: typeof users;
 }>;
 
