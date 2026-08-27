@@ -307,8 +307,8 @@ export default defineSchema({
 ## Architecture
 
 ```
-Voice/Photo Input (expo-audio for recording, expo-image-picker for business card photo)
-   → Transcription (expo-speech-recognition on-device, or a hosted Whisper API)
+Voice/Photo Input (expo-speech-recognition captures the mic, expo-image-picker for business card photo)
+   → Transcription (expo-speech-recognition, on-device — settled Day 2, see Open Risks)
    → Claude extraction (Convex action, server-side key) — accepts voice transcript
      OR business card image as input
        → identifies primary profile + secondary mentions
@@ -338,7 +338,7 @@ Follow-up Email (on demand)
 - **Auth**: Clerk — Apple Sign-In only for V1 (see README Tech Stack Decisions for why, and why not Convex Auth/Firebase/Supabase)
 - **LLM**: Claude API (Haiku for extraction/cost, Sonnet for chatbot quality; multimodal for business-card photo extraction) — called only from Convex actions, key never on-device
 - **Contacts**: expo-contacts
-- **Voice**: expo-audio for recording (expo-av is removed as of Expo SDK 55 — do not use it), expo-speech-recognition for on-device transcription (or a hosted Whisper API), expo-speech for text-to-speech only (Siri Shortcut's spoken response, not transcription)
+- **Voice**: expo-speech-recognition — it captures the microphone *and* transcribes, so no separate recorder is needed (expo-audio was installed Day 2 as a fallback hedge and removed once on-device recognition was proven; expo-av is removed as of Expo SDK 55 — do not use it). If the audio file itself is ever wanted, this same library writes one via `recordingOptions.persist`. expo-speech is text-to-speech only (Siri Shortcut's spoken response, not transcription)
 - **Security**: expo-local-authentication (passcode/biometric app lock)
 - **Shortcuts/Widgets**: native iOS App Intents (requires a small native/Expo config plugin — budget real time for this, it's the least "just works" part of the stack)
 
@@ -362,7 +362,8 @@ _(unchanged length — the Day One-inspired additions below are cheap enough to 
 
 ## Open Risks to Revisit
 
-- Transcription accuracy for Korean speech (test early, Day 2, not Day 9)
+- ~~Transcription accuracy for Korean speech (test early, Day 2, not Day 9)~~ — **measured Day 2 on device.** `ko-KR` has an on-device model (`supported:true installed:true`), so audio need not leave the phone. Sentence structure and personal names transcribe correctly; **domain terms do not** — "브랜딩 디자이너" came back as "브랜든 집 디자인". Punctuation was requested and did not appear.
+- **Transcription errors are laundered into confident false facts** (new, Day 2). Extraction is robust in *structure* — it did not invent a person from the mangled words, and it repaired a broken clause from context — but it recorded the mangled job as a fact and inferred a specialisation ("인테리어 디자인") that appears nowhere in the transcript. Since these facts are read back before a meeting as if true, **the confirm/edit step in the Capture flow is load-bearing, not polish**: nothing may be saved without a human seeing it first.
 - Per-extraction Claude API cost at scale (fine for MVP, model before scaling)
 - App Store privacy review for contacts + microphone + **calendar + photos** access — write precise, honest usage-description strings (see `app-store-reviewer` subagent)
 - Calendar attendee/title name-matching quality — test with your actual messy real calendar early (Day 6), not synthetic data

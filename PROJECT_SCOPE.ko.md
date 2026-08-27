@@ -305,8 +305,8 @@ export default defineSchema({
 ## Architecture (아키텍처)
 
 ```
-음성/사진 입력 (녹음은 expo-audio, 명함 사진은 expo-image-picker)
-   → 전사 (온디바이스 expo-speech-recognition, 또는 호스팅된 Whisper API)
+음성/사진 입력 (마이크는 expo-speech-recognition, 명함 사진은 expo-image-picker)
+   → 전사 (온디바이스 expo-speech-recognition — Day 2에 확정, 남은 리스크 절 참고)
    → Claude 추출 (Convex action, 서버사이드 키) — 음성 전사본 또는
      명함 이미지를 입력으로 받음
        → 대표 프로필 + 부차적 언급 대상들을 식별
@@ -336,7 +336,7 @@ export default defineSchema({
 - **인증**: Clerk — V1은 Apple Sign-In만 (왜 이렇게 결정했는지, 왜 Convex Auth/Firebase/Supabase가 아닌지는 README의 Tech Stack Decisions 참고)
 - **LLM**: Claude API (추출/비용 절감용 Haiku, 챗봇 품질용 Sonnet; 명함 사진 추출용 멀티모달) — Convex action에서만 호출, 키는 절대 온디바이스에 없음
 - **연락처**: expo-contacts
-- **음성**: 녹음은 expo-audio (expo-av는 Expo SDK 55부터 제거됨 — 쓰지 말 것), 온디바이스 전사는 expo-speech-recognition (또는 호스팅된 Whisper API), expo-speech는 TTS 전용 (Siri 단축어의 음성 응답용, 전사용 아님)
+- **음성**: expo-speech-recognition — 마이크 캡처와 전사를 **함께** 하므로 별도 녹음기가 필요 없다 (expo-audio는 Day 2에 폴백 헤지로 설치했다가 온디바이스 인식이 검증된 뒤 제거했다. expo-av는 Expo SDK 55부터 제거됨 — 쓰지 말 것). 오디오 파일 자체가 필요해지면 같은 라이브러리의 `recordingOptions.persist`가 파일을 떨궈준다. expo-speech는 TTS 전용 (Siri 단축어의 음성 응답용, 전사용 아님)
 - **보안**: expo-local-authentication (비밀번호/생체인증 앱 잠금)
 - **단축어/위젯**: 네이티브 iOS App Intents (작은 native/Expo config plugin 필요 — 여기에 실제 시간을 넉넉히 배정할 것, 스택 중에서 "그냥 되는" 정도가 제일 낮은 부분임)
 
@@ -360,7 +360,8 @@ _(길이는 그대로 — 아래의 Day One에서 영감받은 추가사항들�
 
 ## 다시 짚어볼 남은 리스크
 
-- 한국어 음성 전사 정확도 (Day 9가 아니라 Day 2에 일찍 테스트할 것)
+- ~~한국어 음성 전사 정확도 (Day 9가 아니라 Day 2에 일찍 테스트할 것)~~ — **Day 2에 기기에서 실측함.** `ko-KR`은 온디바이스 모델이 있다(`supported:true installed:true`). 음성이 기기를 안 떠나도 된다는 뜻. 문장 구조와 사람 이름은 정확하게 전사되지만 **도메인 용어는 무너진다** — "브랜딩 디자이너"가 "브랜든 집 디자인"으로 돌아왔다. 구두점은 요청했으나 붙지 않았다.
+- **전사 오류가 확신에 찬 거짓 사실로 세탁된다** (Day 2에 새로 발견). 추출은 *구조* 면에서는 견고하다 — 망가진 단어에서 없는 사람을 만들어내지 않았고, 깨진 절을 문맥으로 복구하기까지 했다. 그러나 망가진 직업을 사실로 기록했고, 전사문에 **없는** 전문 분야("인테리어 디자인")를 추론해 넣었다. 이 사실들은 회의 직전에 참인 것처럼 읽히므로, **캡처 흐름의 확인/편집 단계는 장식이 아니라 하중을 받는 구조물이다**: 사람이 보기 전에는 아무것도 저장되면 안 된다.
 - 규모가 커졌을 때 건당 Claude API 추출 비용 (MVP엔 문제없음, 스케일 전에 모델링할 것)
 - 연락처 + 마이크 + **캘린더 + 사진** 접근에 대한 앱스토어 프라이버시 심사 — 정확하고 솔직한 사용 목적 문자열을 작성할 것 (`app-store-reviewer` 서브에이전트 참고)
 - 캘린더 참석자/제목 이름 매칭 품질 — 가짜 데이터가 아니라 실제 지저분한 본인 캘린더로 일찍(Day 6) 테스트할 것
