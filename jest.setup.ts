@@ -174,3 +174,43 @@ jest.mock("convex/react", () => {
 
   return { ...actual, useConvexAuth, useMutation };
 });
+
+/**
+ * expo-speech-recognition is a native module, so merely importing
+ * (app)/profile/[id]/capture.tsx throws "Cannot find native module
+ * 'ExpoSpeechRecognition'" under jest-expo — which broke the route tests the
+ * moment that screen stopped being a placeholder.
+ *
+ * Every member is an individually controllable jest.fn() rather than a static
+ * stub, so a test about recognition can drive its own values.
+ *
+ * Two warnings, both the same shape as the `useConvexAuth` note above:
+ *
+ * 1. `useSpeechRecognitionEvent` is a no-op here, so **no event ever fires**.
+ *    A test that expects a transcript to appear on screen must supply its own
+ *    implementation and invoke the listener itself; leaning on this default
+ *    gives a screen that can never show anything, which is not a passing test
+ *    of transcription, it is a test of nothing.
+ *
+ * 2. `requestPermissionsAsync` defaults to **denied**, because a default of
+ *    granted would let a test walk the whole happy path without ever having
+ *    said so. By the same token, a test asserting the *denied* branch must
+ *    still set `granted: false` itself rather than inherit it — otherwise
+ *    deleting the permission check would leave that test green.
+ */
+jest.mock("expo-speech-recognition", () => ({
+  ExpoSpeechRecognitionModule: {
+    start: jest.fn(),
+    stop: jest.fn(),
+    abort: jest.fn(),
+    requestPermissionsAsync: jest.fn(async () => ({ granted: false })),
+    getPermissionsAsync: jest.fn(async () => ({ granted: false })),
+    supportsOnDeviceRecognition: jest.fn(() => false),
+    isRecognitionAvailable: jest.fn(() => true),
+    getSupportedLocales: jest.fn(async () => ({
+      locales: [],
+      installedLocales: [],
+    })),
+  },
+  useSpeechRecognitionEvent: jest.fn(),
+}));
