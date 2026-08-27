@@ -95,6 +95,23 @@ Risk       : iOS는 실제 셀룰러 통화 중에 발신자 프로필을 자동
     준비를 해둘 것 — 이건 LLM 추출 기능을 위한 의도적인 트레이드오프지
     보안을 대충 한 게 아님.
 
+11. **이 머신에서 로컬 iOS 빌드는 불가능함. EAS가 경로임.**
+    Day 1에 확인된 사실이지 추측이 아님: Expo SDK 57의 `expo-modules-jsi`가
+    `weak let`(SE-0481)을 쓰는데, Swift 6.3 이전은 이를 받아들이지 않고 어떤
+    플래그로도 앞당길 수 없음. Swift 6.3은 Xcode 26.4부터이고, Apple 릴리스
+    노트상 26.4 이상은 전부 macOS Tahoe 26.2+를 요구함. 이 머신은 Sequoia이고
+    그 천장은 Xcode 26.3 / Swift 6.2.3. 패키지 업그레이드로는 해결 안 됨 —
+    57.0.6에도 57.0.5와 동일하게 16곳이 있음. EAS는
+    `macos-tahoe-26.5-xcode-26.6`에서 빌드하므로 로컬 툴체인이 무관해지고,
+    시뮬레이터 프로파일은 Apple Developer 계정이 필요 없음. 네이티브 설정
+    변경마다 약 8분을 잡을 것. 그리고 **누구도 로컬 빌드로 "고치려" 하지 말 것.**
+12. **리포 밖 대시보드 설정은 검증되기 전까지 완료가 아님.**
+    Day 1에 조용한 오설정 두 개로 몇 시간을 잃음: Clerk에 `convex` JWT 템플릿이
+    없었고(`ConvexProviderWithClerk`가 실패를 삼키고 null을 반환하므로 앱은 그냥
+    영원히 미인증), `auth.config.ts`는 커밋됐지만 배포에 푸시된 적이 없었음
+    (`convex codegen`은 이를 **적용하지 않음** — `convex dev`/`deploy`만 적용).
+    둘 다 에러를 내지 않았음. 값이 아니라 **그 대상을 지목하는 증거**를 요구할 것.
+
 ### 선례 — 이 트레이드오프는 우리만의 편법이 아니라 업계 표준임
 
 추측이 아니라 직접 조사한 내용:
@@ -210,7 +227,7 @@ Risk       : iOS는 실제 셀룰러 통화 중에 발신자 프로필을 자동
 | 애플워치 앱               | V1.1 이후         | 별도 네이티브 Swift/SwiftUI 코드베이스, 진짜 규모의 작업 — Could Have 참고           |
 | 진짜 인터랙티브 위젯 녹음 | V1.1 이후 stretch | 딥링크 버전이 너무 느릴 때만                                                         |
 
-## DB 스키마 (Convex) — 초안(DRAFT), Day 1 plan mode에서 검증할 것, 최종본 아님
+## DB 스키마 (Convex) — Day 1에 구현됨, 아래에 편차 기록
 
 ```typescript
 // convex/schema.ts
@@ -275,7 +292,15 @@ export default defineSchema({
 });
 ```
 
-이건 Day 1을 위해 제안된 목표치임 — 처음부터 새로 설계하지 말고 이걸 구현하거나 여기서 벗어나는 부분을 플래그로 표시할 것, 그리고 Claude Code가 실제 쿼리 패턴을 본 뒤에도 이게 여전히 말이 되는지 확인할 것.
+**Day 1에 구현됨** (`convex/schema.ts`, 커밋 `59758d0`). 위 초안에서 5가지가 달라졌고, 전부 코드를 쓰기 전 plan mode에서 검증받았음:
+
+1. **`users` 테이블 추가.** 초안이 `v.id("users")`를 쓰면서 그 테이블을 정의한 적이 없었음 — Clerk은 테이블을 만들어주지 않음. `subject`가 아니라 `tokenIdentifier`로 키를 잡음 (`convex/_generated/ai/guidelines.md` 지시).
+2. **자식 테이블 인덱스가 `userId`로 시작** — `by_user`, `by_user_and_profile_and_createdAt`, `by_user_and_profile_and_date`, `by_user_and_event`. 초안은 `profileId`로만 인덱싱했는데, Convex는 인덱스 필드를 선언된 순서대로만 질의할 수 있어서 그러면 "모든 함수가 `by_user`로 필터한다"는 규칙을 지킬 수 없음.
+3. **`notes.embedding`은 `v.optional`** — 임베딩 파이프라인은 Day 4인데 수동 노트(Day 3)는 벡터 없이 삽입 가능해야 함. 벡터 인덱스는 `dimensions: 1536`으로 지금 선언돼 있으므로, **임베딩 모델이 그 차원을 내지 않으면 인덱스를 다시 만들어야 함.**
+4. **`metrics.value`/`unit`은 optional, `note` 필드 추가** — 초안 자신의 예시인 `"vet_visit"`에 숫자 값이 없음.
+5. **`profiles.search_name`에 `filterFields: ["userId"]` 추가** — 이름 검색이 사용자 경계를 넘지 않도록.
+
+`mentionedEntityIds`는 초안대로 `[]` 기본값의 필수 배열로 유지. 다만 배열이라 Convex가 인덱싱할 수 없음: "프로필 X를 언급한 모든 노트"는 호출자의 노트를 훑어 JS에서 거르는 방식이 됨. V1 규모에선 괜찮고, 필요해지면 `noteMentions` 조인 테이블을 추가(additive)하면 됨.
 
 ## Architecture (아키텍처)
 

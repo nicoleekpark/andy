@@ -6,11 +6,20 @@
 
 ## Stack & Commands
 
-- Frontend: Expo + TypeScript (`npx expo start`)
-- Backend: Convex (`npx convex dev` locally, `npx convex deploy` to ship)
+- Frontend: Expo + TypeScript. `npm start` (= `expo start --dev-client`) — this app cannot run in Expo Go, so plain `expo start` is not an option.
+- Backend: Convex (`npx convex dev` locally, `npx convex deploy` to ship). Leave `convex dev` running: `convex codegen` regenerates types but does **not** apply `auth.config.ts` or schema to the deployment.
 - Test: `npm run test` — runs both runners: jest (`src/`, RN components) then vitest (`convex/**/*.test.ts`, convex-test). Convex functions cannot be tested under jest; see `convex/_generated/ai/guidelines.md`. Targeted runs: `npm run test:rn`, `npm run test:convex`.
 - Lint/typecheck: `npm run lint` (must pass before any commit)
-- Build/submit: `eas build --platform ios`, `eas submit --platform ios`
+- Build: `npm run build:ios` (EAS cloud, ~8 min), then `npm run ios:install`. Local `npx expo run:ios` does **not** work here — Expo SDK 57 needs Swift 6.3, which needs Xcode 26.4+, which needs macOS Tahoe. See `README.md`'s Commands table.
+- Submit: `eas submit --platform ios`, only after the `eas-release-checklist` skill and `app-store-reviewer`.
+
+## Before Starting Work
+
+Read the most recent `dev-reports/day-NN.dev.md` first. It carries what the previous day
+learned that isn't in the code — assumptions that turned out wrong, approaches that were
+tried and abandoned, what is verified versus merely assumed, and what has to be true before
+certain work can start. `git log` and that day's `dev-reports/day-NN-commits.dev.md` record what changed; the report
+records why, and what it cost to find out.
 
 ## Non-Negotiable Conventions
 
@@ -24,6 +33,7 @@
 - **Notes are indexed per-note, not per-profile.** Every note gets its own embedding and an optional `mentionedEntityIds[]` array. Don't collapse notes into a single profile-level blob — that breaks cross-profile mention search, which is a Must-have.
 - **Cap scheduled local notifications.** iOS allows at most 64 pending per app — only schedule briefing/nudge pairs for the next ~20-25 upcoming matched calendar events, refreshed on foreground, not for every future event unconditionally.
 - **Before any App Store submission work**, run the `eas-release-checklist` skill and invoke the `app-store-reviewer` subagent — do not submit without both.
+- **The docs are bilingual pairs — edit both or neither.** `README.md` ↔ `README.ko.md`, `CLAUDE.md` ↔ `CLAUDE.ko.md`, `PROJECT_SCOPE.md` ↔ `PROJECT_SCOPE.ko.md`. Update the twin in the same change, not "later": these are loaded as instructions and read as the agreed scope, so a stale twin quietly becomes a second, wrong source of truth. Afterwards confirm they still line up — compare `grep -c '^## '`, any table's command column, and code-block counts (headings are translated, so compare structure, not text).
 
 ## Convex Function Conventions
 

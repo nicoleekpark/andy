@@ -6,11 +6,19 @@
 
 ## 스택 & 명령어
 
-- 프론트엔드: Expo + TypeScript (`npx expo start`)
-- 백엔드: Convex (로컬은 `npx convex dev`, 배포는 `npx convex deploy`)
-- 테스트: `npm run test` (jest + @testing-library/react-native)
+- 프론트엔드: Expo + TypeScript. `npm start` (= `expo start --dev-client`) — 이 앱은 Expo Go에서 실행되지 않으므로 그냥 `expo start`는 선택지가 아님.
+- 백엔드: Convex (로컬은 `npx convex dev`, 배포는 `npx convex deploy`). `convex dev`를 켜둘 것 — `convex codegen`은 타입만 재생성하고 `auth.config.ts`나 스키마를 **배포에 적용하지 않음.**
+- 테스트: `npm run test` — 러너 두 개를 순차 실행: jest(`src/`, RN 컴포넌트) 후 vitest(`convex/**/*.test.ts`, convex-test). Convex 함수는 jest로 테스트할 수 없음, `convex/_generated/ai/guidelines.md` 참고. 개별 실행: `npm run test:rn`, `npm run test:convex`.
 - 린트/타입체크: `npm run lint` (커밋 전 반드시 통과해야 함)
-- 빌드/제출: `eas build --platform ios`, `eas submit --platform ios`
+- 빌드: `npm run build:ios` (EAS 클라우드, 약 8분) 후 `npm run ios:install`. 로컬 `npx expo run:ios`는 **이 머신에서 동작하지 않음** — Expo SDK 57이 Swift 6.3을 요구하고, 그건 Xcode 26.4+, 그건 macOS Tahoe를 요구함. `README.ko.md`의 명령어 표 참고.
+- 제출: `eas submit --platform ios`, 단 `eas-release-checklist` 스킬과 `app-store-reviewer`를 거친 뒤에만.
+
+## 작업 시작 전
+
+가장 최근 `dev-reports/day-NN.dev.md`를 먼저 읽을 것. 코드에 없는 것 — 틀린 것으로 드러난 가정,
+시도했다가 버린 접근, 검증된 것과 그냥 추정한 것의 구분, 어떤 작업을 시작하기 전에 무엇이 참이어야
+하는지 — 이 거기 담겨 있음. `git log`와 그날의 `dev-reports/day-NN-commits.dev.md`는 **무엇이** 바뀌었는지 기록하고,
+리포트는 **왜** 그리고 알아내는 데 무엇이 들었는지를 기록함.
 
 ## 협상 불가 규칙
 
@@ -24,6 +32,7 @@
 - **노트는 프로필 단위가 아니라 노트 단위로 인덱싱됨.** 모든 노트는 자기만의 임베딩과 선택적 `mentionedEntityIds[]` 배열을 가짐. 노트들을 하나의 프로필 단위 덩어리로 합치지 말 것 — 그러면 반드시 있어야 하는(Must-have) 크로스 프로필 멘션 검색이 깨짐.
 - **예약된 로컬 알림 개수를 제한할 것.** iOS는 앱당 최대 64개까지만 대기 가능 — 앞으로 다가올 매칭된 캘린더 이벤트 약 20~25개에 대해서만 브리핑/넛지 쌍을 예약하고, 포그라운드 진입 시 갱신할 것. 모든 미래 이벤트에 대해 무조건 예약하지 말 것.
 - **앱스토어 제출 관련 작업 전에는** `eas-release-checklist` 스킬을 실행하고 `app-store-reviewer` 서브에이전트를 호출할 것 — 둘 다 거치지 않고 제출하지 말 것.
+- **문서는 영/한 쌍임 — 둘 다 고치거나 둘 다 안 고치거나.** `README.md` ↔ `README.ko.md`, `CLAUDE.md` ↔ `CLAUDE.ko.md`, `PROJECT_SCOPE.md` ↔ `PROJECT_SCOPE.ko.md`. "나중에 번역"이 아니라 **같은 변경 안에서** 쌍을 함께 고칠 것 — 이 파일들은 지시문으로 로드되고 합의된 스코프로 읽히므로, 낡은 쪽이 조용히 두 번째 잘못된 진실이 됨. 고친 뒤엔 정합성을 확인할 것 — `grep -c '^## '`, 표의 명령어 컬럼, 코드블록 개수를 비교(제목은 번역돼 있으므로 텍스트가 아니라 구조를 비교).
 
 ## 데이터 모델 참고
 

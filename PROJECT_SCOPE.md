@@ -94,6 +94,26 @@ Risk       : iOS cannot auto-surface caller profiles during a real cellular
     Be ready to explain this distinction if asked — it's a deliberate
     trade-off for the LLM-extraction feature, not a security shortcut.
 
+11. **Local iOS builds are impossible on this machine; EAS is the path.**
+    Confirmed Day 1, not a guess: Expo SDK 57's `expo-modules-jsi` uses
+    `weak let` (SE-0481), which no Swift before 6.3 accepts and no flag
+    unlocks earlier. Swift 6.3 ships with Xcode 26.4, and every Xcode from
+    26.4 on requires macOS Tahoe 26.2+ per Apple's release notes. This
+    machine runs Sequoia, whose ceiling is Xcode 26.3 / Swift 6.2.3.
+    Upgrading the package does not help — 57.0.6 has the same 16
+    occurrences as 57.0.5. EAS builds on `macos-tahoe-26.5-xcode-26.6`,
+    so the local toolchain stops mattering; the simulator profile needs no
+    Apple Developer account. Budget ~8 min per native config change, and
+    do not let anyone "fix" this by attempting a local build.
+12. **Dashboard setup outside the repo is not done until it is verified.**
+    Day 1 lost hours to two silent misconfigurations: a missing `convex`
+    JWT template in Clerk (`ConvexProviderWithClerk` swallows the failure
+    and returns null, so the app is simply never authenticated), and an
+    `auth.config.ts` that was committed but never pushed to the deployment
+    (`convex codegen` does **not** apply it — only `convex dev`/`deploy`
+    does). Neither produced an error. Ask for evidence that names the
+    thing, not a value that merely coexists with it.
+
 ### Precedent — this trade-off is standard, not a shortcut unique to us
 
 Researched directly rather than assumed:
@@ -209,7 +229,7 @@ Every channel below is just a different front door into the _same_ capture → e
 | Apple Watch app                   | V1.1+         | Separate native Swift/SwiftUI codebase, real scope — see Could Have         |
 | True interactive-widget recording | V1.1+ stretch | Only if the deep-link version proves too slow                               |
 
-## DB Schema (Convex) — DRAFT, validate in Day 1 plan mode, not final
+## DB Schema (Convex) — implemented Day 1, deviations recorded below
 
 ```typescript
 // convex/schema.ts
@@ -274,7 +294,15 @@ export default defineSchema({
 });
 ```
 
-This is a proposed target for Day 1 — implement or flag deviations from this, not invent a new one from scratch, and confirm it still makes sense once Claude Code sees the real query patterns.
+**Implemented on Day 1** (`convex/schema.ts`, commit `59758d0`) with five deviations from the draft above, each validated in plan mode before writing:
+
+1. **A `users` table was added.** The draft referenced `v.id("users")` without ever defining that table — Clerk does not create one. Keyed on `tokenIdentifier` (not `subject`), per `convex/_generated/ai/guidelines.md`.
+2. **Child-table indexes lead with `userId`** — `by_user`, `by_user_and_profile_and_createdAt`, `by_user_and_profile_and_date`, `by_user_and_event`. The draft indexed only by `profileId`, which cannot satisfy the rule that every function filters through `by_user`, since Convex only queries index fields in declared order.
+3. **`notes.embedding` is `v.optional`** — the embedding pipeline is Day 4 and manual notes (Day 3) must be insertable without a vector. The vector index is declared now at `dimensions: 1536`, so an embedding model must produce that width or the index has to be recreated.
+4. **`metrics.value`/`unit` are optional, plus a `note` field** — the draft's own example, `"vet_visit"`, has no numeric value.
+5. **`profiles.search_name` gained `filterFields: ["userId"]`** so name search cannot cross users.
+
+`mentionedEntityIds` stayed a required array defaulting to `[]`, as drafted. Note it is an array, so Convex cannot index it: "every note mentioning profile X" means scanning the caller's notes and filtering in JS. Fine at V1 scale; a `noteMentions` join table is the additive fix if it ever isn't.
 
 ## Architecture
 
