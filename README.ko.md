@@ -35,15 +35,13 @@ Convex 공식 문서 자체가 Convex Auth를 베타라고 설명하고 프로�
 # 완료됨: create-expo-app 데모 스캐폴드는 example/ 로 옮겨져 있고(참고용, 빌드·타입체크 대상 아님),
 # 1회성 스크립트였던 reset-project 는 제거됨.
 npm install
-npx expo lint               # ESLint 아직 설정 안 됐으면 설정함 —
-                           # small-commit-flow의 lint 단계가 Day 1부터 이게 되어 있어야 함
-# Jest는 https://docs.expo.dev/develop/unit-testing/ 참고해서 설정 (아직 안 됐으면) —
-# test-writer가 Day 1부터 동작하는 테스트 러너가 필요하니 건너뛰지 말 것
-npx convex dev               # Convex 개발 배포를 시작하고 convex/_generated를 생성함
-npx expo run:ios               # 개발 빌드를 빌드하고 실행함.
-                           # `npx expo start` + Expo Go 아님 — 이 프로젝트는 커스텀 네이티브 모듈
-                           # (Calendar, LocalAuthentication, Widgets)을 쓰는데 Expo Go 샌드박스는
-                           # 이걸 지원 안 함. PROJECT_SCOPE.md의 Reality Checks 참고.
+npx convex dev             # Convex 개발 배포를 시작하고 convex/_generated 를 생성함.
+                           # 백엔드 작업 중에는 켜둔 채로 둘 것.
+```
+
+그다음 시뮬레이터에 빌드를 올린다 — 아래 **명령어** 절 참고. `npx expo run:ios`(로컬 네이티브
+빌드)는 macOS Sequoia 에서 **동작하지 않는다.** 빌드는 EAS 를 거친다. 이유는 명령어 절에 적혀 있다.
+```bash
 ```
 
 > **참고**: `create-expo-app`은 자체적으로 `AGENTS.md`, `CLAUDE.md`, `.claude/settings.json`을 자동 생성해서 버전별 Expo SDK 문서와 공식 Expo Claude 플러그인을 가리킴. 이 레포의 `CLAUDE.md`는 그것과 합칠 것(덮어쓰지 말고 이어붙이기) — `CLAUDE.md` 맨 위의 merge note 참고.
@@ -56,10 +54,21 @@ Convex 대시보드에 설정 (서버사이드, Expo 앱에는 절대 넣지 않
 ANTHROPIC_API_KEY=...
 ```
 
-`.env.local`에 설정 (클라이언트에 노출돼도 안전한 것만):
+`.env.local`에 설정 (클라이언트에 노출돼도 안전한 것만 — Metro 가 앱 번들에 그대로 인라인하므로
+비밀은 절대 여기 두지 말 것):
 
 ```
 EXPO_PUBLIC_CONVEX_URL=...
+EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=...
+```
+
+`.env.local` 은 gitignore 대상이라 내 머신에만 있다. 즉 **EAS 클라우드 빌드는 이 파일을 못 본다.**
+같은 변수 두 개를 EAS 에도 등록해야 하며, 안 하면 빌드된 앱이 실행 즉시 throw 한다:
+
+```bash
+eas env:create --scope project --environment development \
+  --name EXPO_PUBLIC_CONVEX_URL --visibility plaintext \
+  --value "$(grep '^EXPO_PUBLIC_CONVEX_URL=' .env.local | cut -d= -f2-)"
 ```
 
 ## 폴더 구조
@@ -77,16 +86,53 @@ convex/             # schema.ts, functions (queries/mutations/actions), vector i
 .mcp.json           # Claude Code용 MCP 서버 (GitHub 등)
 ```
 
-## 스크립트
+## 명령어
 
-```bash
-npm run dev          # expo start
-npm run test          # jest
-npm run lint           # eslint + tsc --noEmit
-npx convex deploy      # 백엔드 함수 배포
-eas build --platform ios
-eas submit --platform ios
-```
+### 매일 쓰는 것
+
+대부분의 작업은 이것만으로 된다. JS·TS 변경은 재빌드 없이 시뮬레이터에 즉시 반영된다.
+
+| 명령어 | 언제 | 왜 |
+| --- | --- | --- |
+| `npx expo start --dev-client` | 작업할 때마다 | 설치된 개발 빌드에 JS 번들을 공급한다. 그냥 `expo start` 가 아니라 `--dev-client` 인 이유는 이 앱이 Expo Go 에서 못 돌기 때문. |
+| `npm run test` | 슬라이스를 끝났다고 하기 전 | 러너 두 개를 순서대로 돌린다 — `src/` 는 jest, `convex/` 는 vitest. Convex 함수는 jest 로 테스트할 수 없어서, 러너 하나만 돌리면 절반이 조용히 건너뛰어진다. |
+| `npm run lint` | 커밋 전마다 | `expo lint convex src` 후 `tsc --noEmit` 을 두 번 — 루트 한 번, `convex/tsconfig.json` 으로 한 번. Convex 코드는 Node 가 아니라 V8 에서 도는데, Node 전용 전역이 섞여 들어간 걸 잡는 건 두 번째 검사뿐이다. |
+| `npm run test:rn` / `npm run test:convex` | 실패 원인을 좁힐 때 | 러너 하나씩. |
+
+### 시뮬레이터에 빌드 올리기
+
+**네이티브** 설정이 바뀔 때만 필요하다 — 새 네이티브 모듈, `app.json` 플러그인, 권한 문자열,
+번들 ID. JS 변경에는 필요 없다.
+
+| 명령어 | 언제 | 왜 |
+| --- | --- | --- |
+| `eas build --profile development --platform ios` | 네이티브 설정 변경 후 | 약 8분, Expo 클라우드에서 빌드된다. **`npx expo run:ios` 는 쓸 수 없다**: Expo SDK 57 의 `expo-modules-jsi` 가 `weak let`(Swift 6.3)을 쓰는데, Swift 6.3 이 들어간 첫 릴리스가 Xcode 26.4 이고, 26.4 이상은 전부 macOS Tahoe 26.2+ 를 요구한다. 이 머신은 Sequoia 다. EAS 는 `macos-tahoe-26.5-xcode-26.6` 에서 빌드하므로 로컬 툴체인이 무관해진다. |
+| `eas build:run --platform ios --latest --simulator "iPhone 17 Pro"` | 빌드가 끝난 뒤 | 내려받아 설치하고 실행까지 한다. `--simulator` 를 주면 기기 선택 프롬프트를 건너뛴다. |
+| `eas build --profile development-device --platform ios` | 실제 아이폰에서 테스트할 때 | 서명된 `.ipa` 를 만든다. 유료 Apple Developer 계정이 필요하다. `development` 프로파일은 시뮬레이터 전용이라 계정이 아예 필요 없다. |
+
+### Convex
+
+| 명령어 | 언제 | 왜 |
+| --- | --- | --- |
+| `npx convex dev` | 백엔드 작업 중 | `convex/` 를 감시하며 푸시하고 `convex/_generated` 를 재생성한다. |
+| `npx convex codegen` | `convex dev` 없이 `schema.ts` 를 고쳤을 때 | 생성 타입을 다시 만든다. 배포에 접속하므로 순수 로컬 작업은 아니다. |
+| `npx convex env set NAME value` | 서버 측 비밀을 넣을 때 | 배포 환경변수. `ANTHROPIC_API_KEY` 가 있어도 되는 유일한 장소. |
+| `npx convex env get NAME` | 변수 하나 확인할 때 | 이걸 쓸 것. **`npx convex env list` 는 쓰지 말 것** — 목록 형태는 API 키를 포함해 모든 값을 그대로 출력한다. |
+
+### 돌아가는 앱 들여다보기
+
+| 명령어 | 언제 | 왜 |
+| --- | --- | --- |
+| `xcrun simctl openurl booted "andy:///search"` | 아직 링크가 없는 화면에 들어갈 때 | **슬래시 세 개.** `andy://search` 는 `search` 를 URL 호스트로 해석하므로, `andy://profile/abc` 같은 중첩 경로는 에러 없이 조용히 홈 화면에 머문다. |
+| `xcrun simctl io booted screenshot out.png` | 화면이 실제로 어떻게 보이는지 남길 때 | 말로 설명하는 것보다 빠르다. |
+
+### 릴리스
+
+| 명령어 | 언제 | 왜 |
+| --- | --- | --- |
+| `npx convex deploy` | 백엔드 변경을 프로덕션에 배포할 때 | 앱 빌드와 별개다. 둘은 독립적으로 배포된다. |
+| `eas build --profile production --platform ios` | 릴리스 빌드 | 먼저 `eas-release-checklist` 스킬과 `app-store-reviewer` 서브에이전트를 돌릴 것. |
+| `eas submit --platform ios` | App Store Connect 업로드 | 위 두 검사 없이는 절대 하지 말 것. |
 
 ## 커밋 컨벤션
 

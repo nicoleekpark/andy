@@ -33,15 +33,14 @@ Convex's own docs describe Convex Auth as beta and recommend Clerk or Auth0 for 
 # Already done: the create-expo-app demo scaffold was moved aside to example/ (kept for
 # reference, not built or type-checked), and the one-time reset-project script was removed.
 npm install
-npx expo lint              # sets up ESLint if not already configured —
-                           # small-commit-flow's lint step needs this working from Day 1
-# Set up Jest per https://docs.expo.dev/develop/unit-testing/ if not already configured —
-# test-writer needs a working test runner from Day 1, don't skip this
-npx convex dev              # starts Convex dev deployment, generates convex/_generated
-npx expo run:ios              # builds and launches a development build.
-                           # NOT `npx expo start` + Expo Go — this project uses custom native
-                           # modules (Calendar, LocalAuthentication, Widgets) that Expo Go's
-                           # sandbox doesn't support. See PROJECT_SCOPE.md Reality Checks.
+npx convex dev             # starts the Convex dev deployment and generates convex/_generated.
+                           # Leave it running while you work on backend code.
+```
+
+Then get a build onto the simulator — see **Commands** below. Note that
+`npx expo run:ios` (a local native build) does **not** work on macOS Sequoia; builds go
+through EAS instead. The reason is in the Commands section.
+```bash
 ```
 
 > **Note**: `create-expo-app` auto-generates its own `AGENTS.md`, `CLAUDE.md`, and `.claude/settings.json` pointing at the versioned Expo SDK docs and the official Expo Claude plugin. Merge this repo's `CLAUDE.md` into that one (append, don't overwrite) — see the merge note at the top of `CLAUDE.md`.
@@ -54,10 +53,21 @@ Set in the Convex dashboard (server-side, never in the Expo app):
 ANTHROPIC_API_KEY=...
 ```
 
-Set in `.env.local` (client-safe only):
+Set in `.env.local` (client-safe only — Metro inlines these into the app bundle, so
+never put a secret here):
 
 ```
 EXPO_PUBLIC_CONVEX_URL=...
+EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=...
+```
+
+`.env.local` is gitignored and stays on your machine, so **EAS cloud builds don't see it**.
+The same two variables must also be registered on EAS, or the built app throws on launch:
+
+```bash
+eas env:create --scope project --environment development \
+  --name EXPO_PUBLIC_CONVEX_URL --visibility plaintext \
+  --value "$(grep '^EXPO_PUBLIC_CONVEX_URL=' .env.local | cut -d= -f2-)"
 ```
 
 ## Folder Structure
@@ -75,16 +85,54 @@ convex/             # schema.ts, functions (queries/mutations/actions), vector i
 .mcp.json           # MCP servers for Claude Code (GitHub, etc.)
 ```
 
-## Scripts
+## Commands
 
-```bash
-npm run dev          # expo start
-npm run test          # jest
-npm run lint           # eslint + tsc --noEmit
-npx convex deploy      # deploy backend functions
-eas build --platform ios
-eas submit --platform ios
-```
+### Day to day
+
+Most work needs only these. JS and TypeScript changes reach the simulator instantly — no
+rebuild.
+
+| Command | When | Why |
+| --- | --- | --- |
+| `npx expo start --dev-client` | Every working session | Serves the JS bundle to the installed development build. `--dev-client` (not plain `expo start`) because this app can't run in Expo Go. |
+| `npm run test` | Before calling a slice done | Runs both runners: jest for `src/`, then vitest for `convex/`. Convex functions can't be tested under jest, so a single runner would silently skip half the suite. |
+| `npm run lint` | Before every commit | `expo lint convex src`, then `tsc --noEmit` twice — once at the root, once with `convex/tsconfig.json`. Convex code runs on V8, not Node, and only the second pass catches Node-only globals leaking in. |
+| `npm run test:rn` / `npm run test:convex` | Narrowing a failure | One runner at a time. |
+
+### Getting a build onto the simulator
+
+Only needed when **native** config changes: a new native module, an `app.json` plugin, a
+permission string, the bundle id. Never for JS changes.
+
+| Command | When | Why |
+| --- | --- | --- |
+| `eas build --profile development --platform ios` | After a native config change | ~8 min, builds in Expo's cloud. **`npx expo run:ios` cannot be used**: Expo SDK 57's `expo-modules-jsi` uses `weak let` (Swift 6.3), Xcode 26.4 is the first release with Swift 6.3, and every Xcode from 26.4 on requires macOS Tahoe 26.2+. This machine runs Sequoia. EAS builds on `macos-tahoe-26.5-xcode-26.6`, so the local toolchain stops mattering. |
+| `eas build:run --platform ios --latest --simulator "iPhone 17 Pro"` | After a build finishes | Downloads, installs and launches it. `--simulator` skips the device-picker prompt. |
+| `eas build --profile development-device --platform ios` | Testing on a real iPhone | Produces a signed `.ipa`; needs a paid Apple Developer account. The `development` profile is simulator-only and needs no account at all. |
+
+### Convex
+
+| Command | When | Why |
+| --- | --- | --- |
+| `npx convex dev` | While working on backend code | Watches `convex/`, pushes, and regenerates `convex/_generated`. |
+| `npx convex codegen` | After editing `schema.ts` without `convex dev` running | Regenerates the generated types. It does contact the deployment, so it is not purely local. |
+| `npx convex env set NAME value` | Adding a server-side secret | Deployment env vars — this is the only place `ANTHROPIC_API_KEY` may live. |
+| `npx convex env get NAME` | Checking one variable | Use this, **not `npx convex env list`** — the list form prints every value in full, including API keys. |
+
+### Poking at the running app
+
+| Command | When | Why |
+| --- | --- | --- |
+| `xcrun simctl openurl booted "andy:///search"` | Reaching a screen with no link to it yet | **Three slashes.** `andy://search` treats `search` as the URL host, so nested paths like `andy://profile/abc` silently land on the home screen instead of erroring. |
+| `xcrun simctl io booted screenshot out.png` | Recording what a screen actually looks like | Faster than describing it. |
+
+### Release
+
+| Command | When | Why |
+| --- | --- | --- |
+| `npx convex deploy` | Shipping backend changes to production | Separate from the app build; the two deploy independently. |
+| `eas build --profile production --platform ios` | Release build | Run the `eas-release-checklist` skill and the `app-store-reviewer` subagent first. |
+| `eas submit --platform ios` | Uploading to App Store Connect | Never without the two checks above. |
 
 ## Commit Convention
 
