@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import * as AppleAuthentication from "expo-apple-authentication";
 import { useSignInWithApple } from "@clerk/expo/apple";
+import { useAuth } from "@clerk/expo";
 import { colors } from "@/constants/theme";
 
 /**
@@ -13,10 +14,41 @@ import { colors } from "@/constants/theme";
  * specifies its wording, proportions and colours, and a custom lookalike is a
  * review risk. Everything around it follows STYLE.md.
  */
+
+/**
+ * How long to treat "signed in to Clerk but not yet to Convex" as the normal
+ * gap between activating a session and the server confirming its token, before
+ * offering a way out. Reaching this screen at all already means Convex has not
+ * authenticated us, so the only question is whether it is still working on it.
+ */
+export const STUCK_AFTER_MS = 6000;
+
 export default function SignInScreen() {
   const { startAppleAuthenticationFlow } = useSignInWithApple();
+  const { isSignedIn, signOut } = useAuth();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [stuck, setStuck] = useState(false);
+
+  // Being signed in to Clerk while still on this screen means Convex would not
+  // take the token — a misconfigured JWT template does exactly this. Without a
+  // way out the account is unusable: the gate blocks every route, and sign-out
+  // lives behind it, so the only remedy left is deleting the app.
+  // The flag is set by the timer and cleared in cleanup, never in the effect
+  // body — the React Compiler lint rule rejects a synchronous setState there,
+  // and cleanup is the more correct place anyway: it also resets when Clerk
+  // signs the user out by some path other than the button below, so signing
+  // back in gets a fresh waiting period instead of an instant warning.
+  useEffect(() => {
+    if (!isSignedIn) {
+      return;
+    }
+    const timer = setTimeout(() => setStuck(true), STUCK_AFTER_MS);
+    return () => {
+      clearTimeout(timer);
+      setStuck(false);
+    };
+  }, [isSignedIn]);
 
   const signIn = async () => {
     setError(null);
@@ -60,20 +92,51 @@ export default function SignInScreen() {
       </View>
 
       <View style={styles.actions}>
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-        <AppleAuthentication.AppleAuthenticationButton
-          buttonType={
-            AppleAuthentication.AppleAuthenticationButtonType.CONTINUE
-          }
-          buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-          cornerRadius={10}
-          style={[styles.appleButton, busy && styles.appleButtonBusy]}
-          onPress={() => {
-            if (!busy) {
-              void signIn();
-            }
-          }}
-        />
+        {isSignedIn ? (
+          stuck ? (
+            <>
+              <Text style={styles.stuck}>
+                You&apos;re signed in with Apple, but Andy can&apos;t reach your
+                account. Sign out and try again.
+              </Text>
+              <Pressable
+                style={styles.signOut}
+                onPress={() => {
+                  // Only clear on success. A failing signOut is a *correlated*
+                  // failure here — the reason for being stuck is usually a
+                  // network or config problem — and clearing optimistically
+                  // would hide the button while leaving isSignedIn true, which
+                  // strands the user on "Finishing sign-in…" with no way back.
+                  void signOut().catch(() => {});
+                }}
+                accessibilityRole="button"
+              >
+                <Text style={styles.signOutLabel}>Sign out</Text>
+              </Pressable>
+            </>
+          ) : (
+            <Text style={styles.waiting}>Finishing sign-in…</Text>
+          )
+        ) : (
+          <>
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+            <AppleAuthentication.AppleAuthenticationButton
+              buttonType={
+                AppleAuthentication.AppleAuthenticationButtonType.CONTINUE
+              }
+              buttonStyle={
+                AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
+              }
+              cornerRadius={10}
+              style={[styles.appleButton, busy && styles.appleButtonBusy]}
+              onPress={() => {
+                if (!busy) {
+                  void signIn();
+                }
+              }}
+            />
+          </>
+        )}
       </View>
     </View>
   );
@@ -91,6 +154,16 @@ const styles = StyleSheet.create({
   body: { color: colors.ink, fontSize: 16, opacity: 0.75 },
   actions: { gap: 12, paddingBottom: 24 },
   error: { color: colors.alert, fontSize: 14 },
+  stuck: { color: colors.alert, fontSize: 14 },
+  waiting: { color: colors.ink, fontSize: 14, opacity: 0.5 },
   appleButton: { height: 50 },
   appleButtonBusy: { opacity: 0.5 },
+  signOut: {
+    paddingVertical: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.line,
+    alignItems: "center",
+  },
+  signOutLabel: { color: colors.moss, fontSize: 16 },
 });

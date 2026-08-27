@@ -1,7 +1,9 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 import { useConvexAuth } from "convex/react";
+import { useAuth } from "@clerk/expo";
 import { useSignInWithApple } from "@clerk/expo/apple";
 import { renderRouter } from "expo-router/testing-library";
+import { STUCK_AFTER_MS } from "@/app/(auth)/sign-in";
 
 /**
  * src/app/(auth)/sign-in.tsx wires expo-apple-authentication's button to
@@ -104,5 +106,115 @@ describe("sign-in screen", () => {
     expect(
       screen.queryByText("Couldn't reach Apple. Check your connection and try again."),
     ).toBeNull();
+  });
+
+  /**
+   * The escape hatch: Clerk has a session but useConvexAuth (forced
+   * signed-out in beforeEach above) never confirms it — exactly what a
+   * misconfigured "convex" JWT template produces in real use. These use
+   * fake timers to control STUCK_AFTER_MS without a real 6s wait; see the
+   * final report for how that combination behaved against renderRouter and
+   * RTL v14's async APIs.
+   */
+  describe("stuck-at-gate escape hatch", () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    test("should show neither the stuck copy nor the waiting copy when signed out", async () => {
+      (useAuth as jest.Mock).mockReturnValue({
+        isSignedIn: false,
+        signOut: jest.fn(async () => undefined),
+      });
+
+      await renderSignIn();
+
+      expect(screen.getByRole("button", { name: "Continue with Apple" })).toBeTruthy();
+      expect(screen.queryByText("Finishing sign-in…")).toBeNull();
+      expect(
+        screen.queryByText(
+          "You're signed in with Apple, but Andy can't reach your account. Sign out and try again.",
+        ),
+      ).toBeNull();
+    });
+
+    test("should show only the waiting copy when signed in before the stuck timer fires", async () => {
+      (useAuth as jest.Mock).mockReturnValue({
+        isSignedIn: true,
+        signOut: jest.fn(async () => undefined),
+      });
+
+      await renderSignIn();
+
+      expect(screen.getByText("Finishing sign-in…")).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Sign out" })).toBeNull();
+      expect(
+        screen.queryByText(
+          "You're signed in with Apple, but Andy can't reach your account. Sign out and try again.",
+        ),
+      ).toBeNull();
+    });
+
+    test("should show the stuck copy and a Sign out button once the stuck timer fires", async () => {
+      (useAuth as jest.Mock).mockReturnValue({
+        isSignedIn: true,
+        signOut: jest.fn(async () => undefined),
+      });
+
+      await renderSignIn();
+      await act(async () => {
+        jest.advanceTimersByTime(STUCK_AFTER_MS);
+      });
+
+      expect(
+        screen.getByText(
+          "You're signed in with Apple, but Andy can't reach your account. Sign out and try again.",
+        ),
+      ).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Sign out" })).toBeTruthy();
+      expect(screen.queryByText("Finishing sign-in…")).toBeNull();
+    });
+
+    test("should call signOut once when the Sign out button is pressed after the stuck timer fires", async () => {
+      const signOut = jest.fn(async () => undefined);
+      (useAuth as jest.Mock).mockReturnValue({ isSignedIn: true, signOut });
+
+      await renderSignIn();
+      await act(async () => {
+        jest.advanceTimersByTime(STUCK_AFTER_MS);
+      });
+      await fireEvent.press(screen.getByRole("button", { name: "Sign out" }));
+
+      expect(signOut).toHaveBeenCalledTimes(1);
+    });
+
+    test("should keep showing the stuck copy and Sign out button when signOut rejects", async () => {
+      const signOut = jest.fn(async () => {
+        throw new Error("network down");
+      });
+      (useAuth as jest.Mock).mockReturnValue({ isSignedIn: true, signOut });
+
+      await renderSignIn();
+      await act(async () => {
+        jest.advanceTimersByTime(STUCK_AFTER_MS);
+      });
+      // The handler discards the rejection itself (`.catch(() => {})`), so
+      // awaiting the press is enough to let that internal catch settle — no
+      // unhandled rejection should escape to fail or warn this test.
+      await fireEvent.press(screen.getByRole("button", { name: "Sign out" }));
+
+      expect(signOut).toHaveBeenCalledTimes(1);
+      expect(
+        screen.getByText(
+          "You're signed in with Apple, but Andy can't reach your account. Sign out and try again.",
+        ),
+      ).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Sign out" })).toBeTruthy();
+      expect(screen.queryByText("Finishing sign-in…")).toBeNull();
+    });
   });
 });
