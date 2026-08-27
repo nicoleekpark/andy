@@ -94,7 +94,7 @@ rebuild.
 
 | Command | When | Why |
 | --- | --- | --- |
-| `npx expo start --dev-client` | Every working session | Serves the JS bundle to the installed development build. `--dev-client` (not plain `expo start`) because this app can't run in Expo Go. |
+| `npm start` | Every working session | Serves the JS bundle to the installed development build. `--dev-client` (not plain `expo start`) because this app can't run in Expo Go. |
 | `npm run test` | Before calling a slice done | Runs both runners: jest for `src/`, then vitest for `convex/`. Convex functions can't be tested under jest, so a single runner would silently skip half the suite. |
 | `npm run lint` | Before every commit | `expo lint convex src`, then `tsc --noEmit` twice — once at the root, once with `convex/tsconfig.json`. Convex code runs on V8, not Node, and only the second pass catches Node-only globals leaking in. |
 | `npm run test:rn` / `npm run test:convex` | Narrowing a failure | One runner at a time. |
@@ -106,9 +106,11 @@ permission string, the bundle id. Never for JS changes.
 
 | Command | When | Why |
 | --- | --- | --- |
-| `eas build --profile development --platform ios` | After a native config change | ~8 min, builds in Expo's cloud. **`npx expo run:ios` cannot be used**: Expo SDK 57's `expo-modules-jsi` uses `weak let` (Swift 6.3), Xcode 26.4 is the first release with Swift 6.3, and every Xcode from 26.4 on requires macOS Tahoe 26.2+. This machine runs Sequoia. EAS builds on `macos-tahoe-26.5-xcode-26.6`, so the local toolchain stops mattering. |
-| `eas build:run --platform ios --latest --simulator "iPhone 17 Pro"` | After a build finishes | Downloads, installs and launches it. `--simulator` skips the device-picker prompt. |
-| `eas build --profile development-device --platform ios` | Testing on a real iPhone | Produces a signed `.ipa`; needs a paid Apple Developer account. The `development` profile is simulator-only and needs no account at all. |
+| `npm run build:ios` | After a native config change | ~8 min, builds in Expo's cloud. **`npx expo run:ios` cannot be used**: Expo SDK 57's `expo-modules-jsi` uses `weak let` (Swift 6.3), Xcode 26.4 is the first release with Swift 6.3, and every Xcode from 26.4 on requires macOS Tahoe 26.2+. This machine runs Sequoia. EAS builds on `macos-tahoe-26.5-xcode-26.6`, so the local toolchain stops mattering. |
+| `npm run ios:install` | After a build finishes | Downloads, installs and launches it. Add `-- --simulator "iPhone 17 Pro"` to skip the device-picker prompt. |
+| `npm run build:ios:device` | Testing on a real iPhone | Produces a signed `.ipa`; needs a paid Apple Developer account. The `development` profile is simulator-only and needs no account at all. |
+
+> `npm run ios` / `npm run android` are Expo's own local native builds. `npm run ios` does not work on this machine — see the build row above — and there is no Android build in V1. Use `npm run build:ios`.
 
 ### Convex
 

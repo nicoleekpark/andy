@@ -94,7 +94,7 @@ convex/             # schema.ts, functions (queries/mutations/actions), vector i
 
 | 명령어 | 언제 | 왜 |
 | --- | --- | --- |
-| `npx expo start --dev-client` | 작업할 때마다 | 설치된 개발 빌드에 JS 번들을 공급한다. 그냥 `expo start` 가 아니라 `--dev-client` 인 이유는 이 앱이 Expo Go 에서 못 돌기 때문. |
+| `npm start` | 작업할 때마다 | 설치된 개발 빌드에 JS 번들을 공급한다. 그냥 `expo start` 가 아니라 `--dev-client` 인 이유는 이 앱이 Expo Go 에서 못 돌기 때문. |
 | `npm run test` | 슬라이스를 끝났다고 하기 전 | 러너 두 개를 순서대로 돌린다 — `src/` 는 jest, `convex/` 는 vitest. Convex 함수는 jest 로 테스트할 수 없어서, 러너 하나만 돌리면 절반이 조용히 건너뛰어진다. |
 | `npm run lint` | 커밋 전마다 | `expo lint convex src` 후 `tsc --noEmit` 을 두 번 — 루트 한 번, `convex/tsconfig.json` 으로 한 번. Convex 코드는 Node 가 아니라 V8 에서 도는데, Node 전용 전역이 섞여 들어간 걸 잡는 건 두 번째 검사뿐이다. |
 | `npm run test:rn` / `npm run test:convex` | 실패 원인을 좁힐 때 | 러너 하나씩. |
@@ -106,9 +106,11 @@ convex/             # schema.ts, functions (queries/mutations/actions), vector i
 
 | 명령어 | 언제 | 왜 |
 | --- | --- | --- |
-| `eas build --profile development --platform ios` | 네이티브 설정 변경 후 | 약 8분, Expo 클라우드에서 빌드된다. **`npx expo run:ios` 는 쓸 수 없다**: Expo SDK 57 의 `expo-modules-jsi` 가 `weak let`(Swift 6.3)을 쓰는데, Swift 6.3 이 들어간 첫 릴리스가 Xcode 26.4 이고, 26.4 이상은 전부 macOS Tahoe 26.2+ 를 요구한다. 이 머신은 Sequoia 다. EAS 는 `macos-tahoe-26.5-xcode-26.6` 에서 빌드하므로 로컬 툴체인이 무관해진다. |
-| `eas build:run --platform ios --latest --simulator "iPhone 17 Pro"` | 빌드가 끝난 뒤 | 내려받아 설치하고 실행까지 한다. `--simulator` 를 주면 기기 선택 프롬프트를 건너뛴다. |
-| `eas build --profile development-device --platform ios` | 실제 아이폰에서 테스트할 때 | 서명된 `.ipa` 를 만든다. 유료 Apple Developer 계정이 필요하다. `development` 프로파일은 시뮬레이터 전용이라 계정이 아예 필요 없다. |
+| `npm run build:ios` | 네이티브 설정 변경 후 | 약 8분, Expo 클라우드에서 빌드된다. **`npx expo run:ios` 는 쓸 수 없다**: Expo SDK 57 의 `expo-modules-jsi` 가 `weak let`(Swift 6.3)을 쓰는데, Swift 6.3 이 들어간 첫 릴리스가 Xcode 26.4 이고, 26.4 이상은 전부 macOS Tahoe 26.2+ 를 요구한다. 이 머신은 Sequoia 다. EAS 는 `macos-tahoe-26.5-xcode-26.6` 에서 빌드하므로 로컬 툴체인이 무관해진다. |
+| `npm run ios:install` | 빌드가 끝난 뒤 | 내려받아 설치하고 실행까지 한다. `-- --simulator "iPhone 17 Pro"` 를 붙이면 기기 선택 프롬프트를 건너뛴다. |
+| `npm run build:ios:device` | 실제 아이폰에서 테스트할 때 | 서명된 `.ipa` 를 만든다. 유료 Apple Developer 계정이 필요하다. `development` 프로파일은 시뮬레이터 전용이라 계정이 아예 필요 없다. |
+
+> `npm run ios` / `npm run android` 는 Expo 가 만드는 로컬 네이티브 빌드다. `npm run ios` 는 이 머신에서 동작하지 않고(위 빌드 행 참고) V1 에 Android 빌드는 없다. `npm run build:ios` 를 쓸 것.
 
 ### Convex
 

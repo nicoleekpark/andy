@@ -47,7 +47,10 @@
     "vitest": "^4.1.11"
   },
   "scripts": {
-    "start": "expo start",
+    "start": "expo start --dev-client",
+    "build:ios": "eas build --profile development --platform ios",
+    "build:ios:device": "eas build --profile development-device --platform ios",
+    "ios:install": "eas build:run --platform ios --latest",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
