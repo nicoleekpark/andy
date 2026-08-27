@@ -36,7 +36,22 @@
       ],
       "@clerk/expo",
       "expo-secure-store",
-      "expo-apple-authentication"
+      "expo-apple-authentication",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Andy records your voice note so you can capture what you just learned about someone. Recording only starts when you tap the record button.",
+          "speechRecognitionPermission": "Andy turns your recorded voice note into text so it can be saved to the right person's profile."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Andy reads a business card photo you pick and sends it to Andy's AI service to fill in a new profile with the name, title, and company on it.",
+          "cameraPermission": "Andy uses the camera so you can photograph a business card; the photo is sent to Andy's AI service to pull out the name, title, and company for a new profile.",
+          "microphonePermission": "Andy records your voice note so you can capture what you just learned about someone. Recording only starts when you tap the record button."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
