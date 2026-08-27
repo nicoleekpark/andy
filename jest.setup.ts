@@ -56,6 +56,68 @@ jest.mock("@clerk/expo/token-cache", () => ({
 }));
 
 /**
+ * @clerk/expo/apple's useSignInWithApple is a hook, and (auth)/sign-in.tsx
+ * calls it unconditionally at the top of the component — same shape of
+ * problem as `useAuth` above, it throws without a real ClerkProvider
+ * ancestor. Mocked as a jest.fn() (not a plain object) so individual tests
+ * can `mockReturnValue` their own `startAppleAuthenticationFlow` and drive
+ * it to resolve or reject differently per test; the default here only needs
+ * to be safe to *render* against, since no test outside sign-in.test.tsx
+ * presses the button.
+ */
+jest.mock("@clerk/expo/apple", () => ({
+  useSignInWithApple: jest.fn(() => ({
+    startAppleAuthenticationFlow: jest.fn(async () => ({ createdSessionId: null })),
+  })),
+}));
+
+/**
+ * expo-apple-authentication's AppleAuthenticationButton renders a native
+ * ASAuthorizationAppleIDButton, which doesn't exist in the Jest/RN test
+ * renderer environment. Swapped for a plain Pressable that carries the same
+ * onPress contract (the real component takes `onPress` directly, not
+ * `onButtonPress` — that indirection lives inside expo-apple-authentication
+ * itself) and surfaces a visible label so tests can find and press it via
+ * `getByRole("button", { name: ... })`, the same pattern __tests__/settings
+ * uses for the sign-out button. The two enums are mocked as plain objects
+ * since (auth)/sign-in.tsx only reads members off them, never calls them.
+ */
+jest.mock("expo-apple-authentication", () => {
+  const React = require("react");
+  const { Pressable, Text } = require("react-native");
+
+  const AppleAuthenticationButtonType = { SIGN_IN: 0, CONTINUE: 1 };
+  const AppleAuthenticationButtonStyle = { WHITE: 0, WHITE_OUTLINE: 1, BLACK: 2 };
+
+  const AppleAuthenticationButton = jest.fn(
+    ({
+      onPress,
+      buttonType,
+    }: {
+      onPress: () => void;
+      buttonType: number;
+    }) => {
+      const label =
+        buttonType === AppleAuthenticationButtonType.SIGN_IN
+          ? "Sign in with Apple"
+          : "Continue with Apple";
+
+      return React.createElement(
+        Pressable,
+        { accessibilityRole: "button", accessibilityLabel: label, onPress },
+        React.createElement(Text, null, label),
+      );
+    },
+  );
+
+  return {
+    AppleAuthenticationButtonType,
+    AppleAuthenticationButtonStyle,
+    AppleAuthenticationButton,
+  };
+});
+
+/**
  * ConvexProviderWithClerk is mocked because mounting the real one calls
  * client.setAuth() in a useEffect, which lazily opens a WebSocket via
  * ConvexReactClient's `sync` getter (confirmed in
@@ -95,6 +157,14 @@ jest.mock("convex/react-clerk", () => {
  * root-layout.test.tsx — can reach protected screens without each having to
  * set the mock up themselves. Auth-gate tests override these per test with
  * `(useConvexAuth as jest.Mock).mockReturnValue(...)`.
+ *
+ * The default is permissive, so treat it as a convenience for tests that are
+ * not about auth, never as the state under test. Anything asserting that a
+ * screen or route group is protected must set `isAuthenticated` itself — a
+ * test that leans on this default renders as signed in and would stay green
+ * against an unprotected screen. That matters most for a route added outside
+ * (app): the gate lives in (app)/_layout.tsx and has its own tests, but
+ * nothing here would notice a new group that forgot one.
  */
 jest.mock("convex/react", () => {
   const actual = jest.requireActual("convex/react");
