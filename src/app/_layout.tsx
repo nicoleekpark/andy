@@ -42,8 +42,9 @@ const convex = new ConvexReactClient(convexUrl);
  * Clerk wraps Convex, not the other way round: Convex needs Clerk's session to
  * already be readable when it asks for a token.
  *
- * Auth gating lands in the next slice: an (auth) group beside (app), and a
- * redirect between them.
+ * The two groups gate each other: (app) redirects a signed-out caller to
+ * sign-in, (auth) redirects a signed-in one back. Both decide on Convex's auth
+ * state, not Clerk's — see (app)/_layout.tsx.
  */
 export default function RootLayout() {
   return (
@@ -51,6 +52,7 @@ export default function RootLayout() {
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
         <Stack>
           <Stack.Screen name="(app)" options={{ headerShown: false }} />
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         </Stack>
       </ConvexProviderWithClerk>
     </ClerkProvider>

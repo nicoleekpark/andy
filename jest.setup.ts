@@ -23,10 +23,18 @@ jest.mock("@clerk/expo", () => {
   const React = require("react");
   const { View } = require("react-native");
 
+  // Declared outside the factory so every call to useAuth() across every
+  // render returns the *same* signOut mock, not a fresh jest.fn() per call —
+  // otherwise a test that renders, then presses a button whose onPress
+  // closes over an earlier render's signOut, could assert against a
+  // different mock instance than the one actually invoked.
+  const signOut = jest.fn(async () => undefined);
+
   const useAuth = jest.fn(() => ({
     isLoaded: true,
     isSignedIn: false,
     getToken: jest.fn(async () => null),
+    signOut,
     orgId: undefined,
     orgRole: undefined,
     sessionId: undefined,
@@ -67,4 +75,32 @@ jest.mock("convex/react-clerk", () => {
   );
 
   return { ConvexProviderWithClerk };
+});
+
+/**
+ * `useConvexAuth` and `useMutation` are the two `convex/react` hooks
+ * (app)/_layout.tsx and (auth)/_layout.tsx read directly, and neither has
+ * anything to read from without a real `ConvexProviderWithAuth` ancestor —
+ * which the `convex/react-clerk` mock above deliberately doesn't provide
+ * (see the comment on that mock: mounting the real provider would open a
+ * WebSocket). So both hooks are mocked here, individually, as controllable
+ * jest.fn()s, while everything else `convex/react` exports (ConvexProvider,
+ * ConvexReactClient, useQuery, ...) stays real via requireActual — the gate
+ * tests need to drive `isLoading`/`isAuthenticated` to genuinely different
+ * values per test, not read a single static stub, or a test deleting the
+ * gate's `<Redirect>` would never go red.
+ *
+ * Defaults below (`isLoading: false, isAuthenticated: true`) exist only so
+ * route tests that don't care about auth — app-routes.test.tsx,
+ * root-layout.test.tsx — can reach protected screens without each having to
+ * set the mock up themselves. Auth-gate tests override these per test with
+ * `(useConvexAuth as jest.Mock).mockReturnValue(...)`.
+ */
+jest.mock("convex/react", () => {
+  const actual = jest.requireActual("convex/react");
+
+  const useConvexAuth = jest.fn(() => ({ isLoading: false, isAuthenticated: true }));
+  const useMutation = jest.fn(() => jest.fn(async () => undefined));
+
+  return { ...actual, useConvexAuth, useMutation };
 });
