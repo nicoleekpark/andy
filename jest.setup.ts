@@ -33,6 +33,10 @@ jest.mock("@clerk/expo", () => {
   const useAuth = jest.fn(() => ({
     isLoaded: true,
     isSignedIn: false,
+    // The root layout keys the Convex client on this, so a test that changes
+    // identity must change `userId` — that is the whole trigger for throwing
+    // away the previous account's query cache.
+    userId: undefined as string | undefined,
     getToken: jest.fn(async () => null),
     signOut,
     orgId: undefined,

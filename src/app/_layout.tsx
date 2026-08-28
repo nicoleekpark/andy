@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { ClerkProvider, useAuth } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import { ConvexReactClient } from "convex/react";
@@ -30,9 +31,64 @@ const convexUrl = requireEnv(
   process.env.EXPO_PUBLIC_CONVEX_URL,
 );
 
-// Module scope on purpose: building the client inside the component would
-// reconnect to Convex on every render.
-const convex = new ConvexReactClient(convexUrl);
+/**
+ * One Convex client, alive for exactly as long as one signed-in identity.
+ *
+ * Convex caches query results under `serializePathAndArgs(path, args)` — the key
+ * says which function and which arguments, and **nothing about who asked**
+ * (convex/dist/esm/browser/sync/local_state.js). Signing out does not clear that
+ * cache either: `clearAuth()` tells the server, it does not empty the client. And
+ * `useQuery` reads the cache synchronously on its first render. So one long-lived
+ * client would paint the previous account's rows for the next person to sign in,
+ * before any request goes out. A server-side ownership filter cannot help: the
+ * client is replaying its own memory.
+ *
+ * Convex documents no way to empty that cache, so the cache is replaced along
+ * with the client that owns it. The client is created here rather than at module
+ * scope so that a remount produces a genuinely new one — and closed on unmount,
+ * so the old socket does not linger.
+ *
+ * Everything that reads user data has to sit *inside* this boundary, and must
+ * not keep its own copy anywhere that survives the remount — a module-scope
+ * cache, or a ref holding rows across identity change, would reopen exactly the
+ * hole this closes while looking like it had nothing to do with Convex.
+ *
+ * NOTE: this is not the `key={sessionId}` workaround that circulates on GitHub.
+ * That one keys the *provider* while reusing a single client, which re-sends the
+ * token but leaves the cache exactly where it was. What makes this work is that
+ * the keyed component owns the client: a new mount means a new cache.
+ */
+function ConvexSession({ children }: { children: React.ReactNode }) {
+  const [client] = useState(() => new ConvexReactClient(convexUrl));
+
+  useEffect(() => {
+    return () => {
+      void client.close();
+    };
+  }, [client]);
+
+  return (
+    <ConvexProviderWithClerk client={client} useAuth={useAuth}>
+      {children}
+    </ConvexProviderWithClerk>
+  );
+}
+
+/**
+ * Keyed on the Clerk user id, so signing in as someone else tears the session
+ * down and builds a fresh one. Signing out keys on a constant, which is still a
+ * change of key and so still discards the cache — the point is that no two
+ * identities ever share a client.
+ *
+ * Deliberately the user id and not the session id: re-authenticating as the same
+ * person issues a new session, and throwing away their cache for that would cost
+ * a reconnect and a blank screen to protect them from their own data.
+ */
+function ConvexScopedToIdentity({ children }: { children: React.ReactNode }) {
+  const { userId } = useAuth();
+
+  return <ConvexSession key={userId ?? "signed-out"}>{children}</ConvexSession>;
+}
 
 /**
  * ConvexProviderWithClerk is a thin wrapper over ConvexProviderWithAuth — it
@@ -49,12 +105,12 @@ const convex = new ConvexReactClient(convexUrl);
 export default function RootLayout() {
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-      <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+      <ConvexScopedToIdentity>
         <Stack>
           <Stack.Screen name="(app)" options={{ headerShown: false }} />
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         </Stack>
-      </ConvexProviderWithClerk>
+      </ConvexScopedToIdentity>
     </ClerkProvider>
   );
 }
