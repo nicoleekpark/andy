@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react-native";
+import { act, render } from "@testing-library/react-native";
 import { useAuth } from "@clerk/expo";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
@@ -113,8 +113,24 @@ describe("Convex client scoped to identity", () => {
     (useAuth as jest.Mock).mockReturnValue(authState("user_b"));
     await result.rerender(<RootLayout />);
 
-    expect(closeSpy).toHaveBeenCalledTimes(1);
-    expect(closeSpy.mock.instances[0]).toBe(clientForUserA);
+    // The close is deferred a tick in the implementation, so that Convex's own
+    // auth provider can finish tearing down first — its cleanup calls
+    // `clearAuth()`, which reads the client and throws once it is closed.
+    // `rerender` already flushes that tick, so this asserts only *that* the
+    // replaced client is closed, not *when*.
+    //
+    // The ordering itself is not reachable from here: jest.setup.ts replaces
+    // `ConvexProviderWithClerk` with a passthrough, so the cleanup that used to
+    // throw never runs in tests. It was caught by signing out in the simulator,
+    // and that is still the only thing that would catch it again.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    // Asserted by instance rather than by call count: every test in this file
+    // leaves a deferred close pending, and they land here once timers run.
+    // What matters is that *this* client was the one closed.
+    expect(closeSpy.mock.instances).toContain(clientForUserA);
 
     closeSpy.mockRestore();
   });

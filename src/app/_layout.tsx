@@ -63,7 +63,16 @@ function ConvexSession({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     return () => {
-      void client.close();
+      // Deferred by a tick on purpose. React runs a deleted subtree's effect
+      // cleanups parent-first, and this component is the parent of Convex's own
+      // auth provider — whose cleanup calls `client.clearAuth()`, which reads
+      // `client.sync` and throws "ConvexReactClient has already been closed."
+      // if we closed it a moment earlier. Letting the children finish tearing
+      // down first is the difference between a clean sign-out and a red screen.
+      const closing = client;
+      setTimeout(() => {
+        void closing.close();
+      }, 0);
     };
   }, [client]);
 
