@@ -39,11 +39,7 @@ describe("auth gate", () => {
     await result;
 
     expect(screen.queryByText("Sign in with Apple arrives in the next slice.")).toBeNull();
-    expect(
-      screen.queryByText(
-        "Tap record to remember someone new, or search for someone you already have.",
-      ),
-    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "Record" })).toBeNull();
   });
 
   test("should render app content and not end up on /sign-in when signed in", async () => {
@@ -56,11 +52,10 @@ describe("auth gate", () => {
     const result = renderRouter("src/app", { initialUrl: "/" });
     await result;
 
-    expect(
-      screen.getByText(
-        "Tap record to remember someone new, or search for someone you already have.",
-      ),
-    ).toBeTruthy();
+    // The home screen's record button, not its copy: this test is about the
+    // gate letting a signed-in caller through, and pinning wording would make
+    // it fail every time home is rewritten — as it just was.
+    expect(screen.getByRole("button", { name: "Record" })).toBeTruthy();
     expect(result.getPathname()).not.toBe("/sign-in");
   });
 
@@ -124,10 +119,9 @@ describe("auth gate", () => {
     await result;
 
     await waitFor(() => expect(ensureUserSpy).toHaveBeenCalledTimes(1));
-    expect(
-      screen.getByText(
-        "Tap record to remember someone new, or search for someone you already have.",
-      ),
-    ).toBeTruthy();
+    // The home screen's record button, not its copy: this test is about the
+    // gate letting a signed-in caller through, and pinning wording would make
+    // it fail every time home is rewritten — as it just was.
+    expect(screen.getByRole("button", { name: "Record" })).toBeTruthy();
   });
 });

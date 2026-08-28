@@ -154,3 +154,140 @@ test("should return an empty notes array, not null, for a profile with no notes"
   expect(result).not.toBeNull();
   expect(result?.notes).toEqual([]);
 });
+
+test("should exclude a profile that exists only because it was mentioned in another note", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  // The stub is created the way the app really creates one: as a mention on
+  // someone else's saved capture, not a direct insert.
+  await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "Met 지수 at 민호's dinner party.",
+    draft: {
+      primary: {
+        name: "지수",
+        entityType: "person",
+        relationshipContext: null,
+        tags: [],
+        firstMetDate: null,
+        keyFacts: [],
+      },
+      mentions: [
+        {
+          name: "민호",
+          entityType: "person",
+          relationshipContext: null,
+          context: "Hosted the dinner.",
+        },
+      ],
+    },
+    source: "voice",
+  });
+
+  const result = await asAlice.query(api.profiles.recent, {});
+
+  // Only 지수, who was actually recorded, appears — 민호 is a real row (a
+  // stub) but never chosen, so home must not show him.
+  expect(result).toHaveLength(1);
+  expect(result[0]?.profile.name).toBe("지수");
+});
+
+test("should order by most recent note rather than by profile creation order, and count only each profile's own notes", async () => {
+  const t = convexTest(schema, modules);
+  const aliceUserId = await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  // Created in this order: A first, B second. If the sort were dropped, the
+  // handler's own scan order (by creation) would return A before B — the
+  // opposite of what the note timestamps below demand.
+  const { profileA, profileB } = await t.run(async (ctx) => {
+    const profileA = await ctx.db.insert("profiles", {
+      userId: aliceUserId,
+      name: "A",
+      entityType: "person",
+      tags: [],
+      isStub: false,
+    });
+    const profileB = await ctx.db.insert("profiles", {
+      userId: aliceUserId,
+      name: "B",
+      entityType: "person",
+      tags: [],
+      isStub: false,
+    });
+
+    // A has two notes of its own; B has one. B's single note is the most
+    // recent thing written about anyone, so B must sort first despite being
+    // created after A and having fewer notes.
+    await ctx.db.insert("notes", {
+      userId: aliceUserId,
+      profileId: profileA,
+      mentionedEntityIds: [],
+      text: "A, first note.",
+      source: "manual",
+      createdAt: 1,
+    });
+    await ctx.db.insert("notes", {
+      userId: aliceUserId,
+      profileId: profileA,
+      mentionedEntityIds: [],
+      text: "A, second note.",
+      source: "manual",
+      createdAt: 2,
+    });
+    await ctx.db.insert("notes", {
+      userId: aliceUserId,
+      profileId: profileB,
+      mentionedEntityIds: [],
+      text: "B, only note, newest overall.",
+      source: "manual",
+      createdAt: 3,
+    });
+
+    return { profileA, profileB };
+  });
+
+  const result = await asAlice.query(api.profiles.recent, {});
+
+  expect(result.map((r) => r.profile._id)).toEqual([profileB, profileA]);
+  const byId = new Map(result.map((r) => [r.profile._id, r]));
+  expect(byId.get(profileB)?.noteCount).toBe(1);
+  expect(byId.get(profileA)?.noteCount).toBe(2);
+  expect(byId.get(profileB)?.lastNoteAt).toBe(3);
+  expect(byId.get(profileA)?.lastNoteAt).toBe(2);
+});
+
+test("should throw when recent is called while signed out", async () => {
+  const t = convexTest(schema, modules);
+
+  await expect(t.query(api.profiles.recent, {})).rejects.toThrow();
+});
+
+test("should never include another user's profiles", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  await ensureUser(t, BOB);
+  const asAlice = t.withIdentity(ALICE);
+  const asBob = t.withIdentity(BOB);
+
+  await asBob.mutation(api.notes.saveCapture, {
+    transcript: "Bob's own note about someone.",
+    draft: {
+      primary: {
+        name: "Bob's Friend",
+        entityType: "person",
+        relationshipContext: null,
+        tags: [],
+        firstMetDate: null,
+        keyFacts: [],
+      },
+      mentions: [],
+    },
+    source: "voice",
+  });
+
+  const result = await asAlice.query(api.profiles.recent, {});
+
+  expect(result).toEqual([]);
+});

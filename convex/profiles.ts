@@ -62,3 +62,61 @@ export const withNotes = query({
     return { profile, notes };
   },
 });
+
+/**
+ * The people you have actually recorded, most recently written about first.
+ *
+ * Someone who only ever appeared inside a note about somebody else is left out.
+ * They are a real row — that is what makes "who was at that dinner" answerable
+ * later — but the home screen is a list of people you keep, and after fifty
+ * notes it would otherwise fill with names you heard once and never chose.
+ *
+ * Membership is derived from the notes rather than read off `profiles.isStub`.
+ * The recency ordering needs every note anyway, so the answer is already in
+ * hand: storing the same fact twice only creates something that can go stale
+ * (a note deleted later would leave the flag lying). Worth remembering when
+ * deciding whether that column earns its place at all.
+ */
+export const recent = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      profile: schema.doc("profiles"),
+      lastNoteAt: v.number(),
+      noteCount: v.number(),
+    }),
+  ),
+  handler: async (ctx) => {
+    const user = await getAuthenticatedUser(ctx);
+
+    // Every note this user owns, in one read. Fine while a person has hundreds
+    // rather than tens of thousands; when that stops being true the fix is a
+    // paginated home, not a denormalised counter.
+    const notes = await ctx.db
+      .query("notes")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    const byProfile = new Map<string, { lastNoteAt: number; noteCount: number }>();
+    for (const note of notes) {
+      const seen = byProfile.get(note.profileId);
+      byProfile.set(note.profileId, {
+        lastNoteAt: Math.max(seen?.lastNoteAt ?? 0, note.createdAt),
+        noteCount: (seen?.noteCount ?? 0) + 1,
+      });
+    }
+
+    const profiles = await ctx.db
+      .query("profiles")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    return profiles
+      .flatMap((profile) => {
+        const stats = byProfile.get(profile._id);
+        return stats === undefined ? [] : [{ profile, ...stats }];
+      })
+      .sort((a, b) => b.lastNoteAt - a.lastNoteAt);
+  },
+});
+

@@ -1,3 +1,4 @@
+import { screen } from "@testing-library/react-native";
 import { renderRouter } from "expo-router/testing-library";
 import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
@@ -19,6 +20,7 @@ describe("app route tree", () => {
     ["/settings", "/settings"],
     ["/profile/contact-1", "/profile/contact-1"],
     ["/profile/contact-1/capture", "/profile/contact-1/capture"],
+    ["/capture", "/capture"],
   ])("should resolve %s to a real screen", async (initialUrl, expectedPathname) => {
     const result = renderRouter("src/app", { initialUrl });
     await result;
@@ -47,5 +49,23 @@ describe("app route tree", () => {
     const capture = renderRouter("src/app", { initialUrl: "/profile/contact-1/capture" });
     await capture;
     expect(capture.getSegments()).toEqual(["(app)", "profile", "[id]", "capture"]);
+  });
+
+  test("should resolve /capture as a route distinct from /profile/[id]/capture, both rendering the capture screen", async () => {
+    const unscoped = renderRouter("src/app", { initialUrl: "/capture" });
+    await unscoped;
+    expect(unscoped.getSegments()).toEqual(["(app)", "capture"]);
+    // The shared capture screen's idle copy — proof this is the real screen,
+    // not an empty placeholder route.
+    expect(
+      screen.getByText("Tap record and say what you want to remember."),
+    ).toBeTruthy();
+
+    const scoped = renderRouter("src/app", { initialUrl: "/profile/contact-1/capture" });
+    await scoped;
+    expect(scoped.getSegments()).toEqual(["(app)", "profile", "[id]", "capture"]);
+    expect(
+      screen.getByText("Tap record and say what you want to remember."),
+    ).toBeTruthy();
   });
 });

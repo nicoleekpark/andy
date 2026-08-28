@@ -54,6 +54,7 @@ export default function AppLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ title: "Andy" }} />
+      <Stack.Screen name="capture" options={{ title: "New note" }} />
       <Stack.Screen name="search" options={{ title: "Search" }} />
       <Stack.Screen name="settings" options={{ title: "Settings" }} />
     </Stack>
