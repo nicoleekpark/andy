@@ -171,8 +171,30 @@ jest.mock("convex/react", () => {
 
   const useConvexAuth = jest.fn(() => ({ isLoading: false, isAuthenticated: true }));
   const useMutation = jest.fn(() => jest.fn(async () => undefined));
+  // `useAction` joins the two above for the same reason: the capture screen
+  // calls it at the top of the component, and the real hook throws without a
+  // provider that the `convex/react-clerk` mock deliberately doesn't supply.
+  //
+  // The default resolves to `undefined`, which is NOT a valid draft — a screen
+  // that renders the review step must supply its own resolved value with
+  // `mockReturnValue`. That is deliberate: a default shaped like a real draft
+  // would let a test walk the whole extract → review → save path without ever
+  // saying what it expected to come back.
+  // Two traps for anything that needs to know *which* Convex function was
+  // requested, both hit while writing __tests__/capture.test.tsx:
+  //
+  // 1. These are single shared mocks. `(app)/_layout.tsx` calls
+  //    `useMutation(api.users.ensureUser)` on every authenticated mount, so a
+  //    bare `mockReturnValue(...)` intercepts that too and the first captured
+  //    call is `ensureUser({})`, not the one under test.
+  // 2. `api` is a Proxy (`anyApi`) that manufactures a fresh object on every
+  //    property access, so `reference === api.notes.saveCapture` is never true
+  //    — not even for the same path. Compare with `getFunctionName(reference)`
+  //    from `convex/server`, which resolves to a stable string
+  //    ("notes:saveCapture"), and branch on that.
+  const useAction = jest.fn(() => jest.fn(async () => undefined));
 
-  return { ...actual, useConvexAuth, useMutation };
+  return { ...actual, useConvexAuth, useMutation, useAction };
 });
 
 /**
@@ -213,4 +235,26 @@ jest.mock("expo-speech-recognition", () => ({
     })),
   },
   useSpeechRecognitionEvent: jest.fn(),
+}));
+
+/**
+ * expo-image-picker is a native module too (ExponentImagePicker, reached via
+ * requireNativeModule in src/ExponentImagePicker.ts) — same failure as
+ * expo-speech-recognition above: merely importing capture.tsx throws "Cannot
+ * find native module 'ExponentImagePicker'" under jest-expo without this.
+ *
+ * Same conservative-default habit as the expo-speech-recognition mock: both
+ * permission checks default to **denied**, and both launch functions default
+ * to a cancelled pick (`canceled: true`, no `assets`). A default of granted +
+ * an already-picked photo would let a business-card test walk the whole scan
+ * → extract → review path without ever asserting the permission or picker
+ * behaviour it exercises; a test for the happy path must set its own
+ * `mockResolvedValueOnce` for each call it needs, same as the speech-
+ * recognition tests do for `requestPermissionsAsync`.
+ */
+jest.mock("expo-image-picker", () => ({
+  requestCameraPermissionsAsync: jest.fn(async () => ({ granted: false })),
+  requestMediaLibraryPermissionsAsync: jest.fn(async () => ({ granted: false })),
+  launchCameraAsync: jest.fn(async () => ({ canceled: true, assets: null })),
+  launchImageLibraryAsync: jest.fn(async () => ({ canceled: true, assets: null })),
 }));
