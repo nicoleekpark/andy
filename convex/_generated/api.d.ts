@@ -11,6 +11,7 @@
 import type * as extraction from "../extraction.js";
 import type * as extractionPrompt from "../extractionPrompt.js";
 import type * as notes from "../notes.js";
+import type * as profiles from "../profiles.js";
 import type * as users from "../users.js";
 
 import type {
@@ -23,6 +24,7 @@ declare const fullApi: ApiFromModules<{
   extraction: typeof extraction;
   extractionPrompt: typeof extractionPrompt;
   notes: typeof notes;
+  profiles: typeof profiles;
   users: typeof users;
 }>;
 

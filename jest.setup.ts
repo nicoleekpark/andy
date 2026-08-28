@@ -198,7 +198,17 @@ jest.mock("convex/react", () => {
   //    ("notes:saveCapture"), and branch on that.
   const useAction = jest.fn(() => jest.fn(async () => undefined));
 
-  return { ...actual, useConvexAuth, useMutation, useAction };
+  /**
+   * `useQuery` defaults to `undefined`, which is Convex's "still loading" — so a
+   * screen rendered without setup shows its loading state and asserts nothing
+   * about content. That is on purpose: a default that returned a plausible row
+   * would let a test walk a populated screen it never actually described, and
+   * `null` would be a different lie (Convex uses it for "not found / not
+   * yours"). A test about what a screen displays has to say what came back.
+   */
+  const useQuery = jest.fn(() => undefined);
+
+  return { ...actual, useConvexAuth, useMutation, useAction, useQuery };
 });
 
 /**

@@ -1,4 +1,6 @@
-import { renderRouter, screen } from "expo-router/testing-library";
+import { renderRouter } from "expo-router/testing-library";
+import { useQuery } from "convex/react";
+import { api } from "@convex/_generated/api";
 
 /**
  * The route tree in src/app is deliberately made of placeholder screens with
@@ -24,11 +26,17 @@ describe("app route tree", () => {
     expect(result.getPathname()).toBe(expectedPathname);
   });
 
-  test("should expose the id from the url to useLocalSearchParams when navigating to /profile/[id]", async () => {
+  test("should pass the id from the url through to the profile query", async () => {
+    // The profile screen no longer prints the raw id — a real screen shows a
+    // person, not a database key. The property still worth pinning is the same
+    // one: the dynamic segment reaches the code that uses it, which is now the
+    // query rather than the rendered text.
     const result = renderRouter("src/app", { initialUrl: "/profile/contact-42" });
     await result;
 
-    expect(screen.getByText(/contact-42/)).toBeTruthy();
+    expect(useQuery).toHaveBeenCalledWith(api.profiles.withNotes, {
+      profileId: "contact-42",
+    });
   });
 
   test("should resolve /profile/[id]/capture as a route distinct from /profile/[id]", async () => {
