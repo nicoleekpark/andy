@@ -19,6 +19,7 @@ This repo ships fast because every change is small, tested, and reversible. Foll
    - what changed, file by file, and **why** — including anything discovered mid-slice that wasn't in the plan
    - the commands they can run to verify it themselves (`npm run lint`, `npm run test`, …) with the results you actually got
    - what you deliberately deferred, and to which slice
+   - **a QA list Nicole can run herself, before she commits.** Not a feature summary — the new behaviour as numbered steps with the expected result for each, including the negative cases (what should be refused, what should stay unchanged). Say where to look when the result isn't on screen: a check that passes by *nothing* changing is invisible without `npm run db`. Mark every row as either actually performed on a device or only covered by unit tests, because she needs to know which claims are already proven and which she is proving. This is the point of the handover: she tests it, then she commits.
    - a **suggested conventional-commits message** (`feat: ...`, `fix: ...`, `chore: ...`) that accurately describes exactly this slice
    - if unrelated changes are sitting in the working tree, say so and suggest one message per commit so they can split them
 
