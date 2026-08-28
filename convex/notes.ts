@@ -1,0 +1,238 @@
+import { ConvexError, v } from "convex/values";
+import { mutation } from "./_generated/server";
+import type { Doc, Id } from "./_generated/dataModel";
+import { getAuthenticatedUser } from "./users";
+import {
+  MAX_DRAFT_CHARS,
+  MAX_TRANSCRIPT_CHARS,
+  draftValidator,
+} from "./extractionPrompt";
+
+/**
+ * Writing a capture to the database — the step where an extracted draft stops
+ * being a suggestion and becomes the user's data.
+ *
+ * The shape of this file is set by one rule from CLAUDE.md: Convex has no
+ * row-level security, so ownership is enforced here, by hand, on every read and
+ * every write. The strongest version of that is not to *check* ids but to never
+ * accept them: this mutation takes people's **names**, resolves them against
+ * the caller's own profiles, and creates what is missing. There is no argument
+ * through which one user could reach another user's row, so there is nothing to
+ * forget to check.
+ */
+
+/**
+ * Names are matched case-insensitively and trimmed, but always *stored* as the
+ * user said them. Korean names are unaffected by the case fold; "sarah chen"
+ * matching an existing "Sarah Chen" is the point.
+ */
+function matchKey(name: string): string {
+  return name.trim().toLocaleLowerCase();
+}
+
+/**
+ * A ceiling on how many people one note may introduce. Each new mention is a
+ * row written inside this transaction, and the draft arrives from the client,
+ * so without a bound a malformed or hostile draft could try to write thousands
+ * of profiles in a single mutation. A real voice note names a handful.
+ */
+const MAX_MENTIONS = 32;
+
+export const saveCapture = mutation({
+  args: {
+    /** What was actually said. Stored verbatim as the note's body. */
+    transcript: v.string(),
+    /** The draft, as the user confirmed it — not necessarily as Claude wrote it. */
+    draft: draftValidator,
+    source: v.union(
+      v.literal("voice"),
+      v.literal("manual"),
+      v.literal("calendar_nudge"),
+    ),
+  },
+  returns: v.object({
+    profileId: v.id("profiles"),
+    noteId: v.id("notes"),
+    /** True when this capture created the primary profile rather than appending. */
+    createdProfile: v.boolean(),
+    /** How many mentioned people were new, so the UI can say what it did. */
+    createdMentionCount: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const user = await getAuthenticatedUser(ctx);
+
+    const text = args.transcript.trim();
+    if (text === "") {
+      throw new ConvexError("There's nothing to save yet.");
+    }
+    // Same ceiling the extraction action applies. Repeated rather than assumed:
+    // this is a separate public entry point, and a client could call it without
+    // ever going through extraction.
+    if (text.length > MAX_TRANSCRIPT_CHARS) {
+      throw new ConvexError(
+        "That note is longer than Andy can take in one go. Try splitting it into two.",
+      );
+    }
+
+    const primaryName = args.draft.primary.name.trim();
+    if (primaryName === "") {
+      // Extraction returns an empty name when a note is too garbled to identify
+      // anyone. Saving that would create a nameless profile nobody can ever
+      // find again.
+      throw new ConvexError(
+        "Andy couldn't tell who this note is about. Add a name and try again.",
+      );
+    }
+
+    if (JSON.stringify(args.draft).length > MAX_DRAFT_CHARS) {
+      throw new ConvexError(
+        "There's more detail in that note than Andy can save at once. Try splitting it into two.",
+      );
+    }
+
+    if (args.draft.mentions.length > MAX_MENTIONS) {
+      throw new ConvexError(
+        "That note mentions too many people at once. Try splitting it into two.",
+      );
+    }
+
+    // One scan of the caller's own profiles, reused for the primary and every
+    // mention. `by_user` is the only way in, so nothing outside this user's
+    // data is ever in scope to be matched against.
+    const owned = await ctx.db
+      .query("profiles")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    const byName = new Map<string, Doc<"profiles">>();
+    for (const profile of owned) {
+      // First writer wins, so a pre-existing duplicate name resolves to the
+      // same row every time rather than alternating between them.
+      if (!byName.has(matchKey(profile.name))) {
+        byName.set(matchKey(profile.name), profile);
+      }
+    }
+
+    const { primary } = args.draft;
+    const existing = byName.get(matchKey(primaryName)) ?? null;
+
+    let profileId: Id<"profiles">;
+    let createdProfile = false;
+
+    if (existing === null) {
+      profileId = await ctx.db.insert("profiles", {
+        userId: user._id,
+        name: primaryName,
+        entityType: primary.entityType,
+        // `null` is extraction's "the note didn't say"; the table spells that
+        // as an absent field. Converting here keeps the two conventions from
+        // leaking into each other.
+        relationshipContext: primary.relationshipContext ?? undefined,
+        tags: primary.tags,
+        firstMetDate: primary.firstMetDate ?? undefined,
+        isStub: false,
+      });
+      createdProfile = true;
+    } else {
+      profileId = existing._id;
+
+      // Appending to someone who already exists must not overwrite what is
+      // already known about them. A later note that simply doesn't repeat a
+      // detail is not a statement that the detail was wrong — so fields are
+      // only filled in when empty, and tags accumulate.
+      const patch: Partial<Doc<"profiles">> = {};
+
+      if (existing.isStub) {
+        // They were created from a passing mention and now have a note of their
+        // own, so they are a real profile from here on.
+        patch.isStub = false;
+        // Everything currently on this row came out of somebody *else's* note,
+        // where this person was a passing reference. A note about them is a
+        // direct statement and outranks that, so promotion overwrites rather
+        // than fills. Past this point the append-only rule applies as normal:
+        // a stub is the one case where the existing value is the weaker one.
+        patch.entityType = primary.entityType;
+        if (primary.relationshipContext !== null) {
+          patch.relationshipContext = primary.relationshipContext;
+        }
+      } else if (
+        existing.relationshipContext === undefined &&
+        primary.relationshipContext !== null
+      ) {
+        patch.relationshipContext = primary.relationshipContext;
+      }
+      if (existing.firstMetDate === undefined && primary.firstMetDate !== null) {
+        patch.firstMetDate = primary.firstMetDate;
+      }
+
+      const merged = new Set([...existing.tags, ...primary.tags]);
+      if (merged.size !== existing.tags.length) {
+        patch.tags = [...merged];
+      }
+
+      if (Object.keys(patch).length > 0) {
+        await ctx.db.patch("profiles", profileId, patch);
+      }
+    }
+
+    // Mentions become real rows so that "who was at that dinner" is answerable
+    // later, but they are marked `isStub` until they get a note of their own —
+    // the difference between someone the user recorded and someone who merely
+    // came up.
+    const mentionedEntityIds: Id<"profiles">[] = [];
+    const seen = new Set<string>([matchKey(primaryName)]);
+    let createdMentionCount = 0;
+
+    for (const mention of args.draft.mentions) {
+      const name = mention.name.trim();
+      const key = matchKey(name);
+      // Skip the unnamed, the repeated, and anyone who is really the primary —
+      // a note must never list its own subject as a mention of itself.
+      if (name === "" || seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+
+      const found = byName.get(key);
+      if (found !== undefined) {
+        mentionedEntityIds.push(found._id);
+        continue;
+      }
+
+      const stubId = await ctx.db.insert("profiles", {
+        userId: user._id,
+        name,
+        entityType: mention.entityType,
+        relationshipContext: mention.relationshipContext ?? undefined,
+        tags: [],
+        isStub: true,
+      });
+      mentionedEntityIds.push(stubId);
+      createdMentionCount += 1;
+
+      // So a second mention of the same new person in this same note resolves
+      // to the row just created instead of inserting them twice.
+      const inserted = await ctx.db.get("profiles", stubId);
+      if (inserted !== null) {
+        byName.set(key, inserted);
+      }
+    }
+
+    const noteId = await ctx.db.insert("notes", {
+      userId: user._id,
+      profileId,
+      mentionedEntityIds,
+      text,
+      // Empty rather than absent would claim "extraction ran and found nothing",
+      // which is a different thing from a note that never had an extraction.
+      keyFacts: primary.keyFacts.length > 0 ? primary.keyFacts : undefined,
+      source: args.source,
+      // The moment of capture. `createdAt` exists separately from
+      // `_creationTime` so a note can later be backdated to when the
+      // conversation actually happened; nothing does that yet.
+      createdAt: Date.now(),
+    });
+
+    return { profileId, noteId, createdProfile, createdMentionCount };
+  },
+});

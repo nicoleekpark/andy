@@ -9,6 +9,7 @@ import {
   MAX_TOKENS,
   MAX_TRANSCRIPT_CHARS,
   SYSTEM_PROMPT,
+  draftValidator,
   buildUserMessage,
 } from "./extractionPrompt";
 
@@ -57,24 +58,7 @@ export const fromTranscript = action({
     // "today" in the user's own timezone, not the server's.
     today: v.string(),
   },
-  returns: v.object({
-    primary: v.object({
-      name: v.string(),
-      entityType: v.union(v.literal("person"), v.literal("animal")),
-      relationshipContext: v.union(v.string(), v.null()),
-      tags: v.array(v.string()),
-      firstMetDate: v.union(v.string(), v.null()),
-      keyFacts: v.array(v.string()),
-    }),
-    mentions: v.array(
-      v.object({
-        name: v.string(),
-        entityType: v.union(v.literal("person"), v.literal("animal")),
-        relationshipContext: v.union(v.string(), v.null()),
-        context: v.string(),
-      }),
-    ),
-  }),
+  returns: draftValidator,
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (identity === null) {

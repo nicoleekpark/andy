@@ -45,6 +45,16 @@ export default defineSchema({
     profileId: v.id("profiles"), // primary profile this note is about
     mentionedEntityIds: v.array(v.id("profiles")), // secondary mentions; [] when none
     text: v.string(),
+    // The distilled facts Claude pulled out of `text`, as of this note's
+    // `createdAt`. Stored per-note, never accumulated onto the profile: an
+    // unbounded array inside one document would hit Convex's 1MB document
+    // limit and rewrite the whole document on every save (guidelines.md), and
+    // more importantly it would be the wrong shape — a fact is an observation
+    // made on a date, not a claim about the present. "2026년 9월에 이사 간다"
+    // does not become false in October, it becomes dated, and it can only be
+    // read correctly next to the date it was recorded.
+    // Optional because a manually typed note has no extraction step.
+    keyFacts: v.optional(v.array(v.string())),
     // Written by the Day 4 embedding pipeline; notes created before then, or by
     // manual entry, simply have no vector yet.
     embedding: v.optional(v.array(v.float64())),

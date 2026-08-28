@@ -10,6 +10,7 @@
 
 import type * as extraction from "../extraction.js";
 import type * as extractionPrompt from "../extractionPrompt.js";
+import type * as notes from "../notes.js";
 import type * as users from "../users.js";
 
 import type {
@@ -21,6 +22,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   extraction: typeof extraction;
   extractionPrompt: typeof extractionPrompt;
+  notes: typeof notes;
   users: typeof users;
 }>;
 
