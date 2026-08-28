@@ -47,6 +47,7 @@ export const saveCapture = mutation({
     source: v.union(
       v.literal("voice"),
       v.literal("manual"),
+      v.literal("business_card"),
       v.literal("calendar_nudge"),
     ),
   },
@@ -73,6 +74,16 @@ export const saveCapture = mutation({
         "That note is longer than Andy can take in one go. Try splitting it into two.",
       );
     }
+
+    // A fact the user blanked out instead of deleting is a fact they removed.
+    // Filtered here rather than on the screen because this mutation is a public
+    // entry point in its own right.
+    const keyFacts = args.draft.primary.keyFacts
+      .map((fact) => fact.trim())
+      .filter((fact) => fact !== "");
+
+    const relationshipContext =
+      args.draft.primary.relationshipContext?.trim() || null;
 
     const primaryName = args.draft.primary.name.trim();
     if (primaryName === "") {
@@ -127,7 +138,7 @@ export const saveCapture = mutation({
         // `null` is extraction's "the note didn't say"; the table spells that
         // as an absent field. Converting here keeps the two conventions from
         // leaking into each other.
-        relationshipContext: primary.relationshipContext ?? undefined,
+        relationshipContext: relationshipContext ?? undefined,
         tags: primary.tags,
         firstMetDate: primary.firstMetDate ?? undefined,
         isStub: false,
@@ -152,14 +163,14 @@ export const saveCapture = mutation({
         // than fills. Past this point the append-only rule applies as normal:
         // a stub is the one case where the existing value is the weaker one.
         patch.entityType = primary.entityType;
-        if (primary.relationshipContext !== null) {
-          patch.relationshipContext = primary.relationshipContext;
+        if (relationshipContext !== null) {
+          patch.relationshipContext = relationshipContext;
         }
       } else if (
         existing.relationshipContext === undefined &&
-        primary.relationshipContext !== null
+        relationshipContext !== null
       ) {
-        patch.relationshipContext = primary.relationshipContext;
+        patch.relationshipContext = relationshipContext;
       }
       if (existing.firstMetDate === undefined && primary.firstMetDate !== null) {
         patch.firstMetDate = primary.firstMetDate;
@@ -225,7 +236,7 @@ export const saveCapture = mutation({
       text,
       // Empty rather than absent would claim "extraction ran and found nothing",
       // which is a different thing from a note that never had an extraction.
-      keyFacts: primary.keyFacts.length > 0 ? primary.keyFacts : undefined,
+      keyFacts: keyFacts.length > 0 ? keyFacts : undefined,
       source: args.source,
       // The moment of capture. `createdAt` exists separately from
       // `_creationTime` so a note can later be backdated to when the

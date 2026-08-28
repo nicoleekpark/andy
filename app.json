@@ -47,8 +47,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Andy reads a business card photo you pick and sends it to Andy's AI service to fill in a new profile with the name, title, and company on it.",
-          "cameraPermission": "Andy uses the camera so you can photograph a business card; the photo is sent to Andy's AI service to pull out the name, title, and company for a new profile.",
+          "photosPermission": "Andy reads a business card photo you pick — the name, title, company, and any contact details printed on it — and sends it to Andy's AI service to draft a new profile you can edit before saving.",
+          "cameraPermission": "Andy uses the camera to photograph a business card, then sends the photo to Andy's AI service to read the name, title, company, and any contact details printed on it into a profile draft you can edit before saving.",
           "microphonePermission": "Andy records your voice note so you can capture what you just learned about someone. Recording only starts when you tap the record button."
         }
       ]

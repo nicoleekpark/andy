@@ -58,9 +58,12 @@ export default defineSchema({
     // Written by the Day 4 embedding pipeline; notes created before then, or by
     // manual entry, simply have no vector yet.
     embedding: v.optional(v.array(v.float64())),
+    // Which front door this note came through. Additive: a new channel adds a
+    // literal, existing rows keep whatever they already had.
     source: v.union(
       v.literal("voice"),
       v.literal("manual"),
+      v.literal("business_card"),
       v.literal("calendar_nudge"),
     ),
     // Explicit, so a note can be backdated to when the interaction actually

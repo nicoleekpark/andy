@@ -489,3 +489,33 @@ test("should let a direct note overwrite a relationshipContext that came from so
     expect(minho?.relationshipContext).toBe("friend");
   });
 });
+
+test("should drop a blanked-out key fact and store a whitespace-only relationshipContext as absent", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  // Both of these are what the review screen makes possible: a fact whose text
+  // was deleted without pressing ×, and a context field left holding spaces.
+  // Filtered server-side rather than on the screen, because saveCapture is a
+  // public entry point a client can reach without going through that screen.
+  const { profileId, noteId } = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "A note with some blanked-out edits.",
+    draft: buildDraft({
+      primaryName: "Blank Fields Person",
+      relationshipContext: "   ",
+      keyFacts: ["Real fact.", "   ", ""],
+    }),
+    source: "voice",
+  });
+
+  await t.run(async (ctx) => {
+    const profile = await ctx.db.get("profiles", profileId);
+    // Absent, not an empty string: the table spells "the note didn't say" as a
+    // missing field, and a stored "" would later read as a real answer.
+    expect(profile?.relationshipContext).toBeUndefined();
+
+    const note = await ctx.db.get("notes", noteId);
+    expect(note?.keyFacts).toEqual(["Real fact."]);
+  });
+});
