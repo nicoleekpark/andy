@@ -98,6 +98,7 @@ convex/             # schema.ts, functions (queries/mutations/actions), vector i
 | `npm run test` | 슬라이스를 끝났다고 하기 전 | 러너 두 개를 순서대로 돌린다 — `src/` 는 jest, `convex/` 는 vitest. Convex 함수는 jest 로 테스트할 수 없어서, 러너 하나만 돌리면 절반이 조용히 건너뛰어진다. |
 | `npm run lint` | 커밋 전마다 | `expo lint convex src` 후 `tsc --noEmit` 을 두 번 — 루트 한 번, `convex/tsconfig.json` 으로 한 번. Convex 코드는 Node 가 아니라 V8 에서 도는데, Node 전용 전역이 섞여 들어간 걸 잡는 건 두 번째 검사뿐이다. |
 | `npm run test:rn` / `npm run test:convex` | 실패 원인을 좁힐 때 | 러너 하나씩. |
+| `npm run test:watch` / `npm run test:watch:convex` | 테스트를 쓰는 중 | 저장할 때마다 다시 돈다. 러너별로 하나씩 — 감시자 둘이 한 터미널을 못 쓴다. **둘 다 시뮬레이터를 건드리지 않는다**: jest는 가짜 React Native에 화면을 그리고, convex-test는 메모리 안의 가짜 DB로 백엔드 함수를 돌린다. 그래서 실제 앱에서만 나오는 버그(로그아웃 크래시, 배포 안 된 함수)는 둘 다 못 본다. 그게 하루 리포트의 QA 목록이 있는 이유다. |
 
 ### 시뮬레이터에 빌드 올리기
 

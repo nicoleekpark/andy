@@ -61,6 +61,7 @@
     "lint": "expo lint convex src && tsc --noEmit && tsc --noEmit -p convex/tsconfig.json",
     "test": "jest && vitest run",
     "test:watch": "jest --watchAll",
+    "test:watch:convex": "vitest",
     "test:convex": "vitest run",
     "test:rn": "jest"
   },

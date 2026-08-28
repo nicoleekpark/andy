@@ -98,6 +98,7 @@ rebuild.
 | `npm run test` | Before calling a slice done | Runs both runners: jest for `src/`, then vitest for `convex/`. Convex functions can't be tested under jest, so a single runner would silently skip half the suite. |
 | `npm run lint` | Before every commit | `expo lint convex src`, then `tsc --noEmit` twice — once at the root, once with `convex/tsconfig.json`. Convex code runs on V8, not Node, and only the second pass catches Node-only globals leaking in. |
 | `npm run test:rn` / `npm run test:convex` | Narrowing a failure | One runner at a time. |
+| `npm run test:watch` / `npm run test:watch:convex` | While writing a test | Re-runs on save, one runner each — two watchers cannot share a terminal. Neither touches the simulator: jest renders screens into a fake React Native, and convex-test runs backend functions against an in-memory database, so a bug that only appears in the real app (a crash on sign-out, a function that was never deployed) is invisible to both. That is what the day report's QA list is for. |
 
 ### Getting a build onto the simulator
 
