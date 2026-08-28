@@ -117,6 +117,7 @@ convex/             # schema.ts, functions (queries/mutations/actions), vector i
 | 명령어 | 언제 | 왜 |
 | --- | --- | --- |
 | `npx convex dev` | 백엔드 작업 중 | `convex/` 를 감시하며 푸시하고 `convex/_generated` 를 재생성한다. |
+| `npm run db` | 실제로 뭐가 써졌는지 볼 때 | 배포 대시보드를 연다. Data 탭이 행이 써지는 즉시 갱신되는데, **아무것도 안 바뀌는 것이 성공인 검사**는 이걸로만 확인된다 — 같은 사람에 대한 두 번째 노트는 `notes` 를 한 행 늘리고 `profiles` 는 그대로 둬야 한다. Logs 탭에는 저장이 실패했을 때 서버 쪽 이유가 찍힌다. |
 | `npx convex codegen` | `convex dev` 없이 `schema.ts` 를 고쳤을 때 | 생성 타입을 다시 만든다. 배포에 접속하므로 순수 로컬 작업은 아니다. |
 | `npx convex env set NAME value` | 서버 측 비밀을 넣을 때 | 배포 환경변수. `ANTHROPIC_API_KEY` 가 있어도 되는 유일한 장소. |
 | `npx convex env get NAME` | 변수 하나 확인할 때 | 이걸 쓸 것. **`npx convex env list` 는 쓰지 말 것** — 목록 형태는 API 키를 포함해 모든 값을 그대로 출력한다. |

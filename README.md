@@ -117,6 +117,7 @@ permission string, the bundle id. Never for JS changes.
 | Command | When | Why |
 | --- | --- | --- |
 | `npx convex dev` | While working on backend code | Watches `convex/`, pushes, and regenerates `convex/_generated`. |
+| `npm run db` | Checking what actually got written | Opens the deployment dashboard. Its Data tab updates live as rows are written, which is the only way to see the checks that pass by *nothing* changing — saving a second note about someone must add a `notes` row and leave `profiles` alone. Its Logs tab carries the server-side reason behind a failed save. |
 | `npx convex codegen` | After editing `schema.ts` without `convex dev` running | Regenerates the generated types. It does contact the deployment, so it is not purely local. |
 | `npx convex env set NAME value` | Adding a server-side secret | Deployment env vars — this is the only place `ANTHROPIC_API_KEY` may live. |
 | `npx convex env get NAME` | Checking one variable | Use this, **not `npx convex env list`** — the list form prints every value in full, including API keys. |
