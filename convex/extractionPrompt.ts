@@ -82,7 +82,10 @@ export const EXTRACTION_SCHEMA = {
         name: {
           type: "string",
           description:
-            "The name as spoken, in its original script. Do not romanise a Korean name or translate it.",
+            "The person's name, in the script it was spoken in. Do not romanise a Korean name or translate it.\n" +
+            "Honorifics and titles are how someone is addressed, not part of their name: drop 씨/님/형/누나/선배 and Mr./Ms./Dr./Professor, " +
+            "so \"민수형\" is 민수 and \"Mr. Smith\" is Smith. A job title is never part of the name either. " +
+            "If the note gives nothing but an honorific form, keep what is there rather than inventing the rest.",
         },
         entityType: entityTypeSchema,
         relationshipContext: nullableString(
@@ -240,6 +243,8 @@ export const CARD_SYSTEM_PROMPT = `You read a photograph of a business card and 
 Read every line on the card, including text that is rotated, small, or on a second column. Keep each value in the language and script it is printed in — do not translate a Korean name or company into English, or the other way round.
 
 - The person's name goes in \`name\`. If the card shows the name in two scripts, use the one printed most prominently. A company name is never the person's name.
+- Cards print names in capitals as a design choice, not as spelling. Write the name the way the person would write it: \`JOE KING\` is Joe King. But a name that is genuinely capitalised that way keeps its form — \`MCDONALD\` is McDonald, \`VAN DER BERG\` is van der Berg, and initials stay initials. When you cannot tell, prefer ordinary capitalisation.
+- Honorifics and titles are not part of a name: drop 씨/님 and Mr./Ms./Dr./Professor from \`name\`. A job title belongs in \`keyFacts\`, never in the name.
 - \`entityType\` is always "person" for a business card.
 - \`relationshipContext\` is null. A card says what someone does, never how the speaker knows them, and guessing "networking" from the fact that a card was exchanged is exactly the inference to avoid.
 - \`firstMetDate\` is null. The card does not say when they met.

@@ -519,3 +519,28 @@ test("should drop a blanked-out key fact and store a whitespace-only relationshi
     expect(note?.keyFacts).toEqual(["Real fact."]);
   });
 });
+
+test("should treat tags that differ only by case as one tag, keeping the first spelling", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  const first = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "First note about her.",
+    draft: buildDraft({ primaryName: "Sarah Chen", tags: ["Cats", "Design"] }),
+    source: "voice",
+  });
+
+  await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "Second note about her.",
+    draft: buildDraft({ primaryName: "Sarah Chen", tags: ["cats", "notion"] }),
+    source: "voice",
+  });
+
+  await t.run(async (ctx) => {
+    const profile = await ctx.db.get("profiles", first.profileId);
+    // "cats" must not join "Cats" as a second tag, and the spelling the user
+    // saw first is the one that survives.
+    expect(profile?.tags).toEqual(["Cats", "Design", "notion"]);
+  });
+});

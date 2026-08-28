@@ -31,6 +31,27 @@ function matchKey(name: string): string {
 }
 
 /**
+ * Merge tag lists without letting case create duplicates: "Cats" and "cats" are
+ * one tag, and the first spelling seen is the one kept, so what the user
+ * actually wrote survives. Names are already compared this way — tags were the
+ * one place still comparing raw strings.
+ */
+function mergeTags(existing: string[], incoming: string[]): string[] {
+  const bySpelling = new Map<string, string>();
+  for (const tag of [...existing, ...incoming]) {
+    const trimmed = tag.trim();
+    if (trimmed === "") {
+      continue;
+    }
+    const key = trimmed.toLocaleLowerCase();
+    if (!bySpelling.has(key)) {
+      bySpelling.set(key, trimmed);
+    }
+  }
+  return [...bySpelling.values()];
+}
+
+/**
  * A ceiling on how many people one note may introduce. Each new mention is a
  * row written inside this transaction, and the draft arrives from the client,
  * so without a bound a malformed or hostile draft could try to write thousands
@@ -139,7 +160,7 @@ export const saveCapture = mutation({
         // as an absent field. Converting here keeps the two conventions from
         // leaking into each other.
         relationshipContext: relationshipContext ?? undefined,
-        tags: primary.tags,
+        tags: mergeTags([], primary.tags),
         firstMetDate: primary.firstMetDate ?? undefined,
         isStub: false,
       });
@@ -176,9 +197,9 @@ export const saveCapture = mutation({
         patch.firstMetDate = primary.firstMetDate;
       }
 
-      const merged = new Set([...existing.tags, ...primary.tags]);
-      if (merged.size !== existing.tags.length) {
-        patch.tags = [...merged];
+      const merged = mergeTags(existing.tags, primary.tags);
+      if (merged.length !== existing.tags.length) {
+        patch.tags = merged;
       }
 
       if (Object.keys(patch).length > 0) {
