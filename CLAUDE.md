@@ -6,8 +6,8 @@
 
 ## Stack & Commands
 
-- Frontend: Expo + TypeScript. `npm start` (= `expo start --dev-client`) — this app cannot run in Expo Go, so plain `expo start` is not an option.
-- Backend: Convex (`npx convex dev` locally, `npx convex deploy` to ship). Leave `convex dev` running: `convex codegen` regenerates types but does **not** apply `auth.config.ts` or schema to the deployment.
+- Run it: **`npm run dev`** — starts both halves together, `convex dev` pushing the backend and `expo start --dev-client` serving the JS. Start here; running only the JS half is how backend changes silently fail to reach the deployment. (`npm start` is the JS half alone, for when the backend is already running elsewhere. This app cannot run in Expo Go, so plain `expo start` is not an option.)
+- Backend: Convex (`npx convex dev` locally, `npx convex deploy` to ship). `convex codegen` regenerates types but does **not** apply `auth.config.ts` or schema to the deployment.
 - Test: `npm run test` — runs both runners: jest (`src/`, RN components) then vitest (`convex/**/*.test.ts`, convex-test). Convex functions cannot be tested under jest; see `convex/_generated/ai/guidelines.md`. Targeted runs: `npm run test:rn`, `npm run test:convex`.
 - Lint/typecheck: `npm run lint` (must pass before any commit)
 - Build: `npm run build:ios` (EAS cloud, ~8 min), then `npm run ios:install`. Local `npx expo run:ios` does **not** work here — Expo SDK 57 needs Swift 6.3, which needs Xcode 26.4+, which needs macOS Tahoe. See `README.md`'s Commands table.
@@ -37,6 +37,7 @@ records why, and what it cost to find out.
 
 ## Convex Function Conventions
 
+- **After any change under `convex/`, push it before claiming it works.** `npm run lint` and `npm run test` both pass against code that was never deployed — tsc reads files and convex-test runs an in-memory database, so neither knows what the deployment is actually serving. The symptom is never a type error; it is the app calling a function that does not exist yet, or getting the previous shape back. Keep `npx convex dev` running in its own terminal so this is automatic; if it is not running, `npx convex dev --once` after every edit.
 - Validate all args with Convex's `v.*` validators (already the pattern in `schema.ts`) — not Zod, this isn't a REST API.
 - User-facing errors: use `ConvexError` for anything the client should display, not an ad hoc `{ error: string }` shape — confirm the exact current pattern with `docs-verifier` if unsure, Convex's error handling has evolved across versions.
 - Every function reading/writing `profiles`/`notes`/`metrics`/`calendarLinks` must check `ctx.auth.getUserIdentity()` and filter by the authenticated user's id — this is `security-reviewer`'s first blocking check, so get it right the first time rather than relying on the gate to catch it.

@@ -6,8 +6,8 @@
 
 ## 스택 & 명령어
 
-- 프론트엔드: Expo + TypeScript. `npm start` (= `expo start --dev-client`) — 이 앱은 Expo Go에서 실행되지 않으므로 그냥 `expo start`는 선택지가 아님.
-- 백엔드: Convex (로컬은 `npx convex dev`, 배포는 `npx convex deploy`). `convex dev`를 켜둘 것 — `convex codegen`은 타입만 재생성하고 `auth.config.ts`나 스키마를 **배포에 적용하지 않음.**
+- 실행: **`npm run dev`** — 양쪽을 함께 띄운다. `convex dev`가 백엔드를 올리고 `expo start --dev-client`가 JS를 공급한다. 여기서 시작할 것. JS 쪽만 켜는 것이 **백엔드 변경이 조용히 배포에 안 닿는 경로**다. (`npm start`는 JS 쪽만 — 백엔드가 이미 딴 데서 돌 때. 이 앱은 Expo Go에서 실행되지 않으므로 그냥 `expo start`는 선택지가 아님.)
+- 백엔드: Convex (로컬은 `npx convex dev`, 배포는 `npx convex deploy`). `convex codegen`은 타입만 재생성하고 `auth.config.ts`나 스키마를 **배포에 적용하지 않음.**
 - 테스트: `npm run test` — 러너 두 개를 순차 실행: jest(`src/`, RN 컴포넌트) 후 vitest(`convex/**/*.test.ts`, convex-test). Convex 함수는 jest로 테스트할 수 없음, `convex/_generated/ai/guidelines.md` 참고. 개별 실행: `npm run test:rn`, `npm run test:convex`.
 - 린트/타입체크: `npm run lint` (커밋 전 반드시 통과해야 함)
 - 빌드: `npm run build:ios` (EAS 클라우드, 약 8분) 후 `npm run ios:install`. 로컬 `npx expo run:ios`는 **이 머신에서 동작하지 않음** — Expo SDK 57이 Swift 6.3을 요구하고, 그건 Xcode 26.4+, 그건 macOS Tahoe를 요구함. `README.ko.md`의 명령어 표 참고.
@@ -48,6 +48,7 @@
 
 ## Convex 함수 컨벤션
 
+- **`convex/` 아래를 고쳤으면 동작한다고 말하기 전에 반드시 푸시할 것.** `npm run lint`와 `npm run test`는 **배포된 적 없는 코드에서도 통과한다** — tsc는 파일을 읽고 convex-test는 메모리 안의 가짜 DB를 돌리므로, 둘 다 배포가 실제로 무엇을 서빙 중인지 모른다. 증상은 절대 타입 에러가 아니다. 앱이 아직 없는 함수를 부르거나, 이전 모양을 돌려받는다. `npx convex dev`를 전용 터미널에 켜두면 자동으로 처리되고, 안 켜져 있으면 고칠 때마다 `npx convex dev --once`.
 - 모든 인자는 Convex의 `v.*` validator로 검증할 것(이미 `schema.ts`에 쓰고 있는 패턴) — Zod 아님, 이건 REST API가 아님.
 - 유저에게 보여줄 에러는 즉흥적인 `{ error: string }` 형태가 아니라 `ConvexError`를 쓸 것 — 확실하지 않으면 `docs-verifier`로 정확한 현재 패턴을 확인할 것, Convex의 에러 처리 방식은 버전별로 계속 바뀌어옴.
 - `profiles`/`notes`/`metrics`/`calendarLinks`를 읽거나 쓰는 모든 함수는 `ctx.auth.getUserIdentity()`를 체크하고 인증된 유저의 id로 필터링해야 함 — 이건 `security-reviewer`의 첫 번째 차단 체크 항목이니, 게이트가 잡아주길 기대하지 말고 처음부터 맞게 짤 것.

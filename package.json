@@ -43,6 +43,7 @@
     "@testing-library/react-native": "^14.0.1",
     "@types/jest": "^29.5.14",
     "@types/react": "~19.2.2",
+    "concurrently": "^10.0.5",
     "convex-test": "^0.0.56",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~57.0.1",
@@ -50,6 +51,7 @@
     "vitest": "^4.1.11"
   },
   "scripts": {
+    "dev": "concurrently -k -n convex,expo -c blue,green \"convex dev\" \"expo start --dev-client\"",
     "start": "expo start --dev-client",
     "build:ios": "eas build --profile development --platform ios",
     "build:ios:device": "eas build --profile development-device --platform ios",

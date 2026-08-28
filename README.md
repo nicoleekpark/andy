@@ -94,7 +94,8 @@ rebuild.
 
 | Command | When | Why |
 | --- | --- | --- |
-| `npm start` | Every working session | Serves the JS bundle to the installed development build. `--dev-client` (not plain `expo start`) because this app can't run in Expo Go. |
+| `npm run dev` | **Every working session — start here** | Runs both halves at once: `convex dev` pushing anything under `convex/` to the deployment, and `expo start --dev-client` serving the JS bundle to the installed build. They are separate processes because the app is in two places — screens on your Mac, backend in Convex's cloud — and neither knows about the other. One command because running only the second is a real and repeated mistake: `npm run lint` and `npm run test` both pass against backend code that was never deployed, so the app calls a function that doesn't exist yet and the error looks like a screen bug. `-k` kills both together, so there is no half-running state. |
+| `npm start` | Only the JS half | The Expo server on its own, for when the backend is already running elsewhere or isn't being touched. `--dev-client` (not plain `expo start`) because this app can't run in Expo Go. |
 | `npm run test` | Before calling a slice done | Runs both runners: jest for `src/`, then vitest for `convex/`. Convex functions can't be tested under jest, so a single runner would silently skip half the suite. |
 | `npm run lint` | Before every commit | `expo lint convex src`, then `tsc --noEmit` twice — once at the root, once with `convex/tsconfig.json`. Convex code runs on V8, not Node, and only the second pass catches Node-only globals leaking in. |
 | `npm run test:rn` / `npm run test:convex` | Narrowing a failure | One runner at a time. |
