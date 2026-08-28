@@ -210,8 +210,9 @@ export const saveCapture = mutation({
     // Mentions become real rows so that "who was at that dinner" is answerable
     // later, but they are marked `isStub` until they get a note of their own —
     // the difference between someone the user recorded and someone who merely
-    // came up.
-    const mentionedEntityIds: Id<"profiles">[] = [];
+    // came up. The link itself is written after the note exists, since it needs
+    // the note's id.
+    const links: { profileId: Id<"profiles">; quote: string }[] = [];
     const seen = new Set<string>([matchKey(primaryName)]);
     let createdMentionCount = 0;
 
@@ -225,9 +226,11 @@ export const saveCapture = mutation({
       }
       seen.add(key);
 
+      const quote = mention.quote.trim();
+
       const found = byName.get(key);
       if (found !== undefined) {
-        mentionedEntityIds.push(found._id);
+        links.push({ profileId: found._id, quote });
         continue;
       }
 
@@ -239,7 +242,7 @@ export const saveCapture = mutation({
         tags: [],
         isStub: true,
       });
-      mentionedEntityIds.push(stubId);
+      links.push({ profileId: stubId, quote });
       createdMentionCount += 1;
 
       // So a second mention of the same new person in this same note resolves
@@ -253,7 +256,6 @@ export const saveCapture = mutation({
     const noteId = await ctx.db.insert("notes", {
       userId: user._id,
       profileId,
-      mentionedEntityIds,
       text,
       // Empty rather than absent would claim "extraction ran and found nothing",
       // which is a different thing from a note that never had an extraction.
@@ -264,6 +266,18 @@ export const saveCapture = mutation({
       // conversation actually happened; nothing does that yet.
       createdAt: Date.now(),
     });
+
+    // After the note, because each link points at it. `userId` is stamped on
+    // the link as well as on both ends: Convex has no foreign keys, so a read
+    // filtering by owner must be able to do so without first loading the note.
+    for (const link of links) {
+      await ctx.db.insert("noteMentions", {
+        userId: user._id,
+        noteId,
+        profileId: link.profileId,
+        quote: link.quote,
+      });
+    }
 
     return { profileId, noteId, createdProfile, createdMentionCount };
   },

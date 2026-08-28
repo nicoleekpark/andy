@@ -120,17 +120,17 @@ export const EXTRACTION_SCHEMA = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["name", "entityType", "relationshipContext", "context"],
+        required: ["name", "entityType", "relationshipContext", "quote"],
         properties: {
           name: { type: "string" },
           entityType: entityTypeSchema,
           relationshipContext: nullableString(
             "Their relationship to the speaker, if the note says. Null otherwise.",
           ),
-          context: {
+          quote: {
             type: "string",
             description:
-              "One short sentence on why they came up, in the note's own language.",
+              "The span of the transcript where this person comes up, copied VERBATIM — the exact characters as they appear above, not tidied, not re-spaced, not corrected. It must be findable in the transcript by an exact string search. Prefer the smallest span that still makes sense on its own; if you cannot copy one exactly, return an empty string.",
           },
         },
       },
@@ -156,7 +156,7 @@ Deciding who the note is ABOUT:
 - Never include the speaker themselves, and never invent a mention from a company, place, or event name.
 
 Writing the fields:
-- Write every string in the language of the note itself — the name, the key facts, the tags and the mention context alike. A Korean note produces Korean output throughout: never translate it into English, and never romanise a Korean name. The one exception is a proper noun that was itself said in English (a company, a product, a job title) — keep those in the form they were actually spoken.
+- Write every string in the language of the note itself — the name, the key facts and the tags alike (a mention's quote is copied from the note, so it is already in its language). A Korean note produces Korean output throughout: never translate it into English, and never romanise a Korean name. The one exception is a proper noun that was itself said in English (a company, a product, a job title) — keep those in the form they were actually spoken.
 - Record only what the note supports. If a detail is not there, that field is null or an empty array — a confident guess is worse than nothing here, because these facts get read back to the user before a meeting as if they were true.
 - A note is read back weeks or months later, so a fact that depends on when it was said has to survive that. Resolve every relative time expression against today's date, given in the message, and write the resolved form: "다음 달에 이사 간다" becomes "2026년 9월에 이사 간다"; "작년에 퇴사했대" becomes "2025년에 퇴사했다". Never leave "오늘", "지난주", "다음 달", "내년" standing inside a fact — they are true on the day they are spoken and quietly wrong afterwards. Resolve only as far as you can be certain — a year, a month, a season. Do NOT compute a weekday or an exact calendar day: "다음 주 화요일" and "이번 주말" keep the speaker's own words, because a fact is always displayed next to the date the note was taken, so a relative phrase stays readable, while a miscalculated date is confidently wrong and gets acted on. If the note is genuinely vague about when, leave it vague rather than inventing a date.
 - Prefer the specific over the general: "has a daughter starting school in March" earns its place; "is nice" does not.
@@ -201,7 +201,7 @@ export const draftValidator = v.object({
       name: v.string(),
       entityType: v.union(v.literal("person"), v.literal("animal")),
       relationshipContext: v.union(v.string(), v.null()),
-      context: v.string(),
+      quote: v.string(),
     }),
   ),
 });

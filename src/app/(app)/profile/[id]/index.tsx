@@ -113,7 +113,7 @@ export default function ProfileScreen() {
               </Text>
             ) : (
               <View style={styles.timeline}>
-                {result.notes.map((note) => (
+                {result.notes.map(({ note, mentions }) => (
                   <View key={note._id} style={styles.entry}>
                     <View style={styles.thread}>
                       <View style={styles.dot} />
@@ -156,11 +156,61 @@ export default function ProfileScreen() {
                         // reveal separately.
                         <Text style={styles.fact}>{note.text}</Text>
                       )}
+
+                      {mentions.length > 0 ? (
+                        <View style={styles.mentions}>
+                          {mentions.map((mention) => (
+                            <Pressable
+                              key={mention.profileId}
+                              accessibilityRole="button"
+                              accessibilityLabel={`Open ${mention.name}`}
+                              onPress={() =>
+                                router.push(`/profile/${mention.profileId}`)
+                              }
+                            >
+                              <Text style={styles.mentionName}>
+                                {mention.name}
+                                {mention.quote ? (
+                                  <Text style={styles.quiet}>
+                                    {" "}
+                                    — {mention.quote}
+                                  </Text>
+                                ) : null}
+                              </Text>
+                            </Pressable>
+                          ))}
+                        </View>
+                      ) : null}
                     </View>
                   </View>
                 ))}
               </View>
             )}
+
+            {result.mentionedIn.length > 0 ? (
+              <View style={styles.backlinks}>
+                <Text style={styles.sectionLabel}>Mentioned in</Text>
+                {result.mentionedIn.map((entry) => (
+                  <Pressable
+                    key={entry.noteId}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Open ${entry.aboutName}`}
+                    onPress={() =>
+                      router.push(`/profile/${entry.aboutProfileId}`)
+                    }
+                    style={styles.backlink}
+                  >
+                    <Text style={styles.rowMeta}>
+                      {entry.aboutName} ·{" "}
+                      {new Date(entry.createdAt).toLocaleDateString("en-CA")}
+                    </Text>
+                    {entry.quote ? (
+                      <Text style={styles.transcript}>{entry.quote}</Text>
+                    ) : null}
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
           </>
         )}
       </ScrollView>
@@ -223,6 +273,25 @@ const styles = StyleSheet.create({
     paddingLeft: 10,
     marginTop: 2,
   },
+
+  mentions: { paddingTop: 6, gap: 4 },
+  mentionName: { color: colors.moss, fontSize: 14 },
+
+  backlinks: {
+    gap: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
+    paddingTop: 16,
+  },
+  sectionLabel: {
+    color: colors.ink,
+    fontSize: 12,
+    opacity: 0.55,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
+  backlink: { gap: 3 },
+  rowMeta: { color: colors.moss, fontSize: 14 },
 
   quiet: { color: colors.ink, fontSize: 15, opacity: 0.6, lineHeight: 22 },
 });

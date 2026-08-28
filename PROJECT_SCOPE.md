@@ -304,7 +304,7 @@ export default defineSchema({
 4. **`metrics.value`/`unit` are optional, plus a `note` field** — the draft's own example, `"vet_visit"`, has no numeric value.
 5. **`profiles.search_name` gained `filterFields: ["userId"]`** so name search cannot cross users.
 
-`mentionedEntityIds` stayed a required array defaulting to `[]`, as drafted. Note it is an array, so Convex cannot index it: "every note mentioning profile X" means scanning the caller's notes and filtering in JS. Fine at V1 scale; a `noteMentions` join table is the additive fix if it ever isn't.
+`mentionedEntityIds` shipped as drafted and was **replaced on Day 3 by a `noteMentions` table** — the join table this section called the fix, brought forward. Three things forced it: Convex cannot index inside an array, so "every note mentioning profile X" was a scan of the caller's whole history; deleting a note has to delete its mentions, which rows make a query rather than a search through arrays; and the verbatim quote of where someone came up belongs to the *link*, which an array of bare ids has nowhere to put. Indexed both ways, because a note asks "who came up in me" and a profile asks "where was I mentioned", and both are screens. Existing rows were migrated rather than dropped, by a one-off internal mutation that was removed in the same change — it reads a field that no longer exists, so keeping it would not typecheck. What it moved is recorded in that commit's message, which is where CLAUDE.md puts the note for a non-additive schema change.
 
 ## Architecture
 
@@ -314,7 +314,7 @@ Voice/Photo Input (expo-speech-recognition captures the mic, expo-image-picker f
    → Claude extraction (Convex action, server-side key) — accepts voice transcript
      OR business card image as input
        → identifies primary profile + secondary mentions
-   → Structured write to Convex (profile + note + embedding + mentionedEntityIds)
+   → Structured write to Convex (profile + note + embedding + noteMentions)
    → Convex vector index (per-note, not per-profile)
    → Recall: natural-language query → embed → vector search → results
        (grouped by profile, mention-hits labeled separately)

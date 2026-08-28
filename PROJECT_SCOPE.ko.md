@@ -302,7 +302,7 @@ export default defineSchema({
 4. **`metrics.value`/`unit`은 optional, `note` 필드 추가** — 초안 자신의 예시인 `"vet_visit"`에 숫자 값이 없음.
 5. **`profiles.search_name`에 `filterFields: ["userId"]` 추가** — 이름 검색이 사용자 경계를 넘지 않도록.
 
-`mentionedEntityIds`는 초안대로 `[]` 기본값의 필수 배열로 유지. 다만 배열이라 Convex가 인덱싱할 수 없음: "프로필 X를 언급한 모든 노트"는 호출자의 노트를 훑어 JS에서 거르는 방식이 됨. V1 규모에선 괜찮고, 필요해지면 `noteMentions` 조인 테이블을 추가(additive)하면 됨.
+`mentionedEntityIds`는 초안대로 나갔다가 **Day 3에 `noteMentions` 테이블로 교체됐다** — 이 절이 "필요해지면 쓸 해법"으로 적어둔 그 조인 테이블을 앞당긴 것이다. 세 가지가 그렇게 만들었다: Convex는 배열 안을 인덱싱할 수 없어 "프로필 X를 언급한 모든 노트"가 호출자 전체 이력의 스캔이었고, 노트를 지우면 그 언급도 지워야 하는데 행이면 질의로 끝나며, **누가 어디서 언급됐는지의 인용문은 링크에 속한다** — id만 든 배열엔 그걸 둘 자리가 없다. 양방향으로 인덱싱했다. 노트는 "내 안에서 누가 나왔나"를, 프로필은 "내가 어디서 언급됐나"를 묻고 둘 다 화면이기 때문이다. 기존 행은 버리지 않고 옮겼다 — 일회성 내부 뮤테이션으로 옮긴 뒤 같은 변경에서 지웠다. 이제 존재하지 않는 필드를 읽는 코드라 남겨두면 타입체크가 깨진다. 무엇을 옮겼는지는 그 커밋 메시지에 남아 있고, `CLAUDE.md`가 additive 아닌 스키마 변경의 기록을 두라고 지정한 자리가 거기다.
 
 ## Architecture (아키텍처)
 
@@ -312,7 +312,7 @@ export default defineSchema({
    → Claude 추출 (Convex action, 서버사이드 키) — 음성 전사본 또는
      명함 이미지를 입력으로 받음
        → 대표 프로필 + 부차적 언급 대상들을 식별
-   → Convex에 구조화된 형태로 기록 (profile + note + embedding + mentionedEntityIds)
+   → Convex에 구조화된 형태로 기록 (profile + note + embedding + noteMentions)
    → Convex 벡터 인덱스 (프로필 단위가 아니라 노트 단위)
    → 회상: 자연어 쿼리 → 임베딩 → 벡터 검색 → 결과
        (프로필별로 그룹화, 멘션 히트는 별도로 표시)

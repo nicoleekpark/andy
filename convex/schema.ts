@@ -43,7 +43,6 @@ export default defineSchema({
   notes: defineTable({
     userId: v.id("users"),
     profileId: v.id("profiles"), // primary profile this note is about
-    mentionedEntityIds: v.array(v.id("profiles")), // secondary mentions; [] when none
     text: v.string(),
     // The distilled facts Claude pulled out of `text`, as of this note's
     // `createdAt`. Stored per-note, never accumulated onto the profile: an
@@ -81,6 +80,30 @@ export default defineSchema({
       dimensions: 1536,
       filterFields: ["userId"],
     }),
+
+  // Who came up in a note without it being about them.
+  //
+  // A separate row rather than an array on the note, for three reasons. Convex
+  // cannot index inside an array, so "every note mentioning X" would be a scan
+  // of the caller's whole history. Deleting a note has to delete its mentions,
+  // and rows make that a query rather than a search through arrays. And the
+  // quote belongs *to the link* — it is the span of that note where that person
+  // came up — which an array of bare ids has nowhere to put.
+  //
+  // Indexed both ways on purpose: a note asks "who came up in me", a profile
+  // asks "where was I mentioned", and both are screens.
+  noteMentions: defineTable({
+    userId: v.id("users"),
+    noteId: v.id("notes"),
+    profileId: v.id("profiles"),
+    // Copied verbatim out of the note's text. Not a summary: it is what was
+    // actually said, which is the only version worth showing next to a name
+    // that transcription may have got wrong.
+    quote: v.string(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_and_note", ["userId", "noteId"])
+    .index("by_user_and_profile", ["userId", "profileId"]),
 
   // Structured time-series for animal/health tracking, kept separate from the
   // free-text notes. `value`/`unit` are optional so a non-numeric event

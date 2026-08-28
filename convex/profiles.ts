@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { query } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
 import { getAuthenticatedUser } from "./users";
 
@@ -24,7 +25,33 @@ export const withNotes = query({
     v.null(),
     v.object({
       profile: schema.doc("profiles"),
-      notes: v.array(schema.doc("notes")),
+      /** This person's own notes, newest first, each with who came up in it. */
+      notes: v.array(
+        v.object({
+          note: schema.doc("notes"),
+          mentions: v.array(
+            v.object({
+              profileId: v.id("profiles"),
+              name: v.string(),
+              quote: v.string(),
+            }),
+          ),
+        }),
+      ),
+      /**
+       * Where this person came up in somebody else's note. The other half of
+       * the link, and the only thing a profile with no notes of its own has to
+       * show — which is most of them, since a mention is how they got here.
+       */
+      mentionedIn: v.array(
+        v.object({
+          noteId: v.id("notes"),
+          createdAt: v.number(),
+          quote: v.string(),
+          aboutProfileId: v.id("profiles"),
+          aboutName: v.string(),
+        }),
+      ),
     }),
   ),
   handler: async (ctx, args) => {
@@ -59,7 +86,64 @@ export const withNotes = query({
       .order("desc")
       .collect();
 
-    return { profile, notes };
+    // Every link this user owns, read once and split two ways rather than
+    // queried per note. Same trade as `recent` below: one read while a person
+    // has hundreds of notes, revisited with pagination when that stops holding.
+    const links = await ctx.db
+      .query("noteMentions")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    // Names for display. Scoped to this user, so a link can never resolve to
+    // someone else's row even if one somehow pointed there.
+    const names = new Map<string, string>();
+    for (const owned of await ctx.db
+      .query("profiles")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect()) {
+      names.set(owned._id, owned.name);
+    }
+
+    const byNote = new Map<string, { profileId: Id<"profiles">; name: string; quote: string }[]>();
+    const mentionedIn = [];
+    const noteById = new Map(notes.map((note) => [note._id as string, note]));
+
+    for (const link of links) {
+      if (link.profileId === profileId) {
+        // Somebody else's note that names this person. Notes about *them* are
+        // the timeline; this is the other direction.
+        const source = await ctx.db.get("notes", link.noteId);
+        if (source !== null && source.profileId !== profileId) {
+          mentionedIn.push({
+            noteId: link.noteId,
+            createdAt: source.createdAt,
+            quote: link.quote,
+            aboutProfileId: source.profileId,
+            aboutName: names.get(source.profileId) ?? "",
+          });
+        }
+      }
+      if (noteById.has(link.noteId)) {
+        const list = byNote.get(link.noteId) ?? [];
+        list.push({
+          profileId: link.profileId,
+          name: names.get(link.profileId) ?? "",
+          quote: link.quote,
+        });
+        byNote.set(link.noteId, list);
+      }
+    }
+
+    mentionedIn.sort((a, b) => b.createdAt - a.createdAt);
+
+    return {
+      profile,
+      notes: notes.map((note) => ({
+        note,
+        mentions: byNote.get(note._id) ?? [],
+      })),
+      mentionedIn,
+    };
   },
 });
 

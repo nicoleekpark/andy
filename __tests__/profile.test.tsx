@@ -24,6 +24,29 @@ function buildProfile(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
+/**
+ * The query returns each note paired with who came up in it, plus the notes
+ * elsewhere that mention this person. These helpers keep the fixtures readable
+ * — a test that cares about facts should not have to spell out empty mention
+ * lists to say so.
+ */
+function withNotes(
+  notes: Record<string, unknown>[],
+  mentionedIn: Record<string, unknown>[] = [],
+) {
+  return {
+    profile: buildProfile(),
+    // A note entry may carry its own `mentions` (who came up inside it); split
+    // it off so tests that don't care can keep passing bare note fields, the
+    // way every existing call site here already does.
+    notes: notes.map(({ mentions, ...note }) => ({
+      note,
+      mentions: (mentions as Record<string, unknown>[] | undefined) ?? [],
+    })),
+    mentionedIn,
+  };
+}
+
 describe("profile screen", () => {
   afterEach(() => {
     jest.clearAllMocks();
@@ -53,8 +76,7 @@ describe("profile screen", () => {
 
   test("should render the profile name and notes newest first when the query resolves", async () => {
     (useQuery as jest.Mock).mockReturnValue({
-      profile: buildProfile({ name: "지수" }),
-      notes: [
+      ...withNotes([
         {
           _id: "note-2",
           createdAt: new Date("2026-02-01").getTime(),
@@ -65,7 +87,8 @@ describe("profile screen", () => {
           createdAt: new Date("2026-01-01").getTime(),
           text: "First note text.",
         },
-      ],
+      ]),
+      profile: buildProfile({ name: "지수" }),
     });
 
     const result = renderRouter("src/app", { initialUrl: "/profile/contact-1" });
@@ -81,9 +104,8 @@ describe("profile screen", () => {
   });
 
   test("should show keyFacts when present and fall back to the raw text when a note has none", async () => {
-    (useQuery as jest.Mock).mockReturnValue({
-      profile: buildProfile(),
-      notes: [
+    (useQuery as jest.Mock).mockReturnValue(
+      withNotes([
         {
           _id: "note-extracted",
           createdAt: Date.now(),
@@ -95,8 +117,8 @@ describe("profile screen", () => {
           createdAt: Date.now(),
           text: "Typed by hand, never extracted.",
         },
-      ],
-    });
+      ]),
+    );
 
     const result = renderRouter("src/app", { initialUrl: "/profile/contact-1" });
     await result;
@@ -113,17 +135,16 @@ describe("profile screen", () => {
     // transcription is unreliable on exactly the details worth checking — so
     // the original has to stay reachable, or a fact that looks wrong can never
     // be checked against what was actually said.
-    (useQuery as jest.Mock).mockReturnValue({
-      profile: buildProfile(),
-      notes: [
+    (useQuery as jest.Mock).mockReturnValue(
+      withNotes([
         {
           _id: "note-1",
           createdAt: 1787933613833,
           text: "오늘 지선 만났는데 민호네 집들이에서 봤어",
           keyFacts: ["브랜딩 디자이너다."],
         },
-      ],
-    });
+      ]),
+    );
 
     const result = renderRouter("src/app", { initialUrl: "/profile/contact-1" });
     await result;
@@ -142,13 +163,73 @@ describe("profile screen", () => {
     expect(screen.queryByText(/민호네 집들이/)).toBeNull();
   });
 
+  test("should show who came up in a note and route to their profile when tapped", async () => {
+    (useQuery as jest.Mock).mockReturnValue(
+      withNotes([
+        {
+          _id: "note-1",
+          createdAt: Date.now(),
+          text: "지수를 민호네 집들이에서 만났다.",
+          mentions: [
+            { profileId: "profile-minho", name: "민호", quote: "민호네 집들이에서" },
+          ],
+        },
+      ]),
+    );
+
+    const result = renderRouter("src/app", { initialUrl: "/profile/contact-1" });
+    await result;
+
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Open 민호" }));
+    });
+
+    expect(result.getPathname()).toBe("/profile/profile-minho");
+  });
+
+  test("should render a Mentioned in section and route to the note's own profile when an entry is tapped", async () => {
+    (useQuery as jest.Mock).mockReturnValue(
+      withNotes([], [
+        {
+          noteId: "note-elsewhere",
+          createdAt: Date.now(),
+          quote: "민호네 집들이에서",
+          aboutProfileId: "profile-jisoo",
+          aboutName: "지수",
+        },
+      ]),
+    );
+
+    const result = renderRouter("src/app", { initialUrl: "/profile/contact-1" });
+    await result;
+
+    expect(screen.getByText("Mentioned in")).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Open 지수" }));
+    });
+
+    expect(result.getPathname()).toBe("/profile/profile-jisoo");
+  });
+
+  test("should render neither a note's mentions nor the Mentioned in section when there is nothing to show", async () => {
+    (useQuery as jest.Mock).mockReturnValue(
+      withNotes([
+        { _id: "note-1", createdAt: Date.now(), text: "A note that mentions no one." },
+      ]),
+    );
+
+    const result = renderRouter("src/app", { initialUrl: "/profile/contact-1" });
+    await result;
+
+    expect(screen.queryByText("Mentioned in")).toBeNull();
+    expect(screen.queryByText("A note that mentions no one.")).toBeTruthy();
+  });
+
   test("should offer a way to add a note, scoped to this profile's capture route", async () => {
     // Without this the profile is read-only and there is no route from noticing
     // something is missing to recording it.
-    (useQuery as jest.Mock).mockReturnValue({
-      profile: buildProfile(),
-      notes: [],
-    });
+    (useQuery as jest.Mock).mockReturnValue(withNotes([]));
 
     const result = renderRouter("src/app", { initialUrl: "/profile/contact-1" });
     await result;

@@ -147,7 +147,7 @@ function makeDraft(overrides: Partial<Draft["primary"]> = {}): Draft {
         name: "Minho",
         entityType: "person",
         relationshipContext: null,
-        context: "her business partner",
+        quote: "her business partner Minho",
       },
     ],
   };
@@ -196,7 +196,10 @@ describe("capture screen review step", () => {
     // field on-device transcription got wrong on 2026-08-27 (민호 heard as 민우),
     // so it has to be correctable rather than only deletable.
     expect(screen.getByDisplayValue("Minho")).toBeTruthy();
-    expect(screen.getByDisplayValue(/her business partner/)).toBeTruthy();
+    // Shown, not editable: the quote is the span of the transcript where they
+    // came up, and its value is being what was actually said. The name above it
+    // stays editable, because that is what transcription gets wrong.
+    expect(screen.getByText(/her business partner/)).toBeTruthy();
   });
 
   test("should save the edited fact text, not the original, when Save note is pressed", async () => {

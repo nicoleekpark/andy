@@ -22,7 +22,7 @@ function buildDraft(overrides: {
     name: string;
     entityType?: "person" | "animal";
     relationshipContext?: string | null;
-    context?: string;
+    quote?: string;
   }[];
 } = {}) {
   return {
@@ -38,7 +38,7 @@ function buildDraft(overrides: {
       name: m.name,
       entityType: m.entityType ?? ("person" as const),
       relationshipContext: m.relationshipContext ?? null,
-      context: m.context ?? "Came up in the note.",
+      quote: m.quote ?? "came up in the note",
     })),
   };
 }
@@ -152,12 +152,13 @@ test("should create a stub profile for a mentioned person and promote it to a no
   });
   expect(first.createdMentionCount).toBe(1);
 
-  const note1 = await t.run(async (ctx) => ctx.db.get(first.noteId));
-  const stubId = note1!.mentionedEntityIds[0];
-
-  await t.run(async (ctx) => {
-    const stub = await ctx.db.get(stubId);
+  const stubId = await t.run(async (ctx) => {
+    const links = await ctx.db.query("noteMentions").collect();
+    expect(links).toHaveLength(1);
+    expect(links[0].noteId).toBe(first.noteId);
+    const stub = await ctx.db.get("profiles", links[0].profileId);
     expect(stub?.isStub).toBe(true);
+    return links[0].profileId;
   });
 
   const second = await asAlice.mutation(api.notes.saveCapture, {
@@ -169,12 +170,12 @@ test("should create a stub profile for a mentioned person and promote it to a no
   expect(second.profileId).toBe(stubId);
 
   await t.run(async (ctx) => {
-    const promoted = await ctx.db.get(stubId);
+    const promoted = await ctx.db.get("profiles", stubId);
     expect(promoted?.isStub).toBe(false);
   });
 });
 
-test("should record mentionedEntityIds for each mention, dedupe a repeated mention name, and exclude the primary from its own mentions", async () => {
+test("should link each mention to the note with its quote, dedupe a repeated name, and exclude the primary from its own note", async () => {
   const t = convexTest(schema, modules);
   await ensureUser(t, ALICE);
   const asAlice = t.withIdentity(ALICE);
@@ -184,9 +185,9 @@ test("should record mentionedEntityIds for each mention, dedupe a repeated menti
     draft: buildDraft({
       primaryName: "지수",
       mentions: [
-        { name: "민호", context: "First mention." },
-        { name: "민호", context: "Second mention, same person." },
-        { name: "지수", context: "The primary should never appear here." },
+        { name: "민호", quote: "민호네 집들이에서" },
+        { name: "민호", quote: "민호도 왔어" },
+        { name: "지수", quote: "지수 만났는데" },
       ],
     }),
     source: "voice",
@@ -195,10 +196,16 @@ test("should record mentionedEntityIds for each mention, dedupe a repeated menti
   expect(result.createdMentionCount).toBe(1);
 
   await t.run(async (ctx) => {
-    const note = await ctx.db.get(result.noteId);
-    expect(note?.mentionedEntityIds).toHaveLength(1);
+    const links = await ctx.db.query("noteMentions").collect();
+    // 민호 twice and 지수 (the primary) in the draft, one link out: a note never
+    // lists its own subject as a mention of itself, and a repeated name is one
+    // person.
+    expect(links).toHaveLength(1);
+    expect(links[0].noteId).toBe(result.noteId);
+    // The first quote seen wins, the same way the first spelling of a tag does.
+    expect(links[0].quote).toBe("민호네 집들이에서");
 
-    const mentioned = await ctx.db.get(note!.mentionedEntityIds[0]);
+    const mentioned = await ctx.db.get("profiles", links[0].profileId);
     expect(mentioned?.name).toBe("민호");
 
     const allProfiles = await ctx.db
@@ -207,6 +214,75 @@ test("should record mentionedEntityIds for each mention, dedupe a repeated menti
       .collect();
     // Only 지수 (primary) and 민호 (mention) — no duplicate 민호 row.
     expect(allProfiles).toHaveLength(2);
+  });
+});
+
+test("should store a different quote on each noteMentions row when the same person is mentioned in two different notes", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  // The quote belongs to the link, not to the mentioned profile — this is the
+  // whole reason noteMentions is a table rather than an array on the profile.
+  const first = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "지수를 민호네 집들이에서 만났다.",
+    draft: buildDraft({
+      primaryName: "지수",
+      mentions: [{ name: "민호", quote: "민호네 집들이에서" }],
+    }),
+    source: "voice",
+  });
+
+  const second = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "오늘 민호랑 통화했다는 얘기를 지수한테 들었다.",
+    draft: buildDraft({
+      primaryName: "지수",
+      mentions: [{ name: "민호", quote: "민호랑 통화했다는" }],
+    }),
+    source: "voice",
+  });
+
+  await t.run(async (ctx) => {
+    const links = await ctx.db.query("noteMentions").collect();
+    expect(links).toHaveLength(2);
+
+    const byNote = new Map(links.map((link) => [link.noteId, link]));
+    expect(byNote.get(first.noteId)?.quote).toBe("민호네 집들이에서");
+    expect(byNote.get(second.noteId)?.quote).toBe("민호랑 통화했다는");
+    // Both rows point at the same 민호 profile — it's the quote that differs,
+    // not the person.
+    expect(byNote.get(first.noteId)?.profileId).toBe(
+      byNote.get(second.noteId)?.profileId,
+    );
+  });
+});
+
+test("should still create a noteMentions link when the mention's quote is empty", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  // Extraction returns "" when it couldn't copy an exact span, and migrated
+  // rows have no quote at all — an empty quote is not a reason to drop the
+  // person, the screens just treat it as nothing to show.
+  const result = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "지수, 민호 얘기도 잠깐 나왔다.",
+    draft: buildDraft({
+      primaryName: "지수",
+      mentions: [{ name: "민호", quote: "" }],
+    }),
+    source: "voice",
+  });
+  expect(result.createdMentionCount).toBe(1);
+
+  await t.run(async (ctx) => {
+    const links = await ctx.db.query("noteMentions").collect();
+    expect(links).toHaveLength(1);
+    expect(links[0].noteId).toBe(result.noteId);
+    expect(links[0].quote).toBe("");
+
+    const mentioned = await ctx.db.get("profiles", links[0].profileId);
+    expect(mentioned?.name).toBe("민호");
   });
 });
 
@@ -401,16 +477,21 @@ test("should give user B their own new profile for a mentioned name, never resol
   expect(bobResult.createdMentionCount).toBe(1);
 
   await t.run(async (ctx) => {
-    const bobNote = await ctx.db.get(bobResult.noteId);
-    const bobMentionedId = bobNote!.mentionedEntityIds[0];
+    const bobLinks = (await ctx.db.query("noteMentions").collect()).filter(
+      (link) => link.noteId === bobResult.noteId,
+    );
+    expect(bobLinks).toHaveLength(1);
+
+    const bobMentionedId = bobLinks[0].profileId;
+    // The name matched Alice's profile exactly; Bob still got his own row.
     expect(bobMentionedId).not.toBe(alicePrimary.profileId);
 
-    const bobMentioned = await ctx.db.get(bobMentionedId);
-    expect(bobMentioned?.userId).not.toBe((await ctx.db.get(alicePrimary.profileId))?.userId);
+    const bobMentioned = await ctx.db.get("profiles", bobMentionedId);
+    const aliceProfile = await ctx.db.get("profiles", alicePrimary.profileId);
+    expect(bobMentioned?.userId).not.toBe(aliceProfile?.userId);
     expect(bobMentioned?.isStub).toBe(true);
 
     // Alice's profile is untouched: still not a stub, still just her one note.
-    const aliceProfile = await ctx.db.get(alicePrimary.profileId);
     expect(aliceProfile?.isStub).toBe(false);
     const aliceNotes = await ctx.db
       .query("notes")

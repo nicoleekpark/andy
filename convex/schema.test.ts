@@ -34,18 +34,48 @@ test("should round-trip mentionedEntityIds as an array of profile ids when a not
     const noteId = await ctx.db.insert("notes", {
       userId,
       profileId: mainProfileId,
-      mentionedEntityIds: [mentionedA, mentionedB],
       text: "Had coffee with Bob and his dog Rex.",
       source: "manual",
       createdAt: Date.now(),
     });
 
-    const note = await ctx.db.get(noteId);
-    expect(note?.mentionedEntityIds).toEqual([mentionedA, mentionedB]);
+    await ctx.db.insert("noteMentions", {
+      userId,
+      noteId,
+      profileId: mentionedA,
+      quote: "Bob",
+    });
+    await ctx.db.insert("noteMentions", {
+      userId,
+      noteId,
+      profileId: mentionedB,
+      quote: "his dog Rex",
+    });
+
+    const links = await ctx.db
+      .query("noteMentions")
+      .withIndex("by_user_and_note", (q) =>
+        q.eq("userId", userId).eq("noteId", noteId),
+      )
+      .collect();
+    expect(links.map((link) => link.profileId)).toEqual([
+      mentionedA,
+      mentionedB,
+    ]);
+    // Indexed the other way too — a profile has to be able to ask where it was
+    // mentioned, which is the whole reason this is a table and not an array.
+    const forRex = await ctx.db
+      .query("noteMentions")
+      .withIndex("by_user_and_profile", (q) =>
+        q.eq("userId", userId).eq("profileId", mentionedB),
+      )
+      .collect();
+    expect(forRex).toHaveLength(1);
+    expect(forRex[0].quote).toBe("his dog Rex");
   });
 });
 
-test("should round-trip mentionedEntityIds as an empty array when a note has no mentions", async () => {
+test("should leave a note with no mentions with no links at all", async () => {
   const t = convexTest(schema, modules);
   await t.run(async (ctx) => {
     const userId = await ctx.db.insert("users", { tokenIdentifier: "user_1" });
@@ -60,14 +90,18 @@ test("should round-trip mentionedEntityIds as an empty array when a note has no 
     const noteId = await ctx.db.insert("notes", {
       userId,
       profileId,
-      mentionedEntityIds: [],
       text: "Solo journal entry.",
       source: "manual",
       createdAt: Date.now(),
     });
 
-    const note = await ctx.db.get(noteId);
-    expect(note?.mentionedEntityIds).toEqual([]);
+    const links = await ctx.db
+      .query("noteMentions")
+      .withIndex("by_user_and_note", (q) =>
+        q.eq("userId", userId).eq("noteId", noteId),
+      )
+      .collect();
+    expect(links).toEqual([]);
   });
 });
 
@@ -86,7 +120,6 @@ test("should insert a note with no embedding when the embedding pipeline has not
     const noteId = await ctx.db.insert("notes", {
       userId,
       profileId,
-      mentionedEntityIds: [],
       text: "Manual note, no vector yet.",
       source: "manual",
       createdAt: Date.now(),
@@ -162,7 +195,6 @@ test("should only return user A rows when querying profiles, notes, metrics, and
     await ctx.db.insert("notes", {
       userId: userA,
       profileId: profileA,
-      mentionedEntityIds: [],
       text: "User A's note",
       source: "manual",
       createdAt: Date.now(),
@@ -170,7 +202,6 @@ test("should only return user A rows when querying profiles, notes, metrics, and
     await ctx.db.insert("notes", {
       userId: userB,
       profileId: profileB,
-      mentionedEntityIds: [],
       text: "User B's note",
       source: "manual",
       createdAt: Date.now(),

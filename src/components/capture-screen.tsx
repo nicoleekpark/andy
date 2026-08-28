@@ -626,13 +626,16 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
                       <Text style={styles.removeLabel}>×</Text>
                     </Pressable>
                   </View>
-                  <TextInput
-                    value={mention.context}
-                    onChangeText={(context) => editMention(index, { context })}
-                    style={[styles.input, styles.mentionContext]}
-                    multiline
-                    accessibilityLabel={`Why mention ${index + 1} came up`}
-                  />
+                  {/*
+                    The quote is not editable: it is the span of the transcript
+                    where this person came up, copied verbatim, and its whole
+                    value is being what was actually said rather than a summary
+                    of it. The name above it *is* editable, because that is the
+                    part transcription gets wrong.
+                  */}
+                  {mention.quote ? (
+                    <Text style={styles.mentionQuote}>{mention.quote}</Text>
+                  ) : null}
                 </View>
               ))}
             </Field>
@@ -848,7 +851,15 @@ const styles = StyleSheet.create({
   choiceLabelOn: { color: colors.paper },
 
   mentionBlock: { gap: 4, paddingBottom: 8 },
-  mentionContext: { fontSize: 14, opacity: 0.75 },
+  mentionQuote: {
+    color: colors.ink,
+    fontSize: 14,
+    lineHeight: 21,
+    opacity: 0.7,
+    borderLeftWidth: StyleSheet.hairlineWidth,
+    borderLeftColor: colors.line,
+    paddingLeft: 10,
+  },
   transcriptInput: { fontSize: 15, lineHeight: 22 },
 
   checkRow: { flexDirection: "row", alignItems: "center", gap: 10 },
