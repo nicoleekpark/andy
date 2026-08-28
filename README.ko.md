@@ -95,11 +95,24 @@ convex/             # schema.ts, functions (queries/mutations/actions), vector i
 | 명령어 | 언제 | 왜 |
 | --- | --- | --- |
 | `npm run dev` | **작업할 때마다 — 여기서 시작** | 양쪽을 한 번에 띄운다: `convex dev` 가 `convex/` 아래 변경을 배포에 올리고, `expo start --dev-client` 가 설치된 빌드에 JS 번들을 공급한다. 프로세스가 둘인 이유는 **앱이 두 곳에 있기 때문**이다 — 화면은 Mac, 백엔드는 Convex 클라우드. 서로를 모른다. 명령을 하나로 합친 이유는 **두 번째만 켜는 게 실제로 반복된 실수**이기 때문이다: `npm run lint` 와 `npm run test` 는 배포된 적 없는 백엔드 코드에서도 통과하므로, 앱이 아직 없는 함수를 부르고 **에러는 화면 버그처럼 보인다.** `-k` 로 둘이 같이 죽어서 절반만 켜진 상태가 생기지 않는다. |
-| `npm start` | JS 쪽만 | Expo 서버만. 백엔드가 이미 딴 데서 돌고 있거나 안 건드릴 때. 그냥 `expo start` 가 아니라 `--dev-client` 인 이유는 이 앱이 Expo Go 에서 못 돌기 때문. |
+| `npm start` | 드물게 — 아래 참고 | Expo 서버만. 그냥 `expo start` 가 아니라 `--dev-client` 인 이유는 이 앱이 Expo Go 에서 못 돌기 때문. |
 | `npm run test` | 슬라이스를 끝났다고 하기 전 | 러너 두 개를 순서대로 돌린다 — `src/` 는 jest, `convex/` 는 vitest. Convex 함수는 jest 로 테스트할 수 없어서, 러너 하나만 돌리면 절반이 조용히 건너뛰어진다. |
 | `npm run lint` | 커밋 전마다 | `expo lint convex src` 후 `tsc --noEmit` 을 두 번 — 루트 한 번, `convex/tsconfig.json` 으로 한 번. Convex 코드는 Node 가 아니라 V8 에서 도는데, Node 전용 전역이 섞여 들어간 걸 잡는 건 두 번째 검사뿐이다. |
 | `npm run test:rn` / `npm run test:convex` | 실패 원인을 좁힐 때 | 러너 하나씩. |
 | `npm run test:watch` / `npm run test:watch:convex` | 테스트를 쓰는 중 | 저장할 때마다 다시 돈다. 러너별로 하나씩 — 감시자 둘이 한 터미널을 못 쓴다. **둘 다 시뮬레이터를 건드리지 않는다**: jest는 가짜 React Native에 화면을 그리고, convex-test는 메모리 안의 가짜 DB로 백엔드 함수를 돌린다. 그래서 실제 앱에서만 나오는 버그(로그아웃 크래시, 배포 안 된 함수)는 둘 다 못 본다. 그게 하루 리포트의 QA 목록이 있는 이유다. |
+
+> **`npm start` 만 쓰는 게 맞는 때.** 거의 없다 — 기본은 `npm run dev` 다. 다음 세 경우에만 값을 한다:
+>
+> 1. **`convex dev` 가 이미 다른 터미널에 켜져 있을 때.** 하나 더 켜면 감시자 둘이 같은 배포를 물게 된다. 그때는 Expo 쪽만 띄운다.
+> 2. **일부러 배포하고 싶지 않을 때.** `convex/` 를 실험적으로 만지는 중이라 저장할 때마다 dev 배포에 올라가는 게 싫은 경우 — 아직 적용하고 싶지 않은 반쯤 쓴 스키마 변경 같은 것.
+> 3. **문제를 가릴 때.** 뭔가 잘못됐는데 어느 쪽인지 모르겠으면 따로 띄워서 어느 쪽이 문제를 보고하는지 본다.
+>
+> ```bash
+> npm start                 # JS 쪽만
+> npx convex dev            # 백엔드만, 다른 터미널에서
+> ```
+>
+> 이 셋 말고는, **JS 쪽만 켜는 것이 백엔드 변경이 조용히 배포에 안 닿는 경로**다. 앱이 아직 없는 함수를 부르고, 에러는 화면 버그처럼 보인다.
 
 ### 시뮬레이터에 빌드 올리기
 
