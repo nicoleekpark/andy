@@ -195,10 +195,10 @@ describe("capture screen review step", () => {
     // field on-device transcription got wrong on 2026-08-27 (민호 heard as 민우),
     // so it has to be correctable rather than only deletable.
     expect(screen.getByDisplayValue("Minho")).toBeTruthy();
-    // Shown, not editable: the quote is the span of the transcript where they
-    // came up, and its value is being what was actually said. The name above it
-    // stays editable, because that is what transcription gets wrong.
-    expect(screen.getByText(/her business partner/)).toBeTruthy();
+    // The quote is editable too. It is copied verbatim from the transcript, and
+    // the transcript is what recognition gets wrong — locking it left the user
+    // watching a mistranscription being written to two people's profiles.
+    expect(screen.getByDisplayValue("her business partner Minho")).toBeTruthy();
   });
 
   test("should save the edited fact text, not the original, when Save note is pressed", async () => {
@@ -382,6 +382,70 @@ describe("capture screen review step", () => {
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
     const [call] = saveCapture.mock.calls[0];
     expect(call.draft.mentions[0].name).toBe("Minho Park");
+  });
+
+  test("should save a corrected mention quote, so a mistranscription cannot reach two profiles unchallenged", async () => {
+    const draft = makeDraft();
+    (useAction as jest.Mock).mockReturnValue(jest.fn(async () => draft));
+    const saveCapture = jest.fn(
+      async (_args: { transcript: string; draft: Draft; source: string }) => ({
+        profileId: "profile-1",
+        noteId: "note-1",
+        createdProfile: true,
+        createdMentionCount: 1,
+      }),
+    );
+    mockSaveCapture(saveCapture);
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", {
+      initialUrl: "/profile/contact-1/capture",
+    });
+    await result;
+    await reachReview(handlers, "spoken transcript");
+
+    // The quote is the note's own words about someone who is not its subject,
+    // and it is written to `noteMentions` where it shows on both people's
+    // pages. Recognition mangles it exactly as often as it mangles a name —
+    // "주말마다 어머니를 뵌다" came back as "팬다" on a real recording — so the
+    // user has to be able to correct it, and until this test they could not.
+    await act(async () => {
+      fireEvent.changeText(
+        screen.getByLabelText("Mentioned quote 1"),
+        "her business partner Minho Park",
+      );
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+    });
+
+    await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
+    const [call] = saveCapture.mock.calls[0];
+    expect(call.draft.mentions[0].quote).toBe("her business partner Minho Park");
+  });
+
+  test("should still offer the quote field when extraction could not copy a span", async () => {
+    // Claude returns "" when it cannot copy a span exactly, and the deployment
+    // already holds a link saved that way. Rendering nothing for an empty quote
+    // left the user no way to supply one.
+    const draft = makeDraft();
+    draft.mentions[0].quote = "";
+    (useAction as jest.Mock).mockReturnValue(jest.fn(async () => draft));
+    mockSaveCapture(jest.fn(async () => ({
+      profileId: "profile-1",
+      noteId: "note-1",
+      createdProfile: true,
+      createdMentionCount: 1,
+    })));
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", {
+      initialUrl: "/profile/contact-1/capture",
+    });
+    await result;
+    await reachReview(handlers, "spoken transcript");
+
+    expect(screen.getByLabelText("Mentioned quote 1")).toBeTruthy();
   });
 
   test("should save the edited transcript without re-running extraction over the draft", async () => {

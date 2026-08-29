@@ -627,15 +627,32 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
                     </Pressable>
                   </View>
                   {/*
-                    The quote is not editable: it is the span of the transcript
-                    where this person came up, copied verbatim, and its whole
-                    value is being what was actually said rather than a summary
-                    of it. The name above it *is* editable, because that is the
-                    part transcription gets wrong.
+                    Editable, and it did not start that way.
+                    
+                    The argument for locking it was that a quote's value is
+                    being what was actually said rather than a summary of it.
+                    That confused two different things: it is copied verbatim
+                    from the *transcript*, and the transcript is exactly what
+                    speech recognition gets wrong — "주말마다 어머니를 뵌다"
+                    came back as "어머니를 팬다". Locking the field meant the
+                    user could watch a mistranscription being saved to two
+                    people's profiles and not touch it, which is the one thing
+                    this whole screen exists to prevent.
+                    
+                    Always rendered, even when empty: Claude returns an empty
+                    quote when it cannot copy a span exactly, and that has
+                    already happened on real data. A blank field can be filled
+                    in; absent markup cannot.
                   */}
-                  {mention.quote ? (
-                    <Text style={styles.mentionQuote}>{mention.quote}</Text>
-                  ) : null}
+                  <TextInput
+                    value={mention.quote}
+                    onChangeText={(quote) => editMention(index, { quote })}
+                    style={[styles.input, styles.mentionQuoteInput]}
+                    multiline
+                    placeholder="What the note says about them"
+                    placeholderTextColor={colors.line}
+                    accessibilityLabel={`Mentioned quote ${index + 1}`}
+                  />
                 </View>
               ))}
             </Field>
@@ -851,15 +868,11 @@ const styles = StyleSheet.create({
   choiceLabelOn: { color: colors.paper },
 
   mentionBlock: { gap: 4, paddingBottom: 8 },
-  mentionQuote: {
-    color: colors.ink,
-    fontSize: 14,
-    lineHeight: 21,
-    opacity: 0.7,
-    borderLeftWidth: StyleSheet.hairlineWidth,
-    borderLeftColor: colors.line,
-    paddingLeft: 10,
-  },
+  // Smaller than the name above it, but carrying the same bottom rule as every
+  // other field on this screen: the left rule it used to have was the mark of a
+  // quotation nobody could touch, and it would now be telling the user the
+  // opposite of the truth.
+  mentionQuoteInput: { fontSize: 14, lineHeight: 21 },
   transcriptInput: { fontSize: 15, lineHeight: 22 },
 
   checkRow: { flexDirection: "row", alignItems: "center", gap: 10 },
