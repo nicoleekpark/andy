@@ -3,7 +3,33 @@ import { useCallback, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
+import type { Doc } from "@convex/_generated/dataModel";
 import { colors } from "@/constants/theme";
+
+/**
+ * What to call a note's body, given the door the note came through.
+ *
+ * "What you said" is simply untrue on a note captured from a business card —
+ * nobody said it, it was read off a card — and being able to check a fact
+ * against its source is the entire reason the body stays reachable. A label
+ * that misnames the source defeats the control it opens.
+ *
+ * `source` is already on every note (`notes.source`, required since the table
+ * was defined), so this needs nothing new from the backend. A voice note and a
+ * calendar nudge are both spoken into the app, so they share a label; anything
+ * added later lands on that same default until it earns wording of its own,
+ * which is the safe direction to be wrong in.
+ */
+function bodyLabel(source: Doc<"notes">["source"]): string {
+  switch (source) {
+    case "business_card":
+      return "What the card said";
+    case "manual":
+      return "What you wrote";
+    default:
+      return "What you said";
+  }
+}
 
 /**
  * A person, and everything recorded about them, newest first.
@@ -113,11 +139,11 @@ export default function ProfileScreen() {
                           ))}
                           <Pressable
                             accessibilityRole="button"
-                            accessibilityLabel={
+                            accessibilityLabel={`${
                               openTranscripts.includes(note._id)
-                                ? `Hide what you said on ${new Date(note.createdAt).toLocaleDateString("en-CA")}`
-                                : `Show what you said on ${new Date(note.createdAt).toLocaleDateString("en-CA")}`
-                            }
+                                ? "Hide"
+                                : "Show"
+                            } ${bodyLabel(note.source).toLowerCase()} on ${new Date(note.createdAt).toLocaleDateString("en-CA")}`}
                             onPress={() => toggleTranscript(note._id)}
                             hitSlop={8}
                           >
@@ -126,7 +152,7 @@ export default function ProfileScreen() {
                                   stay put — a control whose text and meaning
                                   both change reads as two different controls. */}
                               {openTranscripts.includes(note._id) ? "▾" : "▸"}{" "}
-                              What you said
+                              {bodyLabel(note.source)}
                             </Text>
                           </Pressable>
                           {openTranscripts.includes(note._id) ? (

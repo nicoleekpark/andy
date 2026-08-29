@@ -42,7 +42,10 @@ function withNotes(
     // it off so tests that don't care can keep passing bare note fields, the
     // way every existing call site here already does.
     notes: notes.map(({ mentions, ...note }) => ({
-      note,
+      // `source` is required on every real row, so it is defaulted rather than
+      // left absent — a fixture missing it would let a screen that reads it
+      // pass here and behave differently against the database.
+      note: { source: "voice", ...note },
       mentions: (mentions as Record<string, unknown>[] | undefined) ?? [],
     })),
     mentionedIn,
@@ -164,6 +167,47 @@ describe("profile screen", () => {
       fireEvent.press(screen.getByRole("button", { name: /hide what you said/i }));
     });
     expect(screen.queryByText(/민호네 집들이/)).toBeNull();
+  });
+
+  test("should name the note's body after the door it came through, not always \"what you said\"", async () => {
+    // Nobody said a business card out loud. The body stays reachable so a fact
+    // that looks wrong can be checked against its source, and a label naming
+    // the wrong source defeats the control it opens.
+    (useQuery as jest.Mock).mockReturnValue(
+      withNotes([
+        {
+          _id: "note-card",
+          createdAt: Date.now(),
+          source: "business_card",
+          text: "JOE KING\nSENIOR ENGINEER\nACME",
+          keyFacts: ["ACME에서 senior engineer로 일한다."],
+        },
+        {
+          _id: "note-voice",
+          createdAt: Date.now(),
+          source: "voice",
+          text: "오늘 지수 만났는데",
+          keyFacts: ["브랜딩 디자이너다."],
+        },
+      ]),
+    );
+
+    const result = renderRouter("src/app", { initialUrl: "/profile/contact-1" });
+    await result;
+
+    // Regex, not an exact string: the visible label is the chevron plus the
+    // wording, and it is the wording this test is about.
+    expect(screen.getByText(/What the card said/)).toBeTruthy();
+    expect(screen.getByText(/What you said/)).toBeTruthy();
+
+    // The accessibility label has to follow, or the wording is only corrected
+    // for people who can see it.
+    await act(async () => {
+      fireEvent.press(
+        screen.getByRole("button", { name: /show what the card said/i }),
+      );
+    });
+    expect(screen.getByText(/SENIOR ENGINEER/)).toBeTruthy();
   });
 
   test("should show who came up in a note and route to their profile when tapped", async () => {
