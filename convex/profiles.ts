@@ -5,6 +5,33 @@ import schema from "./schema";
 import { getAuthenticatedUser } from "./users";
 
 /**
+ * How many "mentioned in" entries a profile shows before the rest are only a
+ * count. Enough to see the shape of who brings this person up, short enough
+ * that it does not push the timeline off the screen.
+ */
+const MENTIONED_IN_SHOWN = 5;
+
+/**
+ * TODO(when a single profile passes ~10 notes): an "often with" summary.
+ *
+ * Mentions are shown per note, which answers "who was at this one" and stops
+ * answering "who does this person usually come up with" the moment a profile
+ * has a hundred notes and fifty different names scattered through them — the
+ * question you cannot answer by scrolling. The data is already here: group the
+ * links on this profile's notes by `profileId` and count. It is perhaps thirty
+ * minutes of work.
+ *
+ * It is deliberately not built yet, and the reason is not the work. Ranking
+ * (frequency or recency), how many to show, and whether a single mention counts
+ * are all display decisions with no basis until a real profile has repeat
+ * mentions to look at — with two notes it would render "often with 민호 1",
+ * which is noise. Build it against real data, not a guess.
+ *
+ * Recorded in PROJECT_SCOPE.md's Could Have alongside the graph view, which is
+ * the same data drawn instead of listed.
+ */
+
+/**
  * Reading a profile and its timeline.
  *
  * This is the first place an id arrives *from the client* — the route param in
@@ -52,6 +79,12 @@ export const withNotes = query({
           aboutName: v.string(),
         }),
       ),
+      /**
+       * How many there are in total, since `mentionedIn` is only the most
+       * recent few. Someone who comes up in fifty conversations should say so
+       * rather than quietly showing five.
+       */
+      mentionedInTotal: v.number(),
     }),
   ),
   handler: async (ctx, args) => {
@@ -142,7 +175,8 @@ export const withNotes = query({
         note,
         mentions: byNote.get(note._id) ?? [],
       })),
-      mentionedIn,
+      mentionedIn: mentionedIn.slice(0, MENTIONED_IN_SHOWN),
+      mentionedInTotal: mentionedIn.length,
     };
   },
 });

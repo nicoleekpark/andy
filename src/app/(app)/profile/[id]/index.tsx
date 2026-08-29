@@ -48,10 +48,8 @@ export default function ProfileScreen() {
   return (
     <>
       <Stack.Screen options={{ title }} />
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.content}
-      >
+      <View style={styles.container}>
+        <ScrollView contentContainerStyle={styles.content}>
         {result === undefined ? (
           // `undefined` is Convex's "still loading", distinct from the `null`
           // the query returns for a profile that isn't there or isn't yours.
@@ -90,23 +88,6 @@ export default function ProfileScreen() {
               </View>
             ) : null}
 
-            {/*
-              The profile is where you notice something is missing, so it is
-              where adding a note belongs. PROJECT_SCOPE.md's User Flow already
-              routes here: /profile/[id]/capture is "pre-scoped to this
-              profile". The scoping itself is not built — capture still works
-              out who a note is about from what is said — so this is navigation,
-              not yet a promise that the note lands on this person.
-            */}
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Add a note"
-              onPress={() => router.push(`/profile/${id}/capture`)}
-              style={styles.addNote}
-            >
-              <Text style={styles.addNoteLabel}>Add a note</Text>
-            </Pressable>
-
             {result.notes.length === 0 ? (
               <Text style={styles.quiet}>
                 Nothing recorded yet.
@@ -141,9 +122,11 @@ export default function ProfileScreen() {
                             hitSlop={8}
                           >
                             <Text style={styles.reveal}>
-                              {openTranscripts.includes(note._id)
-                                ? "Hide what you said"
-                                : "What you said"}
+                              {/* The chevron carries the state so the label can
+                                  stay put — a control whose text and meaning
+                                  both change reads as two different controls. */}
+                              {openTranscripts.includes(note._id) ? "▾" : "▸"}{" "}
+                              What you said
                             </Text>
                           </Pressable>
                           {openTranscripts.includes(note._id) ? (
@@ -159,6 +142,9 @@ export default function ProfileScreen() {
 
                       {mentions.length > 0 ? (
                         <View style={styles.mentions}>
+                          {/* Without a label a name just hangs under the facts
+                              and reads as one of them. */}
+                          <Text style={styles.sectionLabel}>Also came up</Text>
                           {mentions.map((mention) => (
                             <Pressable
                               key={mention.profileId}
@@ -189,7 +175,16 @@ export default function ProfileScreen() {
 
             {result.mentionedIn.length > 0 ? (
               <View style={styles.backlinks}>
-                <Text style={styles.sectionLabel}>Mentioned in</Text>
+                <View style={styles.backlinkHeader}>
+                  <Text style={styles.sectionLabel}>Mentioned in</Text>
+                  {result.mentionedInTotal > result.mentionedIn.length ? (
+                    // Only when some are missing: a count next to a complete
+                    // list is noise, next to a truncated one it is the point.
+                    <Text style={styles.sectionLabel}>
+                      {result.mentionedIn.length} of {result.mentionedInTotal}
+                    </Text>
+                  ) : null}
+                </View>
                 {result.mentionedIn.map((entry) => (
                   <Pressable
                     key={entry.noteId}
@@ -213,14 +208,38 @@ export default function ProfileScreen() {
             ) : null}
           </>
         )}
-      </ScrollView>
+        </ScrollView>
+
+        {/*
+          Pinned rather than scrolled away with the header. The name stays
+          visible in the navigation bar on its own, so the only thing worth
+          holding on screen is the way to add to the timeline — and freezing the
+          whole header block instead would spend a quarter of the screen on a
+          screen you came to read. Matches home's Record button, same place.
+
+          PROJECT_SCOPE.md's User Flow routes here: /profile/[id]/capture is
+          "pre-scoped to this profile". The scoping itself is not built —
+          capture still works out who a note is about from what is said — so
+          this is navigation, not yet a promise the note lands on this person.
+        */}
+        {result !== null && result !== undefined ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Add a note"
+            onPress={() => router.push(`/profile/${id}/capture`)}
+            style={styles.addNote}
+          >
+            <Text style={styles.addNoteLabel}>Add a note</Text>
+          </Pressable>
+        ) : null}
+      </View>
     </>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.paper },
-  content: { padding: 24, gap: 16, paddingBottom: 48 },
+  content: { padding: 24, gap: 16, paddingBottom: 24 },
 
   name: { color: colors.ink, fontSize: 28 },
   metaRow: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
@@ -257,8 +276,11 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.line,
     borderRadius: 999,
-    paddingVertical: 12,
+    paddingVertical: 14,
     alignItems: "center",
+    marginHorizontal: 24,
+    marginBottom: 24,
+    backgroundColor: colors.paper,
   },
   addNoteLabel: { color: colors.ink, fontSize: 15 },
 
@@ -277,6 +299,11 @@ const styles = StyleSheet.create({
   mentions: { paddingTop: 6, gap: 4 },
   mentionName: { color: colors.moss, fontSize: 14 },
 
+  backlinkHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   backlinks: {
     gap: 10,
     borderTopWidth: StyleSheet.hairlineWidth,

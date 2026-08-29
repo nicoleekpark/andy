@@ -518,3 +518,64 @@ test("should never include another user's profiles", async () => {
 
   expect(result).toEqual([]);
 });
+
+test("should cap mentionedIn at the five most recent and report the true total", async () => {
+  const t = convexTest(schema, modules);
+  const aliceUserId = await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  // Seven notes about seven different people, each mentioning 민호. Built
+  // directly so `createdAt` is explicit — `saveCapture` stamps Date.now(), and
+  // seven calls in one test would land in the same millisecond and make the
+  // "most recent" claim depend on a tie.
+  const minhoId = await t.run(async (ctx) => {
+    const minho = await ctx.db.insert("profiles", {
+      userId: aliceUserId,
+      name: "민호",
+      entityType: "person",
+      tags: [],
+      isStub: true,
+    });
+
+    for (let i = 1; i <= 7; i += 1) {
+      const speakerId = await ctx.db.insert("profiles", {
+        userId: aliceUserId,
+        name: `Speaker ${i}`,
+        entityType: "person",
+        tags: [],
+        isStub: false,
+      });
+      const noteId = await ctx.db.insert("notes", {
+        userId: aliceUserId,
+        profileId: speakerId,
+        text: `Note ${i}`,
+        source: "manual",
+        createdAt: i,
+      });
+      await ctx.db.insert("noteMentions", {
+        userId: aliceUserId,
+        noteId,
+        profileId: minho,
+        quote: `quote ${i}`,
+      });
+    }
+
+    return minho;
+  });
+
+  const result = await asAlice.query(api.profiles.withNotes, {
+    profileId: minhoId,
+  });
+
+  expect(result?.mentionedIn).toHaveLength(5);
+  // The count is the point of truncating: five shown, seven there.
+  expect(result?.mentionedInTotal).toBe(7);
+  // The five kept are the newest, not the first five found.
+  expect(result?.mentionedIn.map((entry) => entry.quote)).toEqual([
+    "quote 7",
+    "quote 6",
+    "quote 5",
+    "quote 4",
+    "quote 3",
+  ]);
+});

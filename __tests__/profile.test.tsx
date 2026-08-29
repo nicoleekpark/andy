@@ -33,6 +33,8 @@ function buildProfile(overrides: Partial<Record<string, unknown>> = {}) {
 function withNotes(
   notes: Record<string, unknown>[],
   mentionedIn: Record<string, unknown>[] = [],
+  /** Defaults to "nothing was cut", which is what most tests mean. */
+  mentionedInTotal = mentionedIn.length,
 ) {
   return {
     profile: buildProfile(),
@@ -44,6 +46,7 @@ function withNotes(
       mentions: (mentions as Record<string, unknown>[] | undefined) ?? [],
     })),
     mentionedIn,
+    mentionedInTotal,
   };
 }
 
@@ -153,12 +156,12 @@ describe("profile screen", () => {
     expect(screen.queryByText(/민호네 집들이/)).toBeNull();
 
     await act(async () => {
-      fireEvent.press(screen.getByText("What you said"));
+      fireEvent.press(screen.getByRole("button", { name: /show what you said/i }));
     });
     expect(screen.getByText(/민호네 집들이/)).toBeTruthy();
 
     await act(async () => {
-      fireEvent.press(screen.getByText("Hide what you said"));
+      fireEvent.press(screen.getByRole("button", { name: /hide what you said/i }));
     });
     expect(screen.queryByText(/민호네 집들이/)).toBeNull();
   });
@@ -240,4 +243,26 @@ describe("profile screen", () => {
 
     expect(result.getSegments()).toEqual(["(app)", "profile", "[id]", "capture"]);
   });
+});
+
+test("should say how many mentions were left out when the list is truncated, and stay quiet when it is not", async () => {
+  // Someone who comes up in fifty conversations should say so rather than
+  // quietly showing five; a complete list needs no count next to it.
+  const entry = {
+    noteId: "note-a",
+    createdAt: 1787933613833,
+    quote: "민호네 집들이에서",
+    aboutProfileId: "profile-other",
+    aboutName: "지선",
+  };
+
+  (useQuery as jest.Mock).mockReturnValue(withNotes([], [entry], 12));
+  const truncated = renderRouter("src/app", { initialUrl: "/profile/contact-1" });
+  await truncated;
+  expect(screen.getByText("1 of 12")).toBeTruthy();
+
+  (useQuery as jest.Mock).mockReturnValue(withNotes([], [entry]));
+  const complete = renderRouter("src/app", { initialUrl: "/profile/contact-1" });
+  await complete;
+  expect(screen.queryByText(/of 1$/)).toBeNull();
 });
