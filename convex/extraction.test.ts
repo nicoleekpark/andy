@@ -10,6 +10,7 @@ import {
   MAX_IMAGE_CHARS,
   MAX_TRANSCRIPT_CHARS,
   buildUserMessage,
+  normalizeCardName,
 } from "./extractionPrompt";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -514,4 +515,73 @@ test("should surface a RateLimitError from the business card path as a ConvexErr
   await expect(rejection).rejects.toMatchObject({
     data: "Andy is thinking about too many things at once. Try again in a moment.",
   });
+});
+
+// normalizeCardName — the floor under CARD_SYSTEM_PROMPT's capitalisation rule.
+// Pure, so it is tested directly rather than through a mocked API response; the
+// action-level test below is what proves it is actually wired in.
+
+test("should recase a name the card printed in capitals, and leave every other name exactly as it came", () => {
+  // The reported bug: a card sets its name in capitals as typography, Claude
+  // passes it through, and `JOE KING` becomes a profile name and a match key.
+  expect(normalizeCardName("JOE KING")).toBe("Joe King");
+
+  // A name the model already handled must not be touched — this function is a
+  // backstop for a failure, not a second opinion on a success.
+  expect(normalizeCardName("Sarah Chen")).toBe("Sarah Chen");
+  expect(normalizeCardName("van der Berg")).toBe("van der Berg");
+  expect(normalizeCardName("McDonald")).toBe("McDonald");
+
+  // Korean has no letter case, so it is its own upper and lower case and the
+  // guard has to let it through untouched rather than "normalising" it.
+  expect(normalizeCardName("지수")).toBe("지수");
+  expect(normalizeCardName("김지수 KIM")).toBe("김지수 Kim");
+
+  // Runs of letters, not space-separated words: initials and apostrophes keep
+  // their shape.
+  expect(normalizeCardName("J.K. ROWLING")).toBe("J.K. Rowling");
+  expect(normalizeCardName("O'BRIEN")).toBe("O'Brien");
+
+  // An empty name is extraction's "this is not a business card". It must stay
+  // empty so notes.saveCapture still rejects it.
+  expect(normalizeCardName("")).toBe("");
+});
+
+test("should return a business card name recased when Claude ignored the prompt's own capitalisation rule", async () => {
+  const t = convexTest(schema, modules);
+  const asAlice = t.withIdentity(IDENTITY);
+
+  const cardDraft = {
+    draft: {
+      primary: {
+        name: "JOE KING",
+        entityType: "person",
+        relationshipContext: null,
+        // Capitals elsewhere are what the card actually says, so they stay.
+        tags: ["ACME"],
+        firstMetDate: null,
+        keyFacts: ["SENIOR ENGINEER at ACME"],
+      },
+      mentions: [],
+    },
+    cardText: "JOE KING\nSENIOR ENGINEER\nACME",
+  };
+  createMessage.mockResolvedValueOnce(
+    buildAnthropicMessage({
+      content: [{ type: "text", text: JSON.stringify(cardDraft), citations: null }],
+    }),
+  );
+
+  const result = await asAlice.action(api.extraction.fromBusinessCard, {
+    imageBase64: "ZmFrZS1pbWFnZS1kYXRh",
+    mediaType: "image/jpeg",
+  });
+
+  expect(result.draft.primary.name).toBe("Joe King");
+  // Only the name. The body of the note is what is printed on the card, and a
+  // key fact is a sentence rather than a name — rewriting either would be this
+  // fix quietly editing the user's data.
+  expect(result.draft.primary.keyFacts).toEqual(["SENIOR ENGINEER at ACME"]);
+  expect(result.draft.primary.tags).toEqual(["ACME"]);
+  expect(result.cardText).toBe(cardDraft.cardText);
 });

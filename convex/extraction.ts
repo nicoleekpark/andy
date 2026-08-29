@@ -16,6 +16,7 @@ import {
   buildUserMessage,
   cardDraftValidator,
   draftValidator,
+  normalizeCardName,
 } from "./extractionPrompt";
 import type { CardDraft, Draft } from "./extractionPrompt";
 
@@ -258,7 +259,7 @@ export const fromBusinessCard = action({
       );
     }
 
-    return (await askClaude({
+    const card = (await askClaude({
       system: CARD_SYSTEM_PROMPT,
       schema: CARD_SCHEMA,
       content: [
@@ -274,5 +275,30 @@ export const fromBusinessCard = action({
       ],
       label: "Card extraction",
     })) as CardDraft;
+
+    // The prompt asks Claude to read `JOE KING` as the name Joe King rather than
+    // as the card's typography, and it usually does — but not every time, and a
+    // name that slips through is not a display glitch: it is written to
+    // `profiles.name`, where the next card for the same person no longer matches
+    // it. Normalising here rather than on the review screen means the save path,
+    // the screen and any future door all get the same answer. Only the name:
+    // a job title set in capitals is what the card actually says.
+    //
+    // Guarded rather than dereferenced blindly. Structured outputs make a
+    // malformed body very unlikely, but reading through it would turn that into
+    // a TypeError, and the `returns` validator below gives a far better
+    // description of what was wrong than a crash inside this function.
+    const primary = card?.draft?.primary;
+    if (typeof primary?.name !== "string") {
+      return card;
+    }
+
+    return {
+      ...card,
+      draft: {
+        ...card.draft,
+        primary: { ...primary, name: normalizeCardName(primary.name) },
+      },
+    };
   },
 });
