@@ -61,11 +61,20 @@ describe("app route tree", () => {
       screen.getByText("Tap record and say what you want to remember."),
     ).toBeTruthy();
 
+    // The scoped door has to say who it is scoped *to*, or the two routes are
+    // indistinguishable to the person standing in front of them — which is how
+    // a note recorded on 지선's page ended up asking who it was about.
+    (useQuery as jest.Mock).mockReturnValue({
+      profile: { _id: "contact-1", name: "지선", entityType: "person", tags: [], isStub: false },
+      notes: [],
+      mentionedIn: [],
+      mentionedInTotal: 0,
+    });
     const scoped = renderRouter("src/app", { initialUrl: "/profile/contact-1/capture" });
     await scoped;
     expect(scoped.getSegments()).toEqual(["(app)", "profile", "[id]", "capture"]);
     expect(
-      screen.getByText("Tap record and say what you want to remember."),
+      screen.getByText("Tap record. This note goes to 지선, whoever else comes up."),
     ).toBeTruthy();
   });
 });

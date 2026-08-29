@@ -193,6 +193,17 @@ export const fromTranscript = action({
     // Supplied by the caller so a note captured just before midnight resolves
     // "today" in the user's own timezone, not the server's.
     today: v.string(),
+    /**
+     * Who the note is about, when the user already decided that before
+     * speaking — recording from a profile's own page rather than from home.
+     *
+     * A name rather than an id, matching `notes.saveCapture`: this action
+     * never touches the database, so an id would be a value it could not
+     * check and does not need. It reaches the model as a line above the
+     * transcript, and the review screen still shows the resulting name for
+     * the user to change.
+     */
+    aboutName: v.optional(v.string()),
   },
   returns: draftValidator,
   handler: async (ctx, args) => {
@@ -221,7 +232,9 @@ export const fromTranscript = action({
       // Today's date and the transcript go in the message, not the system
       // prompt, so the system prompt stays byte-identical across calls — a date
       // in the prefix would invalidate the cache on every request.
-      content: [{ type: "text", text: buildUserMessage(text, args.today) }],
+      content: [
+        { type: "text", text: buildUserMessage(text, args.today, args.aboutName) },
+      ],
       label: "Extraction",
     })) as Draft;
   },

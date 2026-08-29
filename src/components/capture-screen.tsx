@@ -14,7 +14,7 @@ import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
 } from "expo-speech-recognition";
-import { useAction, useMutation } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import type { Draft } from "@convex/extractionPrompt";
 import { colors } from "@/constants/theme";
@@ -37,14 +37,17 @@ import { colors } from "@/constants/theme";
  * servers rather than erroring (jamsch/expo-speech-recognition#169). That is why
  * the permission strings promise transcription, not privacy.
  *
- * Note there is no `useQuery` here, deliberately. Convex's client cache is not
- * keyed by identity, so the first query on user data can paint the previous
- * account's rows for the next person who signs in; Day 1 made fixing that a
- * hard prerequisite for the first such query. Extraction is an action and
- * saving is a mutation, so this screen stays on the safe side of that line —
- * which is also why the capture is not yet pre-scoped to the profile in the
- * route, since reading that profile's name needs exactly the query being
- * avoided.
+ * The one `useQuery` here reads who the note is about, and it was blocked until
+ * the client became identity-scoped: Convex's query cache is not keyed by who
+ * asked, so the first query on user data could paint the previous account's
+ * rows for the next person to sign in. That boundary now exists in
+ * `src/app/_layout.tsx`, which is what makes pre-scoping possible at all.
+ *
+ * It is `profiles.withNotes` rather than a narrower "just the name" query on
+ * purpose. That function already carries the ownership check this needs, and
+ * a second query re-implementing it is a second place for it to be got wrong;
+ * the screen this one is reached from has usually just run it with the same
+ * argument, so it is normally a cache hit rather than a round trip.
  */
 
 /**
@@ -71,6 +74,31 @@ function localToday(): string {
 }
 
 export function CaptureScreen({ profileId }: { profileId?: string }) {
+  /**
+   * Who this note is about, when the route already said.
+   *
+   * Deciding the subject *before* speaking is the point: a note recorded on
+   * 지선's page while talking entirely about her mother is still a note about
+   * 지선, and no amount of prompting can work that out from the words alone.
+   * The name goes to extraction, which files everyone else as a mention.
+   *
+   * `"skip"` when there is no profile in the route, so capture from home does
+   * not run a query it has no argument for.
+   */
+  const scoped = useQuery(
+    api.profiles.withNotes,
+    profileId === undefined ? "skip" : { profileId },
+  );
+  // Guarded on `profileId` rather than trusting `scoped` to be undefined when
+  // the query is skipped: the subject must come from the route, so the route is
+  // what decides whether there is one.
+  const aboutName =
+    profileId === undefined ? undefined : scoped?.profile.name;
+  /** The route named a profile the user does not have, or does not own. */
+  const scopeMissing = profileId !== undefined && scoped === null;
+  /** Still resolving. Recording now would extract without the subject. */
+  const scopeLoading = profileId !== undefined && scoped === undefined;
+
   const extract = useAction(api.extraction.fromTranscript);
   const readCard = useAction(api.extraction.fromBusinessCard);
   const saveCapture = useMutation(api.notes.saveCapture);
@@ -127,7 +155,11 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
       setError(null);
       setTranscript(spoken);
       try {
-        const result = await extract({ text: spoken, today: localToday() });
+        const result = await extract({
+          text: spoken,
+          today: localToday(),
+          aboutName,
+        });
         setDraft(result);
         setPhase("review");
       } catch (e) {
@@ -142,7 +174,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
         setPhase("idle");
       }
     },
-    [extract],
+    [extract, aboutName],
   );
 
   const scanCard = useCallback(
@@ -733,7 +765,13 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
             <Text style={styles.empty}>
               {listening
                 ? "Listening — say what's new."
-                : "Tap record and say what you want to remember."}
+                : scopeMissing
+                  ? "Andy doesn't have anyone by that link."
+                  : scopeLoading
+                    ? "Finding out who this is about…"
+                    : aboutName !== undefined
+                      ? `Tap record. This note goes to ${aboutName}, whoever else comes up.`
+                      : "Tap record and say what you want to remember."}
             </Text>
           )}
         </ScrollView>
@@ -744,11 +782,15 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
           accessibilityRole="button"
           accessibilityLabel={listening ? "Stop recording" : "Start recording"}
           onPress={listening ? stop : start}
-          disabled={phase === "starting" || busy}
+          // Not recordable until the subject is known. Starting first and
+          // hoping the name arrives before the user stops talking would fail
+          // exactly when the network is slow, and fail silently — the note
+          // would be extracted as if it had come from home.
+          disabled={phase === "starting" || busy || scopeLoading || scopeMissing}
           style={[
             styles.primaryButton,
             listening && styles.recording,
-            busy && styles.disabled,
+            (busy || scopeLoading || scopeMissing) && styles.disabled,
           ]}
         >
           <Text style={styles.primaryLabel}>

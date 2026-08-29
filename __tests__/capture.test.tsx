@@ -1,6 +1,6 @@
 import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 import { Alert } from "react-native";
-import { useAction, useMutation } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { getFunctionName } from "convex/server";
 import { useSpeechRecognitionEvent } from "expo-speech-recognition";
 import * as ImagePicker from "expo-image-picker";
@@ -158,6 +158,30 @@ function makeDraft(overrides: Partial<Draft["primary"]> = {}): Draft {
  * `runExtraction` reacts to. Waits for "Save note" rather than a fixed
  * number of ticks, since extraction is an awaited action call.
  */
+/**
+ * Who `/profile/[id]/capture` resolves to.
+ *
+ * The screen reads the subject through `api.profiles.withNotes`, so these
+ * tests have to say what that returns. `undefined` is Convex's "still loading"
+ * and `null` its "not found or not yours"; both are states the screen has to
+ * handle rather than record through, which is why they get their own tests
+ * below instead of being left to the shared default.
+ */
+function scopeTo(name: string) {
+  (useQuery as jest.Mock).mockReturnValue({
+    profile: {
+      _id: "contact-1",
+      name,
+      entityType: "person",
+      tags: [],
+      isStub: false,
+    },
+    notes: [],
+    mentionedIn: [],
+    mentionedInTotal: 0,
+  });
+}
+
 async function reachReview(handlers: Record<string, Listener>, spoken: string) {
   // `start` first, exactly as the real recogniser emits it. The screen arms a
   // guard here that lets exactly one `end` begin an extraction, so a test that
@@ -176,6 +200,14 @@ async function reachReview(handlers: Record<string, Listener>, spoken: string) {
 }
 
 describe("capture screen review step", () => {
+  // Every test in here renders /profile/contact-1/capture, so the route names
+  // a profile and the screen expects to be told who it is. Left at the shared
+  // default the query would read as permanently loading, and each test would
+  // be exercising a state the real route passes through in milliseconds.
+  beforeEach(() => {
+    scopeTo("Jisoo");
+  });
+
   afterEach(() => {
     jest.clearAllMocks();
   });
@@ -384,6 +416,79 @@ describe("capture screen review step", () => {
     expect(call.draft.mentions[0].name).toBe("Minho Park");
   });
 
+  test("should tell extraction who the note is about when the route names a profile", async () => {
+    const extract = jest.fn(async () => makeDraft());
+    (useAction as jest.Mock).mockReturnValue(extract);
+    scopeTo("지선");
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", {
+      initialUrl: "/profile/contact-1/capture",
+    });
+    await result;
+    await reachReview(handlers, "어머니가 편찮으셔서 주말마다 뵌다.");
+
+    // The whole point of scoping: a note recorded on 지선's page that talks only
+    // about her mother is still a note about 지선. Nothing in the words says so,
+    // so the subject has to be carried rather than inferred.
+    expect(extract).toHaveBeenCalledWith(
+      expect.objectContaining({ aboutName: "지선" }),
+    );
+  });
+
+  test("should send no subject when capture starts from home", async () => {
+    // Typed so `mock.calls[0]` is a real argument object rather than an empty
+    // tuple — an untyped jest.fn() makes the assertion below a type error.
+    const extract = jest.fn(
+      async (_args: { text: string; today: string; aboutName?: string }) =>
+        makeDraft(),
+    );
+    (useAction as jest.Mock).mockReturnValue(extract);
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+    await reachReview(handlers, "spoken transcript");
+
+    // From home the subject is genuinely unknown, and claiming one would file
+    // the note under whoever the screen happened to be holding. Read off the
+    // call rather than matched with `objectContaining({ aboutName: undefined })`,
+    // which insists the key be present and so would fail a perfectly correct
+    // implementation that simply left it off.
+    expect(extract.mock.calls[0]?.[0].aboutName).toBeUndefined();
+  });
+
+  test("should refuse to record until it knows who the note is about", async () => {
+    (useQuery as jest.Mock).mockReturnValue(undefined);
+    captureListeners();
+
+    const result = renderRouter("src/app", {
+      initialUrl: "/profile/contact-1/capture",
+    });
+    await result;
+
+    // Recording first and hoping the name lands before the user stops talking
+    // fails precisely when the network is slow, and fails silently — the note
+    // would be extracted as though it had come from home.
+    expect(screen.getByLabelText("Start recording")).toBeDisabled();
+    expect(screen.getByText("Finding out who this is about…")).toBeTruthy();
+  });
+
+  test("should say so and stay unrecordable when the route names nobody", async () => {
+    (useQuery as jest.Mock).mockReturnValue(null);
+    captureListeners();
+
+    const result = renderRouter("src/app", {
+      initialUrl: "/profile/does-not-exist/capture",
+    });
+    await result;
+
+    expect(
+      screen.getByText("Andy doesn't have anyone by that link."),
+    ).toBeTruthy();
+    expect(screen.getByLabelText("Start recording")).toBeDisabled();
+  });
+
   test("should save a corrected mention quote, so a mistranscription cannot reach two profiles unchallenged", async () => {
     const draft = makeDraft();
     (useAction as jest.Mock).mockReturnValue(jest.fn(async () => draft));
@@ -531,6 +636,14 @@ describe("capture screen review step", () => {
 });
 
 describe("capture screen business card door", () => {
+  // Every test in here renders /profile/contact-1/capture, so the route names
+  // a profile and the screen expects to be told who it is. Left at the shared
+  // default the query would read as permanently loading, and each test would
+  // be exercising a state the real route passes through in milliseconds.
+  beforeEach(() => {
+    scopeTo("Jisoo");
+  });
+
   afterEach(() => {
     jest.clearAllMocks();
   });

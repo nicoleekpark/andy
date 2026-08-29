@@ -348,6 +348,66 @@ test("should put the transcript inside <transcript> delimiters and include today
   );
 });
 
+test("should name the subject above the transcript when the caller knows it, and say nothing when it does not", () => {
+  const scoped = buildUserMessage("어머니가 편찮으셔서.", "2026-08-27", "지선");
+  expect(scoped).toContain("This note is about: 지선");
+  // Above the transcript, not inside it: a line placed within the delimiters
+  // would be data the prompt has been told to treat as something the speaker
+  // said out loud, which is the opposite of an instruction about who to file
+  // the note under.
+  expect(scoped.indexOf("This note is about")).toBeLessThan(
+    scoped.indexOf("<transcript>"),
+  );
+
+  const unscoped = buildUserMessage("어머니가 편찮으셔서.", "2026-08-27");
+  expect(unscoped).not.toContain("This note is about");
+  // Whitespace is not a subject. Sending an empty one would tell the model the
+  // note is about somebody whose name is nothing.
+  expect(
+    buildUserMessage("어머니가 편찮으셔서.", "2026-08-27", "   "),
+  ).not.toContain("This note is about");
+});
+
+test("should forward the caller's subject to the model", async () => {
+  const t = convexTest(schema, modules);
+  const asAlice = t.withIdentity(IDENTITY);
+
+  createMessage.mockResolvedValueOnce(
+    buildAnthropicMessage({
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            primary: {
+              name: "지선",
+              entityType: "person",
+              relationshipContext: null,
+              tags: [],
+              firstMetDate: null,
+              keyFacts: ["어머니가 편찮으시다."],
+            },
+            mentions: [
+              { name: "어머니", entityType: "person", quote: "어머니가 편찮으셔서" },
+            ],
+          }),
+          citations: null,
+        },
+      ],
+    }),
+  );
+
+  await asAlice.action(api.extraction.fromTranscript, {
+    text: "어머니가 편찮으셔서 주말마다 뵌다.",
+    today: "2026-08-27",
+    aboutName: "지선",
+  });
+
+  const [request] = createMessage.mock.calls[0];
+  expect(JSON.stringify(request.messages[0].content)).toContain(
+    "This note is about: 지선",
+  );
+});
+
 // fromBusinessCard — the second door into extraction, sharing askClaude with
 // fromTranscript above. Not every property proven for the transcript door is
 // re-proven here (JSON parse failure, refusal, max_tokens, missing API key):
