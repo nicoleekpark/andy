@@ -178,16 +178,19 @@ export const saveCapture = mutation({
         // They were created from a passing mention and now have a note of their
         // own, so they are a real profile from here on.
         patch.isStub = false;
-        // Everything currently on this row came out of somebody *else's* note,
-        // where this person was a passing reference. A note about them is a
-        // direct statement and outranks that, so promotion overwrites rather
-        // than fills. Past this point the append-only rule applies as normal:
-        // a stub is the one case where the existing value is the weaker one.
+        // The one field promotion overwrites rather than fills, and only
+        // because the table requires it: a stub had to be inserted with some
+        // entityType before anybody had said what this person is, so the value
+        // sitting there is a guess made from somebody else's note. A note about
+        // them is a direct statement and outranks it.
+        //
+        // Nothing else needs an exception. A stub carries no relationship, no
+        // tags and no dates — a mention no longer claims any of those — so the
+        // ordinary fill-when-empty rules below are already right for it.
         patch.entityType = primary.entityType;
-        if (relationshipContext !== null) {
-          patch.relationshipContext = relationshipContext;
-        }
-      } else if (
+      }
+
+      if (
         existing.relationshipContext === undefined &&
         relationshipContext !== null
       ) {
@@ -234,11 +237,14 @@ export const saveCapture = mutation({
         continue;
       }
 
+      // Name, kind and nothing else. Whatever the note implied about how the
+      // speaker knows this person was never shown on the review screen, so
+      // storing it would put an unconfirmed claim on their profile — and the
+      // link's quote already records how they came up, in the note's own words.
       const stubId = await ctx.db.insert("profiles", {
         userId: user._id,
         name,
         entityType: mention.entityType,
-        relationshipContext: mention.relationshipContext ?? undefined,
         tags: [],
         isStub: true,
       });

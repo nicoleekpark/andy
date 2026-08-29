@@ -146,7 +146,6 @@ function makeDraft(overrides: Partial<Draft["primary"]> = {}): Draft {
       {
         name: "Minho",
         entityType: "person",
-        relationshipContext: null,
         quote: "her business partner Minho",
       },
     ],

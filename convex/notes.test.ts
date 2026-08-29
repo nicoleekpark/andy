@@ -14,6 +14,7 @@ const modules = import.meta.glob("./**/*.ts");
  */
 function buildDraft(overrides: {
   primaryName?: string;
+  primaryEntityType?: "person" | "animal";
   relationshipContext?: string | null;
   firstMetDate?: string | null;
   tags?: string[];
@@ -21,14 +22,13 @@ function buildDraft(overrides: {
   mentions?: {
     name: string;
     entityType?: "person" | "animal";
-    relationshipContext?: string | null;
     quote?: string;
   }[];
 } = {}) {
   return {
     primary: {
       name: overrides.primaryName ?? "지수",
-      entityType: "person" as const,
+      entityType: overrides.primaryEntityType ?? ("person" as const),
       relationshipContext: overrides.relationshipContext ?? null,
       tags: overrides.tags ?? [],
       firstMetDate: overrides.firstMetDate ?? null,
@@ -37,7 +37,6 @@ function buildDraft(overrides: {
     mentions: (overrides.mentions ?? []).map((m) => ({
       name: m.name,
       entityType: m.entityType ?? ("person" as const),
-      relationshipContext: m.relationshipContext ?? null,
       quote: m.quote ?? "came up in the note",
     })),
   };
@@ -537,23 +536,56 @@ test("should refuse and write nothing when the draft as a whole is larger than M
   });
 });
 
-test("should let a direct note overwrite a relationshipContext that came from someone else's passing mention", async () => {
+test("should leave a mentioned person's profile carrying nothing but their name and kind", async () => {
   const t = convexTest(schema, modules);
   await ensureUser(t, ALICE);
   const asAlice = t.withIdentity(ALICE);
 
-  // 민호 first appears only inside a note about 지수, so everything recorded
-  // about him comes from a passing reference in somebody else's story.
+  // 민호 appears only inside a note about 지수. The review screen shows a
+  // mention's name and its quote and nothing else, so anything else a draft
+  // claimed about him was never put in front of the user to confirm — and an
+  // unconfirmed claim must not end up on a person's profile.
   await asAlice.mutation(api.notes.saveCapture, {
     transcript: "지수를 민호네 집들이에서 만났다.",
     draft: buildDraft({
       primaryName: "지수",
-      mentions: [{ name: "민호", relationshipContext: "acquaintance" }],
+      mentions: [{ name: "민호", quote: "민호네 집들이에서" }],
     }),
     source: "voice",
   });
 
-  // Now a note about 민호 himself, which is a direct statement.
+  await t.run(async (ctx) => {
+    const minho = (await ctx.db.query("profiles").collect()).find(
+      (p) => p.name === "민호",
+    );
+    expect(minho).toBeDefined();
+    expect(minho?.isStub).toBe(true);
+    expect(minho?.entityType).toBe("person");
+    expect(minho?.tags).toEqual([]);
+    expect(minho?.relationshipContext).toBeUndefined();
+    expect(minho?.firstMetDate).toBeUndefined();
+
+    // What the note did say about him is on the link, verbatim, where it can be
+    // read back against the note it came from.
+    const link = (await ctx.db.query("noteMentions").collect())[0];
+    expect(link?.quote).toBe("민호네 집들이에서");
+  });
+});
+
+test("should fill a promoted stub's relationship from its own first note by the ordinary empty-field rule", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "지수를 민호네 집들이에서 만났다.",
+    draft: buildDraft({ primaryName: "지수", mentions: [{ name: "민호" }] }),
+    source: "voice",
+  });
+
+  // A note about 민호 himself. Nothing has to be overwritten for this to land:
+  // the stub arrived with the field empty, so promotion needs no exception for
+  // it — which is the point of the mention no longer writing one.
   await asAlice.mutation(api.notes.saveCapture, {
     transcript: "민호는 오래된 친구다.",
     draft: buildDraft({ primaryName: "민호", relationshipContext: "friend" }),
@@ -564,10 +596,40 @@ test("should let a direct note overwrite a relationshipContext that came from so
     const minho = (await ctx.db.query("profiles").collect()).find(
       (p) => p.name === "민호",
     );
-    expect(minho).toBeDefined();
     expect(minho?.isStub).toBe(false);
-    // The mention-derived value must not outrank the person's own note.
     expect(minho?.relationshipContext).toBe("friend");
+  });
+});
+
+test("should let a direct note correct the kind a passing mention had to guess", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  // entityType is the one thing a stub cannot be created without, so it is the
+  // one thing promotion still overwrites rather than fills.
+  await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "지수가 콩이 얘기를 했다.",
+    draft: buildDraft({
+      primaryName: "지수",
+      mentions: [{ name: "콩이", entityType: "person" }],
+    }),
+    source: "voice",
+  });
+
+  await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "콩이는 지수네 강아지다.",
+    draft: buildDraft({ primaryName: "콩이", primaryEntityType: "animal" }),
+    source: "voice",
+  });
+
+  await t.run(async (ctx) => {
+    const kong = (await ctx.db.query("profiles").collect()).find(
+      (p) => p.name === "콩이",
+    );
+    expect(kong?.isStub).toBe(false);
+    // The mention guessed "person"; the note about 콩이 says otherwise and wins.
+    expect(kong?.entityType).toBe("animal");
   });
 });
 

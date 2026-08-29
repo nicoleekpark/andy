@@ -174,7 +174,6 @@ test("should exclude a profile that exists only because it was mentioned in anot
         {
           name: "민호",
           entityType: "person",
-          relationshipContext: null,
           quote: "언급된 자리",
         },
       ],
@@ -272,7 +271,6 @@ test("should populate both directions of a mention: the note lists who came up i
         {
           name: "민호",
           entityType: "person",
-          relationshipContext: null,
           quote: "민호네 집들이에서",
         },
       ],
@@ -449,7 +447,6 @@ test("should never let one user's note mentioning a name leak into another user'
         {
           name: "민호",
           entityType: "person",
-          relationshipContext: null,
           quote: "민호네 집들이에서",
         },
       ],

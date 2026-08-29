@@ -113,6 +113,23 @@ export const EXTRACTION_SCHEMA = {
         },
       },
     },
+    /**
+     * A mention describes a *link*, not a person.
+     *
+     * It deliberately carries no relationship, no tags and no facts, even
+     * though a note often implies them. Everything a draft claims about
+     * somebody is confirmed on the review screen before it is saved — that
+     * step is load-bearing, because transcription errors get laundered into
+     * confident, fluent falsehoods — and the review screen shows a mention's
+     * name and its quote, nothing else. A field that is extracted, never shown,
+     * and then written to a profile is a claim about a person that no one ever
+     * agreed to. The quote says how they came up, verbatim and checkable, which
+     * is what a summarised relationship was approximating anyway.
+     *
+     * `entityType` is the one exception and only because the table requires it:
+     * a profile cannot exist without one, so a stub has to arrive with a guess.
+     * It is overwritten the moment that person gets a note of their own.
+     */
     mentions: {
       type: "array",
       description:
@@ -120,13 +137,10 @@ export const EXTRACTION_SCHEMA = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["name", "entityType", "relationshipContext", "quote"],
+        required: ["name", "entityType", "quote"],
         properties: {
           name: { type: "string" },
           entityType: entityTypeSchema,
-          relationshipContext: nullableString(
-            "Their relationship to the speaker, if the note says. Null otherwise.",
-          ),
           quote: {
             type: "string",
             description:
@@ -200,7 +214,6 @@ export const draftValidator = v.object({
     v.object({
       name: v.string(),
       entityType: v.union(v.literal("person"), v.literal("animal")),
-      relationshipContext: v.union(v.string(), v.null()),
       quote: v.string(),
     }),
   ),

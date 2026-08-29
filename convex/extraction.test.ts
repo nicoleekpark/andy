@@ -237,7 +237,6 @@ test("should return a parsed draft with mentions and nullable fields intact when
       {
         name: "민호",
         entityType: "person",
-        relationshipContext: "friend",
         quote: "민호네 집들이에서",
       },
     ],
