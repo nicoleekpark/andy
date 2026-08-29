@@ -94,7 +94,7 @@ convex/             # schema.ts, functions (queries/mutations/actions), vector i
 
 | 명령어 | 언제 | 왜 |
 | --- | --- | --- |
-| `npm run dev` | **작업할 때마다 — 여기서 시작** | 양쪽을 한 번에 띄운다: `convex dev` 가 `convex/` 아래 변경을 배포에 올리고, `expo start --dev-client` 가 설치된 빌드에 JS 번들을 공급한다. 프로세스가 둘인 이유는 **앱이 두 곳에 있기 때문**이다 — 화면은 Mac, 백엔드는 Convex 클라우드. 서로를 모른다. 명령을 하나로 합친 이유는 **두 번째만 켜는 게 실제로 반복된 실수**이기 때문이다: `npm run lint` 와 `npm run test` 는 배포된 적 없는 백엔드 코드에서도 통과하므로, 앱이 아직 없는 함수를 부르고 **에러는 화면 버그처럼 보인다.** `-k` 로 둘이 같이 죽어서 절반만 켜진 상태가 생기지 않는다. |
+| `npm run dev` | **작업할 때마다 — 여기서 시작** | 양쪽을 한 번에 띄운다: `convex dev` 가 `convex/` 아래 변경을 배포에 올리고, `expo start --dev-client` 가 설치된 빌드에 JS 번들을 공급한다. 프로세스가 둘인 이유는 **앱이 두 곳에 있기 때문**이다 — 화면은 Mac, 백엔드는 Convex 클라우드. 서로를 모른다. 명령을 하나로 합친 이유는 **두 번째만 켜는 게 실제로 반복된 실수**이기 때문이다: `npm run lint` 와 `npm run test` 는 배포된 적 없는 백엔드 코드에서도 통과하므로, 앱이 아직 없는 함수를 부르고 **에러는 화면 버그처럼 보인다.** `-k` 로 둘이 같이 죽어서 절반만 켜진 상태가 생기지 않는다. `-i --default-input-target expo` 는 **키 입력을 Expo 쪽으로 보낸다** — `r`(리로드), `j`(디버거), `m`(개발 메뉴)가 그대로 동작한다. 없으면 `concurrently` 가 키 입력을 전부 삼켜서 리로드 단축키가 조용히 아무것도 안 한다. |
 | `npm start` | 드물게 — 아래 참고 | Expo 서버만. 그냥 `expo start` 가 아니라 `--dev-client` 인 이유는 이 앱이 Expo Go 에서 못 돌기 때문. |
 | `npm run test` | 슬라이스를 끝났다고 하기 전 | 러너 두 개를 순서대로 돌린다 — `src/` 는 jest, `convex/` 는 vitest. Convex 함수는 jest 로 테스트할 수 없어서, 러너 하나만 돌리면 절반이 조용히 건너뛰어진다. |
 | `npm run lint` | 커밋 전마다 | `expo lint convex src` 후 `tsc --noEmit` 을 두 번 — 루트 한 번, `convex/tsconfig.json` 으로 한 번. Convex 코드는 Node 가 아니라 V8 에서 도는데, Node 전용 전역이 섞여 들어간 걸 잡는 건 두 번째 검사뿐이다. |
