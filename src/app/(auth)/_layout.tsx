@@ -1,6 +1,6 @@
 import { Redirect, Stack } from "expo-router";
-import { StyleSheet, View } from "react-native";
 import { useConvexAuth } from "convex/react";
+import { Connecting } from "@/components/connecting";
 import { colors } from "@/constants/theme";
 
 /**
@@ -10,11 +10,12 @@ import { colors } from "@/constants/theme";
 export default function AuthLayout() {
   const { isLoading, isAuthenticated } = useConvexAuth();
 
-  // Same paper ground as (app)'s loading branch — returning null here would
-  // flash white on the other side of the mirror, which is the exact thing the
-  // (app) branch exists to avoid.
+  // The same component as (app)'s loading branch — returning null here would
+  // flash white on the other side of the mirror, which is the exact thing that
+  // branch exists to avoid, and a caller stuck offline needs the same way out
+  // whichever side of the gate they are on.
   if (isLoading) {
-    return <View style={styles.loading} />;
+    return <Connecting />;
   }
 
   if (isAuthenticated) {
@@ -30,7 +31,3 @@ export default function AuthLayout() {
     />
   );
 }
-
-const styles = StyleSheet.create({
-  loading: { flex: 1, backgroundColor: colors.paper },
-});

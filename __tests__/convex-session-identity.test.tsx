@@ -37,8 +37,25 @@ import RootLayout from "../src/app/_layout";
  * is mocked as a jest.fn() there too, so the client it was actually given is
  * readable off its mock.calls.
  */
+/**
+ * The mocked Stack doubles as the probe for the retry context. It is the only
+ * component this file renders *inside* the provider, and reaching that value is
+ * the only way to press "Try again" without mounting the connecting screen and
+ * waiting twenty seconds for the button to appear — which is
+ * __tests__/connecting.test.tsx's job, not this file's.
+ */
+const mockRetryProbe: { current?: () => void } = {};
+
 jest.mock("expo-router", () => {
-  const Stack = () => null;
+  const React = require("react");
+  const {
+    RetryConnectionContext,
+  } = require("../src/components/connecting");
+
+  const Stack = () => {
+    mockRetryProbe.current = React.useContext(RetryConnectionContext);
+    return null;
+  };
   Stack.Screen = () => null;
   return { Stack };
 });
@@ -101,6 +118,44 @@ describe("Convex client scoped to identity", () => {
     const secondRenderClient = latestClient();
 
     expect(secondRenderClient).toBe(firstRenderClient);
+  });
+
+  test("should build a new Convex client when a stuck connection is retried", async () => {
+    // The button on the connecting screen is only worth having if it does
+    // something Convex is not already doing on its own. Its socket retries
+    // itself; what does not retry is everything built once per client — the
+    // connection and the Clerk token fetch behind it — so "try again" has to
+    // mean a new client or it means nothing.
+    (useAuth as jest.Mock).mockReturnValue(authState("user_a"));
+    const result = await render(<RootLayout />);
+    const beforeRetry = latestClient();
+
+    await act(async () => {
+      mockRetryProbe.current?.();
+    });
+    await result.rerender(<RootLayout />);
+
+    expect(latestClient()).not.toBe(beforeRetry);
+  });
+
+  test("should keep identity in the key so a retry can never merge two users onto one client", async () => {
+    // Guards the shape of the key rather than its value: appending the attempt
+    // to the user id keeps both live, where replacing the id with the attempt
+    // would still pass every retry test above and quietly reopen the cache leak
+    // that this whole component exists to close.
+    (useAuth as jest.Mock).mockReturnValue(authState("user_a"));
+    const result = await render(<RootLayout />);
+
+    await act(async () => {
+      mockRetryProbe.current?.();
+    });
+    await result.rerender(<RootLayout />);
+    const clientForUserA = latestClient();
+
+    (useAuth as jest.Mock).mockReturnValue(authState("user_b"));
+    await result.rerender(<RootLayout />);
+
+    expect(latestClient()).not.toBe(clientForUserA);
   });
 
   test("should close the replaced client when identity changes", async () => {

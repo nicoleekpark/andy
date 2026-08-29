@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ClerkProvider, useAuth } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { Stack } from "expo-router";
+import { RetryConnectionContext } from "@/components/connecting";
 
 /**
  * Missing config would otherwise surface much later as "signed out forever" or as
@@ -96,7 +97,32 @@ function ConvexSession({ children }: { children: React.ReactNode }) {
 function ConvexScopedToIdentity({ children }: { children: React.ReactNode }) {
   const { userId } = useAuth();
 
-  return <ConvexSession key={userId ?? "signed-out"}>{children}</ConvexSession>;
+  /**
+   * The "Try again" on the connecting screen, wired to the only thing that can
+   * actually help.
+   *
+   * Convex is already retrying its socket on its own, so a button that merely
+   * restarted a timer would be decoration. What is not retried is everything
+   * built once per client — the connection and the Clerk token fetch behind it
+   * — and the way to redo that is the same remount this key already performs
+   * for identity changes. Counting attempts reuses that machinery rather than
+   * inventing a second one, and costs the query cache, which is exactly what a
+   * caller who has reached this screen has none of.
+   *
+   * It cannot substitute for one identity's key: the attempt is appended to the
+   * user id rather than replacing it, so no retry can ever land two identities
+   * on the same client.
+   */
+  const [attempt, setAttempt] = useState(0);
+  const retry = useCallback(() => setAttempt((n) => n + 1), []);
+
+  return (
+    <RetryConnectionContext.Provider value={retry}>
+      <ConvexSession key={`${userId ?? "signed-out"}:${attempt}`}>
+        {children}
+      </ConvexSession>
+    </RetryConnectionContext.Provider>
+  );
 }
 
 /**

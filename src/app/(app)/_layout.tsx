@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 import { Redirect, Stack } from "expo-router";
-import { StyleSheet, View } from "react-native";
 import { useConvexAuth, useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
+import { Connecting } from "@/components/connecting";
 import { colors } from "@/constants/theme";
 
 /**
@@ -36,9 +36,10 @@ export default function AppLayout() {
   // Known cost of gating on Convex rather than Clerk: offline, isLoading never
   // resolves, because the flag only flips once the server confirms the token.
   // A signed-in user offline sits here rather than reaching the app. That fails
-  // closed, but it is a real behaviour, not a bug to be surprised by later.
+  // closed, which is the right direction — but it is why <Connecting /> escalates
+  // to an explanation and a way out instead of spinning indefinitely.
   if (isLoading) {
-    return <View style={styles.loading} />;
+    return <Connecting />;
   }
 
   if (!isAuthenticated) {
@@ -60,7 +61,3 @@ export default function AppLayout() {
     </Stack>
   );
 }
-
-const styles = StyleSheet.create({
-  loading: { flex: 1, backgroundColor: colors.paper },
-});
