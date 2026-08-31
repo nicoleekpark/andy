@@ -42,13 +42,17 @@ export default function HomeScreen() {
           keyExtractor={(item) => item.profile._id}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
-            people === undefined ? (
-              <Text style={styles.quiet}>Loading…</Text>
-            ) : (
-              <Text style={styles.quiet}>
-                No one yet — tap record to remember your first person.
-              </Text>
-            )
+            // Centred in the space the list would have filled. `list` already
+            // grows to that space, so the wrapper only has to say where in it.
+            <View style={styles.emptyState}>
+              {people === undefined ? (
+                <Text style={styles.quiet}>Loading…</Text>
+              ) : (
+                <Text style={styles.quiet}>
+                  No one yet — tap record to remember your first person.
+                </Text>
+              )}
+            </View>
           }
           renderItem={({ item }) => (
             <Pressable
@@ -96,12 +100,13 @@ const styles = StyleSheet.create({
   rowName: { color: colors.ink, fontSize: 18 },
   rowMeta: { color: colors.ink, fontSize: 13, opacity: 0.55 },
 
+  emptyState: { flex: 1, justifyContent: "center", alignItems: "center" },
   quiet: {
     color: colors.ink,
     fontSize: 15,
     opacity: 0.6,
     lineHeight: 22,
-    paddingTop: 8,
+    textAlign: "center",
   },
 
   record: {

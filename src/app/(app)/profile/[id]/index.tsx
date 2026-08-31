@@ -75,7 +75,12 @@ export default function ProfileScreen() {
     <>
       <Stack.Screen options={{ title }} />
       <View style={styles.container}>
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.content,
+            result === undefined || result === null ? styles.contentOnlyStatus : null,
+          ]}
+        >
         {result === undefined ? (
           // `undefined` is Convex's "still loading", distinct from the `null`
           // the query returns for a profile that isn't there or isn't yours.
@@ -266,6 +271,9 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.paper },
   content: { padding: 24, gap: 16, paddingBottom: 24 },
+  /** A screen holding one status line centres it rather than hanging it from
+      the top edge, where it reads as a page that stopped loading. */
+  contentOnlyStatus: { flexGrow: 1, justifyContent: "center" },
 
   name: { color: colors.ink, fontSize: 28 },
   metaRow: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
@@ -346,5 +354,11 @@ const styles = StyleSheet.create({
   backlink: { gap: 3 },
   rowMeta: { color: colors.moss, fontSize: 14 },
 
-  quiet: { color: colors.ink, fontSize: 15, opacity: 0.6, lineHeight: 22 },
+  quiet: {
+    color: colors.ink,
+    fontSize: 15,
+    opacity: 0.6,
+    lineHeight: 22,
+    textAlign: "center",
+  },
 });
