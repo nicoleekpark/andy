@@ -392,10 +392,30 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
     setPhase("saving");
     setError(null);
     try {
-      const { profileId } = await saveCapture({ transcript, draft, source });
-      // `replace`, not `push`: the capture is finished, and backing into a
-      // draft that has already been written would invite saving it twice.
-      router.replace(`/profile/${profileId}`);
+      const saved = await saveCapture({ transcript, draft, source });
+
+      // Never `push`: the capture is finished, and backing into a draft that
+      // has already been written would invite saving it twice.
+      //
+      // When the note landed on the profile this capture was opened from, the
+      // screen to show is already sitting underneath — so close this one
+      // rather than stacking another copy of it. `replace` would leave the
+      // original behind, and three notes in a row meant three profile screens
+      // to back out of before reaching home. Convex queries are live, so the
+      // profile revealed below already has the new note on it.
+      if (
+        profileId !== undefined &&
+        saved.profileId === profileId &&
+        router.canGoBack()
+      ) {
+        router.back();
+        return;
+      }
+
+      // Otherwise the note went somewhere else — the user renamed the subject,
+      // or capture started from home — and that profile is not on the stack to
+      // return to.
+      router.replace(`/profile/${saved.profileId}`);
     } catch (e) {
       setError(
         e instanceof Error && e.message
@@ -404,7 +424,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
       );
       setPhase("review");
     }
-  }, [draft, transcript, source, saveCapture]);
+  }, [draft, transcript, source, saveCapture, profileId]);
 
   /** Edit one field of the draft's primary person. */
   const editPrimary = useCallback((patch: Partial<Draft["primary"]>) => {
@@ -749,7 +769,15 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
       <View style={styles.container}>
         <ScrollView
           style={styles.transcriptArea}
-          contentContainerStyle={styles.transcriptContent}
+          // Centred while the screen is only holding a status line, top-aligned
+          // once there are words to read: a sentence pinned to the top of an
+          // otherwise empty screen reads as a fragment of a page that failed to
+          // load, which is exactly the wrong impression for "we can't reach the
+          // server" to give.
+          contentContainerStyle={[
+            styles.transcriptContent,
+            body ? null : styles.transcriptContentEmpty,
+          ]}
         >
           {body ? (
             <Text style={styles.transcript}>
@@ -873,10 +901,21 @@ const styles = StyleSheet.create({
 
   transcriptArea: { flex: 1 },
   transcriptContent: { paddingVertical: 8 },
+  transcriptContentEmpty: {
+    flexGrow: 1,
+    justifyContent: "center",
+    paddingHorizontal: 8,
+  },
   transcript: { color: colors.ink, fontSize: 18, lineHeight: 27 },
   /** The unfinalised tail, dimmed so it reads as "still deciding". */
   interim: { color: colors.ink, opacity: 0.45 },
-  empty: { color: colors.ink, fontSize: 15, opacity: 0.6 },
+  empty: {
+    color: colors.ink,
+    fontSize: 15,
+    opacity: 0.6,
+    lineHeight: 22,
+    textAlign: "center",
+  },
 
   field: { gap: 8 },
   fieldLabel: {

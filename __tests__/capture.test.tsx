@@ -4,6 +4,7 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import { getFunctionName } from "convex/server";
 import { useSpeechRecognitionEvent } from "expo-speech-recognition";
 import * as ImagePicker from "expo-image-picker";
+import { router } from "expo-router";
 import { renderRouter } from "expo-router/testing-library";
 import { api } from "@convex/_generated/api";
 import type { Draft } from "@convex/extractionPrompt";
@@ -414,6 +415,48 @@ describe("capture screen review step", () => {
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
     const [call] = saveCapture.mock.calls[0];
     expect(call.draft.mentions[0].name).toBe("Minho Park");
+  });
+
+  test("should leave home one back press away however many notes are recorded from a profile", async () => {
+    (useAction as jest.Mock).mockReturnValue(jest.fn(async () => makeDraft()));
+    mockSaveCapture(
+      jest.fn(async () => ({
+        profileId: "contact-1",
+        noteId: "note-1",
+        createdProfile: false,
+        createdMentionCount: 0,
+      })),
+    );
+
+    const result = renderRouter("src/app", { initialUrl: "/" });
+    await result;
+    await act(async () => {
+      router.push("/profile/contact-1");
+    });
+
+    // Three notes in a row, the way somebody actually uses a profile they are
+    // catching up on. Saving used to `replace` the capture with another copy of
+    // the profile, so each round left one more of them on the stack and getting
+    // back to home took as many presses as notes recorded.
+    for (let round = 0; round < 3; round += 1) {
+      const handlers = captureListeners();
+      await act(async () => {
+        router.push("/profile/contact-1/capture");
+      });
+      await reachReview(handlers, `note number ${round}`);
+      await act(async () => {
+        fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+      });
+      await waitFor(() =>
+        expect(result.getPathname()).toBe("/profile/contact-1"),
+      );
+    }
+
+    await act(async () => {
+      router.back();
+    });
+
+    expect(result.getPathname()).toBe("/");
   });
 
   test("should tell extraction who the note is about when the route names a profile", async () => {
