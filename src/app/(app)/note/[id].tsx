@@ -205,9 +205,24 @@ export default function NoteScreen() {
               Nothing was pulled out of this one — the note itself is below.
             </Text>
           )}
-          <Text style={styles.hint}>
-            Clearing a line removes that fact.
-          </Text>
+          <View style={styles.factActions}>
+            <Text style={styles.hint}>Clearing a line removes that fact.</Text>
+            {/*
+              The other half of editing. A note whose facts can only shrink is
+              one you cannot correct by adding what extraction missed, which is
+              most of what is wrong with a note weeks later.
+            */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Add a fact"
+              onPress={() =>
+                edit({ keyFacts: [...(working?.keyFacts ?? []), ""] })
+              }
+              hitSlop={8}
+            >
+              <Text style={styles.addLine}>Add a fact</Text>
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.field}>
@@ -286,7 +301,14 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   textInput: { fontSize: 15, lineHeight: 22 },
-  hint: { color: colors.ink, fontSize: 12, opacity: 0.5 },
+  hint: { color: colors.ink, fontSize: 12, opacity: 0.5, flex: 1 },
+  factActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  addLine: { color: colors.moss, fontSize: 13 },
   quiet: { color: colors.ink, fontSize: 15, opacity: 0.6, lineHeight: 22 },
   error: { color: colors.alert, fontSize: 14, lineHeight: 21 },
 

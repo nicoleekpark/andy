@@ -668,6 +668,119 @@ describe("capture screen review step", () => {
     expect(screen.getByDisplayValue("지선")).toBeTruthy();
   });
 
+  test("should send typed words through the same pipeline, filed as written", async () => {
+    const extract = jest.fn(
+      async (_args: { text: string; today: string; aboutName?: string }) =>
+        makeDraft({ name: "지선" }),
+    );
+    (useAction as jest.Mock).mockReturnValue(extract);
+    const saveCapture = jest.fn(
+      async (_args: {
+        transcript: string;
+        draft: Draft;
+        source: string;
+        resolutions: { name: string; profileId: string }[];
+      }) => ({
+        profileId: "profile-1",
+        noteId: "note-1",
+        createdProfile: true,
+        createdMentionCount: 0,
+      }),
+    );
+    mockSaveCapture(saveCapture);
+    scopeTo("지선");
+    captureListeners();
+
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Type it instead" }));
+    });
+    await act(async () => {
+      fireEvent.changeText(
+        screen.getByLabelText("Type a note"),
+        "지선은 브랜딩 디자이너다.",
+      );
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Read what I typed" }));
+    });
+
+    // Same extraction, same review step, same save — only the door differs.
+    await waitFor(() =>
+      expect(extract.mock.calls[0]?.[0].text).toBe("지선은 브랜딩 디자이너다."),
+    );
+    expect(screen.getByText("What you wrote")).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+    });
+    await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
+    // The one difference that reaches the database.
+    expect(saveCapture.mock.calls[0]?.[0].source).toBe("manual");
+  });
+
+  test("should not read an empty typed note", async () => {
+    const extract = jest.fn(async () => makeDraft());
+    (useAction as jest.Mock).mockReturnValue(extract);
+    scopeTo("지선");
+    captureListeners();
+
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Type it instead" }));
+    });
+
+    expect(screen.getByLabelText("Read what I typed")).toBeDisabled();
+    expect(extract).not.toHaveBeenCalled();
+  });
+
+  test("should let a fact be added to a draft that came back with none", async () => {
+    const draft = makeDraft({ name: "지선", keyFacts: [] });
+    (useAction as jest.Mock).mockReturnValue(jest.fn(async () => draft));
+    const saveCapture = jest.fn(
+      async (_args: {
+        transcript: string;
+        draft: Draft;
+        source: string;
+        resolutions: { name: string; profileId: string }[];
+      }) => ({
+        profileId: "profile-1",
+        noteId: "note-1",
+        createdProfile: true,
+        createdMentionCount: 0,
+      }),
+    );
+    mockSaveCapture(saveCapture);
+    scopeTo("지선");
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+    await reachReview(handlers, "지선을 오늘 만났다.");
+
+    // "Nothing pulled out of this one" was a dead end, on exactly the notes
+    // extraction understood least.
+    expect(screen.getByText("Nothing pulled out of this one.")).toBeTruthy();
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Add a fact" }));
+    });
+    await act(async () => {
+      fireEvent.changeText(screen.getByLabelText("Fact 1"), "브랜딩 디자이너다.");
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+    });
+
+    await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
+    expect(saveCapture.mock.calls[0]?.[0].draft.primary.keyFacts).toEqual([
+      "브랜딩 디자이너다.",
+    ]);
+  });
+
   test("should say a misheard mention is about to invent somebody too", async () => {
     const draft = makeDraft({ name: "지선" });
     // Recognition heard "민호" as "민우". The subject is fine; the person the

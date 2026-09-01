@@ -287,4 +287,39 @@ describe("note screen", () => {
       expect(screen.getByText("Andy couldn't find that note.")).toBeTruthy(),
     );
   });
+
+  test("should let a fact be added to a saved note", async () => {
+    mockQueries(savedNote({ keyFacts: undefined }));
+    const updateNote = jest.fn(
+      async (_args: { noteId: string; text: string; keyFacts: string[] }) =>
+        null,
+    );
+    mockNoteMutations({ update: updateNote });
+
+    const result = renderRouter("src/app", { initialUrl: "/profile/contact-1" });
+    await result;
+    await act(async () => {
+      router.push("/note/note-1");
+    });
+
+    // Editing that can only remove is half an edit. What is usually wrong with
+    // a note weeks later is what extraction never wrote down.
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Add a fact" }));
+    });
+    await act(async () => {
+      fireEvent.changeText(
+        screen.getByLabelText("Fact 1"),
+        "어머니가 요즘 많이 힘들어하신다",
+      );
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Save changes" }));
+    });
+
+    await waitFor(() => expect(updateNote).toHaveBeenCalledTimes(1));
+    expect(updateNote.mock.calls[0]?.[0].keyFacts).toEqual([
+      "어머니가 요즘 많이 힘들어하신다",
+    ]);
+  });
 });

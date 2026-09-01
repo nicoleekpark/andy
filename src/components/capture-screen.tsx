@@ -259,7 +259,24 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
    * identical either way — this only decides what the note body is called on
    * screen and what `notes.source` records.
    */
-  const [source, setSource] = useState<"voice" | "business_card">("voice");
+  const [source, setSource] = useState<"voice" | "business_card" | "manual">(
+    "voice",
+  );
+
+  /**
+   * Words being typed instead of spoken, or `null` when nobody is typing.
+   *
+   * PROJECT_SCOPE.md has "manual profile create/edit (fallback when voice isn't
+   * used)" in Must Have, and recognition being wrong is not the only reason to
+   * want it: some rooms you cannot talk in, and some notes are easier written.
+   *
+   * It joins the pipeline at the same place a transcript does, so extraction,
+   * the review step, the "which person?" question and saving are all the ones
+   * already built and tested. The only difference that reaches the database is
+   * `source`, which decides whether the body is called "What you said" or
+   * "What you wrote".
+   */
+  const [typing, setTyping] = useState<string | null>(null);
 
   const [locale, setLocale] = useState(DEFAULT_LOCALE);
   const [preferOnDevice, setPreferOnDevice] = useState(true);
@@ -837,6 +854,21 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
                 </View>
               ))
             )}
+            {/*
+              Without this the facts can only ever be edited or thrown away,
+              never added to — and "nothing pulled out of this one" was a dead
+              end, on exactly the notes extraction understood least.
+            */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Add a fact"
+              onPress={() =>
+                editPrimary({ keyFacts: [...draft.primary.keyFacts, ""] })
+              }
+              hitSlop={8}
+            >
+              <Text style={styles.addLine}>Add a fact</Text>
+            </Pressable>
           </Field>
 
           {draft.primary.tags.length > 0 ? (
@@ -944,7 +976,13 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
           ) : null}
 
           <Field
-            label={source === "business_card" ? "What the card says" : "What you said"}
+            label={
+              source === "business_card"
+                ? "What the card says"
+                : source === "manual"
+                  ? "What you wrote"
+                  : "What you said"
+            }
           >
             <Text style={styles.quiet}>
               Correcting this fixes the note itself. The facts above stay as
@@ -956,7 +994,11 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
               style={[styles.input, styles.transcriptInput]}
               multiline
               accessibilityLabel={
-                source === "business_card" ? "What the card says" : "What you said"
+                source === "business_card"
+                  ? "What the card says"
+                  : source === "manual"
+                    ? "What you wrote"
+                    : "What you said"
               }
             />
             {/*
@@ -1181,6 +1223,66 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
           <Text style={styles.secondaryLabel}>Scan a business card</Text>
         </Pressable>
 
+        {typing === null ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Type it instead"
+            onPress={() => {
+              setSource("manual");
+              setError(null);
+              setTyping("");
+            }}
+            disabled={listening || busy || phase === "starting"}
+            style={styles.secondaryButton}
+          >
+            <Text style={styles.secondaryLabel}>Type it instead</Text>
+          </Pressable>
+        ) : (
+          <View style={styles.typing}>
+            <TextInput
+              value={typing}
+              onChangeText={setTyping}
+              style={[styles.input, styles.transcriptInput]}
+              multiline
+              autoFocus
+              placeholder="What do you want to remember?"
+              placeholderTextColor={colors.line}
+              accessibilityLabel="Type a note"
+            />
+            <View style={styles.row}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Read what I typed"
+                onPress={() => void runExtraction(typing)}
+                disabled={typing.trim() === "" || busy}
+                style={[
+                  styles.primaryButton,
+                  styles.grow,
+                  (typing.trim() === "" || busy) && styles.disabled,
+                ]}
+              >
+                <Text style={styles.primaryLabel}>
+                  {phase === "extracting" ? "Reading it back…" : "Read it"}
+                </Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Stop typing"
+                onPress={() => {
+                  setTyping(null);
+                  // Back to the door this screen opens on, or a later recording
+                  // would be filed as something the user wrote.
+                  setSource("voice");
+                }}
+                disabled={busy}
+                style={styles.secondaryButton}
+              >
+                <Text style={styles.secondaryLabel}>Cancel</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
+
         {/*
           Measurement instrument, not product. PROJECT_SCOPE.md requires Korean
           accuracy to be measured on Day 2, and that means being able to switch
@@ -1315,6 +1417,9 @@ const styles = StyleSheet.create({
   // opposite of the truth.
   mentionQuoteInput: { fontSize: 14, lineHeight: 21 },
   transcriptInput: { fontSize: 15, lineHeight: 22 },
+  addLine: { color: colors.moss, fontSize: 13, paddingTop: 4 },
+  typing: { gap: 12 },
+  grow: { flex: 1 },
 
   checkRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   checkBox: {
