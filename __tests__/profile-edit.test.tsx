@@ -24,7 +24,7 @@ function profile(overrides: Record<string, unknown> = {}) {
       name: "JOE KING",
       entityType: "person",
       tags: ["cleaning"],
-      isStub: false,
+      autoCreated: false,
       ...overrides,
     },
     notes: [],

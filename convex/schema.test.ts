@@ -14,21 +14,21 @@ test("should round-trip mentionedEntityIds as an array of profile ids when a not
       name: "Alice",
       entityType: "person",
       tags: [],
-      isStub: false,
+      autoCreated: false,
     });
     const mentionedA = await ctx.db.insert("profiles", {
       userId,
       name: "Bob",
       entityType: "person",
       tags: [],
-      isStub: true,
+      autoCreated: true,
     });
     const mentionedB = await ctx.db.insert("profiles", {
       userId,
       name: "Rex",
       entityType: "animal",
       tags: [],
-      isStub: true,
+      autoCreated: true,
     });
 
     const noteId = await ctx.db.insert("notes", {
@@ -84,7 +84,7 @@ test("should leave a note with no mentions with no links at all", async () => {
       name: "Alice",
       entityType: "person",
       tags: [],
-      isStub: false,
+      autoCreated: false,
     });
 
     const noteId = await ctx.db.insert("notes", {
@@ -114,7 +114,7 @@ test("should insert a note with no embedding when the embedding pipeline has not
       name: "Alice",
       entityType: "person",
       tags: [],
-      isStub: false,
+      autoCreated: false,
     });
 
     const noteId = await ctx.db.insert("notes", {
@@ -139,7 +139,7 @@ test("should accept both a numeric metric shape and a non-numeric metric shape",
       name: "Rex",
       entityType: "animal",
       tags: [],
-      isStub: false,
+      autoCreated: false,
     });
 
     const weightId = await ctx.db.insert("metrics", {
@@ -182,14 +182,14 @@ test("should only return user A rows when querying profiles, notes, metrics, and
       name: "Alice's Contact",
       entityType: "person",
       tags: [],
-      isStub: false,
+      autoCreated: false,
     });
     const profileB = await ctx.db.insert("profiles", {
       userId: userB,
       name: "Bob's Contact",
       entityType: "person",
       tags: [],
-      isStub: false,
+      autoCreated: false,
     });
 
     await ctx.db.insert("notes", {
@@ -281,7 +281,7 @@ test("should reject an invalid entityType value on profiles", async () => {
         // @ts-expect-error - intentionally invalid to assert schema validation rejects it
         entityType: "robot",
         tags: [],
-        isStub: false,
+        autoCreated: false,
       });
     }),
   ).rejects.toThrow();

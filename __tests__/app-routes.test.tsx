@@ -80,7 +80,7 @@ describe("app route tree", () => {
     // indistinguishable to the person standing in front of them — which is how
     // a note recorded on 지선's page ended up asking who it was about.
     mockCaptureQueries({
-      profile: { _id: "contact-1", name: "지선", entityType: "person", tags: [], isStub: false },
+      profile: { _id: "contact-1", name: "지선", entityType: "person", tags: [], autoCreated: false },
       notes: [],
       mentionedIn: [],
       mentionedInTotal: 0,

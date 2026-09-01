@@ -190,11 +190,11 @@ export const withNotes = query({
  * later — but the home screen is a list of people you keep, and after fifty
  * notes it would otherwise fill with names you heard once and never chose.
  *
- * Membership is derived from the notes rather than read off `profiles.isStub`.
- * The recency ordering needs every note anyway, so the answer is already in
- * hand: storing the same fact twice only creates something that can go stale
- * (a note deleted later would leave the flag lying). Worth remembering when
- * deciding whether that column earns its place at all.
+ * Membership is derived from the notes rather than from `autoCreated`, and the
+ * two are not the same question. `autoCreated` says who invented the row; this
+ * list is about who has been written about, which the recency ordering has to
+ * count anyway. Reading the flag instead would answer a different question and
+ * go stale the first time a note was deleted.
  */
 export const recent = query({
   args: {},
@@ -332,9 +332,9 @@ export const updateProfile = mutation({
       firstMetDate: firstMetDate === "" ? undefined : firstMetDate,
       tags,
       // Editing a person by hand is choosing to keep them, which is exactly
-      // what `isStub` means. Left true, they would vanish the moment the note
+      // what `autoCreated` means. Left true, they would vanish the moment the note
       // that first named them was deleted.
-      isStub: false,
+      autoCreated: false,
     });
 
     return null;

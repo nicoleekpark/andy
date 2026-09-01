@@ -34,7 +34,7 @@ function buildPerson(overrides: Partial<Record<string, unknown>> = {}) {
       name: "지수",
       entityType: "person",
       tags: [],
-      isStub: false,
+      autoCreated: false,
       ...((overrides.profile as object) ?? {}),
     },
     lastNoteAt: new Date("2026-08-20").getTime(),

@@ -192,7 +192,7 @@ export const saveCapture = mutation({
         relationshipContext: relationshipContext ?? undefined,
         tags: mergeTags([], primary.tags),
         firstMetDate: primary.firstMetDate ?? undefined,
-        isStub: false,
+        autoCreated: false,
       });
       createdProfile = true;
     } else {
@@ -204,10 +204,10 @@ export const saveCapture = mutation({
       // only filled in when empty, and tags accumulate.
       const patch: Partial<Doc<"profiles">> = {};
 
-      if (existing.isStub) {
+      if (existing.autoCreated) {
         // They were created from a passing mention and now have a note of their
         // own, so they are a real profile from here on.
-        patch.isStub = false;
+        patch.autoCreated = false;
         // The one field promotion overwrites rather than fills, and only
         // because the table requires it: a stub had to be inserted with some
         // entityType before anybody had said what this person is, so the value
@@ -241,10 +241,10 @@ export const saveCapture = mutation({
     }
 
     // Mentions become real rows so that "who was at that dinner" is answerable
-    // later, but they are marked `isStub` until they get a note of their own —
-    // the difference between someone the user recorded and someone who merely
-    // came up. The link itself is written after the note exists, since it needs
-    // the note's id.
+    // later, but they are marked `autoCreated` — Andy made them up from a name
+    // in passing, rather than the user choosing to keep somebody. That is what
+    // decides whether they survive the note being deleted. The link itself is
+    // written after the note exists, since it needs the note's id.
     const links: { profileId: Id<"profiles">; quote: string }[] = [];
     const seen = new Set<string>([matchKey(primaryName)]);
     let createdMentionCount = 0;
@@ -276,7 +276,7 @@ export const saveCapture = mutation({
         name,
         entityType: mention.entityType,
         tags: [],
-        isStub: true,
+        autoCreated: true,
       });
       links.push({ profileId: stubId, quote });
       createdMentionCount += 1;
@@ -463,7 +463,7 @@ export const updateNote = mutation({
  * user never asked for: it exists because a note named someone in passing, and
  * once that note is gone it has no notes of its own, no mentions, and no way to
  * be reached from any screen — an invisible row holding a real person's name.
- * `isStub` earns its place here, as the only record of which profiles were
+ * `autoCreated` earns its place here, as the only record of which profiles were
  * created by inference rather than chosen.
  *
  * A profile the user did choose is never touched, even when this was its last
@@ -512,7 +512,7 @@ export const remove = mutation({
     let removedStubCount = 0;
     for (const profileId of mentioned) {
       const profile = await ctx.db.get("profiles", profileId);
-      if (profile === null || profile.userId !== user._id || !profile.isStub) {
+      if (profile === null || profile.userId !== user._id || !profile.autoCreated) {
         continue;
       }
 

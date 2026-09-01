@@ -186,7 +186,7 @@ function scopeTo(name: string, ambiguous: unknown[] = []) {
             name,
             entityType: "person",
             tags: [],
-            isStub: false,
+            autoCreated: false,
           },
           notes: [],
           mentionedIn: [],

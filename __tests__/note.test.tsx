@@ -68,7 +68,7 @@ function mockQueries(note: ReturnType<typeof savedNote> | null) {
             name: "지선",
             entityType: "person",
             tags: [],
-            isStub: false,
+            autoCreated: false,
           },
           notes: [],
           mentionedIn: [],

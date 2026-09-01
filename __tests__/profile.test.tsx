@@ -20,7 +20,7 @@ function buildProfile(overrides: Partial<Record<string, unknown>> = {}) {
     name: "지수",
     entityType: "person",
     tags: [],
-    isStub: false,
+    autoCreated: false,
     ...overrides,
   };
 }

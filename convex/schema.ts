@@ -30,7 +30,19 @@ export default defineSchema({
     firstMetDate: v.optional(v.string()),
     contactId: v.optional(v.string()), // linked iOS Contacts identifier
     photoStorageId: v.optional(v.id("_storage")),
-    isStub: v.boolean(), // true = auto-created purely from a mention, no direct note yet
+    /**
+     * True when Andy created this row rather than the user choosing to keep
+     * the person: somebody named in passing inside a note about somebody else.
+     *
+     * It is not "has no notes of their own", which is what the old name
+     * `isStub` described and what could simply be counted. Deleting a note
+     * removes the people it invented and leaves the people who were chosen,
+     * and editing a profile by hand clears this even while the person still
+     * has no notes — so two rows with zero notes can differ, and nothing in
+     * the notes table can tell them apart.
+     *
+     */
+    autoCreated: v.boolean(),
   })
     .index("by_user", ["userId"])
     .searchIndex("search_name", {

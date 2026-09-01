@@ -49,7 +49,7 @@ async function ensureUser(t: ReturnType<typeof convexTest>, identity: { subject:
 const ALICE = { subject: "alice", name: "Alice", email: "alice@example.com" };
 const BOB = { subject: "bob", name: "Bob", email: "bob@example.com" };
 
-test("should create a new profile with createdProfile true and isStub false when the primary name has never been seen", async () => {
+test("should create a new profile with createdProfile true and autoCreated false when the primary name has never been seen", async () => {
   const t = convexTest(schema, modules);
   await ensureUser(t, ALICE);
   const asAlice = t.withIdentity(ALICE);
@@ -64,7 +64,7 @@ test("should create a new profile with createdProfile true and isStub false when
 
   await t.run(async (ctx) => {
     const profile = await ctx.db.get(result.profileId);
-    expect(profile).toMatchObject({ name: "지수", isStub: false });
+    expect(profile).toMatchObject({ name: "지수", autoCreated: false });
   });
 });
 
@@ -156,7 +156,7 @@ test("should create a stub profile for a mentioned person and promote it to a no
     expect(links).toHaveLength(1);
     expect(links[0].noteId).toBe(first.noteId);
     const stub = await ctx.db.get("profiles", links[0].profileId);
-    expect(stub?.isStub).toBe(true);
+    expect(stub?.autoCreated).toBe(true);
     return links[0].profileId;
   });
 
@@ -170,7 +170,7 @@ test("should create a stub profile for a mentioned person and promote it to a no
 
   await t.run(async (ctx) => {
     const promoted = await ctx.db.get("profiles", stubId);
-    expect(promoted?.isStub).toBe(false);
+    expect(promoted?.autoCreated).toBe(false);
   });
 });
 
@@ -488,10 +488,10 @@ test("should give user B their own new profile for a mentioned name, never resol
     const bobMentioned = await ctx.db.get("profiles", bobMentionedId);
     const aliceProfile = await ctx.db.get("profiles", alicePrimary.profileId);
     expect(bobMentioned?.userId).not.toBe(aliceProfile?.userId);
-    expect(bobMentioned?.isStub).toBe(true);
+    expect(bobMentioned?.autoCreated).toBe(true);
 
     // Alice's profile is untouched: still not a stub, still just her one note.
-    expect(aliceProfile?.isStub).toBe(false);
+    expect(aliceProfile?.autoCreated).toBe(false);
     const aliceNotes = await ctx.db
       .query("notes")
       .withIndex("by_user", (q) => q.eq("userId", aliceProfile!.userId))
@@ -559,7 +559,7 @@ test("should leave a mentioned person's profile carrying nothing but their name 
       (p) => p.name === "민호",
     );
     expect(minho).toBeDefined();
-    expect(minho?.isStub).toBe(true);
+    expect(minho?.autoCreated).toBe(true);
     expect(minho?.entityType).toBe("person");
     expect(minho?.tags).toEqual([]);
     expect(minho?.relationshipContext).toBeUndefined();
@@ -596,7 +596,7 @@ test("should fill a promoted stub's relationship from its own first note by the 
     const minho = (await ctx.db.query("profiles").collect()).find(
       (p) => p.name === "민호",
     );
-    expect(minho?.isStub).toBe(false);
+    expect(minho?.autoCreated).toBe(false);
     expect(minho?.relationshipContext).toBe("friend");
   });
 });
@@ -627,7 +627,7 @@ test("should let a direct note correct the kind a passing mention had to guess",
     const kong = (await ctx.db.query("profiles").collect()).find(
       (p) => p.name === "콩이",
     );
-    expect(kong?.isStub).toBe(false);
+    expect(kong?.autoCreated).toBe(false);
     // The mention guessed "person"; the note about 콩이 says otherwise and wins.
     expect(kong?.entityType).toBe("animal");
   });
@@ -954,7 +954,7 @@ test("should keep a promoted stub that now has notes of its own", async () => {
       (p) => p.name === "민호",
     );
     expect(minho).toBeDefined();
-    expect(minho?.isStub).toBe(false);
+    expect(minho?.autoCreated).toBe(false);
   });
 });
 

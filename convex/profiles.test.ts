@@ -26,7 +26,7 @@ test("should return null when the profile belongs to a different user", async ()
       name: "지수",
       entityType: "person",
       tags: [],
-      isStub: false,
+      autoCreated: false,
     }),
   );
 
@@ -49,7 +49,7 @@ test("should throw when withNotes is called while signed out", async () => {
       name: "지수",
       entityType: "person",
       tags: [],
-      isStub: false,
+      autoCreated: false,
     }),
   );
 
@@ -86,14 +86,14 @@ test("should return the caller's own profile with its notes newest first, exclud
       name: "지수",
       entityType: "person",
       tags: [],
-      isStub: false,
+      autoCreated: false,
     });
     const otherProfileId = await ctx.db.insert("profiles", {
       userId: aliceUserId,
       name: "민호",
       entityType: "person",
       tags: [],
-      isStub: false,
+      autoCreated: false,
     });
 
     await ctx.db.insert("notes", {
@@ -143,7 +143,7 @@ test("should return an empty notes array, not null, for a profile with no notes"
       name: "지수",
       entityType: "person",
       tags: [],
-      isStub: false,
+      autoCreated: false,
     }),
   );
 
@@ -204,14 +204,14 @@ test("should order by most recent note rather than by profile creation order, an
       name: "A",
       entityType: "person",
       tags: [],
-      isStub: false,
+      autoCreated: false,
     });
     const profileB = await ctx.db.insert("profiles", {
       userId: aliceUserId,
       name: "B",
       entityType: "person",
       tags: [],
-      isStub: false,
+      autoCreated: false,
     });
 
     // A has two notes of its own; B has one. B's single note is the most
@@ -325,7 +325,7 @@ test("should never show a profile's own note in its own mentionedIn", async () =
       name: "지수",
       entityType: "person",
       tags: [],
-      isStub: false,
+      autoCreated: false,
     });
     const noteId = await ctx.db.insert("notes", {
       userId: aliceUserId,
@@ -366,21 +366,21 @@ test("should return mentionedIn newest first", async () => {
       name: "지수",
       entityType: "person",
       tags: [],
-      isStub: false,
+      autoCreated: false,
     });
     const hyunwooId = await ctx.db.insert("profiles", {
       userId: aliceUserId,
       name: "현우",
       entityType: "person",
       tags: [],
-      isStub: false,
+      autoCreated: false,
     });
     const minhoId = await ctx.db.insert("profiles", {
       userId: aliceUserId,
       name: "민호",
       entityType: "person",
       tags: [],
-      isStub: true,
+      autoCreated: true,
     });
 
     const olderNoteId = await ctx.db.insert("notes", {
@@ -532,7 +532,7 @@ test("should cap mentionedIn at the five most recent and report the true total",
       name: "민호",
       entityType: "person",
       tags: [],
-      isStub: true,
+      autoCreated: true,
     });
 
     for (let i = 1; i <= 7; i += 1) {
@@ -541,7 +541,7 @@ test("should cap mentionedIn at the five most recent and report the true total",
         name: `Speaker ${i}`,
         entityType: "person",
         tags: [],
-        isStub: false,
+        autoCreated: false,
       });
       const noteId = await ctx.db.insert("notes", {
         userId: aliceUserId,
@@ -733,7 +733,7 @@ test("should stop being a stub once somebody edits it by hand", async () => {
   const minho = await t.run(async (ctx) =>
     (await ctx.db.query("profiles").collect()).find((p) => p.name === "민호"),
   );
-  expect(minho?.isStub).toBe(true);
+  expect(minho?.autoCreated).toBe(true);
 
   await asAlice.mutation(api.profiles.updateProfile, {
     profileId: minho!._id,
@@ -745,9 +745,9 @@ test("should stop being a stub once somebody edits it by hand", async () => {
   });
 
   await t.run(async (ctx) => {
-    // Editing somebody by hand is choosing to keep them, which is what isStub
+    // Editing somebody by hand is choosing to keep them, which is what autoCreated
     // means. Left true, they would vanish when the note that named them went.
-    expect((await ctx.db.get("profiles", minho!._id))?.isStub).toBe(false);
+    expect((await ctx.db.get("profiles", minho!._id))?.autoCreated).toBe(false);
   });
 });
 
