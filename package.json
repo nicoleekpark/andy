@@ -51,7 +51,7 @@
     "vitest": "^4.1.11"
   },
   "scripts": {
-    "dev": "concurrently -k -i --default-input-target expo -n convex,expo -c blue,green \"convex dev\" \"expo start --dev-client\"",
+    "dev": "concurrently -k -i --default-input-target expo -n convex,expo -c blue,green \"convex dev\" \"expo start --dev-client --ios\"",
     "start": "expo start --dev-client",
     "build:ios": "eas build --profile development --platform ios",
     "build:ios:device": "eas build --profile development-device --platform ios",
