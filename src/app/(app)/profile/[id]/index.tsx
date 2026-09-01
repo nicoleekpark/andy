@@ -142,24 +142,39 @@ export default function ProfileScreen() {
                               {fact}
                             </Text>
                           ))}
-                          <Pressable
-                            accessibilityRole="button"
-                            accessibilityLabel={`${
-                              openTranscripts.includes(note._id)
-                                ? "Hide"
-                                : "Show"
-                            } ${bodyLabel(note.source).toLowerCase()} on ${new Date(note.createdAt).toLocaleDateString("en-CA")}`}
-                            onPress={() => toggleTranscript(note._id)}
-                            hitSlop={8}
-                          >
-                            <Text style={styles.reveal}>
-                              {/* The chevron carries the state so the label can
-                                  stay put — a control whose text and meaning
-                                  both change reads as two different controls. */}
-                              {openTranscripts.includes(note._id) ? "▾" : "▸"}{" "}
-                              {bodyLabel(note.source)}
-                            </Text>
-                          </Pressable>
+                          <View style={styles.entryActions}>
+                            <Pressable
+                              accessibilityRole="button"
+                              accessibilityLabel={`${
+                                openTranscripts.includes(note._id)
+                                  ? "Hide"
+                                  : "Show"
+                              } ${bodyLabel(note.source).toLowerCase()} on ${new Date(note.createdAt).toLocaleDateString("en-CA")}`}
+                              onPress={() => toggleTranscript(note._id)}
+                              hitSlop={8}
+                            >
+                              <Text style={styles.reveal}>
+                                {/* The chevron carries the state so the label can
+                                    stay put — a control whose text and meaning
+                                    both change reads as two different controls. */}
+                                {openTranscripts.includes(note._id) ? "▾" : "▸"}{" "}
+                                {bodyLabel(note.source)}
+                              </Text>
+                            </Pressable>
+                            {/* Its own control rather than making the whole
+                                entry tappable: the entry already has a toggle,
+                                and a row that both expands and navigates
+                                depending on where you land on it is a row you
+                                learn to distrust. */}
+                            <Pressable
+                              accessibilityRole="button"
+                              accessibilityLabel={`Edit the note from ${new Date(note.createdAt).toLocaleDateString("en-CA")}`}
+                              onPress={() => router.push(`/note/${note._id}`)}
+                              hitSlop={8}
+                            >
+                              <Text style={styles.reveal}>Edit</Text>
+                            </Pressable>
+                          </View>
                           {openTranscripts.includes(note._id) ? (
                             <Text style={styles.transcript}>{note.text}</Text>
                           ) : null}
@@ -318,6 +333,7 @@ const styles = StyleSheet.create({
   },
   addNoteLabel: { color: colors.ink, fontSize: 15 },
 
+  entryActions: { flexDirection: "row", gap: 16, alignItems: "center" },
   reveal: { color: colors.moss, fontSize: 13, paddingTop: 4 },
   transcript: {
     color: colors.ink,

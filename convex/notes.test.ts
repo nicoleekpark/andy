@@ -687,3 +687,169 @@ test("should treat tags that differ only by case as one tag, keeping the first s
     expect(profile?.tags).toEqual(["Cats", "Design", "notion"]);
   });
 });
+
+/**
+ * Editing a note after it is saved.
+ *
+ * `saveCapture` takes names and never ids, so it had nothing to check. These
+ * two take a note id straight from a route, which is a value anybody can type,
+ * so ownership is proven here or not at all — this is the second of the two
+ * join sites CLAUDE.md flags as where ownership leaks in practice.
+ */
+test("should return a note with its profile's name to its owner", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  const { noteId } = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "지선은 브랜딩 디자이너다.",
+    draft: buildDraft({ primaryName: "지선", keyFacts: ["브랜딩 디자이너다."] }),
+    source: "voice",
+  });
+
+  const result = await asAlice.query(api.notes.byId, { noteId });
+
+  expect(result?.note.text).toBe("지선은 브랜딩 디자이너다.");
+  expect(result?.note.keyFacts).toEqual(["브랜딩 디자이너다."]);
+  expect(result?.profileName).toBe("지선");
+});
+
+test("should hide another user's note behind the same null as a note that does not exist", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  await ensureUser(t, BOB);
+
+  const { noteId } = await t.withIdentity(ALICE).mutation(api.notes.saveCapture, {
+    transcript: "지선은 브랜딩 디자이너다.",
+    draft: buildDraft({ primaryName: "지선" }),
+    source: "voice",
+  });
+
+  // Bob holds a real, valid id — the case a per-user filter alone would let
+  // through, because the row exists and the query would find it.
+  expect(await t.withIdentity(BOB).query(api.notes.byId, { noteId })).toBeNull();
+  // Indistinguishable from a made-up id, so a valid one tells him nothing.
+  expect(
+    await t.withIdentity(BOB).query(api.notes.byId, { noteId: "not-an-id" }),
+  ).toBeNull();
+});
+
+test("should save a corrected fact and transcript over the ones extraction wrote", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  // The measured failure this exists for: extraction moved the hardship from
+  // the mother onto the person the note was filed under, and until now that
+  // was permanent the moment it was saved.
+  const { noteId } = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "어머니가 암에 걸리셔서 요즘 많이 힘들어 하신데",
+    draft: buildDraft({
+      primaryName: "지선",
+      keyFacts: ["어머니가 암에 걸렸다", "어머니 때문에 요즘 힘들어하고 있다"],
+    }),
+    source: "voice",
+  });
+
+  await asAlice.mutation(api.notes.updateNote, {
+    noteId,
+    text: "어머니가 암에 걸리셔서 요즘 많이 힘들어 하신대",
+    keyFacts: ["어머니가 암에 걸렸다", "어머니가 요즘 많이 힘들어하신다"],
+  });
+
+  const result = await asAlice.query(api.notes.byId, { noteId });
+  expect(result?.note.text).toBe("어머니가 암에 걸리셔서 요즘 많이 힘들어 하신대");
+  expect(result?.note.keyFacts).toEqual([
+    "어머니가 암에 걸렸다",
+    "어머니가 요즘 많이 힘들어하신다",
+  ]);
+});
+
+test("should drop a fact that was blanked out, and store no facts at all rather than an empty list", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  const { noteId } = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "지선은 브랜딩 디자이너다.",
+    draft: buildDraft({ primaryName: "지선", keyFacts: ["브랜딩 디자이너다."] }),
+    source: "voice",
+  });
+
+  await asAlice.mutation(api.notes.updateNote, {
+    noteId,
+    text: "지선은 브랜딩 디자이너다.",
+    keyFacts: ["   ", ""],
+  });
+
+  await t.run(async (ctx) => {
+    const note = await ctx.db.get("notes", noteId);
+    // Absent, not `[]`. An empty array would claim extraction ran and found
+    // nothing, which is a different thing from a note that has no facts.
+    expect(note?.keyFacts).toBeUndefined();
+  });
+});
+
+test("should refuse to write another user's note", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  await ensureUser(t, BOB);
+
+  const { noteId } = await t.withIdentity(ALICE).mutation(api.notes.saveCapture, {
+    transcript: "지선은 브랜딩 디자이너다.",
+    draft: buildDraft({ primaryName: "지선" }),
+    source: "voice",
+  });
+
+  await expect(
+    t.withIdentity(BOB).mutation(api.notes.updateNote, {
+      noteId,
+      text: "Bob was here.",
+      keyFacts: [],
+    }),
+  ).rejects.toBeInstanceOf(ConvexError);
+
+  await t.run(async (ctx) => {
+    const note = await ctx.db.get("notes", noteId);
+    expect(note?.text).toBe("지선은 브랜딩 디자이너다.");
+  });
+});
+
+test("should refuse to empty a note rather than deleting it by stealth", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  const { noteId } = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "지선은 브랜딩 디자이너다.",
+    draft: buildDraft({ primaryName: "지선" }),
+    source: "voice",
+  });
+
+  await expect(
+    asAlice.mutation(api.notes.updateNote, { noteId, text: "   ", keyFacts: [] }),
+  ).rejects.toBeInstanceOf(ConvexError);
+});
+
+test("should reject a transcript longer than the capture path would have accepted", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  const { noteId } = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "지선은 브랜딩 디자이너다.",
+    draft: buildDraft({ primaryName: "지선" }),
+    source: "voice",
+  });
+
+  // The ceiling is repeated here rather than assumed: this is a second public
+  // door into the same rows, and a caller can reach it without ever going
+  // through capture.
+  await expect(
+    asAlice.mutation(api.notes.updateNote, {
+      noteId,
+      text: "가".repeat(MAX_TRANSCRIPT_CHARS + 1),
+      keyFacts: [],
+    }),
+  ).rejects.toBeInstanceOf(ConvexError);
+});

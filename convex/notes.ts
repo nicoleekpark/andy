@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
-import { mutation } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
+import schema from "./schema";
 import { getAuthenticatedUser } from "./users";
 import {
   MAX_DRAFT_CHARS,
@@ -286,5 +287,135 @@ export const saveCapture = mutation({
     }
 
     return { profileId, noteId, createdProfile, createdMentionCount };
+  },
+});
+
+/**
+ * How long a single fact may run.
+ *
+ * `MAX_DRAFT_CHARS` bounded a whole draft on the way in, but that ceiling lived
+ * on the capture path and this is a second public door into the same rows. A
+ * fact is a short sentence; anything past this is somebody pasting a document
+ * into a field, which costs them storage and costs every later read.
+ */
+const MAX_FACT_CHARS = 500;
+
+/**
+ * One saved note, for the screen that edits it.
+ *
+ * The note's id arrives from a route the way `profiles.withNotes`'s does, so it
+ * gets the same treatment: normalised, fetched, and proven to belong to the
+ * caller before any field of it is returned. One `null` covers "no such note"
+ * and "not yours", so a guessed id cannot be used to learn which of the two it
+ * was.
+ */
+export const byId = query({
+  args: { noteId: v.string() },
+  returns: v.union(
+    v.null(),
+    v.object({
+      note: schema.doc("notes"),
+      /** Whose timeline this note sits on, for the screen's title. */
+      profileName: v.string(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const user = await getAuthenticatedUser(ctx);
+
+    const noteId = ctx.db.normalizeId("notes", args.noteId);
+    if (noteId === null) {
+      return null;
+    }
+
+    const note = await ctx.db.get("notes", noteId);
+    if (note === null || note.userId !== user._id) {
+      return null;
+    }
+
+    // Checked in its own right rather than trusted because the note pointed at
+    // it: Convex has no foreign keys, so "a note's profile has the same owner"
+    // is an invariant this code keeps, not one the database enforces.
+    const profile = await ctx.db.get("profiles", note.profileId);
+    const profileName =
+      profile !== null && profile.userId === user._id ? profile.name : "";
+
+    return { note, profileName };
+  },
+});
+
+/**
+ * Correcting a note that is already saved.
+ *
+ * This is the missing half of the confirm step. Extraction can attribute a fact
+ * to the wrong person — measured on 2026-08-31, "어머니가 많이 힘들어하신다"
+ * came back as "어머니 때문에 힘들어한다", moving the hardship onto the person
+ * the note was filed under — and recognition mishears a syllable that changes a
+ * sentence's grammar. Both are caught by a person reading the review screen,
+ * and until now both were permanent the moment they were saved: the review
+ * screen is reachable exactly once, before the write.
+ *
+ * Text and facts only. The note's subject, its date and its source are not
+ * editable here: moving a note to another person is a different operation with
+ * its own consequences for the mention links, and rewriting when something
+ * happened is a feature the schema is ready for but nothing asks for yet.
+ */
+export const updateNote = mutation({
+  args: {
+    noteId: v.string(),
+    text: v.string(),
+    keyFacts: v.array(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await getAuthenticatedUser(ctx);
+
+    const noteId = ctx.db.normalizeId("notes", args.noteId);
+    if (noteId === null) {
+      throw new ConvexError("Andy couldn't find that note.");
+    }
+
+    const note = await ctx.db.get("notes", noteId);
+    if (note === null || note.userId !== user._id) {
+      // Same message either way, for the same reason `byId` returns one `null`.
+      throw new ConvexError("Andy couldn't find that note.");
+    }
+
+    const text = args.text.trim();
+    if (text === "") {
+      // Emptying a note is deleting it, and deleting should be asked for
+      // deliberately rather than reached by clearing a field.
+      throw new ConvexError(
+        "A note needs something in it. Delete it instead if it's not worth keeping.",
+      );
+    }
+    if (text.length > MAX_TRANSCRIPT_CHARS) {
+      throw new ConvexError(
+        "That note is longer than Andy can take in one go. Try splitting it into two.",
+      );
+    }
+
+    // A fact blanked out is a fact removed — the same rule the capture path
+    // applies, repeated here because this is its own public entry point rather
+    // than a step in that one.
+    const keyFacts = args.keyFacts
+      .map((fact) => fact.trim())
+      .filter((fact) => fact !== "");
+    if (keyFacts.some((fact) => fact.length > MAX_FACT_CHARS)) {
+      throw new ConvexError("That's longer than a fact. Try splitting it up.");
+    }
+
+    await ctx.db.patch("notes", noteId, {
+      text,
+      // Absent rather than an empty array, matching what `saveCapture` writes:
+      // an empty array would claim extraction ran and found nothing, which is a
+      // different thing from a note that never had facts.
+      keyFacts: keyFacts.length > 0 ? keyFacts : undefined,
+      // `embedding` is deliberately left alone rather than cleared. Day 4 owns
+      // that pipeline; clearing it here would silently drop this note out of
+      // search, and writing one is not this mutation's job. Recorded so the
+      // pipeline can decide what a stale vector should mean.
+    });
+
+    return null;
   },
 });
