@@ -1,4 +1,5 @@
 import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { Alert } from "react-native";
 import { useMutation, useQuery } from "convex/react";
 import { getFunctionName } from "convex/server";
 import { router } from "expo-router";
@@ -20,12 +21,35 @@ import { api } from "@convex/_generated/api";
  * the branch below routes by function name. Comparing with `===` cannot work:
  * `api` is a Proxy that manufactures a fresh object per property access.
  */
+function mockNoteMutations(handlers: {
+  update?: jest.Mock;
+  remove?: jest.Mock;
+}) {
+  (useMutation as jest.Mock).mockImplementation((reference: unknown) => {
+    const name = getFunctionName(reference as never);
+    if (name === "notes:updateNote" && handlers.update !== undefined) {
+      return handlers.update;
+    }
+    if (name === "notes:remove" && handlers.remove !== undefined) {
+      return handlers.remove;
+    }
+    return jest.fn(async () => undefined);
+  });
+}
+
 function mockUpdateNote(updateNote: jest.Mock) {
-  (useMutation as jest.Mock).mockImplementation((reference: unknown) =>
-    getFunctionName(reference as never) === "notes:updateNote"
-      ? updateNote
-      : jest.fn(async () => undefined),
-  );
+  mockNoteMutations({ update: updateNote });
+}
+
+/**
+ * `Alert.alert` guards the delete. Spied rather than left to the RN preset, so
+ * a test drives the exact button it means to — and so "Cancel does nothing"
+ * can be asserted at all, which is the half of a confirmation that matters.
+ */
+function mockDeleteAlert(press: "Delete" | "Cancel") {
+  jest.spyOn(Alert, "alert").mockImplementation((_title, _message, buttons) => {
+    buttons?.find((b) => b.text === press)?.onPress?.();
+  });
 }
 
 /**
@@ -195,5 +219,72 @@ describe("note screen", () => {
     ).toBeTruthy();
     // A typed note names its own door, the way the timeline does.
     expect(screen.getByText("What you wrote")).toBeTruthy();
+  });
+
+  test("should delete the note and leave for the profile once the confirmation is accepted", async () => {
+    mockQueries(savedNote());
+    const remove = jest.fn(async () => ({
+      profileId: "contact-1",
+      removedStubCount: 1,
+    }));
+    mockNoteMutations({ remove });
+    mockDeleteAlert("Delete");
+
+    const result = renderRouter("src/app", { initialUrl: "/profile/contact-1" });
+    await result;
+    await act(async () => {
+      router.push("/note/note-1");
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Delete this note" }));
+    });
+
+    await waitFor(() => expect(remove).toHaveBeenCalledWith({ noteId: "note-1" }));
+    // Forwards to the profile rather than back to the timeline entry that no
+    // longer exists.
+    await waitFor(() => expect(result.getPathname()).toBe("/profile/contact-1"));
+  });
+
+  test("should delete nothing when the confirmation is dismissed", async () => {
+    mockQueries(savedNote());
+    const remove = jest.fn(async () => ({
+      profileId: "contact-1",
+      removedStubCount: 0,
+    }));
+    mockNoteMutations({ remove });
+    mockDeleteAlert("Cancel");
+
+    const result = renderRouter("src/app", { initialUrl: "/note/note-1" });
+    await result;
+
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Delete this note" }));
+    });
+
+    // A confirmation that deletes on either answer is not a confirmation.
+    expect(remove).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Note text")).toBeTruthy();
+  });
+
+  test("should stay put and say why when deleting fails", async () => {
+    mockQueries(savedNote());
+    mockNoteMutations({
+      remove: jest.fn(async () => {
+        throw new Error("Andy couldn't find that note.");
+      }),
+    });
+    mockDeleteAlert("Delete");
+
+    const result = renderRouter("src/app", { initialUrl: "/note/note-1" });
+    await result;
+
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Delete this note" }));
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText("Andy couldn't find that note.")).toBeTruthy(),
+    );
   });
 });

@@ -853,3 +853,160 @@ test("should reject a transcript longer than the capture path would have accepte
     }),
   ).rejects.toBeInstanceOf(ConvexError);
 });
+
+test("should take a note's mention links with it, so nothing points at a note that is gone", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  const { noteId } = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "지선을 민호네 집들이에서 만났다.",
+    draft: buildDraft({
+      primaryName: "지선",
+      mentions: [{ name: "민호", quote: "민호네 집들이에서" }],
+    }),
+    source: "voice",
+  });
+
+  await asAlice.mutation(api.notes.remove, { noteId });
+
+  await t.run(async (ctx) => {
+    expect(await ctx.db.query("notes").collect()).toHaveLength(0);
+    // Convex has no cascading delete. A link left behind is not inert: it is a
+    // row on somebody's profile that can no longer be opened.
+    expect(await ctx.db.query("noteMentions").collect()).toHaveLength(0);
+  });
+});
+
+test("should remove a stub the deleted note was the last reason to keep", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  const { noteId } = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "지선을 민호네 집들이에서 만났다.",
+    draft: buildDraft({ primaryName: "지선", mentions: [{ name: "민호" }] }),
+    source: "voice",
+  });
+
+  const { removedStubCount } = await asAlice.mutation(api.notes.remove, { noteId });
+
+  expect(removedStubCount).toBe(1);
+  await t.run(async (ctx) => {
+    const names = (await ctx.db.query("profiles").collect()).map((p) => p.name);
+    // 민호 only ever existed because that note named him in passing; with it
+    // gone he has no notes, no mentions and no screen that can reach him.
+    expect(names).not.toContain("민호");
+    // 지선 stays. She was chosen, and losing her last note is not a decision to
+    // stop keeping her.
+    expect(names).toContain("지선");
+  });
+});
+
+test("should keep a mentioned person who is still mentioned somewhere else", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  const first = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "지선을 민호네 집들이에서 만났다.",
+    draft: buildDraft({ primaryName: "지선", mentions: [{ name: "민호" }] }),
+    source: "voice",
+  });
+  await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "수진이도 민호를 안다고 한다.",
+    draft: buildDraft({ primaryName: "수진", mentions: [{ name: "민호" }] }),
+    source: "voice",
+  });
+
+  const { removedStubCount } = await asAlice.mutation(api.notes.remove, {
+    noteId: first.noteId,
+  });
+
+  expect(removedStubCount).toBe(0);
+  await t.run(async (ctx) => {
+    const names = (await ctx.db.query("profiles").collect()).map((p) => p.name);
+    expect(names).toContain("민호");
+  });
+});
+
+test("should keep a promoted stub that now has notes of its own", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  const first = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "지선을 민호네 집들이에서 만났다.",
+    draft: buildDraft({ primaryName: "지선", mentions: [{ name: "민호" }] }),
+    source: "voice",
+  });
+  // 민호 stops being a stub the moment he gets a note of his own.
+  await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "민호는 오래된 친구다.",
+    draft: buildDraft({ primaryName: "민호" }),
+    source: "voice",
+  });
+
+  await asAlice.mutation(api.notes.remove, { noteId: first.noteId });
+
+  await t.run(async (ctx) => {
+    const minho = (await ctx.db.query("profiles").collect()).find(
+      (p) => p.name === "민호",
+    );
+    expect(minho).toBeDefined();
+    expect(minho?.isStub).toBe(false);
+  });
+});
+
+test("should refuse to delete another user's note", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  await ensureUser(t, BOB);
+
+  const { noteId } = await t.withIdentity(ALICE).mutation(api.notes.saveCapture, {
+    transcript: "지선은 브랜딩 디자이너다.",
+    draft: buildDraft({ primaryName: "지선" }),
+    source: "voice",
+  });
+
+  await expect(
+    t.withIdentity(BOB).mutation(api.notes.remove, { noteId }),
+  ).rejects.toBeInstanceOf(ConvexError);
+
+  await t.run(async (ctx) => {
+    expect(await ctx.db.query("notes").collect()).toHaveLength(1);
+  });
+});
+
+test("should keep a person the user chose even once nothing is left pointing at them", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  // 민호 arrives as a real profile: this note is about him.
+  const own = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "민호는 오래된 친구다.",
+    draft: buildDraft({ primaryName: "민호" }),
+    source: "voice",
+  });
+  // And is separately mentioned in a note about somebody else.
+  const mentioning = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "지선을 민호네 집들이에서 만났다.",
+    draft: buildDraft({ primaryName: "지선", mentions: [{ name: "민호" }] }),
+    source: "voice",
+  });
+
+  // Both go, in the order that empties him last: after this he has no notes
+  // and no mentions, exactly like the stub in the test above. The only thing
+  // separating them is that somebody decided to keep him.
+  await asAlice.mutation(api.notes.remove, { noteId: own.noteId });
+  const { removedStubCount } = await asAlice.mutation(api.notes.remove, {
+    noteId: mentioning.noteId,
+  });
+
+  expect(removedStubCount).toBe(0);
+  await t.run(async (ctx) => {
+    const names = (await ctx.db.query("profiles").collect()).map((p) => p.name);
+    expect(names).toContain("민호");
+  });
+});

@@ -419,3 +419,98 @@ export const updateNote = mutation({
     return null;
   },
 });
+
+/**
+ * Deleting a note, and the links that only existed to describe it.
+ *
+ * A note is not a leaf: every person it mentioned has a row in `noteMentions`
+ * pointing at it, and Convex has no foreign keys or cascading deletes, so
+ * removing the note alone would leave links pointing at nothing. Those links
+ * are what `profiles.withNotes` reads to build both "who came up in this note"
+ * and "where this person was mentioned", so a dangling one is not inert — it is
+ * a row on somebody's profile that can no longer be opened.
+ *
+ * Stub profiles left with nothing referencing them go too. A stub is a row the
+ * user never asked for: it exists because a note named someone in passing, and
+ * once that note is gone it has no notes of its own, no mentions, and no way to
+ * be reached from any screen — an invisible row holding a real person's name.
+ * `isStub` earns its place here, as the only record of which profiles were
+ * created by inference rather than chosen.
+ *
+ * A profile the user did choose is never touched, even when this was its last
+ * note. Deleting a person is a bigger decision than deleting a note, and it is
+ * theirs to make.
+ */
+export const remove = mutation({
+  args: { noteId: v.string() },
+  returns: v.object({
+    /** Whose timeline this note left, so the screen knows where to go. */
+    profileId: v.id("profiles"),
+    /** Auto-created people the note was the last reason to keep. */
+    removedStubCount: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const user = await getAuthenticatedUser(ctx);
+
+    const noteId = ctx.db.normalizeId("notes", args.noteId);
+    if (noteId === null) {
+      throw new ConvexError("Andy couldn't find that note.");
+    }
+
+    const note = await ctx.db.get("notes", noteId);
+    if (note === null || note.userId !== user._id) {
+      throw new ConvexError("Andy couldn't find that note.");
+    }
+
+    // Pinned on both `userId` and `noteId`, so this cannot reach another
+    // user's links even if one somehow carried this note's id.
+    const links = await ctx.db
+      .query("noteMentions")
+      .withIndex("by_user_and_note", (q) =>
+        q.eq("userId", user._id).eq("noteId", noteId),
+      )
+      .collect();
+
+    const mentioned = new Set(links.map((link) => link.profileId));
+
+    for (const link of links) {
+      await ctx.db.delete("noteMentions", link._id);
+    }
+    await ctx.db.delete("notes", noteId);
+
+    // After both deletions, so the counts below see the world as it now is
+    // rather than as it was a moment ago.
+    let removedStubCount = 0;
+    for (const profileId of mentioned) {
+      const profile = await ctx.db.get("profiles", profileId);
+      if (profile === null || profile.userId !== user._id || !profile.isStub) {
+        continue;
+      }
+
+      const ownNotes = await ctx.db
+        .query("notes")
+        .withIndex("by_user_and_profile_and_createdAt", (q) =>
+          q.eq("userId", user._id).eq("profileId", profileId),
+        )
+        .take(1);
+      if (ownNotes.length > 0) {
+        continue;
+      }
+
+      const remaining = await ctx.db
+        .query("noteMentions")
+        .withIndex("by_user_and_profile", (q) =>
+          q.eq("userId", user._id).eq("profileId", profileId),
+        )
+        .take(1);
+      if (remaining.length > 0) {
+        continue;
+      }
+
+      await ctx.db.delete("profiles", profileId);
+      removedStubCount += 1;
+    }
+
+    return { profileId: note.profileId, removedStubCount };
+  },
+});

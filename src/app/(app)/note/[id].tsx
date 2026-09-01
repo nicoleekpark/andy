@@ -1,6 +1,7 @@
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
 import {
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -38,6 +39,7 @@ export default function NoteScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const result = useQuery(api.notes.byId, { noteId: id });
   const updateNote = useMutation(api.notes.updateNote);
+  const removeNote = useMutation(api.notes.remove);
 
   /**
    * What the user has changed, or `null` while they have changed nothing.
@@ -108,6 +110,44 @@ export default function NoteScreen() {
       setSaving(false);
     }
   }, [id, working, updateNote, profileId]);
+
+  /**
+   * Deleting, behind a confirmation, because it cannot be undone.
+   *
+   * Always leaves for the profile rather than closing the screen: `back()`
+   * would reveal the timeline this note was on, which is right after an edit
+   * and wrong here — the entry it came from no longer exists, and returning to
+   * a list that is missing the row you were just reading is disorienting. The
+   * profile is the same destination either way, reached forwards.
+   */
+  const confirmDelete = useCallback(() => {
+    Alert.alert(
+      "Delete this note?",
+      "The note and what it recorded go for good. People it mentioned keep their own notes.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            void (async () => {
+              setError(null);
+              try {
+                const { profileId: leftBehind } = await removeNote({ noteId: id });
+                router.replace(`/profile/${leftBehind}`);
+              } catch (e) {
+                setError(
+                  e instanceof Error && e.message
+                    ? e.message
+                    : "Andy couldn't delete that note. Try again.",
+                );
+              }
+            })();
+          },
+        },
+      ],
+    );
+  }, [id, removeNote]);
 
   if (result === undefined || result === null) {
     return (
@@ -204,6 +244,20 @@ export default function NoteScreen() {
             {saving ? "Saving…" : "Save changes"}
           </Text>
         </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Delete this note"
+          onPress={confirmDelete}
+          disabled={saving}
+          style={styles.delete}
+        >
+          {/* `alert`, and the only place in the app that uses it: STYLE.md
+              reserves it for errors, and a control that destroys something is
+              the one non-error that has earned the same weight. Plain text
+              rather than a filled button, so it does not compete with Save. */}
+          <Text style={styles.deleteLabel}>Delete this note</Text>
+        </Pressable>
       </ScrollView>
     </>
   );
@@ -244,4 +298,7 @@ const styles = StyleSheet.create({
   },
   saveLabel: { color: colors.paper, fontSize: 17, fontWeight: "600" },
   disabled: { opacity: 0.5 },
+
+  delete: { alignItems: "center", paddingVertical: 8 },
+  deleteLabel: { color: colors.alert, fontSize: 15 },
 });
