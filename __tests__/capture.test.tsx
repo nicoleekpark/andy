@@ -99,17 +99,21 @@ function mockActions({
 }
 
 /**
- * `Alert.alert` backs the "Scan a business card" button's camera-vs-library
- * choice. Spied rather than left to whatever jest-expo's RN preset supplies,
+ * `Alert.alert` backs two things: the "Scan a business card" camera-vs-library
+ * choice, and the confirmation before a re-read throws away edits. Spied rather than left to whatever jest-expo's RN preset supplies,
  * so a test can invoke the exact button it means to drive instead of hoping
  * one fires. Defaults to "Take a photo" since the two routes share the same
  * `scanCard` function and differ only in which permission/launch pair is
  * called — see capture.tsx's `chooseCardSource`.
  */
 function mockCardAlert(buttonText = "Take a photo") {
-  jest.spyOn(Alert, "alert").mockImplementation((_title, _message, buttons) => {
-    buttons?.find((b) => b.text === buttonText)?.onPress?.();
-  });
+  // Returns the spy so a test can assert the alert was *not* raised, which is
+  // the whole of "nothing was edited, so nothing was asked".
+  return jest
+    .spyOn(Alert, "alert")
+    .mockImplementation((_title, _message, buttons) => {
+      buttons?.find((b) => b.text === buttonText)?.onPress?.();
+    });
 }
 
 function makeCardDraft(): { draft: Draft; cardText: string } {
@@ -528,6 +532,140 @@ describe("capture screen review step", () => {
     expect(
       screen.getByText("Adding to 지선 · friend · 3 notes · last 2026-08-30"),
     ).toBeTruthy();
+  });
+
+  test("should read the corrected transcript again, and use its result", async () => {
+    const heard = makeDraft({ name: "지선" });
+    heard.mentions[0] = {
+      name: "민우",
+      entityType: "person",
+      quote: "민우네 집들이에서",
+    };
+    const reheard = makeDraft({ name: "지선" });
+    reheard.mentions[0] = {
+      name: "민호",
+      entityType: "person",
+      quote: "민호네 집들이에서",
+    };
+    // Counted rather than read off `extract.mock.calls` inside its own
+    // initializer, which makes the mock's type refer to itself.
+    let reads = 0;
+    const extract = jest.fn(
+      async (_args: { text: string; today: string; aboutName?: string }) => {
+        reads += 1;
+        return reads === 1 ? heard : reheard;
+      },
+    );
+    (useAction as jest.Mock).mockReturnValue(extract);
+    mockSaveCapture(jest.fn(async () => ({
+      profileId: "profile-1",
+      noteId: "note-1",
+      createdProfile: false,
+      createdMentionCount: 0,
+    })));
+    scopeTo("지선");
+    mockCardAlert("Read again");
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+    await reachReview(handlers, "지선을 민우네 집들이에서 만났다.");
+    expect(screen.getByDisplayValue("민우")).toBeTruthy();
+
+    // The mistake is a word in the note, so fixing it there should be enough —
+    // otherwise the same correction has to be typed again into every field
+    // extraction built from it.
+    await act(async () => {
+      fireEvent.changeText(
+        screen.getByLabelText("What you said"),
+        "지선을 민호네 집들이에서 만났다.",
+      );
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Read it again"));
+    });
+
+    await waitFor(() => expect(extract).toHaveBeenCalledTimes(2));
+    expect(extract.mock.calls[1]?.[0].text).toBe(
+      "지선을 민호네 집들이에서 만났다.",
+    );
+    await waitFor(() => expect(screen.getByDisplayValue("민호")).toBeTruthy());
+  });
+
+  test("should ask before throwing away edits, and keep them when the answer is no", async () => {
+    const heard = makeDraft({ name: "지선" });
+    const extract = jest.fn(async () => heard);
+    (useAction as jest.Mock).mockReturnValue(extract);
+    scopeTo("지선");
+    mockCardAlert("Cancel");
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+    await reachReview(handlers, "지선을 오늘 만났다.");
+
+    await act(async () => {
+      fireEvent.changeText(screen.getByLabelText("Name"), "지선 Kim");
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Read it again"));
+    });
+
+    // A re-read replaces everything above it, so declining has to leave the
+    // edit exactly where it was.
+    expect(extract).toHaveBeenCalledTimes(1);
+    expect(screen.getByDisplayValue("지선 Kim")).toBeTruthy();
+  });
+
+  test("should not ask when nothing has been edited", async () => {
+    const extract = jest.fn(async () => makeDraft({ name: "지선" }));
+    (useAction as jest.Mock).mockReturnValue(extract);
+    scopeTo("지선");
+    const alert = mockCardAlert("Read again");
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+    await reachReview(handlers, "지선을 오늘 만났다.");
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Read it again"));
+    });
+
+    // Nothing to lose, so nothing to ask about. A confirmation shown every
+    // time is one people learn to dismiss without reading.
+    expect(alert).not.toHaveBeenCalled();
+    await waitFor(() => expect(extract).toHaveBeenCalledTimes(2));
+  });
+
+  test("should keep the draft on screen when a re-read fails", async () => {
+    let reads = 0;
+    const extract = jest.fn(async (): Promise<Draft> => {
+      reads += 1;
+      if (reads === 1) {
+        return makeDraft({ name: "지선" });
+      }
+      throw new Error("Andy couldn't make sense of that one.");
+    });
+    (useAction as jest.Mock).mockReturnValue(extract);
+    scopeTo("지선");
+    mockCardAlert("Read again");
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+    await reachReview(handlers, "지선을 오늘 만났다.");
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Read it again"));
+    });
+
+    // Failing back to the recording screen would throw away the note the
+    // re-read was asked to improve.
+    await waitFor(() =>
+      expect(screen.getByText("Andy couldn't make sense of that one.")).toBeTruthy(),
+    );
+    expect(screen.getByDisplayValue("지선")).toBeTruthy();
   });
 
   test("should say a misheard mention is about to invent somebody too", async () => {

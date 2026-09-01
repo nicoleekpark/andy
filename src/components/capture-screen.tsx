@@ -186,6 +186,14 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
   const [error, setError] = useState<string | null>(null);
   /** The draft under review — a working copy the user edits before it is saved. */
   const [draft, setDraft] = useState<Draft | null>(null);
+  /**
+   * The draft exactly as extraction returned it, kept beside the working copy.
+   *
+   * Only so that "has this been edited?" can be answered by comparing, rather
+   * than by a flag every edit handler has to remember to set — the one that
+   * gets forgotten is the one that silently throws work away.
+   */
+  const [extracted, setExtracted] = useState<Draft | null>(null);
 
   const namesInDraft =
     draft === null
@@ -278,7 +286,13 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
   const lastFirstMetRef = useRef<string | null>(null);
 
   const runExtraction = useCallback(
-    async (spoken: string) => {
+    /**
+     * `keepDraft` says where a failure lands. Passed by the caller rather than
+     * read from state, because the caller is the one that knows: a first
+     * extraction has no draft to fall back to, and a re-read must not throw
+     * away the one it was asked to replace.
+     */
+    async (spoken: string, keepDraft = false) => {
       setPhase("extracting");
       setError(null);
       setTranscript(spoken);
@@ -289,6 +303,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
           aboutName,
         });
         setDraft(result);
+        setExtracted(result);
         setPhase("review");
       } catch (e) {
         // The action's ConvexError messages are written for this screen, so
@@ -299,7 +314,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
             ? e.message
             : "Andy couldn't make sense of that one. Try again.",
         );
-        setPhase("idle");
+        setPhase(keepDraft ? "review" : "idle");
       }
     },
     [extract, aboutName],
@@ -513,6 +528,49 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
     setPhase("idle");
   }, []);
 
+  /**
+   * Read the corrected transcript again.
+   *
+   * Editing the transcript does not re-run extraction, on purpose: the facts
+   * are what a person confirmed, and rewriting them under somebody mid-review
+   * would be worse than leaving them stale. But when the mistake is *in* the
+   * transcript — "민호" heard as "민우" — that leaves the same word to be fixed
+   * twice, once in the note and once in every field extraction built from it.
+   * This is the way to say "the note is right now, read it again".
+   *
+   * It replaces the draft, so it asks first whenever there is anything to lose.
+   * Answers to "which person?" go too: they were given about names that may no
+   * longer be in the draft.
+   */
+  const reread = useCallback(() => {
+    const spoken = transcript.trim();
+    if (spoken === "") {
+      return;
+    }
+    const run = () => {
+      setResolutions({});
+      void runExtraction(spoken, true);
+    };
+
+    const touched =
+      draft !== null &&
+      extracted !== null &&
+      JSON.stringify(draft) !== JSON.stringify(extracted);
+    if (!touched) {
+      run();
+      return;
+    }
+
+    Alert.alert(
+      "Read it again?",
+      "Andy will read the note from scratch. Anything you changed above goes back to what it finds.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Read again", style: "destructive", onPress: run },
+      ],
+    );
+  }, [transcript, draft, extracted, runExtraction]);
+
   const save = useCallback(async () => {
     if (draft === null) {
       return;
@@ -596,7 +654,13 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
   const listening = phase === "listening";
   const busy = phase === "extracting" || phase === "saving";
 
-  if ((phase === "review" || phase === "saving") && draft !== null) {
+  // `extracting` is in here so a re-read keeps the review screen up rather than
+  // dropping back to the recording view, where the transcript on show would be
+  // the words as first heard — the very thing the user just corrected.
+  if (
+    draft !== null &&
+    (phase === "review" || phase === "saving" || phase === "extracting")
+  ) {
     const named = draft.primary.name.trim() !== "";
     // Unanswered questions block saving here as well as in the mutation. The
     // mutation refuses because it must; the screen refuses so that nobody is
@@ -883,8 +947,8 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
             label={source === "business_card" ? "What the card says" : "What you said"}
           >
             <Text style={styles.quiet}>
-              Correcting this fixes the note itself. It does not re-read the
-              facts above — those are yours to edit.
+              Correcting this fixes the note itself. The facts above stay as
+              they are — unless you ask Andy to read it again.
             </Text>
             <TextInput
               value={transcript}
@@ -895,6 +959,23 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
                 source === "business_card" ? "What the card says" : "What you said"
               }
             />
+            {/*
+              Beside the transcript, because it acts on the transcript. When the
+              mistake is a word in the note — "민호" heard as "민우" — fixing it
+              here otherwise leaves the same word to be corrected again in every
+              field extraction built from it.
+            */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Read it again"
+              onPress={reread}
+              disabled={phase !== "review" || transcript.trim() === ""}
+              hitSlop={8}
+            >
+              <Text style={styles.reread}>
+                {phase === "extracting" ? "Reading it back…" : "Read it again"}
+              </Text>
+            </Pressable>
           </Field>
 
           {/*
@@ -1214,6 +1295,8 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   candidateOn: { backgroundColor: colors.moss, borderColor: colors.moss },
+  reread: { color: colors.moss, fontSize: 13, paddingTop: 4 },
+
   candidateHead: {
     flexDirection: "row",
     alignItems: "center",
