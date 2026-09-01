@@ -290,7 +290,7 @@ test("should populate both directions of a mention: the note lists who came up i
   });
   expect(jisooResult?.notes).toHaveLength(1);
   expect(jisooResult?.notes[0]?.mentions).toEqual([
-    { profileId: minhoId, name: "민호", quote: "민호네 집들이에서" },
+    { profileId: minhoId, name: "민호", quote: "민호네 집들이에서", exists: true },
   ]);
 
   const minhoResult = await asAlice.query(api.profiles.withNotes, {
@@ -338,6 +338,7 @@ test("should never show a profile's own note in its own mentionedIn", async () =
       userId: aliceUserId,
       noteId,
       profileId,
+      name: "민호",
       quote: "shouldn't count as a mention of herself",
     });
     return { profileId, noteId };
@@ -402,12 +403,14 @@ test("should return mentionedIn newest first", async () => {
       userId: aliceUserId,
       noteId: olderNoteId,
       profileId: minhoId,
+      name: "민호",
       quote: "older mention",
     });
     await ctx.db.insert("noteMentions", {
       userId: aliceUserId,
       noteId: newerNoteId,
       profileId: minhoId,
+      name: "민호",
       quote: "newer mention",
     });
 
@@ -554,6 +557,7 @@ test("should cap mentionedIn at the five most recent and report the true total",
         userId: aliceUserId,
         noteId,
         profileId: minho,
+        name: "민호",
         quote: `quote ${i}`,
       });
     }
@@ -952,7 +956,7 @@ test("should take the person, their notes, and the links inside those notes", as
   });
 });
 
-test("should cut the links pointing at them from other people's notes", async () => {
+test("should leave other people's notes saying what they said, minus a way through", async () => {
   const t = convexTest(schema, modules);
   await ensureUser(t, ALICE);
   const asAlice = t.withIdentity(ALICE);
@@ -979,12 +983,69 @@ test("should cut the links pointing at them from other people's notes", async ()
   await asAlice.mutation(api.profiles.remove, { profileId: minho.profileId });
 
   await t.run(async (ctx) => {
-    // 지선's note stays — it is about her, and it happened. What cannot stay is
-    // the link, which would render under "also came up" and open nothing.
+    // 지선's note stays, and so does the link inside it. Deleting somebody must
+    // not rewrite what everyone who mentioned them wrote down.
     expect(await ctx.db.query("notes").collect()).toHaveLength(1);
-    expect(await ctx.db.query("noteMentions").collect()).toHaveLength(0);
+    const links = await ctx.db.query("noteMentions").collect();
+    expect(links).toHaveLength(1);
+    expect(links[0]?.name).toBe("민호");
     const names = (await ctx.db.query("profiles").collect()).map((p) => p.name);
     expect(names).toEqual(["지선"]);
+  });
+
+  // And the note reports it as a name that no longer leads anywhere, so the
+  // screen can show it without offering to open it.
+  const jiseon = await t.run(async (ctx) =>
+    (await ctx.db.query("profiles").collect()).find((p) => p.name === "지선"),
+  );
+  const timeline = await asAlice.query(api.profiles.withNotes, {
+    profileId: jiseon!._id,
+  });
+  expect(timeline?.notes[0]?.mentions[0]).toMatchObject({
+    name: "민호",
+    exists: false,
+  });
+});
+
+test("should show a mentioned person's current name while they still exist", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  const { profileId } = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "지선을 민호네 집들이에서 만났다.",
+    draft: {
+      primary: {
+        name: "지선",
+        entityType: "person" as const,
+        relationshipContext: null,
+        tags: [],
+        firstMetDate: null,
+        keyFacts: [],
+      },
+      mentions: [{ name: "민호", entityType: "person" as const, quote: "민호네" }],
+    },
+    source: "voice" as const,
+  });
+
+  const minho = await t.run(async (ctx) =>
+    (await ctx.db.query("profiles").collect()).find((p) => p.name === "민호"),
+  );
+  await asAlice.mutation(api.profiles.updateProfile, {
+    profileId: minho!._id,
+    name: "민호 박",
+    entityType: "person",
+    relationshipContext: "",
+    firstMetDate: "",
+    tags: [],
+  });
+
+  // The name on the link is only a fallback. A rename has to reach every note
+  // that mentions them, or the app shows two spellings of one person.
+  const timeline = await asAlice.query(api.profiles.withNotes, { profileId });
+  expect(timeline?.notes[0]?.mentions[0]).toMatchObject({
+    name: "민호 박",
+    exists: true,
   });
 });
 

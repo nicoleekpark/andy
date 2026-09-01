@@ -233,7 +233,13 @@ describe("edit profile screen", () => {
     // "Delete 지선?" reads the same for an empty row and for years of notes,
     // and those are not the same decision.
     expect(alert.mock.calls[0]?.[0]).toBe("Delete 지선?");
-    expect(alert.mock.calls[0]?.[1]).toContain("2 notes go with them");
+    const body = alert.mock.calls[0]?.[1] ?? "";
+    expect(body).toContain("2 notes go with them");
+    // Both rules, because each one surprises somebody: what follows them out,
+    // and what deliberately does not.
+    expect(body).toContain("only ever came up inside those notes goes too");
+    expect(body).toContain("that note keeps the name");
+    expect(body).toContain("cannot be undone");
     await waitFor(() => expect(remove).toHaveBeenCalledWith({ profileId: "contact-1" }));
     // Home, not back: back is this person's profile, which is gone.
     await waitFor(() => expect(result.getPathname()).toBe("/"));

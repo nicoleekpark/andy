@@ -97,12 +97,21 @@ export default function EditProfileScreen() {
   }
 
   /**
-   * Deleting the person, behind a confirmation that counts what goes with them.
+   * Deleting the person, behind a confirmation that says what that means.
    *
-   * The count is the point: "Delete 지선?" reads the same whether it is an empty
-   * row created from a passing mention or four years of notes, and those are
-   * very different decisions. `result.notes` is already on the screen, so
-   * saying so costs nothing.
+   * Three things, because each is a surprise otherwise:
+   *
+   * The count. "Delete 지선?" reads the same for an empty row created from a
+   * passing mention and for four years of notes, and those are not the same
+   * decision. `result.notes` is already on this screen, so saying so is free.
+   *
+   * What follows them out. People who only ever appeared inside their notes go
+   * too — nothing else refers to those rows, and leaving them would strand
+   * names nobody can reach. Somebody who has notes of their own stays.
+   *
+   * What does not. Where this person was named in somebody else's note, the
+   * note keeps the name; it only stops opening anything. Quietly removing it
+   * would rewrite what that note recorded.
    *
    * Home rather than back, because back is this person's profile and it no
    * longer exists.
@@ -112,11 +121,16 @@ export default function EditProfileScreen() {
       return;
     }
     const noteCount = result.notes.length;
+    const lost =
+      noteCount === 0
+        ? "There are no notes to lose."
+        : `${noteCount} ${noteCount === 1 ? "note" : "notes"} go with them, for good.`;
     Alert.alert(
       `Delete ${result.profile.name}?`,
-      noteCount === 0
-        ? "There are no notes to lose. This cannot be undone."
-        : `${noteCount} ${noteCount === 1 ? "note" : "notes"} go with them, for good. This cannot be undone.`,
+      `${lost}\n\n` +
+        "Anyone who only ever came up inside those notes goes too. People with notes of their own stay.\n\n" +
+        `Where ${result.profile.name} was mentioned in someone else's note, that note keeps the name — it just stops opening anything.\n\n` +
+        "This cannot be undone.",
       [
         { text: "Cancel", style: "cancel" },
         {

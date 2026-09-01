@@ -108,6 +108,20 @@ export default defineSchema({
     userId: v.id("users"),
     noteId: v.id("notes"),
     profileId: v.id("profiles"),
+    /**
+     * The name as it stood when the link was written.
+     *
+     * Duplicated from the profile on purpose, and only used when that profile
+     * is gone. Deleting somebody must not quietly edit the notes of everyone
+     * who ever mentioned them — "지선을 민호네 집들이에서 만났다" is what
+     * happened, and a note that loses a name it recorded is a note that has
+     * been rewritten. So the link outlives the person: the name still shows, it
+     * simply stops opening anything.
+     *
+     * While the profile exists its current name wins, so a rename is reflected
+     * everywhere rather than leaving old spellings scattered across links.
+     */
+    name: v.string(),
     // Copied verbatim out of the note's text. Not a summary: it is what was
     // actually said, which is the only version worth showing next to a name
     // that transcription may have got wrong.

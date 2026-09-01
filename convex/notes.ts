@@ -246,7 +246,7 @@ export const saveCapture = mutation({
     // in passing, rather than the user choosing to keep somebody. That is what
     // decides whether they survive the note being deleted. The link itself is
     // written after the note exists, since it needs the note's id.
-    const links: { profileId: Id<"profiles">; quote: string }[] = [];
+    const links: { profileId: Id<"profiles">; name: string; quote: string }[] = [];
     const seen = new Set<string>([matchKey(primaryName)]);
     let createdMentionCount = 0;
 
@@ -264,7 +264,10 @@ export const saveCapture = mutation({
 
       const found = resolve(name);
       if (found !== null) {
-        links.push({ profileId: found._id, quote });
+        // The profile's own spelling, not the one heard: while the profile
+        // exists this is unused, and if it is ever deleted the note should read
+        // the way the rest of the app read it, not the way it was first misheard.
+        links.push({ profileId: found._id, name: found.name, quote });
         continue;
       }
 
@@ -279,7 +282,7 @@ export const saveCapture = mutation({
         tags: [],
         autoCreated: true,
       });
-      links.push({ profileId: stubId, quote });
+      links.push({ profileId: stubId, name, quote });
       createdMentionCount += 1;
 
       // So a second mention of the same new person in this same note resolves
@@ -312,6 +315,7 @@ export const saveCapture = mutation({
         userId: user._id,
         noteId,
         profileId: link.profileId,
+        name: link.name,
         quote: link.quote,
       });
     }

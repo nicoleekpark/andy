@@ -63,6 +63,12 @@ export const withNotes = query({
               profileId: v.id("profiles"),
               name: v.string(),
               quote: v.string(),
+              /**
+               * False once that person has been deleted. The name stays on the
+               * note — removing it would rewrite what this note recorded — but
+               * there is no longer anywhere for it to lead.
+               */
+              exists: v.boolean(),
             }),
           ),
         }),
@@ -139,7 +145,10 @@ export const withNotes = query({
       names.set(owned._id, owned.name);
     }
 
-    const byNote = new Map<string, { profileId: Id<"profiles">; name: string; quote: string }[]>();
+    const byNote = new Map<
+      string,
+      { profileId: Id<"profiles">; name: string; quote: string; exists: boolean }[]
+    >();
     const mentionedIn = [];
     const noteById = new Map(notes.map((note) => [note._id as string, note]));
 
@@ -160,10 +169,14 @@ export const withNotes = query({
       }
       if (noteById.has(link.noteId)) {
         const list = byNote.get(link.noteId) ?? [];
+        // The profile's current name while it exists, so a rename shows
+        // everywhere; the name the link recorded once it does not.
+        const current = names.get(link.profileId);
         list.push({
           profileId: link.profileId,
-          name: names.get(link.profileId) ?? "",
+          name: current ?? link.name,
           quote: link.quote,
+          exists: current !== undefined,
         });
         byNote.set(link.noteId, list);
       }
@@ -441,8 +454,6 @@ export const resolveNames = query({
  * cascading delete, so every direction has to be walked by hand:
  *
  *   - their notes, and the mention links inside those notes
- *   - the links pointing *at* them from other people's notes, which is what
- *     puts them in somebody else's "also came up"
  *   - metrics and calendar links filed against them
  *   - a stored photo, which lives outside the tables entirely
  *
@@ -498,16 +509,12 @@ export const remove = mutation({
       await ctx.db.delete("notes", note._id);
     }
 
-    // The other direction: this person named inside somebody else's note. Those
-    // notes stay — they are about their own subject — but the link cannot.
-    for (const link of await ctx.db
-      .query("noteMentions")
-      .withIndex("by_user_and_profile", (q) =>
-        q.eq("userId", user._id).eq("profileId", profileId),
-      )
-      .collect()) {
-      await ctx.db.delete("noteMentions", link._id);
-    }
+    // The other direction is deliberately left alone: this person named inside
+    // somebody else's note. Deleting those links would quietly rewrite every
+    // note that ever mentioned them — "지선을 민호네 집들이에서 만났다" is what
+    // happened, and a note that loses a name it recorded is a different note.
+    // The link keeps the name it was written with, and `withNotes` reports it
+    // as no longer existing so the screen stops offering to open it.
 
     for (const metric of await ctx.db
       .query("metrics")

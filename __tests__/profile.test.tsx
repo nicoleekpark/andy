@@ -47,7 +47,12 @@ function withNotes(
       // left absent — a fixture missing it would let a screen that reads it
       // pass here and behave differently against the database.
       note: { source: "voice", ...note },
-      mentions: (mentions as Record<string, unknown>[] | undefined) ?? [],
+      // `exists` defaults to true, the ordinary case. A mention whose person
+      // has been deleted keeps its place in the note but stops being a link,
+      // and a test about that says so.
+      mentions: ((mentions as Record<string, unknown>[] | undefined) ?? []).map(
+        (mention) => ({ exists: true, ...mention }),
+      ),
     })),
     mentionedIn,
     mentionedInTotal,
@@ -297,6 +302,37 @@ describe("profile screen", () => {
 
     expect(result.getSegments()).toEqual(["(app)", "profile", "[id]", "capture"]);
   });
+});
+
+test("should keep a deleted person's name in the note but stop it opening anything", async () => {
+  (useQuery as jest.Mock).mockReturnValue(
+    withNotes([
+      {
+        _id: "note-1",
+        createdAt: 1787933613833,
+        text: "지선을 민호네 집들이에서 만났다.",
+        keyFacts: ["집들이에서 만났다."],
+        mentions: [
+          {
+            profileId: "gone-1",
+            name: "민호",
+            quote: "민호네 집들이에서",
+            exists: false,
+          },
+        ],
+      },
+    ]),
+  );
+
+  const result = renderRouter("src/app", { initialUrl: "/profile/contact-1" });
+  await result;
+
+  // The name stays: removing it would rewrite what this note recorded, which
+  // is not something deleting somebody else should be able to do.
+  expect(screen.getByText(/민호/)).toBeTruthy();
+  // But it leads nowhere, and a button that opens a missing profile promises
+  // something the app cannot do.
+  expect(screen.queryByRole("button", { name: "Open 민호" })).toBeNull();
 });
 
 test("should say how many mentions were left out when the list is truncated, and stay quiet when it is not", async () => {

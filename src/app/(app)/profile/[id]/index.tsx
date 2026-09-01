@@ -208,16 +208,15 @@ export default function ProfileScreen() {
                           {/* Without a label a name just hangs under the facts
                               and reads as one of them. */}
                           <Text style={styles.sectionLabel}>Also came up</Text>
-                          {mentions.map((mention) => (
-                            <Pressable
-                              key={mention.profileId}
-                              accessibilityRole="button"
-                              accessibilityLabel={`Open ${mention.name}`}
-                              onPress={() =>
-                                router.push(`/profile/${mention.profileId}`)
-                              }
-                            >
-                              <Text style={styles.mentionName}>
+                          {mentions.map((mention) => {
+                            const line = (
+                              <Text
+                                style={
+                                  mention.exists
+                                    ? styles.mentionName
+                                    : styles.mentionGone
+                                }
+                              >
                                 {mention.name}
                                 {mention.quote ? (
                                   <Text style={styles.quiet}>
@@ -226,8 +225,27 @@ export default function ProfileScreen() {
                                   </Text>
                                 ) : null}
                               </Text>
-                            </Pressable>
-                          ))}
+                            );
+                            // Deleted people keep their place in the note but
+                            // stop being a link. Rendering a button that leads
+                            // to a missing profile would promise something the
+                            // app cannot do; removing the name would rewrite
+                            // what this note said.
+                            return mention.exists ? (
+                              <Pressable
+                                key={mention.profileId}
+                                accessibilityRole="button"
+                                accessibilityLabel={`Open ${mention.name}`}
+                                onPress={() =>
+                                  router.push(`/profile/${mention.profileId}`)
+                                }
+                              >
+                                {line}
+                              </Pressable>
+                            ) : (
+                              <View key={mention.profileId}>{line}</View>
+                            );
+                          })}
                         </View>
                       ) : null}
                     </View>
@@ -366,6 +384,8 @@ const styles = StyleSheet.create({
 
   mentions: { paddingTop: 6, gap: 4 },
   mentionName: { color: colors.moss, fontSize: 14 },
+  /** Ink rather than moss: still part of the note, no longer a way anywhere. */
+  mentionGone: { color: colors.ink, fontSize: 14, opacity: 0.75 },
 
   backlinkHeader: {
     flexDirection: "row",
