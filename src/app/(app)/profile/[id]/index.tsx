@@ -73,7 +73,24 @@ export default function ProfileScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title }} />
+      <Stack.Screen
+        options={{
+          title,
+          headerRight: () =>
+            // Only once there is somebody to edit. Offering it over a
+            // not-found screen would be a button that can only fail.
+            result === undefined || result === null ? null : (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Edit this person"
+                onPress={() => router.push(`/profile/${id}/edit`)}
+                hitSlop={12}
+              >
+                <Text style={styles.headerAction}>Edit</Text>
+              </Pressable>
+            ),
+        }}
+      />
       <View style={styles.container}>
         <ScrollView
           contentContainerStyle={[
@@ -290,6 +307,7 @@ const styles = StyleSheet.create({
       the top edge, where it reads as a page that stopped loading. */
   contentOnlyStatus: { flexGrow: 1, justifyContent: "center" },
 
+  headerAction: { color: colors.ink, fontSize: 15 },
   name: { color: colors.ink, fontSize: 28 },
   metaRow: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   meta: { color: colors.ink, fontSize: 14, opacity: 0.6 },

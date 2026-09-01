@@ -1,6 +1,7 @@
-import { v } from "convex/values";
-import { query } from "./_generated/server";
+import { ConvexError, v } from "convex/values";
+import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
+import { matchKey, mergeTags } from "./naming";
 import schema from "./schema";
 import { getAuthenticatedUser } from "./users";
 
@@ -238,3 +239,118 @@ export const recent = query({
   },
 });
 
+
+/** A name has to fit on a screen and in a person's head. */
+const MAX_NAME_CHARS = 120;
+/** Enough to describe anyone; past this it is a filing system, not a label. */
+const MAX_TAGS = 24;
+const MAX_TAG_CHARS = 60;
+/** Relationship is a short phrase — "client", "친구", "foster since March". */
+const MAX_RELATIONSHIP_CHARS = 120;
+
+/**
+ * Correcting the person, as opposed to correcting a note about them.
+ *
+ * PROJECT_SCOPE.md has had "manual profile create/edit" in Must Have from the
+ * start, and the gap showed the moment a business card was read as `JOE KING`:
+ * the name went straight to `profiles.name`, which is what every screen shows
+ * *and* what `notes.saveCapture` matches the next capture against, and there
+ * was no way to touch it short of the Convex dashboard.
+ *
+ * Names stay unique per user, case-insensitively. That is not a new rule — it
+ * is the one `saveCapture` has always assumed, since it resolves a spoken name
+ * by taking the first profile that matches it. Allowing two 민호s here would
+ * not create a second person; it would create a profile that silently never
+ * receives another note. Telling somebody they cannot have two people with the
+ * same name is a real limitation, and lifting it is what aliases and a
+ * candidate picker are for — until then, refusing is honest and merging by
+ * accident is not.
+ */
+export const updateProfile = mutation({
+  args: {
+    profileId: v.string(),
+    name: v.string(),
+    entityType: v.union(v.literal("person"), v.literal("animal")),
+    /** Empty string clears it — the table spells "not known" as an absent field. */
+    relationshipContext: v.string(),
+    /** ISO `YYYY-MM-DD`, or empty to clear. */
+    firstMetDate: v.string(),
+    tags: v.array(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await getAuthenticatedUser(ctx);
+
+    const profileId = ctx.db.normalizeId("profiles", args.profileId);
+    if (profileId === null) {
+      throw new ConvexError("Andy couldn't find that person.");
+    }
+
+    const profile = await ctx.db.get("profiles", profileId);
+    if (profile === null || profile.userId !== user._id) {
+      // One message for "no such profile" and "not yours", so a guessed id
+      // cannot be used to find out which.
+      throw new ConvexError("Andy couldn't find that person.");
+    }
+
+    const name = args.name.trim();
+    if (name === "") {
+      throw new ConvexError("A person needs a name.");
+    }
+    if (name.length > MAX_NAME_CHARS) {
+      throw new ConvexError("That name is longer than Andy can store.");
+    }
+
+    // Scoped to this user's own rows, so a name somebody else uses is none of
+    // our business and never leaks by being rejected here.
+    const owned = await ctx.db
+      .query("profiles")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+    const clash = owned.find(
+      (other) => other._id !== profileId && matchKey(other.name) === matchKey(name),
+    );
+    if (clash !== undefined) {
+      throw new ConvexError(
+        `You already have someone called ${clash.name}. Give one of them a fuller name to tell them apart.`,
+      );
+    }
+
+    const firstMetDate = args.firstMetDate.trim();
+    if (firstMetDate !== "" && !/^\d{4}-\d{2}-\d{2}$/.test(firstMetDate)) {
+      throw new ConvexError("A first-met date looks like 2026-08-31.");
+    }
+
+    // Deduplicated the same way a capture merges them, so editing tags by hand
+    // and gaining them from a note cannot produce different results.
+    const tags = mergeTags([], args.tags);
+    if (tags.length > MAX_TAGS) {
+      throw new ConvexError("That is more tags than Andy can keep on one person.");
+    }
+    if (tags.some((tag) => tag.length > MAX_TAG_CHARS)) {
+      throw new ConvexError("That's longer than a tag. Try a shorter one.");
+    }
+
+    const relationshipContext = args.relationshipContext.trim();
+    if (relationshipContext.length > MAX_RELATIONSHIP_CHARS) {
+      throw new ConvexError("That's longer than a relationship. Try a shorter one.");
+    }
+
+    await ctx.db.patch("profiles", profileId, {
+      name,
+      entityType: args.entityType,
+      // `undefined` rather than an empty string, matching what `saveCapture`
+      // writes: the table spells "the note didn't say" as an absent field, and
+      // a stored "" would be a third state nothing else knows how to read.
+      relationshipContext: relationshipContext === "" ? undefined : relationshipContext,
+      firstMetDate: firstMetDate === "" ? undefined : firstMetDate,
+      tags,
+      // Editing a person by hand is choosing to keep them, which is exactly
+      // what `isStub` means. Left true, they would vanish the moment the note
+      // that first named them was deleted.
+      isStub: false,
+    });
+
+    return null;
+  },
+});

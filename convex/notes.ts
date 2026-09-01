@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
+import { matchKey, mergeTags } from "./naming";
 import schema from "./schema";
 import { getAuthenticatedUser } from "./users";
 import {
@@ -22,42 +23,6 @@ import {
  * forget to check.
  */
 
-/**
- * Names are matched case-insensitively and trimmed, but always *stored* as the
- * user said them. Korean names are unaffected by the case fold; "sarah chen"
- * matching an existing "Sarah Chen" is the point.
- */
-function matchKey(name: string): string {
-  return name.trim().toLocaleLowerCase();
-}
-
-/**
- * Merge tag lists without letting case create duplicates: "Cats" and "cats" are
- * one tag, and the first spelling seen is the one kept, so what the user
- * actually wrote survives. Names are already compared this way — tags were the
- * one place still comparing raw strings.
- */
-function mergeTags(existing: string[], incoming: string[]): string[] {
-  const bySpelling = new Map<string, string>();
-  for (const tag of [...existing, ...incoming]) {
-    const trimmed = tag.trim();
-    if (trimmed === "") {
-      continue;
-    }
-    const key = trimmed.toLocaleLowerCase();
-    if (!bySpelling.has(key)) {
-      bySpelling.set(key, trimmed);
-    }
-  }
-  return [...bySpelling.values()];
-}
-
-/**
- * A ceiling on how many people one note may introduce. Each new mention is a
- * row written inside this transaction, and the draft arrives from the client,
- * so without a bound a malformed or hostile draft could try to write thousands
- * of profiles in a single mutation. A real voice note names a handful.
- */
 const MAX_MENTIONS = 32;
 
 export const saveCapture = mutation({

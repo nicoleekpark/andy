@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
+import { ConvexError } from "convex/values";
 import { expect, test } from "vitest";
 import { api } from "./_generated/api";
 import schema from "./schema";
@@ -575,4 +576,250 @@ test("should cap mentionedIn at the five most recent and report the true total",
     "quote 4",
     "quote 3",
   ]);
+});
+
+/**
+ * `updateProfile` — the second function to take a profile id from a route, and
+ * the first to write through one. `withNotes` only had to refuse to *show*
+ * somebody else's row; this one has to refuse to change it.
+ */
+function capture(name: string, overrides: Record<string, unknown> = {}) {
+  return {
+    transcript: `${name} 이야기.`,
+    draft: {
+      primary: {
+        name,
+        entityType: "person" as const,
+        relationshipContext: null,
+        tags: [],
+        firstMetDate: null,
+        keyFacts: [],
+        ...overrides,
+      },
+      mentions: [],
+    },
+    source: "voice" as const,
+  };
+}
+
+test("should write every edited field, and clear the ones left empty", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  const { profileId } = await asAlice.mutation(
+    api.notes.saveCapture,
+    capture("JOE KING", { relationshipContext: "networking", firstMetDate: "2026-08-27" }),
+  );
+
+  await asAlice.mutation(api.profiles.updateProfile, {
+    profileId,
+    name: "Joe King",
+    entityType: "person",
+    relationshipContext: "",
+    firstMetDate: "",
+    tags: ["cleaning", "Cleaning", "  professional  "],
+  });
+
+  await t.run(async (ctx) => {
+    const profile = await ctx.db.get("profiles", profileId);
+    expect(profile?.name).toBe("Joe King");
+    // Absent, not "". The table spells "not known" as a missing field, and a
+    // stored empty string would be a third state nothing else reads.
+    expect(profile?.relationshipContext).toBeUndefined();
+    expect(profile?.firstMetDate).toBeUndefined();
+    // Deduplicated the way a capture merges them, first spelling kept, trimmed.
+    expect(profile?.tags).toEqual(["cleaning", "professional"]);
+  });
+});
+
+test("should refuse a rename onto a name the user already has", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  await asAlice.mutation(api.notes.saveCapture, capture("민호"));
+  const { profileId } = await asAlice.mutation(api.notes.saveCapture, capture("지선"));
+
+  // Whitespace is not a distinguishing feature.
+  await expect(
+    asAlice.mutation(api.profiles.updateProfile, {
+      profileId,
+      name: "  민호  ",
+      entityType: "person",
+      relationshipContext: "",
+      firstMetDate: "",
+      tags: [],
+    }),
+  ).rejects.toBeInstanceOf(ConvexError);
+
+  await t.run(async (ctx) => {
+    expect((await ctx.db.get("profiles", profileId))?.name).toBe("지선");
+  });
+});
+
+test("should allow saving a profile without renaming it", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  const { profileId } = await asAlice.mutation(api.notes.saveCapture, capture("지선"));
+
+  // The clash check has to exclude the row being edited, or editing anything
+  // else about a person would be blocked by their own name.
+  await asAlice.mutation(api.profiles.updateProfile, {
+    profileId,
+    name: "지선",
+    entityType: "person",
+    relationshipContext: "friend",
+    firstMetDate: "",
+    tags: [],
+  });
+
+  await t.run(async (ctx) => {
+    expect((await ctx.db.get("profiles", profileId))?.relationshipContext).toBe("friend");
+  });
+});
+
+test("should refuse an empty name and a date that is not a date", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  const { profileId } = await asAlice.mutation(api.notes.saveCapture, capture("지선"));
+  const base = {
+    profileId,
+    entityType: "person" as const,
+    relationshipContext: "",
+    firstMetDate: "",
+    tags: [],
+  };
+
+  await expect(
+    asAlice.mutation(api.profiles.updateProfile, { ...base, name: "   " }),
+  ).rejects.toBeInstanceOf(ConvexError);
+  await expect(
+    asAlice.mutation(api.profiles.updateProfile, {
+      ...base,
+      name: "지선",
+      firstMetDate: "last August",
+    }),
+  ).rejects.toBeInstanceOf(ConvexError);
+});
+
+test("should stop being a stub once somebody edits it by hand", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "지선을 민호네 집들이에서 만났다.",
+    draft: {
+      primary: {
+        name: "지선",
+        entityType: "person" as const,
+        relationshipContext: null,
+        tags: [],
+        firstMetDate: null,
+        keyFacts: [],
+      },
+      mentions: [{ name: "민호", entityType: "person" as const, quote: "민호네" }],
+    },
+    source: "voice" as const,
+  });
+
+  const minho = await t.run(async (ctx) =>
+    (await ctx.db.query("profiles").collect()).find((p) => p.name === "민호"),
+  );
+  expect(minho?.isStub).toBe(true);
+
+  await asAlice.mutation(api.profiles.updateProfile, {
+    profileId: minho!._id,
+    name: "민호",
+    entityType: "person",
+    relationshipContext: "friend",
+    firstMetDate: "",
+    tags: [],
+  });
+
+  await t.run(async (ctx) => {
+    // Editing somebody by hand is choosing to keep them, which is what isStub
+    // means. Left true, they would vanish when the note that named them went.
+    expect((await ctx.db.get("profiles", minho!._id))?.isStub).toBe(false);
+  });
+});
+
+test("should refuse to write another user's profile", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  await ensureUser(t, BOB);
+
+  const { profileId } = await t
+    .withIdentity(ALICE)
+    .mutation(api.notes.saveCapture, capture("지선"));
+
+  await expect(
+    t.withIdentity(BOB).mutation(api.profiles.updateProfile, {
+      profileId,
+      name: "Bob's friend",
+      entityType: "person",
+      relationshipContext: "",
+      firstMetDate: "",
+      tags: [],
+    }),
+  ).rejects.toBeInstanceOf(ConvexError);
+
+  await t.run(async (ctx) => {
+    expect((await ctx.db.get("profiles", profileId))?.name).toBe("지선");
+  });
+});
+
+test("should not let one user's name block another user's", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  await ensureUser(t, BOB);
+
+  await t.withIdentity(ALICE).mutation(api.notes.saveCapture, capture("민호"));
+  const { profileId } = await t
+    .withIdentity(BOB)
+    .mutation(api.notes.saveCapture, capture("지선"));
+
+  // The clash check is scoped to the caller's own rows. Anything wider would
+  // leak whether a stranger keeps somebody by that name.
+  await t.withIdentity(BOB).mutation(api.profiles.updateProfile, {
+    profileId,
+    name: "민호",
+    entityType: "person",
+    relationshipContext: "",
+    firstMetDate: "",
+    tags: [],
+  });
+
+  await t.run(async (ctx) => {
+    expect((await ctx.db.get("profiles", profileId))?.name).toBe("민호");
+  });
+});
+
+test("should refuse a rename that differs from an existing name only in case", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  await asAlice.mutation(api.notes.saveCapture, capture("Joe King"));
+  const { profileId } = await asAlice.mutation(api.notes.saveCapture, capture("Sarah Chen"));
+
+  // Latin script on purpose: the Korean case above cannot test this, because
+  // 민호 is its own upper case and its own lower case. `saveCapture` folds case
+  // when it matches a spoken name, so "joe king" would resolve to the existing
+  // Joe King and this profile would silently never receive another note.
+  await expect(
+    asAlice.mutation(api.profiles.updateProfile, {
+      profileId,
+      name: "joe king",
+      entityType: "person",
+      relationshipContext: "",
+      firstMetDate: "",
+      tags: [],
+    }),
+  ).rejects.toBeInstanceOf(ConvexError);
 });
