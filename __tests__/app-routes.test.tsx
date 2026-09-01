@@ -1,6 +1,7 @@
 import { screen } from "@testing-library/react-native";
 import { renderRouter } from "expo-router/testing-library";
 import { useQuery } from "convex/react";
+import { getFunctionName } from "convex/server";
 import { api } from "@convex/_generated/api";
 
 /**
@@ -12,6 +13,20 @@ import { api } from "@convex/_generated/api";
  *
  * These tests assert resolved pathname/segments, never placeholder copy.
  */
+
+/**
+ * Routed by function name because the capture screen asks two queries: who the
+ * note is scoped to, and which names in the draft more than one person answers
+ * to. One blanket `mockReturnValue` hands the second a profile where it expects
+ * a list of questions.
+ */
+function mockCaptureQueries(scoped: unknown) {
+  (useQuery as jest.Mock).mockImplementation((reference: unknown) =>
+    getFunctionName(reference as never) === "profiles:candidatesFor"
+      ? []
+      : scoped,
+  );
+}
 
 describe("app route tree", () => {
   test.each([
@@ -64,7 +79,7 @@ describe("app route tree", () => {
     // The scoped door has to say who it is scoped *to*, or the two routes are
     // indistinguishable to the person standing in front of them — which is how
     // a note recorded on 지선's page ended up asking who it was about.
-    (useQuery as jest.Mock).mockReturnValue({
+    mockCaptureQueries({
       profile: { _id: "contact-1", name: "지선", entityType: "person", tags: [], isStub: false },
       notes: [],
       mentionedIn: [],

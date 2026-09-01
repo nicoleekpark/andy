@@ -257,14 +257,15 @@ const MAX_RELATIONSHIP_CHARS = 120;
  * *and* what `notes.saveCapture` matches the next capture against, and there
  * was no way to touch it short of the Convex dashboard.
  *
- * Names stay unique per user, case-insensitively. That is not a new rule — it
- * is the one `saveCapture` has always assumed, since it resolves a spoken name
- * by taking the first profile that matches it. Allowing two 민호s here would
- * not create a second person; it would create a profile that silently never
- * receives another note. Telling somebody they cannot have two people with the
- * same name is a real limitation, and lifting it is what aliases and a
- * candidate picker are for — until then, refusing is honest and merging by
- * accident is not.
+ * Two people may share a name, and this does not stand in the way of it. An
+ * address book that refuses the second 치선 is telling the user their friend
+ * does not exist, and the case that forces it is ordinary: a name saved by ear
+ * turns out to be spelled the way somebody else's already is.
+ *
+ * What that costs is paid where it can be paid. A spoken name that matches two
+ * profiles is not an answer, so `notes.saveCapture` asks which one rather than
+ * taking the first — see `candidatesFor` below, and the check the capture
+ * screen runs before saving.
  */
 export const updateProfile = mutation({
   args: {
@@ -299,21 +300,6 @@ export const updateProfile = mutation({
     }
     if (name.length > MAX_NAME_CHARS) {
       throw new ConvexError("That name is longer than Andy can store.");
-    }
-
-    // Scoped to this user's own rows, so a name somebody else uses is none of
-    // our business and never leaks by being rejected here.
-    const owned = await ctx.db
-      .query("profiles")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
-    const clash = owned.find(
-      (other) => other._id !== profileId && matchKey(other.name) === matchKey(name),
-    );
-    if (clash !== undefined) {
-      throw new ConvexError(
-        `You already have someone called ${clash.name}. Give one of them a fuller name to tell them apart.`,
-      );
     }
 
     const firstMetDate = args.firstMetDate.trim();
@@ -352,5 +338,95 @@ export const updateProfile = mutation({
     });
 
     return null;
+  },
+});
+
+/**
+ * Which of the caller's people answer to these names, when more than one does.
+ *
+ * The capture screen asks this before saving, so a note about one of two 치선s
+ * is settled by the person who was there rather than by whichever row happens
+ * to be older. Names that match nobody, or exactly one, are left out entirely:
+ * they are not questions, and returning them would make the screen decide what
+ * to ignore.
+ *
+ * Each candidate carries enough to tell two people apart at a glance — how the
+ * user knows them, how much is recorded, when it was last added to. A list of
+ * identical names is not a choice.
+ */
+export const candidatesFor = query({
+  args: { names: v.array(v.string()) },
+  returns: v.array(
+    v.object({
+      name: v.string(),
+      candidates: v.array(
+        v.object({
+          profileId: v.id("profiles"),
+          name: v.string(),
+          relationshipContext: v.optional(v.string()),
+          entityType: v.union(v.literal("person"), v.literal("animal")),
+          noteCount: v.number(),
+          lastNoteAt: v.union(v.number(), v.null()),
+        }),
+      ),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const user = await getAuthenticatedUser(ctx);
+
+    const owned = await ctx.db
+      .query("profiles")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    const byName = new Map<string, typeof owned>();
+    for (const profile of owned) {
+      const key = matchKey(profile.name);
+      byName.set(key, [...(byName.get(key) ?? []), profile]);
+    }
+
+    // Read once and counted here rather than per candidate: the same trade as
+    // `recent`, and revisited by pagination when a person has thousands.
+    const notes = await ctx.db
+      .query("notes")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+    const stats = new Map<string, { noteCount: number; lastNoteAt: number }>();
+    for (const note of notes) {
+      const seen = stats.get(note.profileId);
+      stats.set(note.profileId, {
+        noteCount: (seen?.noteCount ?? 0) + 1,
+        lastNoteAt: Math.max(seen?.lastNoteAt ?? 0, note.createdAt),
+      });
+    }
+
+    const asked = new Set<string>();
+    const out = [];
+    for (const raw of args.names) {
+      const key = matchKey(raw);
+      if (key === "" || asked.has(key)) {
+        continue;
+      }
+      asked.add(key);
+
+      const matches = byName.get(key) ?? [];
+      if (matches.length < 2) {
+        continue;
+      }
+
+      out.push({
+        name: raw.trim(),
+        candidates: matches.map((profile) => ({
+          profileId: profile._id,
+          name: profile.name,
+          relationshipContext: profile.relationshipContext,
+          entityType: profile.entityType,
+          noteCount: stats.get(profile._id)?.noteCount ?? 0,
+          lastNoteAt: stats.get(profile._id)?.lastNoteAt ?? null,
+        })),
+      });
+    }
+
+    return out;
   },
 });

@@ -1010,3 +1010,162 @@ test("should keep a person the user chose even once nothing is left pointing at 
     expect(names).toContain("민호");
   });
 });
+
+/**
+ * Two people who share a name.
+ *
+ * `saveCapture` resolves a spoken name against the caller's profiles, which was
+ * an answer only while names were unique. They are not: people share them, and
+ * a name saved by ear turns out to be spelled the way somebody else's already
+ * is. Taking whichever row was written first files the note on a coin toss.
+ */
+async function twoBySameName(t: ReturnType<typeof convexTest>) {
+  const asAlice = t.withIdentity(ALICE);
+  const first = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "치선은 브랜딩 디자이너다.",
+    draft: buildDraft({ primaryName: "치선" }),
+    source: "voice",
+  });
+  const second = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "지선은 옆집 이웃이다.",
+    draft: buildDraft({ primaryName: "지선" }),
+    source: "voice",
+  });
+  await asAlice.mutation(api.profiles.updateProfile, {
+    profileId: second.profileId,
+    name: "치선",
+    entityType: "person",
+    relationshipContext: "이웃",
+    firstMetDate: "",
+    tags: [],
+  });
+  return { first: first.profileId, second: second.profileId };
+}
+
+test("should refuse to guess which of two people by the same name a note is about", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+  await twoBySameName(t);
+
+  await expect(
+    asAlice.mutation(api.notes.saveCapture, {
+      transcript: "치선을 오늘 만났다.",
+      draft: buildDraft({ primaryName: "치선" }),
+      source: "voice",
+    }),
+  ).rejects.toBeInstanceOf(ConvexError);
+
+  await t.run(async (ctx) => {
+    // Nothing half-written: the note is not saved under one of them "for now".
+    expect(await ctx.db.query("notes").collect()).toHaveLength(2);
+  });
+});
+
+test("should file the note on the person the caller picked", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+  const { second } = await twoBySameName(t);
+
+  const saved = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "치선을 오늘 만났다.",
+    draft: buildDraft({ primaryName: "치선" }),
+    source: "voice",
+    resolutions: [{ name: "치선", profileId: second }],
+  });
+
+  // The one the person who was there chose, not the one written first.
+  expect(saved.profileId).toBe(second);
+  expect(saved.createdProfile).toBe(false);
+});
+
+test("should settle an ambiguous mention by the same answer, not a second mechanism", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+  const { first } = await twoBySameName(t);
+
+  const saved = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "민호를 치선이랑 같이 봤다.",
+    draft: buildDraft({
+      primaryName: "민호",
+      mentions: [{ name: "치선", quote: "치선이랑 같이" }],
+    }),
+    source: "voice",
+    // Keyed by name, so the primary and every mention are settled the same way.
+    resolutions: [{ name: "치선", profileId: first }],
+  });
+
+  await t.run(async (ctx) => {
+    const links = (await ctx.db.query("noteMentions").collect()).filter(
+      (link) => link.noteId === saved.noteId,
+    );
+    expect(links).toHaveLength(1);
+    expect(links[0]?.profileId).toBe(first);
+  });
+});
+
+test("should refuse an answer naming somebody else's profile", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  await ensureUser(t, BOB);
+  await twoBySameName(t);
+
+  const bobsOwn = await t.withIdentity(BOB).mutation(api.notes.saveCapture, {
+    transcript: "치선은 내 친구다.",
+    draft: buildDraft({ primaryName: "치선" }),
+    source: "voice",
+  });
+
+  // The first id this mutation has ever accepted, so this is the check that
+  // has to hold: an id is only ever a way to choose among the caller's own.
+  await expect(
+    t.withIdentity(ALICE).mutation(api.notes.saveCapture, {
+      transcript: "치선을 오늘 만났다.",
+      draft: buildDraft({ primaryName: "치선" }),
+      source: "voice",
+      resolutions: [{ name: "치선", profileId: bobsOwn.profileId }],
+    }),
+  ).rejects.toBeInstanceOf(ConvexError);
+});
+
+test("should refuse an answer that does not go by the name it claims to settle", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+  await twoBySameName(t);
+
+  const other = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "민호는 오래된 친구다.",
+    draft: buildDraft({ primaryName: "민호" }),
+    source: "voice",
+  });
+
+  // A stale screen: the name was edited after the choice was made, so the
+  // answer now points at somebody this note never mentions.
+  await expect(
+    asAlice.mutation(api.notes.saveCapture, {
+      transcript: "치선을 오늘 만났다.",
+      draft: buildDraft({ primaryName: "치선" }),
+      source: "voice",
+      resolutions: [{ name: "치선", profileId: other.profileId }],
+    }),
+  ).rejects.toBeInstanceOf(ConvexError);
+});
+
+test("should still create somebody new without asking, when nobody answers to the name", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+  await twoBySameName(t);
+
+  // Only a name two people answer to is a question. One match, or none, is not.
+  const saved = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "수진을 오늘 처음 만났다.",
+    draft: buildDraft({ primaryName: "수진" }),
+    source: "voice",
+  });
+
+  expect(saved.createdProfile).toBe(true);
+});

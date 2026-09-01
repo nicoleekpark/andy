@@ -168,19 +168,27 @@ function makeDraft(overrides: Partial<Draft["primary"]> = {}): Draft {
  * handle rather than record through, which is why they get their own tests
  * below instead of being left to the shared default.
  */
-function scopeTo(name: string) {
-  (useQuery as jest.Mock).mockReturnValue({
-    profile: {
-      _id: "contact-1",
-      name,
-      entityType: "person",
-      tags: [],
-      isStub: false,
-    },
-    notes: [],
-    mentionedIn: [],
-    mentionedInTotal: 0,
-  });
+function scopeTo(name: string, ambiguous: unknown[] = []) {
+  // Routed by function name, not blanket: the review step also asks
+  // `profiles.candidatesFor` which of the user's people answer to each name in
+  // the draft, and one `mockReturnValue` hands it a profile where it expects a
+  // list of questions.
+  (useQuery as jest.Mock).mockImplementation((reference: unknown) =>
+    getFunctionName(reference as never) === "profiles:candidatesFor"
+      ? ambiguous
+      : {
+          profile: {
+            _id: "contact-1",
+            name,
+            entityType: "person",
+            tags: [],
+            isStub: false,
+          },
+          notes: [],
+          mentionedIn: [],
+          mentionedInTotal: 0,
+        },
+  );
 }
 
 async function reachReview(handlers: Record<string, Listener>, spoken: string) {
@@ -457,6 +465,110 @@ describe("capture screen review step", () => {
     });
 
     expect(result.getPathname()).toBe("/");
+  });
+
+  test("should refuse to save until the user says which of two people by one name it is", async () => {
+    (useAction as jest.Mock).mockReturnValue(
+      jest.fn(async () => makeDraft({ name: "치선" })),
+    );
+    const saveCapture = jest.fn(
+      async (_args: {
+        transcript: string;
+        draft: Draft;
+        source: string;
+        resolutions: { name: string; profileId: string }[];
+      }) => ({
+        profileId: "profile-b",
+        noteId: "note-1",
+        createdProfile: false,
+        createdMentionCount: 0,
+      }),
+    );
+    mockSaveCapture(saveCapture);
+    scopeTo("치선", [
+      {
+        name: "치선",
+        candidates: [
+          {
+            profileId: "profile-a",
+            name: "치선",
+            relationshipContext: "client",
+            entityType: "person",
+            noteCount: 4,
+            lastNoteAt: new Date("2026-08-01T12:00:00").getTime(),
+          },
+          {
+            profileId: "profile-b",
+            name: "치선",
+            relationshipContext: "이웃",
+            entityType: "person",
+            noteCount: 1,
+            lastNoteAt: new Date("2026-08-30T12:00:00").getTime(),
+          },
+        ],
+      },
+    ]);
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+    await reachReview(handlers, "치선을 오늘 만났다.");
+
+    // Saving on a coin toss is the failure this replaces, so the button is
+    // shut until the question is answered rather than showing an error after.
+    expect(screen.getByLabelText("Save note")).toBeDisabled();
+    expect(
+      screen.getByText("Say which person each name above means, and this can be saved."),
+    ).toBeTruthy();
+    // Identical names are not a choice: what tells them apart has to be there.
+    expect(screen.getByText("client · 4 notes · last 2026-08-01")).toBeTruthy();
+    expect(screen.getByText("이웃 · 1 note · last 2026-08-30")).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(
+        screen.getByLabelText("치선, 이웃 · 1 note · last 2026-08-30"),
+      );
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+    });
+
+    await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
+    expect(saveCapture.mock.calls[0]?.[0].resolutions).toEqual([
+      { name: "치선", profileId: "profile-b" },
+    ]);
+  });
+
+  test("should ask nothing when every name belongs to at most one person", async () => {
+    (useAction as jest.Mock).mockReturnValue(jest.fn(async () => makeDraft()));
+    const saveCapture = jest.fn(
+      async (_args: {
+        transcript: string;
+        draft: Draft;
+        source: string;
+        resolutions: { name: string; profileId: string }[];
+      }) => ({
+        profileId: "profile-1",
+        noteId: "note-1",
+        createdProfile: true,
+        createdMentionCount: 0,
+      }),
+    );
+    mockSaveCapture(saveCapture);
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+    await reachReview(handlers, "spoken transcript");
+
+    // The common case must not grow a question. An empty answer list, not a
+    // missing key: the mutation reads it either way, and sending `[]` says the
+    // screen looked.
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+    });
+    await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
+    expect(saveCapture.mock.calls[0]?.[0].resolutions).toEqual([]);
   });
 
   test("should tell extraction who the note is about when the route names a profile", async () => {
@@ -743,12 +855,19 @@ describe("capture screen business card door", () => {
       throw new Error("should never be called for a cancelled pick");
     });
     mockActions({ readCard });
-    const saveCapture = jest.fn(async () => ({
-      profileId: "profile-1",
-      noteId: "note-1",
-      createdProfile: true,
-      createdMentionCount: 0,
-    }));
+    const saveCapture = jest.fn(
+      async (_args: {
+        transcript: string;
+        draft: Draft;
+        source: string;
+        resolutions: { name: string; profileId: string }[];
+      }) => ({
+        profileId: "profile-1",
+        noteId: "note-1",
+        createdProfile: true,
+        createdMentionCount: 0,
+      }),
+    );
     mockSaveCapture(saveCapture);
     mockCardAlert("Take a photo");
     (ImagePicker.requestCameraPermissionsAsync as jest.Mock).mockResolvedValueOnce({

@@ -1,5 +1,5 @@
 import { Stack, router } from "expo-router";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -66,6 +66,30 @@ type Phase =
   | "review"
   | "saving";
 
+/**
+ * What separates two people who share a name: how you know them, how much is
+ * recorded, and when you last added to it. Written once because the candidate
+ * button shows it and its accessibility label repeats it — two copies would
+ * drift, and the screen-reader version is the one nobody notices going stale.
+ */
+function describe(candidate: {
+  relationshipContext?: string;
+  entityType: "person" | "animal";
+  noteCount: number;
+  lastNoteAt: number | null;
+}): string {
+  return [
+    candidate.relationshipContext,
+    candidate.entityType === "animal" ? "animal" : null,
+    `${candidate.noteCount} ${candidate.noteCount === 1 ? "note" : "notes"}`,
+    candidate.lastNoteAt === null
+      ? "never written about"
+      : `last ${new Date(candidate.lastNoteAt).toLocaleDateString("en-CA")}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
 /** The user's own calendar date, not the server's — "오늘" means their today. */
 function localToday(): string {
   // en-CA formats as YYYY-MM-DD, which is the shape the extraction prompt
@@ -99,6 +123,17 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
   /** Still resolving. Recording now would extract without the subject. */
   const scopeLoading = profileId !== undefined && scoped === undefined;
 
+  /**
+   * Names in this draft that more than one of the user's people answer to.
+   *
+   * Two 치선s is ordinary — a name saved by ear turns out to be spelled the way
+   * somebody else's already is — and a spoken name is then not enough to say
+   * who a note is about. Asking here is the only place the question can be
+   * answered: the person who was in the room is standing in front of the
+   * screen. `saveCapture` refuses to guess if this is skipped.
+   */
+  const [resolutions, setResolutions] = useState<Record<string, string>>({});
+
   const extract = useAction(api.extraction.fromTranscript);
   const readCard = useAction(api.extraction.fromBusinessCard);
   const saveCapture = useMutation(api.notes.saveCapture);
@@ -111,6 +146,26 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
   const [error, setError] = useState<string | null>(null);
   /** The draft under review — a working copy the user edits before it is saved. */
   const [draft, setDraft] = useState<Draft | null>(null);
+
+  const namesInDraft =
+    draft === null
+      ? []
+      : [draft.primary.name, ...draft.mentions.map((m) => m.name)]
+          .map((name) => name.trim())
+          .filter((name) => name !== "");
+  const asked = useQuery(
+    api.profiles.candidatesFor,
+    draft === null ? "skip" : { names: namesInDraft },
+  );
+  // Memoised so the `?? []` fallback does not manufacture a new array on every
+  // render and rebuild `save` with it, which would make the callback's identity
+  // change constantly for no reason.
+  const ambiguous = useMemo(() => asked ?? [], [asked]);
+  /** Every question answered, so saving cannot land on a coin toss. */
+  const allAnswered = ambiguous.every(
+    (question) => resolutions[question.name] !== undefined,
+  );
+
   /**
    * The transcript this draft came from, frozen at the moment extraction
    * started. Held in state, not read off `finalRef` during render: a ref's
@@ -392,7 +447,20 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
     setPhase("saving");
     setError(null);
     try {
-      const saved = await saveCapture({ transcript, draft, source });
+      const saved = await saveCapture({
+        transcript,
+        draft,
+        source,
+        // Only the answers still being asked for. A stale one — the name was
+        // edited after it was chosen — would name somebody this note no longer
+        // mentions, and the mutation rejects those rather than ignoring them.
+        resolutions: ambiguous.flatMap((question) => {
+          const profileId = resolutions[question.name];
+          return profileId === undefined
+            ? []
+            : [{ name: question.name, profileId }];
+        }),
+      });
 
       // Never `push`: the capture is finished, and backing into a draft that
       // has already been written would invite saving it twice.
@@ -424,7 +492,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
       );
       setPhase("review");
     }
-  }, [draft, transcript, source, saveCapture, profileId]);
+  }, [draft, transcript, source, saveCapture, profileId, ambiguous, resolutions]);
 
   /** Edit one field of the draft's primary person. */
   const editPrimary = useCallback((patch: Partial<Draft["primary"]>) => {
@@ -457,7 +525,10 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
 
   if ((phase === "review" || phase === "saving") && draft !== null) {
     const named = draft.primary.name.trim() !== "";
-    const canSave = named && phase === "review";
+    // Unanswered questions block saving here as well as in the mutation. The
+    // mutation refuses because it must; the screen refuses so that nobody is
+    // shown an error for a question sitting on the same page.
+    const canSave = named && allAnswered && phase === "review";
 
     return (
       <>
@@ -728,6 +799,60 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
             />
           </Field>
 
+          {/*
+            One question per name that more than one person answers to.
+            Above the save button rather than beside the name it is about: it
+            is not a correction to the draft, it is the thing standing between
+            this note and being saved, and it belongs where that is obvious.
+          */}
+          {ambiguous.map((question) => (
+            <Field
+              key={question.name}
+              label={`Which ${question.name}?`}
+            >
+              <Text style={styles.quiet}>
+                You keep more than one. This note goes to whichever you pick.
+              </Text>
+              {question.candidates.map((candidate) => {
+                const picked = resolutions[question.name] === candidate.profileId;
+                return (
+                  <Pressable
+                    key={candidate.profileId}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${candidate.name}, ${describe(candidate)}`}
+                    accessibilityState={{ selected: picked }}
+                    onPress={() =>
+                      setResolutions((current) => ({
+                        ...current,
+                        [question.name]: candidate.profileId,
+                      }))
+                    }
+                    style={[styles.candidate, picked && styles.candidateOn]}
+                  >
+                    <Text
+                      style={[
+                        styles.candidateName,
+                        picked && styles.candidateNameOn,
+                      ]}
+                    >
+                      {candidate.name}
+                    </Text>
+                    {/* Identical names are not a choice. What separates them is
+                        how you know them and what is already recorded. */}
+                    <Text
+                      style={[
+                        styles.candidateMeta,
+                        picked && styles.candidateNameOn,
+                      ]}
+                    >
+                      {describe(candidate)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </Field>
+          ))}
+
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
           <Pressable
@@ -746,6 +871,11 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
               Add a name first — Andy couldn&apos;t tell who this is about.
             </Text>
           )}
+          {named && !allAnswered ? (
+            <Text style={styles.quiet}>
+              Say which person each name above means, and this can be saved.
+            </Text>
+          ) : null}
 
           <Pressable
             accessibilityRole="button"
@@ -947,6 +1077,18 @@ const styles = StyleSheet.create({
   choiceOn: { backgroundColor: colors.moss, borderColor: colors.moss },
   choiceLabel: { color: colors.ink, fontSize: 14 },
   choiceLabelOn: { color: colors.paper },
+
+  candidate: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.line,
+    borderRadius: 10,
+    padding: 12,
+    gap: 3,
+  },
+  candidateOn: { backgroundColor: colors.moss, borderColor: colors.moss },
+  candidateName: { color: colors.ink, fontSize: 16 },
+  candidateMeta: { color: colors.ink, fontSize: 13, opacity: 0.6 },
+  candidateNameOn: { color: colors.paper, opacity: 1 },
 
   mentionBlock: { gap: 4, paddingBottom: 8 },
   // Smaller than the name above it, but carrying the same bottom rule as every

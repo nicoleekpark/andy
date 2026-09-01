@@ -37,6 +37,27 @@ export const saveCapture = mutation({
       v.literal("business_card"),
       v.literal("calendar_nudge"),
     ),
+    /**
+     * Which person a name means, when the caller keeps more than one by it.
+     *
+     * Keyed by name rather than by position, so the same mechanism settles the
+     * primary and any mention without a second shape to keep in step with the
+     * draft's array.
+     *
+     * This is the first id this mutation accepts, and it is worth saying why
+     * the old rule bends rather than breaks. Taking names only was the
+     * strongest form of ownership safety — nothing to check, because nothing
+     * could be reached. It held while names were unique, and they are not:
+     * people share them, and refusing to save the second 치선 was the app
+     * telling the user their friend does not exist. A name that matches two
+     * profiles simply is not an answer, so something has to carry the choice.
+     * Every id here is normalised and proven to belong to the caller *and* to
+     * match the name it resolves, so it can select among their own rows and
+     * nothing else.
+     */
+    resolutions: v.optional(
+      v.array(v.object({ name: v.string(), profileId: v.string() })),
+    ),
   },
   returns: v.object({
     profileId: v.id("profiles"),
@@ -102,17 +123,60 @@ export const saveCapture = mutation({
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect();
 
-    const byName = new Map<string, Doc<"profiles">>();
+    // Every match, not the first. A name that two people answer to is not an
+    // answer, and picking whichever row was written first files the note on a
+    // coin toss — the failure this whole path exists to avoid.
+    const byName = new Map<string, Doc<"profiles">[]>();
     for (const profile of owned) {
-      // First writer wins, so a pre-existing duplicate name resolves to the
-      // same row every time rather than alternating between them.
-      if (!byName.has(matchKey(profile.name))) {
-        byName.set(matchKey(profile.name), profile);
+      const key = matchKey(profile.name);
+      byName.set(key, [...(byName.get(key) ?? []), profile]);
+    }
+
+    /** The caller's answer for a name, proven to be theirs and to fit. */
+    const chosen = new Map<string, Doc<"profiles">>();
+    for (const resolution of args.resolutions ?? []) {
+      const id = ctx.db.normalizeId("profiles", resolution.profileId);
+      const picked = id === null ? null : await ctx.db.get("profiles", id);
+      if (
+        picked === null ||
+        picked.userId !== user._id ||
+        matchKey(picked.name) !== matchKey(resolution.name)
+      ) {
+        // Not "which of these did you mean" but "that is not one of these" —
+        // a stale screen, or an id that was never on offer.
+        throw new ConvexError(
+          "Andy couldn't tell who that note was about. Try recording it again.",
+        );
       }
+      chosen.set(matchKey(resolution.name), picked);
+    }
+
+    /**
+     * The profile a spoken name refers to: the only match, the one the caller
+     * picked, or `null` when nobody by that name exists yet.
+     *
+     * Throws rather than guesses when several people answer to it and no
+     * choice came with the note. The screen asks before saving, so reaching
+     * this means the question was skipped — a client calling the mutation
+     * directly, or a draft edited after the check.
+     */
+    function resolve(name: string): Doc<"profiles"> | null {
+      const key = matchKey(name);
+      const matches = byName.get(key) ?? [];
+      if (matches.length <= 1) {
+        return matches[0] ?? null;
+      }
+      const pick = chosen.get(key);
+      if (pick === undefined) {
+        throw new ConvexError(
+          `You keep more than one ${name.trim()}. Say which one this note is about.`,
+        );
+      }
+      return pick;
     }
 
     const { primary } = args.draft;
-    const existing = byName.get(matchKey(primaryName)) ?? null;
+    const existing = resolve(primaryName);
 
     let profileId: Id<"profiles">;
     let createdProfile = false;
@@ -197,8 +261,8 @@ export const saveCapture = mutation({
 
       const quote = mention.quote.trim();
 
-      const found = byName.get(key);
-      if (found !== undefined) {
+      const found = resolve(name);
+      if (found !== null) {
         links.push({ profileId: found._id, quote });
         continue;
       }
@@ -221,7 +285,7 @@ export const saveCapture = mutation({
       // to the row just created instead of inserting them twice.
       const inserted = await ctx.db.get("profiles", stubId);
       if (inserted !== null) {
-        byName.set(key, inserted);
+        byName.set(key, [...(byName.get(key) ?? []), inserted]);
       }
     }
 

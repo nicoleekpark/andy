@@ -633,28 +633,30 @@ test("should write every edited field, and clear the ones left empty", async () 
   });
 });
 
-test("should refuse a rename onto a name the user already has", async () => {
+test("should allow a rename onto a name the user already keeps", async () => {
   const t = convexTest(schema, modules);
   await ensureUser(t, ALICE);
   const asAlice = t.withIdentity(ALICE);
 
-  await asAlice.mutation(api.notes.saveCapture, capture("민호"));
+  await asAlice.mutation(api.notes.saveCapture, capture("치선"));
   const { profileId } = await asAlice.mutation(api.notes.saveCapture, capture("지선"));
 
-  // Whitespace is not a distinguishing feature.
-  await expect(
-    asAlice.mutation(api.profiles.updateProfile, {
-      profileId,
-      name: "  민호  ",
-      entityType: "person",
-      relationshipContext: "",
-      firstMetDate: "",
-      tags: [],
-    }),
-  ).rejects.toBeInstanceOf(ConvexError);
+  // Two people share a name. An address book that refuses the second one is
+  // telling the user their friend does not exist, and the case that forces it
+  // is ordinary: a name written down by ear turns out to be spelled the way
+  // somebody else's already is.
+  await asAlice.mutation(api.profiles.updateProfile, {
+    profileId,
+    name: "치선",
+    entityType: "person",
+    relationshipContext: "",
+    firstMetDate: "",
+    tags: [],
+  });
 
   await t.run(async (ctx) => {
-    expect((await ctx.db.get("profiles", profileId))?.name).toBe("지선");
+    const names = (await ctx.db.query("profiles").collect()).map((p) => p.name);
+    expect(names.filter((n) => n === "치선")).toHaveLength(2);
   });
 });
 
@@ -800,26 +802,106 @@ test("should not let one user's name block another user's", async () => {
   });
 });
 
-test("should refuse a rename that differs from an existing name only in case", async () => {
+test("should refuse to write another user's profile", async () => {
   const t = convexTest(schema, modules);
   await ensureUser(t, ALICE);
-  const asAlice = t.withIdentity(ALICE);
+  await ensureUser(t, BOB);
 
-  await asAlice.mutation(api.notes.saveCapture, capture("Joe King"));
-  const { profileId } = await asAlice.mutation(api.notes.saveCapture, capture("Sarah Chen"));
+  const { profileId } = await t
+    .withIdentity(ALICE)
+    .mutation(api.notes.saveCapture, capture("지선"));
 
-  // Latin script on purpose: the Korean case above cannot test this, because
-  // 민호 is its own upper case and its own lower case. `saveCapture` folds case
-  // when it matches a spoken name, so "joe king" would resolve to the existing
-  // Joe King and this profile would silently never receive another note.
   await expect(
-    asAlice.mutation(api.profiles.updateProfile, {
+    t.withIdentity(BOB).mutation(api.profiles.updateProfile, {
       profileId,
-      name: "joe king",
+      name: "Bob's friend",
       entityType: "person",
       relationshipContext: "",
       firstMetDate: "",
       tags: [],
     }),
   ).rejects.toBeInstanceOf(ConvexError);
+
+  await t.run(async (ctx) => {
+    expect((await ctx.db.get("profiles", profileId))?.name).toBe("지선");
+  });
+});
+
+test("should not let one user's name block another user's", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  await ensureUser(t, BOB);
+
+  await t.withIdentity(ALICE).mutation(api.notes.saveCapture, capture("민호"));
+  const { profileId } = await t
+    .withIdentity(BOB)
+    .mutation(api.notes.saveCapture, capture("지선"));
+
+  // The clash check is scoped to the caller's own rows. Anything wider would
+  // leak whether a stranger keeps somebody by that name.
+  await t.withIdentity(BOB).mutation(api.profiles.updateProfile, {
+    profileId,
+    name: "민호",
+    entityType: "person",
+    relationshipContext: "",
+    firstMetDate: "",
+    tags: [],
+  });
+
+  await t.run(async (ctx) => {
+    expect((await ctx.db.get("profiles", profileId))?.name).toBe("민호");
+  });
+});
+
+
+/**
+ * `candidatesFor` — the question the capture screen asks before it saves.
+ */
+test("should ask only about names more than one person answers to", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  const first = await asAlice.mutation(api.notes.saveCapture, capture("치선"));
+  const second = await asAlice.mutation(api.notes.saveCapture, capture("지선"));
+  await asAlice.mutation(api.profiles.updateProfile, {
+    profileId: second.profileId,
+    name: "치선",
+    entityType: "person",
+    relationshipContext: "이웃",
+    firstMetDate: "",
+    tags: [],
+  });
+
+  const asked = await asAlice.query(api.profiles.candidatesFor, {
+    names: ["치선", "민호", "치선"],
+  });
+
+  // 민호 is nobody yet and would be created, so it is not a question; the
+  // repeat is the same question asked twice.
+  expect(asked).toHaveLength(1);
+  expect(asked[0]?.name).toBe("치선");
+  expect(asked[0]?.candidates.map((c) => c.profileId).sort()).toEqual(
+    [first.profileId, second.profileId].sort(),
+  );
+  // Identical names are not a choice — what separates them has to come too.
+  const neighbour = asked[0]?.candidates.find((c) => c.relationshipContext === "이웃");
+  expect(neighbour?.noteCount).toBe(1);
+  expect(neighbour?.lastNoteAt).not.toBeNull();
+});
+
+test("should not offer another user's people as candidates", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  await ensureUser(t, BOB);
+
+  await t.withIdentity(ALICE).mutation(api.notes.saveCapture, capture("치선"));
+  await t.withIdentity(ALICE).mutation(api.notes.saveCapture, capture("민호"));
+  await t.withIdentity(BOB).mutation(api.notes.saveCapture, capture("치선"));
+
+  // Bob keeps one 치선. Counting Alice's would both invent a question and tell
+  // him a stranger keeps somebody by that name.
+  expect(
+    await t.withIdentity(BOB).query(api.profiles.candidatesFor, { names: ["치선"] }),
+  ).toEqual([]);
 });
