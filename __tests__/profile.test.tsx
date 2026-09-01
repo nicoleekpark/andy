@@ -279,11 +279,11 @@ describe("profile screen", () => {
     // something is missing to recording it.
     //
     // Routed by function name because this test crosses into the capture
-    // screen, which also asks `profiles.candidatesFor` which names in the draft
+    // screen, which also asks `profiles.resolveNames` which names in the draft
     // more than one person answers to. A blanket mock hands that a profile
     // where it expects a list of questions.
     (useQuery as jest.Mock).mockImplementation((reference: unknown) =>
-      getFunctionName(reference as never) === "profiles:candidatesFor"
+      getFunctionName(reference as never) === "profiles:resolveNames"
         ? []
         : withNotes([]),
     );

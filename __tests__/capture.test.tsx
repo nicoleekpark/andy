@@ -170,11 +170,11 @@ function makeDraft(overrides: Partial<Draft["primary"]> = {}): Draft {
  */
 function scopeTo(name: string, ambiguous: unknown[] = []) {
   // Routed by function name, not blanket: the review step also asks
-  // `profiles.candidatesFor` which of the user's people answer to each name in
+  // `profiles.resolveNames` which of the user's people answer to each name in
   // the draft, and one `mockReturnValue` hands it a profile where it expects a
   // list of questions.
   (useQuery as jest.Mock).mockImplementation((reference: unknown) =>
-    getFunctionName(reference as never) === "profiles:candidatesFor"
+    getFunctionName(reference as never) === "profiles:resolveNames"
       ? ambiguous
       : {
           profile: {
@@ -465,6 +465,69 @@ describe("capture screen review step", () => {
     });
 
     expect(result.getPathname()).toBe("/");
+  });
+
+  test("should say a name matching nobody is about to invent somebody", async () => {
+    (useAction as jest.Mock).mockReturnValue(
+      jest.fn(async () => makeDraft({ name: "조깅" })),
+    );
+    mockSaveCapture(jest.fn(async () => ({
+      profileId: "profile-1",
+      noteId: "note-1",
+      createdProfile: true,
+      createdMentionCount: 0,
+    })));
+    // Recognition heard "조 킹" as "조깅". Nobody answers to it, so saving
+    // would create a person the user never met — silently, until now.
+    scopeTo("조깅", [{ name: "조깅", candidates: [] }]);
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+    await reachReview(handlers, "조 킹을 오늘 만났다.");
+
+    expect(screen.getByText("New person — nobody by this name yet.")).toBeTruthy();
+    // Still saveable: inventing somebody is often exactly right. The screen
+    // says which it is, it does not decide.
+    expect(screen.getByLabelText("Save note")).not.toBeDisabled();
+  });
+
+  test("should name the person a note is being added to", async () => {
+    (useAction as jest.Mock).mockReturnValue(
+      jest.fn(async () => makeDraft({ name: "지선" })),
+    );
+    mockSaveCapture(jest.fn(async () => ({
+      profileId: "profile-1",
+      noteId: "note-1",
+      createdProfile: false,
+      createdMentionCount: 0,
+    })));
+    scopeTo("지선", [
+      {
+        name: "지선",
+        candidates: [
+          {
+            profileId: "profile-1",
+            name: "지선",
+            relationshipContext: "friend",
+            entityType: "person",
+            noteCount: 3,
+            lastNoteAt: new Date("2026-08-30T12:00:00").getTime(),
+          },
+        ],
+      },
+    ]);
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+    await reachReview(handlers, "지선을 오늘 만났다.");
+
+    // Naming them, and what is already recorded, so landing on the wrong
+    // person by a near-miss is as visible as inventing one.
+    expect(
+      screen.getByText("Adding to 지선 · friend · 3 notes · last 2026-08-30"),
+    ).toBeTruthy();
   });
 
   test("should refuse to save until the user says which of two people by one name it is", async () => {

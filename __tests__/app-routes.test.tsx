@@ -22,7 +22,7 @@ import { api } from "@convex/_generated/api";
  */
 function mockCaptureQueries(scoped: unknown) {
   (useQuery as jest.Mock).mockImplementation((reference: unknown) =>
-    getFunctionName(reference as never) === "profiles:candidatesFor"
+    getFunctionName(reference as never) === "profiles:resolveNames"
       ? []
       : scoped,
   );

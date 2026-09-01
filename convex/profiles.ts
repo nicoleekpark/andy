@@ -264,7 +264,7 @@ const MAX_RELATIONSHIP_CHARS = 120;
  *
  * What that costs is paid where it can be paid. A spoken name that matches two
  * profiles is not an answer, so `notes.saveCapture` asks which one rather than
- * taking the first — see `candidatesFor` below, and the check the capture
+ * taking the first — see `resolveNames` below, and the check the capture
  * screen runs before saving.
  */
 export const updateProfile = mutation({
@@ -342,19 +342,24 @@ export const updateProfile = mutation({
 });
 
 /**
- * Which of the caller's people answer to these names, when more than one does.
+ * Who each of these names would resolve to, if the note were saved now.
  *
- * The capture screen asks this before saving, so a note about one of two 치선s
- * is settled by the person who was there rather than by whichever row happens
- * to be older. Names that match nobody, or exactly one, are left out entirely:
- * they are not questions, and returning them would make the screen decide what
- * to ignore.
+ * The capture screen asks before saving, and both answers matter. Several
+ * matches is a question only the person who was in the room can settle, so it
+ * is put to them rather than decided by whichever row happens to be older. No
+ * match at all is the opposite failure and the more common one: recognition
+ * hears "조 킹" as "조깅", nothing answers to it, and a new person is created
+ * in silence. Neither is visible unless the screen says what saving will do.
+ *
+ * So names that match nobody are returned too, with an empty candidate list —
+ * the absence is the information. The screen decides what to render; this
+ * decides nothing.
  *
  * Each candidate carries enough to tell two people apart at a glance — how the
  * user knows them, how much is recorded, when it was last added to. A list of
  * identical names is not a choice.
  */
-export const candidatesFor = query({
+export const resolveNames = query({
   args: { names: v.array(v.string()) },
   returns: v.array(
     v.object({
@@ -410,9 +415,6 @@ export const candidatesFor = query({
       asked.add(key);
 
       const matches = byName.get(key) ?? [];
-      if (matches.length < 2) {
-        continue;
-      }
 
       out.push({
         name: raw.trim(),

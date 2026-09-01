@@ -855,7 +855,8 @@ test("should not let one user's name block another user's", async () => {
 
 
 /**
- * `candidatesFor` — the question the capture screen asks before it saves.
+ * `resolveNames` — what the capture screen asks before it saves: who each name
+ * in the draft would land on, and whether it lands on anybody at all.
  */
 test("should ask only about names more than one person answers to", async () => {
   const t = convexTest(schema, modules);
@@ -873,17 +874,20 @@ test("should ask only about names more than one person answers to", async () => 
     tags: [],
   });
 
-  const asked = await asAlice.query(api.profiles.candidatesFor, {
+  const asked = await asAlice.query(api.profiles.resolveNames, {
     names: ["치선", "민호", "치선"],
   });
 
-  // 민호 is nobody yet and would be created, so it is not a question; the
-  // repeat is the same question asked twice.
-  expect(asked).toHaveLength(1);
-  expect(asked[0]?.name).toBe("치선");
-  expect(asked[0]?.candidates.map((c) => c.profileId).sort()).toEqual(
+  // Two names, not three: the repeat is the same question asked twice.
+  expect(asked).toHaveLength(2);
+  const chiseon = asked.find((one) => one.name === "치선");
+  expect(chiseon?.candidates.map((c) => c.profileId).sort()).toEqual(
     [first.profileId, second.profileId].sort(),
   );
+  // 민호 is nobody yet. Returned with no candidates rather than left out — the
+  // absence is what tells the screen a new person is about to be invented,
+  // which is how a misheard name gets noticed before it becomes one.
+  expect(asked.find((one) => one.name === "민호")?.candidates).toEqual([]);
   // Identical names are not a choice — what separates them has to come too.
   const neighbour = asked[0]?.candidates.find((c) => c.relationshipContext === "이웃");
   expect(neighbour?.noteCount).toBe(1);
@@ -899,9 +903,11 @@ test("should not offer another user's people as candidates", async () => {
   await t.withIdentity(ALICE).mutation(api.notes.saveCapture, capture("민호"));
   await t.withIdentity(BOB).mutation(api.notes.saveCapture, capture("치선"));
 
-  // Bob keeps one 치선. Counting Alice's would both invent a question and tell
-  // him a stranger keeps somebody by that name.
-  expect(
-    await t.withIdentity(BOB).query(api.profiles.candidatesFor, { names: ["치선"] }),
-  ).toEqual([]);
+  // Bob keeps exactly one 치선, so there is nothing to ask him. Counting
+  // Alice's would both invent a question and tell him a stranger keeps
+  // somebody by that name.
+  const asked = await t
+    .withIdentity(BOB)
+    .query(api.profiles.resolveNames, { names: ["치선"] });
+  expect(asked[0]?.candidates).toHaveLength(1);
 });

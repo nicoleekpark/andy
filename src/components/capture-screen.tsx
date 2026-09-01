@@ -154,13 +154,30 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
           .map((name) => name.trim())
           .filter((name) => name !== "");
   const asked = useQuery(
-    api.profiles.candidatesFor,
+    api.profiles.resolveNames,
     draft === null ? "skip" : { names: namesInDraft },
   );
   // Memoised so the `?? []` fallback does not manufacture a new array on every
   // render and rebuild `save` with it, which would make the callback's identity
   // change constantly for no reason.
-  const ambiguous = useMemo(() => asked ?? [], [asked]);
+  const resolved = useMemo(() => asked ?? [], [asked]);
+  /** Names two or more people answer to — the ones only the user can settle. */
+  const ambiguous = useMemo(
+    () => resolved.filter((one) => one.candidates.length > 1),
+    [resolved],
+  );
+  /**
+   * What saving does with the subject: adds to somebody, or invents them.
+   *
+   * `undefined` while the answer has not arrived, so the screen can say nothing
+   * rather than flash "New person" at every draft before the query lands.
+   */
+  const primaryFate =
+    draft === null || asked === undefined
+      ? undefined
+      : (resolved.find(
+          (one) => one.name === draft.primary.name.trim(),
+        )?.candidates ?? []);
   /** Every question answered, so saving cannot land on a coin toss. */
   const allAnswered = ambiguous.every(
     (question) => resolutions[question.name] !== undefined,
@@ -552,6 +569,25 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
               placeholderTextColor={colors.line}
               accessibilityLabel="Name"
             />
+            {/*
+              What saving will do, said before it happens.
+
+              A misheard name matches nobody and quietly becomes a new person —
+              "조 킹" heard as "조깅" is a person the user never met. Nothing on
+              this screen used to distinguish that from adding to somebody they
+              already keep, so the only way to find out was to look for them
+              afterwards. One line, and a wrong name is obvious while the field
+              to fix it is still under the cursor.
+            */}
+            {primaryFate === undefined || primaryFate.length > 1 ? null : primaryFate.length === 0 ? (
+              <Text style={styles.quiet}>
+                New person — nobody by this name yet.
+              </Text>
+            ) : (
+              <Text style={styles.quiet}>
+                Adding to {primaryFate[0].name} · {describe(primaryFate[0])}
+              </Text>
+            )}
           </Field>
 
           <Field label="Who or what">
