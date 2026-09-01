@@ -865,14 +865,44 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
                     }
                     style={[styles.candidate, picked && styles.candidateOn]}
                   >
-                    <Text
-                      style={[
-                        styles.candidateName,
-                        picked && styles.candidateNameOn,
-                      ]}
-                    >
-                      {candidate.name}
-                    </Text>
+                    <View style={styles.candidateHead}>
+                      <Text
+                        style={[
+                          styles.candidateName,
+                          picked && styles.candidateNameOn,
+                        ]}
+                      >
+                        {candidate.name}
+                      </Text>
+                      {/*
+                        A separate target from the card, on purpose. One line of
+                        summary is not enough to tell two people of the same name
+                        apart — the thing that settles it is what is written on
+                        each of them — but a card that opened a profile when
+                        tapped would make choosing require a trip you did not
+                        want, and a card that chose when you meant to look would
+                        be worse. Selecting stays one tap; looking is its own.
+
+                        The draft survives the trip: this screen stays mounted
+                        beneath the profile, so coming back finds every edit,
+                        the transcript and any other answer exactly as they were.
+                      */}
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`View ${candidate.name}, ${describe(candidate)}`}
+                        onPress={() => router.push(`/profile/${candidate.profileId}`)}
+                        hitSlop={12}
+                      >
+                        <Text
+                          style={[
+                            styles.candidateView,
+                            picked && styles.candidateNameOn,
+                          ]}
+                        >
+                          View
+                        </Text>
+                      </Pressable>
+                    </View>
                     {/* Identical names are not a choice. What separates them is
                         how you know them and what is already recorded. */}
                     <Text
@@ -1122,7 +1152,14 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   candidateOn: { backgroundColor: colors.moss, borderColor: colors.moss },
+  candidateHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
   candidateName: { color: colors.ink, fontSize: 16 },
+  candidateView: { color: colors.moss, fontSize: 13 },
   candidateMeta: { color: colors.ink, fontSize: 13, opacity: 0.6 },
   candidateNameOn: { color: colors.paper, opacity: 1 },
 

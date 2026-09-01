@@ -530,6 +530,95 @@ describe("capture screen review step", () => {
     ).toBeTruthy();
   });
 
+  test("should let a candidate be opened and come back to the draft untouched", async () => {
+    (useAction as jest.Mock).mockReturnValue(
+      jest.fn(async () => makeDraft({ name: "지선" })),
+    );
+    const saveCapture = jest.fn(
+      async (_args: {
+        transcript: string;
+        draft: Draft;
+        source: string;
+        resolutions: { name: string; profileId: string }[];
+      }) => ({
+        profileId: "profile-b",
+        noteId: "note-1",
+        createdProfile: false,
+        createdMentionCount: 0,
+      }),
+    );
+    mockSaveCapture(saveCapture);
+    scopeTo("지선", [
+      {
+        name: "지선",
+        candidates: [
+          {
+            profileId: "profile-a",
+            name: "지선",
+            relationshipContext: "client",
+            entityType: "person",
+            noteCount: 4,
+            lastNoteAt: new Date("2026-08-01T12:00:00").getTime(),
+          },
+          {
+            profileId: "profile-b",
+            name: "지선",
+            relationshipContext: "이웃",
+            entityType: "person",
+            noteCount: 1,
+            lastNoteAt: new Date("2026-08-30T12:00:00").getTime(),
+          },
+        ],
+      },
+    ]);
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+    await reachReview(handlers, "지선을 오늘 만났다.");
+
+    // A line of summary does not settle which 지선 this is; what is written on
+    // each of them does. So the choice has to survive going to look.
+    await act(async () => {
+      fireEvent.changeText(
+        screen.getByLabelText("What you said"),
+        "지선을 오늘 카페에서 만났다.",
+      );
+    });
+    await act(async () => {
+      fireEvent.press(
+        screen.getByLabelText("View 지선, 이웃 · 1 note · last 2026-08-30"),
+      );
+    });
+    expect(result.getPathname()).toBe("/profile/profile-b");
+
+    await act(async () => {
+      router.back();
+    });
+
+    // Every edit still here. Losing a transcript to a trip the screen invited
+    // would make looking cost more than guessing.
+    expect(
+      screen.getByDisplayValue("지선을 오늘 카페에서 만났다."),
+    ).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(
+        screen.getByLabelText("지선, 이웃 · 1 note · last 2026-08-30"),
+      );
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+    });
+
+    await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
+    const [args] = saveCapture.mock.calls[0] ?? [];
+    expect(args?.transcript).toBe("지선을 오늘 카페에서 만났다.");
+    expect(args?.resolutions).toEqual([
+      { name: "지선", profileId: "profile-b" },
+    ]);
+  });
+
   test("should refuse to save until the user says which of two people by one name it is", async () => {
     (useAction as jest.Mock).mockReturnValue(
       jest.fn(async () => makeDraft({ name: "치선" })),
