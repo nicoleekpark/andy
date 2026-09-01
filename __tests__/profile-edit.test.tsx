@@ -1,4 +1,5 @@
 import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { Alert } from "react-native";
 import { useMutation, useQuery } from "convex/react";
 import { getFunctionName } from "convex/server";
 import { router } from "expo-router";
@@ -33,12 +34,39 @@ function profile(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function mockProfileMutations(handlers: {
+  update?: jest.Mock;
+  remove?: jest.Mock;
+}) {
+  (useMutation as jest.Mock).mockImplementation((reference: unknown) => {
+    const name = getFunctionName(reference as never);
+    if (name === "profiles:updateProfile" && handlers.update !== undefined) {
+      return handlers.update;
+    }
+    if (name === "profiles:remove" && handlers.remove !== undefined) {
+      return handlers.remove;
+    }
+    return jest.fn(async () => undefined);
+  });
+}
+
 function mockUpdateProfile(updateProfile: jest.Mock) {
-  (useMutation as jest.Mock).mockImplementation((reference: unknown) =>
-    getFunctionName(reference as never) === "profiles:updateProfile"
-      ? updateProfile
-      : jest.fn(async () => undefined),
-  );
+  mockProfileMutations({ update: updateProfile });
+}
+
+/**
+ * `Alert.alert` guards the delete. Spied so a test can press the exact button
+ * it means to — and so "Cancel deletes nothing" can be asserted at all, which
+ * is the half of a confirmation that matters. Returns the spy so the message
+ * itself can be read: what it counts is the difference between deleting an
+ * empty row and deleting four years of notes.
+ */
+function mockDeleteAlert(press: "Delete" | "Cancel") {
+  return jest
+    .spyOn(Alert, "alert")
+    .mockImplementation((_title, _message, buttons) => {
+      buttons?.find((b) => b.text === press)?.onPress?.();
+    });
 }
 
 type Args = {
@@ -176,5 +204,83 @@ describe("edit profile screen", () => {
 
     // A screen nothing links to is a screen nobody finds.
     expect(screen.getByRole("button", { name: "Edit this person" })).toBeTruthy();
+  });
+
+  test("should count what is about to be lost before deleting", async () => {
+    (useQuery as jest.Mock).mockReturnValue({
+      ...profile({ name: "지선" }),
+      notes: [
+        { note: { _id: "note-1", createdAt: 0, text: "one", source: "voice" }, mentions: [] },
+        { note: { _id: "note-2", createdAt: 0, text: "two", source: "voice" }, mentions: [] },
+      ],
+    });
+    const remove = jest.fn(async () => ({
+      removedNoteCount: 2,
+      removedAutoCreatedCount: 0,
+    }));
+    mockProfileMutations({ remove });
+    const alert = mockDeleteAlert("Delete");
+
+    const result = renderRouter("src/app", {
+      initialUrl: "/profile/contact-1/edit",
+    });
+    await result;
+
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Delete this person" }));
+    });
+
+    // "Delete 지선?" reads the same for an empty row and for years of notes,
+    // and those are not the same decision.
+    expect(alert.mock.calls[0]?.[0]).toBe("Delete 지선?");
+    expect(alert.mock.calls[0]?.[1]).toContain("2 notes go with them");
+    await waitFor(() => expect(remove).toHaveBeenCalledWith({ profileId: "contact-1" }));
+    // Home, not back: back is this person's profile, which is gone.
+    await waitFor(() => expect(result.getPathname()).toBe("/"));
+  });
+
+  test("should delete nothing when the confirmation is dismissed", async () => {
+    (useQuery as jest.Mock).mockReturnValue(profile());
+    const remove = jest.fn(async () => ({
+      removedNoteCount: 0,
+      removedAutoCreatedCount: 0,
+    }));
+    mockProfileMutations({ remove });
+    mockDeleteAlert("Cancel");
+
+    const result = renderRouter("src/app", {
+      initialUrl: "/profile/contact-1/edit",
+    });
+    await result;
+
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Delete this person" }));
+    });
+
+    expect(remove).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Name")).toBeTruthy();
+  });
+
+  test("should stay put and say why when deleting fails", async () => {
+    (useQuery as jest.Mock).mockReturnValue(profile());
+    mockProfileMutations({
+      remove: jest.fn(async () => {
+        throw new Error("Andy couldn't find that person.");
+      }),
+    });
+    mockDeleteAlert("Delete");
+
+    const result = renderRouter("src/app", {
+      initialUrl: "/profile/contact-1/edit",
+    });
+    await result;
+
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Delete this person" }));
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText("Andy couldn't find that person.")).toBeTruthy(),
+    );
   });
 });

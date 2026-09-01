@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
+import { removeOrphanedAutoCreated } from "./cleanup";
 import { matchKey, mergeTags } from "./naming";
 import schema from "./schema";
 import { getAuthenticatedUser } from "./users";
@@ -459,16 +460,8 @@ export const updateNote = mutation({
  * and "where this person was mentioned", so a dangling one is not inert — it is
  * a row on somebody's profile that can no longer be opened.
  *
- * Stub profiles left with nothing referencing them go too. A stub is a row the
- * user never asked for: it exists because a note named someone in passing, and
- * once that note is gone it has no notes of its own, no mentions, and no way to
- * be reached from any screen — an invisible row holding a real person's name.
- * `autoCreated` earns its place here, as the only record of which profiles were
- * created by inference rather than chosen.
- *
- * A profile the user did choose is never touched, even when this was its last
- * note. Deleting a person is a bigger decision than deleting a note, and it is
- * theirs to make.
+ * People Andy invented and this note was the last reason to keep go with it —
+ * see `removeOrphanedAutoCreated`, which `profiles.remove` shares.
  */
 export const remove = mutation({
   args: { noteId: v.string() },
@@ -507,38 +500,13 @@ export const remove = mutation({
     }
     await ctx.db.delete("notes", noteId);
 
-    // After both deletions, so the counts below see the world as it now is
-    // rather than as it was a moment ago.
-    let removedStubCount = 0;
-    for (const profileId of mentioned) {
-      const profile = await ctx.db.get("profiles", profileId);
-      if (profile === null || profile.userId !== user._id || !profile.autoCreated) {
-        continue;
-      }
-
-      const ownNotes = await ctx.db
-        .query("notes")
-        .withIndex("by_user_and_profile_and_createdAt", (q) =>
-          q.eq("userId", user._id).eq("profileId", profileId),
-        )
-        .take(1);
-      if (ownNotes.length > 0) {
-        continue;
-      }
-
-      const remaining = await ctx.db
-        .query("noteMentions")
-        .withIndex("by_user_and_profile", (q) =>
-          q.eq("userId", user._id).eq("profileId", profileId),
-        )
-        .take(1);
-      if (remaining.length > 0) {
-        continue;
-      }
-
-      await ctx.db.delete("profiles", profileId);
-      removedStubCount += 1;
-    }
+    // After both deletions, so this sees the world as it now is rather than as
+    // it was a moment ago.
+    const removedStubCount = await removeOrphanedAutoCreated(
+      ctx,
+      user._id,
+      mentioned,
+    );
 
     return { profileId: note.profileId, removedStubCount };
   },

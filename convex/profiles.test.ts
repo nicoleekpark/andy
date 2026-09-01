@@ -911,3 +911,169 @@ test("should not offer another user's people as candidates", async () => {
     .query(api.profiles.resolveNames, { names: ["치선"] });
   expect(asked[0]?.candidates).toHaveLength(1);
 });
+
+/**
+ * `profiles.remove` — the one irreversible thing in the app.
+ *
+ * A profile is the most connected row here and Convex has no cascading delete,
+ * so each direction is walked by hand and each one is a row that would
+ * otherwise render on a screen and open nothing.
+ */
+test("should take the person, their notes, and the links inside those notes", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  const { profileId } = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "지선을 민호네 집들이에서 만났다.",
+    draft: {
+      primary: {
+        name: "지선",
+        entityType: "person" as const,
+        relationshipContext: null,
+        tags: [],
+        firstMetDate: null,
+        keyFacts: [],
+      },
+      mentions: [{ name: "민호", entityType: "person" as const, quote: "민호네" }],
+    },
+    source: "voice" as const,
+  });
+
+  const result = await asAlice.mutation(api.profiles.remove, { profileId });
+
+  expect(result.removedNoteCount).toBe(1);
+  // 민호 existed only because that note named him.
+  expect(result.removedAutoCreatedCount).toBe(1);
+  await t.run(async (ctx) => {
+    expect(await ctx.db.query("profiles").collect()).toHaveLength(0);
+    expect(await ctx.db.query("notes").collect()).toHaveLength(0);
+    expect(await ctx.db.query("noteMentions").collect()).toHaveLength(0);
+  });
+});
+
+test("should cut the links pointing at them from other people's notes", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  // A note about 지선 that names 민호, then a note of 민호's own so he is
+  // somebody the user chose rather than a row Andy invented.
+  await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "지선을 민호네 집들이에서 만났다.",
+    draft: {
+      primary: {
+        name: "지선",
+        entityType: "person" as const,
+        relationshipContext: null,
+        tags: [],
+        firstMetDate: null,
+        keyFacts: [],
+      },
+      mentions: [{ name: "민호", entityType: "person" as const, quote: "민호네" }],
+    },
+    source: "voice" as const,
+  });
+  const minho = await asAlice.mutation(api.notes.saveCapture, capture("민호"));
+
+  await asAlice.mutation(api.profiles.remove, { profileId: minho.profileId });
+
+  await t.run(async (ctx) => {
+    // 지선's note stays — it is about her, and it happened. What cannot stay is
+    // the link, which would render under "also came up" and open nothing.
+    expect(await ctx.db.query("notes").collect()).toHaveLength(1);
+    expect(await ctx.db.query("noteMentions").collect()).toHaveLength(0);
+    const names = (await ctx.db.query("profiles").collect()).map((p) => p.name);
+    expect(names).toEqual(["지선"]);
+  });
+});
+
+test("should keep a mentioned person who is still reachable from elsewhere", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  const withMinho = (primaryName: string) => ({
+    transcript: `${primaryName}과 민호를 봤다.`,
+    draft: {
+      primary: {
+        name: primaryName,
+        entityType: "person" as const,
+        relationshipContext: null,
+        tags: [],
+        firstMetDate: null,
+        keyFacts: [],
+      },
+      mentions: [{ name: "민호", entityType: "person" as const, quote: "민호를" }],
+    },
+    source: "voice" as const,
+  });
+
+  const jiseon = await asAlice.mutation(api.notes.saveCapture, withMinho("지선"));
+  await asAlice.mutation(api.notes.saveCapture, withMinho("수진"));
+
+  const result = await asAlice.mutation(api.profiles.remove, {
+    profileId: jiseon.profileId,
+  });
+
+  expect(result.removedAutoCreatedCount).toBe(0);
+  await t.run(async (ctx) => {
+    const names = (await ctx.db.query("profiles").collect()).map((p) => p.name);
+    expect(names.sort()).toEqual(["민호", "수진"]);
+  });
+});
+
+test("should take the metrics and calendar links filed against them", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  const { profileId } = await asAlice.mutation(api.notes.saveCapture, capture("콩이"));
+
+  // Nothing writes these tables yet, so they are inserted directly — the day
+  // something does is not the day anybody will remember this cascade exists.
+  await t.run(async (ctx) => {
+    const user = (await ctx.db.query("users").collect())[0]!;
+    await ctx.db.insert("metrics", {
+      userId: user._id,
+      profileId,
+      date: "2026-09-01",
+      metricType: "weight",
+      value: 4.2,
+      unit: "kg",
+    });
+    await ctx.db.insert("calendarLinks", {
+      userId: user._id,
+      profileId,
+      calendarEventId: "event-1",
+      meetingStart: 0,
+      meetingEnd: 1,
+    });
+  });
+
+  await asAlice.mutation(api.profiles.remove, { profileId });
+
+  await t.run(async (ctx) => {
+    expect(await ctx.db.query("metrics").collect()).toHaveLength(0);
+    expect(await ctx.db.query("calendarLinks").collect()).toHaveLength(0);
+  });
+});
+
+test("should refuse to delete another user's person", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  await ensureUser(t, BOB);
+
+  const { profileId } = await t
+    .withIdentity(ALICE)
+    .mutation(api.notes.saveCapture, capture("지선"));
+
+  await expect(
+    t.withIdentity(BOB).mutation(api.profiles.remove, { profileId }),
+  ).rejects.toBeInstanceOf(ConvexError);
+
+  await t.run(async (ctx) => {
+    expect(await ctx.db.query("profiles").collect()).toHaveLength(1);
+    expect(await ctx.db.query("notes").collect()).toHaveLength(1);
+  });
+});

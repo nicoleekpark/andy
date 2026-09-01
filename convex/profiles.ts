@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
+import { removeOrphanedAutoCreated } from "./cleanup";
 import { matchKey, mergeTags } from "./naming";
 import schema from "./schema";
 import { getAuthenticatedUser } from "./users";
@@ -430,5 +431,120 @@ export const resolveNames = query({
     }
 
     return out;
+  },
+});
+
+/**
+ * Deleting a person, and everything that was only about them.
+ *
+ * A profile is the most connected row in this database, and Convex has no
+ * cascading delete, so every direction has to be walked by hand:
+ *
+ *   - their notes, and the mention links inside those notes
+ *   - the links pointing *at* them from other people's notes, which is what
+ *     puts them in somebody else's "also came up"
+ *   - metrics and calendar links filed against them
+ *   - a stored photo, which lives outside the tables entirely
+ *
+ * Missing any one of them leaves a row that renders on a screen and opens
+ * nothing. And people Andy invented, whose only reason to exist was a note that
+ * is going now, go too — the same rule note deletion follows, shared rather
+ * than restated.
+ *
+ * This is the one irreversible thing in the app. It is why the screen asks
+ * first, and why the answer counts what is about to be lost.
+ */
+export const remove = mutation({
+  args: { profileId: v.string() },
+  returns: v.object({
+    removedNoteCount: v.number(),
+    /** People who were only ever mentioned inside the notes just deleted. */
+    removedAutoCreatedCount: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const user = await getAuthenticatedUser(ctx);
+
+    const profileId = ctx.db.normalizeId("profiles", args.profileId);
+    if (profileId === null) {
+      throw new ConvexError("Andy couldn't find that person.");
+    }
+
+    const profile = await ctx.db.get("profiles", profileId);
+    if (profile === null || profile.userId !== user._id) {
+      throw new ConvexError("Andy couldn't find that person.");
+    }
+
+    const notes = await ctx.db
+      .query("notes")
+      .withIndex("by_user_and_profile_and_createdAt", (q) =>
+        q.eq("userId", user._id).eq("profileId", profileId),
+      )
+      .collect();
+
+    // Collected before anything is deleted: these are the people who might be
+    // left stranded, and after the links are gone there is no way to find them.
+    const mentionedInTheirNotes = new Set<Id<"profiles">>();
+    for (const note of notes) {
+      const links = await ctx.db
+        .query("noteMentions")
+        .withIndex("by_user_and_note", (q) =>
+          q.eq("userId", user._id).eq("noteId", note._id),
+        )
+        .collect();
+      for (const link of links) {
+        mentionedInTheirNotes.add(link.profileId);
+        await ctx.db.delete("noteMentions", link._id);
+      }
+      await ctx.db.delete("notes", note._id);
+    }
+
+    // The other direction: this person named inside somebody else's note. Those
+    // notes stay — they are about their own subject — but the link cannot.
+    for (const link of await ctx.db
+      .query("noteMentions")
+      .withIndex("by_user_and_profile", (q) =>
+        q.eq("userId", user._id).eq("profileId", profileId),
+      )
+      .collect()) {
+      await ctx.db.delete("noteMentions", link._id);
+    }
+
+    for (const metric of await ctx.db
+      .query("metrics")
+      .withIndex("by_user_and_profile_and_date", (q) =>
+        q.eq("userId", user._id).eq("profileId", profileId),
+      )
+      .collect()) {
+      await ctx.db.delete("metrics", metric._id);
+    }
+
+    // Nothing writes these two tables yet. Handled anyway, because the day
+    // something does is not the day anybody will remember this function exists.
+    for (const link of await ctx.db
+      .query("calendarLinks")
+      .withIndex("by_user_and_profile", (q) =>
+        q.eq("userId", user._id).eq("profileId", profileId),
+      )
+      .collect()) {
+      await ctx.db.delete("calendarLinks", link._id);
+    }
+
+    if (profile.photoStorageId !== undefined) {
+      // Storage is not a table and no schema check would ever notice this one
+      // being skipped — it would just quietly cost the user money forever.
+      await ctx.storage.delete(profile.photoStorageId);
+    }
+
+    await ctx.db.delete("profiles", profileId);
+
+    // Last, so it sees the links already gone. `profileId` is deleted by now,
+    // so it cannot be a candidate for its own cleanup.
+    const removedAutoCreatedCount = await removeOrphanedAutoCreated(
+      ctx,
+      user._id,
+      mentionedInTheirNotes,
+    );
+
+    return { removedNoteCount: notes.length, removedAutoCreatedCount };
   },
 });

@@ -1,6 +1,7 @@
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import {
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -30,6 +31,7 @@ export default function EditProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const result = useQuery(api.profiles.withNotes, { profileId: id });
   const updateProfile = useMutation(api.profiles.updateProfile);
+  const removeProfile = useMutation(api.profiles.remove);
 
   type Draft = {
     name: string;
@@ -93,6 +95,52 @@ export default function EditProfileScreen() {
       setSaving(false);
     }
   }
+
+  /**
+   * Deleting the person, behind a confirmation that counts what goes with them.
+   *
+   * The count is the point: "Delete 지선?" reads the same whether it is an empty
+   * row created from a passing mention or four years of notes, and those are
+   * very different decisions. `result.notes` is already on the screen, so
+   * saying so costs nothing.
+   *
+   * Home rather than back, because back is this person's profile and it no
+   * longer exists.
+   */
+  const confirmDelete = () => {
+    if (result === undefined || result === null) {
+      return;
+    }
+    const noteCount = result.notes.length;
+    Alert.alert(
+      `Delete ${result.profile.name}?`,
+      noteCount === 0
+        ? "There are no notes to lose. This cannot be undone."
+        : `${noteCount} ${noteCount === 1 ? "note" : "notes"} go with them, for good. This cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            void (async () => {
+              setError(null);
+              try {
+                await removeProfile({ profileId: id });
+                router.replace("/");
+              } catch (e) {
+                setError(
+                  e instanceof Error && e.message
+                    ? e.message
+                    : "Andy couldn't delete them. Try again.",
+                );
+              }
+            })();
+          },
+        },
+      ],
+    );
+  };
 
   if (working === null) {
     return (
@@ -230,6 +278,18 @@ export default function EditProfileScreen() {
             {saving ? "Saving…" : "Save changes"}
           </Text>
         </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Delete this person"
+          onPress={confirmDelete}
+          disabled={saving}
+          style={styles.delete}
+        >
+          <Text style={styles.deleteLabel}>
+            Delete {saved?.name ?? "this person"}
+          </Text>
+        </Pressable>
       </ScrollView>
     </>
   );
@@ -287,4 +347,7 @@ const styles = StyleSheet.create({
   },
   saveLabel: { color: colors.paper, fontSize: 17, fontWeight: "600" },
   disabled: { opacity: 0.5 },
+
+  delete: { alignItems: "center", paddingVertical: 8 },
+  deleteLabel: { color: colors.alert, fontSize: 15 },
 });
