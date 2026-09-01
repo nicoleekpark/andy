@@ -530,6 +530,81 @@ describe("capture screen review step", () => {
     ).toBeTruthy();
   });
 
+  test("should say a misheard mention is about to invent somebody too", async () => {
+    const draft = makeDraft({ name: "지선" });
+    // Recognition heard "민호" as "민우". The subject is fine; the person the
+    // note says they were with is a stranger.
+    draft.mentions[0] = {
+      name: "민우",
+      entityType: "person",
+      quote: "민우네 집들이에서",
+    };
+    (useAction as jest.Mock).mockReturnValue(jest.fn(async () => draft));
+    mockSaveCapture(jest.fn(async () => ({
+      profileId: "profile-1",
+      noteId: "note-1",
+      createdProfile: false,
+      createdMentionCount: 1,
+    })));
+    scopeTo("지선", [
+      {
+        name: "지선",
+        candidates: [
+          {
+            profileId: "profile-1",
+            name: "지선",
+            relationshipContext: "friend",
+            entityType: "person",
+            noteCount: 3,
+            lastNoteAt: new Date("2026-08-30T12:00:00").getTime(),
+          },
+        ],
+      },
+      { name: "민우", candidates: [] },
+    ]);
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+    await reachReview(handlers, "지선을 민우네 집들이에서 만났다.");
+
+    // Both lines, and they say different things: the subject is somebody the
+    // user keeps, the mention is not.
+    expect(
+      screen.getByText("Adding to 지선 · friend · 3 notes · last 2026-08-30"),
+    ).toBeTruthy();
+    expect(screen.getByText("New person — nobody by this name yet.")).toBeTruthy();
+  });
+
+  test("should say nothing about a mention that repeats the subject", async () => {
+    const draft = makeDraft({ name: "지선" });
+    // saveCapture drops a mention that is really the subject, so a line
+    // promising anything about it would describe a row never written.
+    draft.mentions[0] = {
+      name: "지선",
+      entityType: "person",
+      quote: "지선이랑",
+    };
+    (useAction as jest.Mock).mockReturnValue(jest.fn(async () => draft));
+    mockSaveCapture(jest.fn(async () => ({
+      profileId: "profile-1",
+      noteId: "note-1",
+      createdProfile: true,
+      createdMentionCount: 0,
+    })));
+    scopeTo("지선", [{ name: "지선", candidates: [] }]);
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+    await reachReview(handlers, "지선을 오늘 만났다.");
+
+    // Once, for the subject — not twice.
+    expect(
+      screen.getAllByText("New person — nobody by this name yet."),
+    ).toHaveLength(1);
+  });
+
   test("should let a candidate be opened and come back to the draft untouched", async () => {
     (useAction as jest.Mock).mockReturnValue(
       jest.fn(async () => makeDraft({ name: "지선" })),

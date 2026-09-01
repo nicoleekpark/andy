@@ -17,6 +17,7 @@ import {
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import type { Draft } from "@convex/extractionPrompt";
+import { matchKey } from "@convex/naming";
 import { colors } from "@/constants/theme";
 
 /**
@@ -88,6 +89,45 @@ function describe(candidate: {
   ]
     .filter(Boolean)
     .join(" · ");
+}
+
+/**
+ * What saving will do with one name, in a line.
+ *
+ * Shared by the subject and by every mentioned person because the failure is
+ * the same in both places: recognition hears "민호" as "민우", nothing answers
+ * to it, and a person the user never met is created in silence. Saying it once
+ * for the subject and not for the rest would fix the half that was noticed.
+ *
+ * Renders nothing while the answer is in flight, and nothing when several
+ * people answer to the name — that is a question, and it gets a picker rather
+ * than a statement.
+ */
+function Fate({
+  candidates,
+}: {
+  candidates:
+    | {
+        profileId: string;
+        name: string;
+        relationshipContext?: string;
+        entityType: "person" | "animal";
+        noteCount: number;
+        lastNoteAt: number | null;
+      }[]
+    | undefined;
+}) {
+  if (candidates === undefined || candidates.length > 1) {
+    return null;
+  }
+  const only = candidates[0];
+  return (
+    <Text style={styles.quiet}>
+      {only === undefined
+        ? "New person — nobody by this name yet."
+        : `Adding to ${only.name} · ${describe(only)}`}
+    </Text>
+  );
 }
 
 /** The user's own calendar date, not the server's — "오늘" means their today. */
@@ -167,17 +207,33 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
     [resolved],
   );
   /**
-   * What saving does with the subject: adds to somebody, or invents them.
+   * What saving does with each name: adds to somebody, or invents them.
    *
-   * `undefined` while the answer has not arrived, so the screen can say nothing
-   * rather than flash "New person" at every draft before the query lands.
+   * Keyed the way the backend matches names, so a mention spelled with
+   * different capitals than the subject still finds its own answer instead of
+   * silently falling through to "New person".
+   *
+   * `undefined` for every name while the answer is in flight, so the screen can
+   * say nothing rather than flash "New person" at every draft before the query
+   * lands.
    */
-  const primaryFate =
-    draft === null || asked === undefined
-      ? undefined
-      : (resolved.find(
-          (one) => one.name === draft.primary.name.trim(),
-        )?.candidates ?? []);
+  const fateOf = useMemo(() => {
+    const byKey = new Map<string, (typeof resolved)[number]["candidates"]>();
+    for (const one of resolved) {
+      byKey.set(matchKey(one.name), one.candidates);
+    }
+    return (name: string) => {
+      const trimmed = name.trim();
+      if (asked === undefined || trimmed === "") {
+        return undefined;
+      }
+      // Absent, not empty, when the answer does not mention this name at all:
+      // the query is asked about every name in the draft, so a gap means it has
+      // not caught up with an edit yet. "New person" would then be a claim
+      // about a name nobody has looked up.
+      return byKey.get(matchKey(trimmed));
+    };
+  }, [resolved, asked]);
   /** Every question answered, so saving cannot land on a coin toss. */
   const allAnswered = ambiguous.every(
     (question) => resolutions[question.name] !== undefined,
@@ -579,15 +635,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
               afterwards. One line, and a wrong name is obvious while the field
               to fix it is still under the cursor.
             */}
-            {primaryFate === undefined || primaryFate.length > 1 ? null : primaryFate.length === 0 ? (
-              <Text style={styles.quiet}>
-                New person — nobody by this name yet.
-              </Text>
-            ) : (
-              <Text style={styles.quiet}>
-                Adding to {primaryFate[0].name} · {describe(primaryFate[0])}
-              </Text>
-            )}
+            <Fate candidates={fateOf(draft.primary.name)} />
           </Field>
 
           <Field label="Who or what">
@@ -812,6 +860,20 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
                     placeholderTextColor={colors.line}
                     accessibilityLabel={`Mentioned quote ${index + 1}`}
                   />
+                  {/*
+                    The same line the subject gets. A misheard mention costs
+                    less than a misheard subject — the person it invents stays
+                    off the home list and goes when the note does — but it is
+                    still somebody who does not exist, and it is still invisible
+                    unless the screen says so.
+
+                    Skipped when the mention repeats the subject: `saveCapture`
+                    drops those, so promising anything about them would be a
+                    line about a row that is never written.
+                  */}
+                  {matchKey(mention.name) === matchKey(draft.primary.name) ? null : (
+                    <Fate candidates={fateOf(mention.name)} />
+                  )}
                 </View>
               ))}
             </Field>
