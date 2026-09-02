@@ -704,7 +704,7 @@ describe("capture screen review step", () => {
       );
     });
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Read what I typed" }));
+      fireEvent.press(screen.getByRole("button", { name: "Read it back" }));
     });
 
     // Same extraction, same review step, same save — only the door differs.
@@ -721,6 +721,46 @@ describe("capture screen review step", () => {
     expect(saveCapture.mock.calls[0]?.[0].source).toBe("manual");
   });
 
+  test("should give typing the whole screen rather than a field under the record button", async () => {
+    (useAction as jest.Mock).mockReturnValue(jest.fn(async () => makeDraft()));
+    scopeTo("지선");
+    captureListeners();
+
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Type it instead" }));
+    });
+
+    // With the recording controls still on show, nothing said which mode the
+    // screen was in or that the line growing under them was the note.
+    expect(screen.queryByRole("button", { name: "Start recording" })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Scan a business card" }),
+    ).toBeNull();
+    expect(screen.getByLabelText("Type a note")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Read it back" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Stop typing" })).toBeTruthy();
+  });
+
+  test("should put the recording screen back when typing is cancelled", async () => {
+    (useAction as jest.Mock).mockReturnValue(jest.fn(async () => makeDraft()));
+    scopeTo("지선");
+    captureListeners();
+
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Type it instead" }));
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Stop typing" }));
+    });
+
+    expect(screen.getByRole("button", { name: "Start recording" })).toBeTruthy();
+    expect(screen.queryByLabelText("Type a note")).toBeNull();
+  });
+
   test("should not read an empty typed note", async () => {
     const extract = jest.fn(async () => makeDraft());
     (useAction as jest.Mock).mockReturnValue(extract);
@@ -734,7 +774,7 @@ describe("capture screen review step", () => {
       fireEvent.press(screen.getByRole("button", { name: "Type it instead" }));
     });
 
-    expect(screen.getByLabelText("Read what I typed")).toBeDisabled();
+    expect(screen.getByLabelText("Read it back")).toBeDisabled();
     expect(extract).not.toHaveBeenCalled();
   });
 

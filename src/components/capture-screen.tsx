@@ -1142,6 +1142,73 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
     );
   }
 
+  /**
+   * Typing gets the whole screen, not a field wedged under the record button.
+   *
+   * With the recording controls still on show it was not clear which mode the
+   * screen was in, or that the one line growing under them was the note. The
+   * shape here is the recording screen's: what you are capturing fills the
+   * space, and the two things you can do with it sit at the bottom, the doing
+   * one above the leaving one.
+   */
+  if (typing !== null) {
+    const empty = typing.trim() === "";
+    return (
+      <>
+        <Stack.Screen options={{ title: "New note" }} />
+        <View style={styles.container}>
+          <TextInput
+            value={typing}
+            onChangeText={setTyping}
+            style={[styles.transcriptArea, styles.typedNote]}
+            multiline
+            autoFocus
+            editable={!busy}
+            textAlignVertical="top"
+            placeholder={
+              aboutName === undefined
+                ? "What do you want to remember?"
+                : `What do you want to remember about ${aboutName}?`
+            }
+            placeholderTextColor={colors.line}
+            accessibilityLabel="Type a note"
+          />
+
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Read it back"
+            onPress={() => void runExtraction(typing)}
+            disabled={empty || busy}
+            style={[styles.primaryButton, (empty || busy) && styles.disabled]}
+          >
+            <Text style={styles.primaryLabel}>
+              {/* The same words the wait is labelled with, so pressing it
+                  shows the sentence continuing rather than a new one. */}
+              {phase === "extracting" ? "Reading it back…" : "Read it back"}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Stop typing"
+            onPress={() => {
+              setTyping(null);
+              // Back to the door this screen opens on, or a later recording
+              // would be filed as something the user wrote.
+              setSource("voice");
+            }}
+            disabled={busy}
+            style={styles.secondaryButton}
+          >
+            <Text style={styles.secondaryLabel}>Cancel</Text>
+          </Pressable>
+        </View>
+      </>
+    );
+  }
+
   const body = finalText || interim;
 
   return (
@@ -1223,65 +1290,19 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
           <Text style={styles.secondaryLabel}>Scan a business card</Text>
         </Pressable>
 
-        {typing === null ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Type it instead"
-            onPress={() => {
-              setSource("manual");
-              setError(null);
-              setTyping("");
-            }}
-            disabled={listening || busy || phase === "starting"}
-            style={styles.secondaryButton}
-          >
-            <Text style={styles.secondaryLabel}>Type it instead</Text>
-          </Pressable>
-        ) : (
-          <View style={styles.typing}>
-            <TextInput
-              value={typing}
-              onChangeText={setTyping}
-              style={[styles.input, styles.transcriptInput]}
-              multiline
-              autoFocus
-              placeholder="What do you want to remember?"
-              placeholderTextColor={colors.line}
-              accessibilityLabel="Type a note"
-            />
-            <View style={styles.row}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Read what I typed"
-                onPress={() => void runExtraction(typing)}
-                disabled={typing.trim() === "" || busy}
-                style={[
-                  styles.primaryButton,
-                  styles.grow,
-                  (typing.trim() === "" || busy) && styles.disabled,
-                ]}
-              >
-                <Text style={styles.primaryLabel}>
-                  {phase === "extracting" ? "Reading it back…" : "Read it"}
-                </Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Stop typing"
-                onPress={() => {
-                  setTyping(null);
-                  // Back to the door this screen opens on, or a later recording
-                  // would be filed as something the user wrote.
-                  setSource("voice");
-                }}
-                disabled={busy}
-                style={styles.secondaryButton}
-              >
-                <Text style={styles.secondaryLabel}>Cancel</Text>
-              </Pressable>
-            </View>
-          </View>
-        )}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Type it instead"
+          onPress={() => {
+            setSource("manual");
+            setError(null);
+            setTyping("");
+          }}
+          disabled={listening || busy || phase === "starting"}
+          style={styles.secondaryButton}
+        >
+          <Text style={styles.secondaryLabel}>Type it instead</Text>
+        </Pressable>
 
         {/*
           Measurement instrument, not product. PROJECT_SCOPE.md requires Korean
@@ -1418,8 +1439,13 @@ const styles = StyleSheet.create({
   mentionQuoteInput: { fontSize: 14, lineHeight: 21 },
   transcriptInput: { fontSize: 15, lineHeight: 22 },
   addLine: { color: colors.moss, fontSize: 13, paddingTop: 4 },
-  typing: { gap: 12 },
-  grow: { flex: 1 },
+  /** The note being typed, filling the space the transcript would. */
+  typedNote: {
+    color: colors.ink,
+    fontSize: 18,
+    lineHeight: 27,
+    paddingVertical: 8,
+  },
 
   checkRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   checkBox: {
