@@ -15,6 +15,10 @@ This repo ships fast because every change is small, tested, and reversible. Foll
 6. **Delegate to the `code-reviewer` subagent** for a constructive pass — DRY, scope adherence against `PROJECT_SCOPE.md`, consistency, obvious bugs. Act on anything flagged as "must fix before committing"; use judgment on the rest.
 7. **Run lint/typecheck** (`npm run lint`) — must be clean.
 8. **Do NOT commit — Nicole commits.** Never run `git commit` (or `git add` to pre-stage) in this repo. Stop here and hand the slice over instead. Leave the working tree untouched so they can read the raw diff themselves.
+
+   **The one exception: they hand it over in that turn.** "커밋 알아서 해줘", "commit it yourself" — an explicit instruction to commit, given for the work in front of you. Then commit, and still write the report of step 9: the report is what they read instead of the diff, so delegating the commit makes it more necessary rather than less.
+
+   The delegation does not carry. It covers the work it was said about and nothing after it — the next slice goes back to stopping here. Do not treat a run of delegated commits as a change of policy; if it ever becomes one, they will say so and this step gets rewritten. Confirmed 2026-09-02, after a session where several commits were delegated in a row.
 9. **Report back so they can review, then wait.** The report is the deliverable of this step, not a formality:
    - what changed, file by file, and **why** — including anything discovered mid-slice that wasn't in the plan
    - the commands they can run to verify it themselves (`npm run lint`, `npm run test`, …) with the results you actually got
