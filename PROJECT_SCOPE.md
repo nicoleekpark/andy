@@ -128,11 +128,11 @@ Researched directly rather than assumed:
 ### Must Have
 
 - [ ] Auth via **Clerk** — Apple Sign-In only for V1 (see README Tech Stack Decisions)
-- [ ] Voice recording → on-device/API transcription → Claude extraction into structured profile (name, relationship context, key facts, tags, first-met date)
-- [ ] Manual profile create/edit (fallback when voice isn't used)
+- [x] Voice recording → on-device/API transcription → Claude extraction into structured profile (name, relationship context, key facts, tags, first-met date) — day 2–3; typed entry is a second door into the same pipeline
+- [x] Manual profile create/edit (fallback when voice isn't used) — day 3: type a note, edit and delete a note, edit and delete a person, and name a person's aliases
 - [ ] **Business card photo → profile** — same Claude extraction action as voice, given an image input instead; extracts name/title/company directly from a photo (near-zero marginal cost, reuses the existing pipeline)
 - [ ] **Cross-profile mention-graph search** — semantic search runs over every _note_ (not just profile-primary fields), so "X 생일파티에서 만난 메타 개발자" surfaces a person even if they only exist as a mention inside someone else's profile, not as their own profile. See schema note below.
-- [ ] Timeline per profile — chronological list of notes/interactions
+- [x] Timeline per profile — chronological list of notes/interactions — day 3, newest first, with who came up in each note
 - [ ] iOS Contacts sync — per-profile opt-in, read existing contact + optionally write back a note/tag (expo-contacts)
 - [ ] **Calendar Briefing** — read calendar (EventKit — covers Apple + Google + CalDAV in one API, see Reality Checks), fuzzy-match attendee/title names to profiles, schedule a local pre-meeting notification (last notes digest) and a post-meeting nudge ("오늘 A랑 어땠어? 새로 기억할 것?")
 - [ ] **Follow-up email draft** — generate a draft from stored notes, hand off via `mailto:` deep link (no inbox read, no OAuth)
@@ -182,11 +182,18 @@ Researched directly rather than assumed:
 **Capture flow**
 
 ```
-Tap record → speak → see extracted draft (name, tags, key facts) →
+Tap record (or type it) → speak → see extracted draft (name, tags, key facts) →
 confirm/edit → save
-   (if name matches existing profile → append note; if new → create profile;
-    if Claude flags a low-confidence match → ask user to confirm/merge)
+   (name matches one person → append, and the screen says whose;
+    matches nobody → create, and the screen says so before it happens;
+    matches several → the screen asks which, and each candidate can be
+    opened and read before choosing)
 ```
+
+The three outcomes are named on screen because two of them used to be silent
+and each failed in the opposite direction: a misheard name invented a person
+nobody had met, and a shared name merged two. Aliases stop the same question
+being asked about the same person twice — see `convex/naming.ts`.
 
 **Recall flow**
 
@@ -207,9 +214,12 @@ tap nudge → opens capture flow pre-scoped to that profile
 **Screens (minimum for V1, Expo Router)**
 
 ```
-/ (home)              → pinned/recent profiles, search bar, record button
+/ (home)               → recent profiles, search bar, record button
 /profile/[id]          → timeline, tags, metrics (if animal), photo, follow-up email button
-/profile/[id]/capture  → voice/manual capture, pre-scoped to this profile
+/profile/[id]/capture  → voice/typed capture, pre-scoped to this profile
+/profile/[id]/edit     → name, aliases, kind, relationship, first met, tags; delete
+/note/[id]             → correct or delete a saved note
+/capture               → capture from home, subject decided from what is said
 /search                → recall search results
 /settings              → contacts sync toggle, calendar permission, account
 ```

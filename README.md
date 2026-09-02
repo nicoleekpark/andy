@@ -75,10 +75,13 @@ eas env:create --scope project --environment development \
 ```
 src/
   app/              # Expo Router screens
-  components/
+  components/       # capture-screen.tsx, connecting.tsx — shared by more than one route
   hooks/
-  constants/
+  constants/        # theme.ts: the colour and type tokens STYLE.md decides
+assets/fonts/       # Lora, IBM Plex Mono, and their OFL licences
 convex/             # schema.ts, functions (queries/mutations/actions), vector index config
+                    #   naming.ts  — what "the same name" means, shared by every resolver
+                    #   cleanup.ts — what a delete has to take with it
 .claude/
   agents/           # subagents (test-writer, app-store-reviewer, docs-verifier, code-reviewer, security-reviewer)
   skills/           # small-commit-flow, eas-release-checklist, expo-native-extension-setup

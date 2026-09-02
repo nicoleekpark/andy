@@ -17,13 +17,36 @@ The subject is _personal memory-keeping_ — closer to marginalia in a well-love
 | `line`  | `#B8B3A8` | dividers, borders                                                        |
 | `alert` | `#A8503E` | errors only — muted, not a bright red                                    |
 
+`src/constants/theme.ts` is the only place these hex values appear; screens
+import `colors`. `alert` has exactly one non-error use — the destructive
+controls on the note and profile edit screens, which have earned the same
+weight as an error.
+
 **Light only.** There is no dark palette, and `app.json` pins `userInterfaceStyle: "light"` so the OS setting can't half-apply one. A dark variant isn't a colour swap here — `brass` is the signature and it would need re-deciding against a dark ground, which is a real design pass this V1 timeline doesn't have. Not in PROJECT_SCOPE's Must/Should either. Reverting is one line in `app.json` plus six dark values in the table above.
 
 ## Typography
 
-- **Display (profile names, section headers only)**: a warm, low-contrast serif (e.g. Lora or Source Serif 4). This is the one typographic flourish — don't extend it to body text or it stops being a signature.
-- **Body/UI**: platform default (SF Pro / Roboto). Deliberate choice, not a placeholder — a memory app should feel like it belongs on the phone, not like an imported web font.
-- **Utility (dates, tags, pet metrics)**: a monospace (e.g. IBM Plex Mono) — gives numbers/dates a "ledger" feel that reinforces the record-keeping concept.
+Built on day 3. The faces live in `assets/fonts/` with their licences beside
+them, are registered in `src/app/_layout.tsx`, and are named by role in
+`src/constants/theme.ts` — use `fonts.display` / `fonts.utility`, never a
+family string in a screen.
+
+- **Display (profile names, section headers only)**: **Lora**, a warm,
+  low-contrast serif. Regular for list rows, Medium for a profile's own name.
+  This is the one typographic flourish — don't extend it to body text or it
+  stops being a signature.
+- **Body/UI**: platform default (SF Pro / Roboto), which means **setting no
+  `fontFamily` at all**. Deliberate choice, not a placeholder — a memory app
+  should feel like it belongs on the phone, not like an imported web font.
+  `fonts` has no `body` token on purpose: a token holding `"System"` would
+  invite somebody to apply it, which is the same as not having decided.
+- **Utility (dates, tags, pet metrics)**: **IBM Plex Mono** — a ledger reads as
+  a record because its numbers line up, which a proportional face cannot do.
+
+The splash is held until both load (`useFonts`), because swapping a face in
+after first paint reflows every name and date on every cold start. A font that
+fails to load falls through to the platform face rather than holding the splash
+forever — an entire screen lost to a typeface is the worse failure.
 
 ## Signature Element — spend the one risk here
 

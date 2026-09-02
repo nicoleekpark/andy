@@ -76,10 +76,13 @@ eas env:create --scope project --environment development \
 ```
 src/
   app/              # Expo Router 화면
-  components/
+  components/       # capture-screen.tsx, connecting.tsx — 라우트 여러 곳이 공유
   hooks/
-  constants/
+  constants/        # theme.ts: STYLE.md가 정한 색·타입 토큰
+assets/fonts/       # Lora, IBM Plex Mono, 그리고 각자의 OFL 라이선스
 convex/             # schema.ts, functions (queries/mutations/actions), vector index config
+                    #   naming.ts  — "같은 이름"의 정의. 모든 해석기가 공유
+                    #   cleanup.ts — 삭제가 함께 데려가야 하는 것
 .claude/
   agents/           # 서브에이전트 (test-writer, app-store-reviewer, docs-verifier, code-reviewer, security-reviewer)
   skills/           # small-commit-flow, eas-release-checklist, expo-native-extension-setup
