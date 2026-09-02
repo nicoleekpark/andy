@@ -36,3 +36,29 @@ export function mergeTags(existing: string[], incoming: string[]): string[] {
   }
   return [...bySpelling.values()];
 }
+
+/**
+ * Every name a profile answers to: the one it is filed under, then its aliases.
+ *
+ * One function because three places have to agree on it — resolving a spoken
+ * name to a person, telling the capture screen which names are ambiguous, and
+ * checking that a chosen candidate really goes by the name it was chosen for.
+ * If they disagreed, a note would be filed against somebody the screen never
+ * offered.
+ */
+export function namesOf(profile: {
+  name: string;
+  aliases?: string[];
+}): string[] {
+  return [profile.name, ...(profile.aliases ?? [])];
+}
+
+/**
+ * Tidy a list of alternative names: trimmed, deduplicated case-insensitively,
+ * and never repeating the name the profile is already filed under — an alias
+ * identical to the name is a row that can only ever be noise.
+ */
+export function cleanAliases(name: string, aliases: string[]): string[] {
+  const key = matchKey(name);
+  return mergeTags([], aliases).filter((alias) => matchKey(alias) !== key);
+}

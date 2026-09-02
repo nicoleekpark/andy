@@ -110,6 +110,14 @@ export default function ProfileScreen() {
           <>
             <Text style={styles.name}>{result.profile.name}</Text>
 
+            {/* Under the name, because that is what they are: other ways of
+                saying it. Not a chip like a tag — these are not categories. */}
+            {result.profile.aliases && result.profile.aliases.length > 0 ? (
+              <Text style={styles.meta}>
+                also {result.profile.aliases.join(", ")}
+              </Text>
+            ) : null}
+
             <View style={styles.metaRow}>
               {result.profile.relationshipContext ? (
                 <Text style={styles.meta}>

@@ -335,6 +335,19 @@ test("should keep a deleted person's name in the note but stop it opening anythi
   expect(screen.queryByRole("button", { name: "Open 민호" })).toBeNull();
 });
 
+test("should show the other names a person answers to", async () => {
+  (useQuery as jest.Mock).mockReturnValue({
+    ...withNotes([]),
+    profile: { ...buildProfile(), aliases: ["지선 언니", "Jiseon"] },
+  });
+
+  const result = renderRouter("src/app", { initialUrl: "/profile/contact-1" });
+  await result;
+
+  // Otherwise the only way to know Andy will recognise them is to try.
+  expect(screen.getByText("also 지선 언니, Jiseon")).toBeTruthy();
+});
+
 test("should say how many mentions were left out when the list is truncated, and stay quiet when it is not", async () => {
   // Someone who comes up in fifty conversations should say so rather than
   // quietly showing five; a complete list needs no count next to it.

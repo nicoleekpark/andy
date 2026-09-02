@@ -25,6 +25,21 @@ export default defineSchema({
     userId: v.id("users"),
     name: v.string(),
     entityType: v.union(v.literal("person"), v.literal("animal")),
+    /**
+     * Other names this person answers to — a nickname, a fuller name, what
+     * their family calls them.
+     *
+     * Matching a spoken name against `name` alone is wrong in the direction
+     * opposite to two people sharing one: it splits a single person across
+     * "John", "John Maxwell" and "Mr. Maxwell", each a separate profile whose
+     * notes never meet. `PROJECT_SCOPE.md` calls for a low-confidence match to
+     * ask rather than guess; this is the half that stops the question being
+     * asked over and over about the same person.
+     *
+     * Stored as written and compared the way names are, so 지수 and JISOO are
+     * one alias rather than two.
+     */
+    aliases: v.optional(v.array(v.string())),
     relationshipContext: v.optional(v.string()), // "client" | "friend" | "networking" | "foster" | ...
     tags: v.array(v.string()),
     firstMetDate: v.optional(v.string()),

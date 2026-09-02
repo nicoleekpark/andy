@@ -2,7 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { removeOrphanedAutoCreated } from "./cleanup";
-import { matchKey, mergeTags } from "./naming";
+import { cleanAliases, matchKey, mergeTags, namesOf } from "./naming";
 import schema from "./schema";
 import { getAuthenticatedUser } from "./users";
 
@@ -291,6 +291,8 @@ export const updateProfile = mutation({
     /** ISO `YYYY-MM-DD`, or empty to clear. */
     firstMetDate: v.string(),
     tags: v.array(v.string()),
+    /** Other names this person answers to. Empty entries are dropped. */
+    aliases: v.array(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -331,6 +333,14 @@ export const updateProfile = mutation({
       throw new ConvexError("That's longer than a tag. Try a shorter one.");
     }
 
+    const aliases = cleanAliases(name, args.aliases);
+    if (aliases.length > MAX_TAGS) {
+      throw new ConvexError("That is more names than Andy can keep for one person.");
+    }
+    if (aliases.some((alias) => alias.length > MAX_NAME_CHARS)) {
+      throw new ConvexError("That name is longer than Andy can store.");
+    }
+
     const relationshipContext = args.relationshipContext.trim();
     if (relationshipContext.length > MAX_RELATIONSHIP_CHARS) {
       throw new ConvexError("That's longer than a relationship. Try a shorter one.");
@@ -345,6 +355,9 @@ export const updateProfile = mutation({
       relationshipContext: relationshipContext === "" ? undefined : relationshipContext,
       firstMetDate: firstMetDate === "" ? undefined : firstMetDate,
       tags,
+      // Absent rather than an empty array, so a person with no other names
+      // looks the same as one written before aliases existed.
+      aliases: aliases.length > 0 ? aliases : undefined,
       // Editing a person by hand is choosing to keep them, which is exactly
       // what `autoCreated` means. Left true, they would vanish the moment the note
       // that first named them was deleted.
@@ -400,8 +413,12 @@ export const resolveNames = query({
 
     const byName = new Map<string, typeof owned>();
     for (const profile of owned) {
-      const key = matchKey(profile.name);
-      byName.set(key, [...(byName.get(key) ?? []), profile]);
+      // Every name they answer to, matching how `saveCapture` resolves one.
+      // A screen that asked about a different set of names than the mutation
+      // acts on would ask the wrong questions and miss the right ones.
+      for (const key of new Set(namesOf(profile).map(matchKey))) {
+        byName.set(key, [...(byName.get(key) ?? []), profile]);
+      }
     }
 
     // Read once and counted here rather than per candidate: the same trade as

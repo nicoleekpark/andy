@@ -2,7 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { removeOrphanedAutoCreated } from "./cleanup";
-import { matchKey, mergeTags } from "./naming";
+import { matchKey, mergeTags, namesOf } from "./naming";
 import schema from "./schema";
 import { getAuthenticatedUser } from "./users";
 import {
@@ -129,8 +129,11 @@ export const saveCapture = mutation({
     // coin toss — the failure this whole path exists to avoid.
     const byName = new Map<string, Doc<"profiles">[]>();
     for (const profile of owned) {
-      const key = matchKey(profile.name);
-      byName.set(key, [...(byName.get(key) ?? []), profile]);
+      // Filed under every name they answer to, so "지선 언니" reaches the same
+      // person as "지선" instead of inventing a second one.
+      for (const key of new Set(namesOf(profile).map(matchKey))) {
+        byName.set(key, [...(byName.get(key) ?? []), profile]);
+      }
     }
 
     /** The caller's answer for a name, proven to be theirs and to fit. */
@@ -141,7 +144,9 @@ export const saveCapture = mutation({
       if (
         picked === null ||
         picked.userId !== user._id ||
-        matchKey(picked.name) !== matchKey(resolution.name)
+        !namesOf(picked).some(
+          (known) => matchKey(known) === matchKey(resolution.name),
+        )
       ) {
         // Not "which of these did you mean" but "that is not one of these" —
         // a stale screen, or an id that was never on offer.

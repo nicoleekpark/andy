@@ -39,6 +39,7 @@ export default function EditProfileScreen() {
     relationshipContext: string;
     firstMetDate: string;
     tags: string[];
+    aliases: string[];
   };
 
   const [edits, setEdits] = useState<Draft | null>(null);
@@ -56,6 +57,7 @@ export default function EditProfileScreen() {
           relationshipContext: result.profile.relationshipContext ?? "",
           firstMetDate: result.profile.firstMetDate ?? "",
           tags: result.profile.tags,
+          aliases: result.profile.aliases ?? [],
         };
   const working = edits ?? saved;
 
@@ -191,6 +193,44 @@ export default function EditProfileScreen() {
             Andy files a new note under the name it hears, so this is what the
             next one has to match.
           </Text>
+        </View>
+
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Also known as</Text>
+          {working.aliases.map((alias, index) => (
+            <TextInput
+              key={index}
+              value={alias}
+              onChangeText={(value) =>
+                edit({
+                  aliases: working.aliases.map((a, i) =>
+                    i === index ? value : a,
+                  ),
+                })
+              }
+              style={styles.input}
+              accessibilityLabel={`Other name ${index + 1}`}
+            />
+          ))}
+          <View style={styles.tagActions}>
+            {/*
+              The other half of matching. Two people sharing a name is settled
+              by asking which; one person answering to several is settled here,
+              once, instead of the same question being asked every time they
+              come up under a name Andy has not been told about.
+            */}
+            <Text style={styles.hint}>
+              Andy will recognise these too. Clearing one removes it.
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Add another name"
+              onPress={() => edit({ aliases: [...working.aliases, ""] })}
+              hitSlop={8}
+            >
+              <Text style={styles.addTag}>Add a name</Text>
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.field}>

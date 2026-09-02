@@ -623,6 +623,7 @@ test("should write every edited field, and clear the ones left empty", async () 
     relationshipContext: "",
     firstMetDate: "",
     tags: ["cleaning", "Cleaning", "  professional  "],
+    aliases: [],
   });
 
   await t.run(async (ctx) => {
@@ -656,6 +657,7 @@ test("should allow a rename onto a name the user already keeps", async () => {
     relationshipContext: "",
     firstMetDate: "",
     tags: [],
+    aliases: [],
   });
 
   await t.run(async (ctx) => {
@@ -680,6 +682,7 @@ test("should allow saving a profile without renaming it", async () => {
     relationshipContext: "friend",
     firstMetDate: "",
     tags: [],
+    aliases: [],
   });
 
   await t.run(async (ctx) => {
@@ -699,6 +702,7 @@ test("should refuse an empty name and a date that is not a date", async () => {
     relationshipContext: "",
     firstMetDate: "",
     tags: [],
+    aliases: [],
   };
 
   await expect(
@@ -746,6 +750,7 @@ test("should stop being a stub once somebody edits it by hand", async () => {
     relationshipContext: "friend",
     firstMetDate: "",
     tags: [],
+    aliases: [],
   });
 
   await t.run(async (ctx) => {
@@ -772,6 +777,7 @@ test("should refuse to write another user's profile", async () => {
       relationshipContext: "",
       firstMetDate: "",
       tags: [],
+      aliases: [],
     }),
   ).rejects.toBeInstanceOf(ConvexError);
 
@@ -799,6 +805,7 @@ test("should not let one user's name block another user's", async () => {
     relationshipContext: "",
     firstMetDate: "",
     tags: [],
+    aliases: [],
   });
 
   await t.run(async (ctx) => {
@@ -823,6 +830,7 @@ test("should refuse to write another user's profile", async () => {
       relationshipContext: "",
       firstMetDate: "",
       tags: [],
+      aliases: [],
     }),
   ).rejects.toBeInstanceOf(ConvexError);
 
@@ -850,6 +858,7 @@ test("should not let one user's name block another user's", async () => {
     relationshipContext: "",
     firstMetDate: "",
     tags: [],
+    aliases: [],
   });
 
   await t.run(async (ctx) => {
@@ -876,6 +885,7 @@ test("should ask only about names more than one person answers to", async () => 
     relationshipContext: "이웃",
     firstMetDate: "",
     tags: [],
+    aliases: [],
   });
 
   const asked = await asAlice.query(api.profiles.resolveNames, {
@@ -1038,6 +1048,7 @@ test("should show a mentioned person's current name while they still exist", asy
     relationshipContext: "",
     firstMetDate: "",
     tags: [],
+    aliases: [],
   });
 
   // The name on the link is only a fallback. A rename has to reach every note
@@ -1136,5 +1147,115 @@ test("should refuse to delete another user's person", async () => {
   await t.run(async (ctx) => {
     expect(await ctx.db.query("profiles").collect()).toHaveLength(1);
     expect(await ctx.db.query("notes").collect()).toHaveLength(1);
+  });
+});
+
+/**
+ * Aliases — one person answering to several names, which is the failure
+ * opposite to two people sharing one.
+ */
+test("should file a note under the person whose alias was spoken", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  const { profileId } = await asAlice.mutation(api.notes.saveCapture, capture("지선"));
+  await asAlice.mutation(api.profiles.updateProfile, {
+    profileId,
+    name: "지선",
+    entityType: "person",
+    relationshipContext: "",
+    firstMetDate: "",
+    tags: [],
+    aliases: ["지선 언니"],
+  });
+
+  const saved = await asAlice.mutation(api.notes.saveCapture, capture("지선 언니"));
+
+  // The same person, not a second one. Without this, "John", "John Maxwell"
+  // and "Mr. Maxwell" are three profiles whose notes never meet.
+  expect(saved.profileId).toBe(profileId);
+  expect(saved.createdProfile).toBe(false);
+});
+
+test("should tell the capture screen a name is shared when an alias collides", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  const jiseon = await asAlice.mutation(api.notes.saveCapture, capture("지선"));
+  const soojin = await asAlice.mutation(api.notes.saveCapture, capture("수진"));
+  await asAlice.mutation(api.profiles.updateProfile, {
+    profileId: soojin.profileId,
+    name: "수진",
+    entityType: "person",
+    relationshipContext: "",
+    firstMetDate: "",
+    tags: [],
+    aliases: ["지선"],
+  });
+
+  // An alias that collides with somebody's name makes that name a question,
+  // and it has to be the same question the mutation would ask — the screen
+  // asking about a different set of names than the mutation acts on is how a
+  // note gets filed against somebody nobody was offered.
+  const asked = await asAlice.query(api.profiles.resolveNames, { names: ["지선"] });
+  expect(asked[0]?.candidates.map((c) => c.profileId).sort()).toEqual(
+    [jiseon.profileId, soojin.profileId].sort(),
+  );
+
+  await expect(
+    asAlice.mutation(api.notes.saveCapture, capture("지선")),
+  ).rejects.toBeInstanceOf(ConvexError);
+});
+
+test("should accept a choice made under an alias rather than the filed name", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  const jiseon = await asAlice.mutation(api.notes.saveCapture, capture("지선"));
+  const soojin = await asAlice.mutation(api.notes.saveCapture, capture("수진"));
+  await asAlice.mutation(api.profiles.updateProfile, {
+    profileId: soojin.profileId,
+    name: "수진",
+    entityType: "person",
+    relationshipContext: "",
+    firstMetDate: "",
+    tags: [],
+    aliases: ["지선"],
+  });
+
+  // The check that a chosen profile really goes by the name it was chosen for
+  // has to know about aliases too, or picking 수진 under "지선" — exactly what
+  // the screen offered — would be rejected as a stale answer.
+  const saved = await asAlice.mutation(api.notes.saveCapture, {
+    ...capture("지선"),
+    resolutions: [{ name: "지선", profileId: soojin.profileId }],
+  });
+  expect(saved.profileId).toBe(soojin.profileId);
+  expect(saved.profileId).not.toBe(jiseon.profileId);
+});
+
+test("should tidy the names it is given and refuse to store one twice", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  const { profileId } = await asAlice.mutation(api.notes.saveCapture, capture("지선"));
+  await asAlice.mutation(api.profiles.updateProfile, {
+    profileId,
+    name: "지선",
+    entityType: "person",
+    relationshipContext: "",
+    firstMetDate: "",
+    tags: [],
+    aliases: ["  지선 언니  ", "지선 언니", "", "지선"],
+  });
+
+  await t.run(async (ctx) => {
+    // Trimmed, deduplicated, and never repeating the name it is filed under —
+    // an alias identical to the name can only ever be noise.
+    expect((await ctx.db.get("profiles", profileId))?.aliases).toEqual(["지선 언니"]);
   });
 });

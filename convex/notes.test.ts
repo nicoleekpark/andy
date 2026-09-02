@@ -1038,6 +1038,7 @@ async function twoBySameName(t: ReturnType<typeof convexTest>) {
     relationshipContext: "이웃",
     firstMetDate: "",
     tags: [],
+    aliases: [],
   });
   return { first: first.profileId, second: second.profileId };
 }

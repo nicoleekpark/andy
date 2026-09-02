@@ -76,6 +76,7 @@ type Args = {
   relationshipContext: string;
   firstMetDate: string;
   tags: string[];
+  aliases: string[];
 };
 
 describe("edit profile screen", () => {
@@ -288,5 +289,31 @@ describe("edit profile screen", () => {
     await waitFor(() =>
       expect(screen.getByText("Andy couldn't find that person.")).toBeTruthy(),
     );
+  });
+
+  test("should let another name be added, and send it with the rest", async () => {
+    (useQuery as jest.Mock).mockReturnValue(profile({ name: "지선" }));
+    const updateProfile = jest.fn(async (_args: Args) => null);
+    mockUpdateProfile(updateProfile);
+
+    const result = renderRouter("src/app", {
+      initialUrl: "/profile/contact-1/edit",
+    });
+    await result;
+
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Add another name" }));
+    });
+    await act(async () => {
+      fireEvent.changeText(screen.getByLabelText("Other name 1"), "지선 언니");
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Save changes" }));
+    });
+
+    await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
+    expect(updateProfile.mock.calls[0]?.[0].aliases).toEqual(["지선 언니"]);
+    // Everything else still goes with it, the way every other field does.
+    expect(updateProfile.mock.calls[0]?.[0].tags).toEqual(["cleaning"]);
   });
 });
