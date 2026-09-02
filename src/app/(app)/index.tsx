@@ -2,7 +2,7 @@ import { Stack, router } from "expo-router";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
-import { colors } from "@/constants/theme";
+import { colors, fonts } from "@/constants/theme";
 
 /**
  * Home: the people you keep, and the way in to everything else.
@@ -97,8 +97,13 @@ const styles = StyleSheet.create({
   list: { gap: 4, paddingBottom: 8, flexGrow: 1 },
   row: { paddingVertical: 14 },
   rowText: { gap: 3 },
-  rowName: { color: colors.ink, fontSize: 18 },
-  rowMeta: { color: colors.ink, fontSize: 13, opacity: 0.55 },
+  rowName: { color: colors.ink, fontSize: 18, fontFamily: fonts.display },
+  rowMeta: {
+    color: colors.ink,
+    fontSize: 13,
+    opacity: 0.55,
+    fontFamily: fonts.utility,
+  },
 
   emptyState: { flex: 1, justifyContent: "center", alignItems: "center" },
   quiet: {

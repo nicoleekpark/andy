@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ClerkProvider, useAuth } from "@clerk/expo";
+import { useFonts } from "expo-font";
+import * as SplashScreen from "expo-splash-screen";
 import { tokenCache } from "@clerk/expo/token-cache";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
@@ -31,6 +33,19 @@ const convexUrl = requireEnv(
   "EXPO_PUBLIC_CONVEX_URL",
   process.env.EXPO_PUBLIC_CONVEX_URL,
 );
+
+/**
+ * Hold the splash until the typefaces are in.
+ *
+ * Rendering first and swapping the font in a moment later is the visible
+ * version of this — every name and date reflows once, on every cold start.
+ * Holding the splash costs nothing to look at, because the splash is now the
+ * same paper ground the app is on.
+ *
+ * Failures are swallowed: this can reject when the splash has already gone,
+ * which is not a reason to take the app down.
+ */
+void SplashScreen.preventAutoHideAsync().catch(() => {});
 
 /**
  * One Convex client, alive for exactly as long as one signed-in identity.
@@ -138,6 +153,28 @@ function ConvexScopedToIdentity({ children }: { children: React.ReactNode }) {
  * state, not Clerk's — see (app)/_layout.tsx.
  */
 export default function RootLayout() {
+  /**
+   * `error` is read on purpose. A font that fails to load leaves `loaded`
+   * false forever, and gating on it alone would hold the splash over a working
+   * app — the whole screen lost to a typeface. Falling through renders in the
+   * platform face instead, which is worse-looking and entirely usable.
+   */
+  const [loaded, error] = useFonts({
+    Lora: require("../../assets/fonts/Lora-Regular.ttf"),
+    "Lora-Medium": require("../../assets/fonts/Lora-Medium.ttf"),
+    IBMPlexMono: require("../../assets/fonts/IBMPlexMono-Regular.ttf"),
+  });
+
+  useEffect(() => {
+    if (loaded || error !== null) {
+      void SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [loaded, error]);
+
+  if (!loaded && error === null) {
+    return null;
+  }
+
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
       <ConvexScopedToIdentity>

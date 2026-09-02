@@ -4,7 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import type { Doc } from "@convex/_generated/dataModel";
-import { colors } from "@/constants/theme";
+import { colors, fonts } from "@/constants/theme";
 
 /**
  * What to call a note's body, given the door the note came through.
@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
   contentOnlyStatus: { flexGrow: 1, justifyContent: "center" },
 
   headerAction: { color: colors.ink, fontSize: 15 },
-  name: { color: colors.ink, fontSize: 28 },
+  name: { color: colors.ink, fontSize: 28, fontFamily: fonts.displayMedium },
   metaRow: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   meta: { color: colors.ink, fontSize: 14, opacity: 0.6 },
 
@@ -342,6 +342,7 @@ const styles = StyleSheet.create({
   chip: {
     color: colors.ink,
     fontSize: 13,
+    fontFamily: fonts.utility,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.line,
     borderRadius: 6,
@@ -362,7 +363,12 @@ const styles = StyleSheet.create({
   },
   line: { flex: 1, width: StyleSheet.hairlineWidth, backgroundColor: colors.line },
   entryBody: { flex: 1, paddingBottom: 20, gap: 4 },
-  date: { color: colors.ink, fontSize: 12, opacity: 0.5 },
+  date: {
+    color: colors.ink,
+    fontSize: 12,
+    opacity: 0.5,
+    fontFamily: fonts.utility,
+  },
   fact: { color: colors.ink, fontSize: 16, lineHeight: 24 },
 
   addNote: {
@@ -412,6 +418,7 @@ const styles = StyleSheet.create({
     opacity: 0.55,
     textTransform: "uppercase",
     letterSpacing: 0.6,
+    fontFamily: fonts.display,
   },
   backlink: { gap: 3 },
   rowMeta: { color: colors.moss, fontSize: 14 },
