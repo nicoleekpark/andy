@@ -14,6 +14,6 @@ Given a library/API/pattern from the main conversation:
 2. If this is an Expo SDK API and the Expo Skills plugin / Expo MCP Server is available in this session, prefer that — it's official and version-pinned to this project's exact SDK release. Only fall back to web search for Expo APIs if that's unavailable.
 3. For everything else (Clerk, EventKit, WidgetKit, Apple frameworks, etc.), search official sources first (clerk.com/docs, developer.apple.com) — not blog posts or Stack Overflow, unless official docs don't cover it.
 4. Confirm the exact current syntax, function signatures, config shape, or constraints relevant to the task at hand.
-5. Explicitly flag if something appears deprecated, renamed, or removed since what a model might "remember" — this project has already been burned once by an assumption like this (expo-av → expo-audio/expo-video in SDK 55).
+5. Explicitly flag if something appears deprecated, renamed, or removed since what a model might "remember" — this project has already been burned once by an assumption like this (expo-av → expo-audio/expo-video in SDK 55). Don't assume training data is current for a fast-moving dependency.
 6. Return a short, concrete summary: the correct current usage, a minimal code snippet if helpful, and a link to the source. Do not pad with unrelated context.
 7. If official docs are ambiguous or you can't find a clear current answer, say so plainly rather than guessing — the main thread needs to know the difference between "verified" and "best guess."

@@ -52,12 +52,20 @@ import { colors } from "@/constants/theme";
  */
 
 /**
- * Korean is the default because it is the case this app has to get right and
- * the one PROJECT_SCOPE.md flags as a risk; English recognition is the easy
- * case. Reading the device's preferred locale instead would be the real answer
- * and needs a locale picker anyway — deferred, deliberately, not forgotten.
+ * V1 launches in English, and multilingual support is V1.1.
+ *
+ * This was `ko-KR` for the first three days, on the reasoning that Korean is
+ * the hard case and so the one worth defaulting to. That reasoning was about
+ * *testing*, and it leaked into the shipped default: an English name spoken at
+ * a Korean recogniser is how "조 킹" came back as "조깅" and invented a person
+ * nobody had met.
+ *
+ * Reading the device's preferred locale is still the real answer, and it is
+ * what V1.1 needs rather than a constant. Until then the __DEV__ toggle below
+ * switches locale without a rebuild, which is what Day 2's Korean measurement
+ * used and what the next round of it will use again.
  */
-const DEFAULT_LOCALE = "ko-KR";
+const DEFAULT_LOCALE = "en-US";
 
 type Phase =
   | "idle"
