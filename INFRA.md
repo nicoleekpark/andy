@@ -60,12 +60,31 @@ Official current package is **`@sentry/react-native`** — the older `sentry-exp
 
 Already created at `.github/dependabot.yml`. Free, built into GitHub, opens a PR automatically when a dependency has a known vulnerability or a new version. These PRs still go through the normal Branching Policy (review before merge) — don't auto-merge Dependabot PRs just because they're automated.
 
-## 5. PR preview builds
+## 5. PR preview builds — ⏸ Deferred, workflow removed
 
-Two different mechanisms exist — pick based on what changed:
+`.github/workflows/preview.yml` existed and was deleted on 2026-09-04 after it
+failed on its first run. Keeping the research so it doesn't need re-doing.
 
-- **JS-only changes** (most day-to-day slices): `.github/workflows/preview.yml` (created) uses `eas update --auto` to publish an over-the-air update for that PR's branch, no new native build needed. Fast.
-- **Native changes** (a new native module, a new Expo config plugin, anything touching `app.json`'s native config — e.g. the Share Extension itself): OTA update does **not** cover this. These need an actual `eas build` and a physical/simulator install to verify, same as this project's existing "simulator isn't sufficient for CallKit/Siri/widgets" rule in `eas-release-checklist`. Don't trust a green PR-preview-OTA check as proof a native-touching PR works.
+It ran `eas update --auto`, which publishes a JS bundle over the air. The
+failure was `An Expo user account is required` — no `EXPO_TOKEN` secret — but
+adding the token would not have fixed it, because **this app has no way to
+receive an OTA update**: `expo-updates` is not installed, and `app.json` has
+no `updates` block and no `runtimeVersion`. The workflow was publishing to an
+address where nobody lives. (Whether `eas update` would also have failed for
+the missing `runtimeVersion` was not tested — it does not change the outcome.)
+
+Reviving it is not one package install. `expo-updates` is a native module, so
+it needs a fresh `eas build` before it does anything at all, plus a
+`runtimeVersion` policy (which builds a given update is compatible with),
+channel configuration so preview and production updates don't mix, and a read
+of Apple's rules on what an OTA update is allowed to change — an update that
+alters the app's purpose is a guideline violation, not just a bad idea.
+
+**Trigger:** wanting a real on-device preview per PR badly enough to pay for
+the above. Until then, verification is `npm run build:ios` + `npm run
+ios:install`, which is a real build of the real app.
+
+- **Native changes** (a new native module, a new Expo config plugin, anything touching `app.json`'s native config — e.g. the Share Extension itself): OTA update does **not** cover this. These need an actual `eas build` and a physical/simulator install to verify, same as this project's existing "simulator isn't sufficient for CallKit/Siri/widgets" rule in `eas-release-checklist`. Don't trust a green PR-preview-OTA check as proof a native-touching PR works — which is the second reason the OTA workflow was not worth keeping green: it could never have covered the changes most likely to break.
 
 ## 6. Feature flags / remote kill switch — ⏸ Deferred, not built yet
 
