@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Lint & typecheck
+        run: npm run lint
+      - name: Test (RN + Convex)
+        run: npm run test
+
+# This mirrors small-commit-flow's local loop (lint + test) so a slice that
+# skipped a step locally, or a push that bypassed small-commit-flow entirely,
+# still gets caught before merge — this is the platform-enforced backstop for
+# CLAUDE.md's Branching Policy, not a replacement for the local loop.

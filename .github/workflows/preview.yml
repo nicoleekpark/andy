@@ -1,0 +1,28 @@
+name: PR Preview
+
+# JS-only preview via EAS Update (OTA) — fast, no new native build.
+# Does NOT cover native changes (new native modules, app.json native config,
+# Share Extension work) — those need a real `eas build` and a physical/
+# simulator install, per eas-release-checklist. A green run here is not
+# proof a native-touching PR works.
+
+on: pull_request
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci
+      - name: Create preview update
+        uses: expo/expo-github-action/preview@v8
+        with:
+          command: eas update --auto --branch ${{ github.event.pull_request.head.ref }}

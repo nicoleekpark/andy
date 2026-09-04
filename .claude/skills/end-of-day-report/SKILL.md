@@ -35,21 +35,21 @@ If a section doesn't help with that, cut it. If something that would help is mis
 10. **Known issues and deferred work** — everything being lived with rather than fixed. For each: what it is, why it was left, what makes it safe (or not) for now, and the **trigger** that forces it to be handled. This section is the one most likely to be quietly dropped and the most expensive to lose — a deferred problem with no recorded trigger becomes a surprise. Carry forward every unresolved item from the previous day's report that is still unresolved; do not let it fall off because it wasn't touched today.
 11. **Tomorrow** — what to start with, what must be true before certain work can begin, known traps, and any external setup needed first.
 
-    **Name the gates tomorrow's work will trigger, before it triggers them.** Walk tomorrow's scope against the review gates this project requires — `app-store-reviewer` for any slice that adds or changes contacts, microphone, calendar, photos, or notification permissions; `security-reviewer` for anything touching data access, auth, or an external API; `docs-verifier` for an unfamiliar third-party API — and write down which slice trips which. A gate that only exists in `CLAUDE.md` is a gate the next session has to *remember*; a gate written into this section is one they *read*. The permission strings are the sharpest case: they are written most accurately at the moment the feature is built, and they are an actual App Store rejection reason, so discovering the gate on submission day means rewriting them from memory of what the feature does.
+    **Name the gates tomorrow's work will trigger, before it triggers them.** Walk tomorrow's scope against the review gates this project requires — `app-store-reviewer` for any slice that adds or changes a sensitive permission, contacts, microphone, calendar, photos, or notification permissions; `security-reviewer` for anything touching data access, auth, or an external API; `docs-verifier` for an unfamiliar third-party API — and write down which slice trips which. A gate that only exists in `CLAUDE.md` is a gate the next session has to *remember*; a gate written into this section is one they *read*. The permission strings are the sharpest case: they are written most accurately at the moment the feature is built, and they are an actual App Store rejection reason, so discovering the gate on submission day means rewriting them from memory of what the feature does.
 12. **Open questions** — things genuinely undecided, not rhetorical.
 
 ## Bring the documentation up to date — part of the day, not an extra
 
 A day isn't finished until the docs describe the repo as it now is. Before writing the report, go through each of these and fix what today made wrong:
 
-- `README.md` / `README.ko.md`
+- `README.md` / `README.ko.md` (or whichever docs this project maintains)
 - `CLAUDE.md` / `CLAUDE.ko.md`
 - `PROJECT_SCOPE.md` / `PROJECT_SCOPE.ko.md`
-- `STYLE.md`, `AGENTS.md`
+- `STYLE.md`, `AGENTS.md` (if present)
 
 Look for: commands that no longer exist or no longer work, setup steps that are already done or now wrong, a plan or schema block that reality has diverged from, a constraint discovered today that belongs in `PROJECT_SCOPE.md`'s Reality Checks, and decisions that were made in-session but live nowhere durable.
 
-**Every one of these files is a pair.** Editing `CLAUDE.md` without `CLAUDE.ko.md` — or either README or scope file without its twin — leaves the project with two documents that disagree, and the next reader can't tell which is right. Update both in the same pass, then check they still line up (section counts, the command column of any table, code-block counts).
+**Every one of these files is a pair, if this project keeps bilingual docs.** Editing one language without its twin leaves the project with two documents that disagree, and the next reader can't tell which is right. Update both in the same pass, then check they still line up (section counts, the command column of any table, code-block counts).
 
 Then record what changed, and why, in the report's own section. That way the report explains the doc diff rather than the reader having to infer it from `git diff`.
 
