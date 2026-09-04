@@ -154,6 +154,7 @@ Researched directly rather than assumed:
 ### Could Have (V1.1+)
 
 - [ ] Google Sign-In (alongside the Android build, where it actually matters — see README Tech Stack Decisions)
+- [ ] **Multilingual capture, Korean first** — a locale picker (or reading the device's preferred locale) instead of a constant, plus a re-measurement of extraction quality in each language the way day 2 measured Korean. The embedding model chosen for launch (`text-embedding-3-large`) is already multilingual and scored highest of any commercial API on the one benchmark that isolates Korean, so **the stored vectors do not have to be rebuilt** — this is a capture-side change, not a search-side one. Trigger: launch, or a user who cannot use the app in English.
 - [ ] Gmail inbox auto-read (blocked on Google OAuth sensitive-scope verification — start that process early if pursuing this, it has its own multi-week lead time)
 - [ ] **Inbound email-to-note** (BCC/forward a message into a dedicated address, à la Day One) — needs inbound-email infra (domain + parse webhook), real but non-trivial setup
 - [ ] **Inbound SMS-to-note via a dedicated Twilio number** (different from reading the user's own Messages, which stays infeasible) — technically approachable, deferred for cost/time
@@ -176,6 +177,7 @@ Researched directly rather than assumed:
 - True end-to-end (zero-knowledge) encryption — incompatible with server-side LLM extraction, see Reality Checks
 - Video notes
 - Non-Korean/English transcription
+- **Any language but English at launch.** V1 ships English-only: `DEFAULT_LOCALE` is `en-US`, and the embedding model is chosen for English retrieval. Korean was the development default for days 1–3 and is the first language V1.1 adds back — nothing in the pipeline is English-specific (the extraction prompt writes in whatever language the note is in), so this is a default and a benchmark choice, not an architecture. See Could Have.
 
 ## User Flow (lightweight — enough to remove Day 1 ambiguity, not a full IA doc)
 
@@ -375,7 +377,7 @@ _(unchanged length — the Day One-inspired additions below are cheap enough to 
 
 ## Open Risks to Revisit
 
-- ~~Transcription accuracy for Korean speech (test early, Day 2, not Day 9)~~ — **measured Day 2 on device.** `ko-KR` has an on-device model (`supported:true installed:true`), so audio need not leave the phone. Sentence structure and personal names transcribe correctly; **domain terms do not** — "브랜딩 디자이너" came back as "브랜든 집 디자인". Punctuation is inconsistent — requested on both runs, absent from the first and present in the second. **The same sentence transcribes differently run to run**: the first run mangled a job title and got the names right, the second got the job title right and heard one name as a different real name. Name errors are the worse class, because they create a profile for a person who does not exist and split that person's history in two.
+- ~~Transcription accuracy for Korean speech (test early, Day 2, not Day 9)~~ — **measured Day 2 on device.** `ko-KR` has an on-device model (`supported:true installed:true`), so audio need not leave the phone. Sentence structure and personal names transcribe correctly; **domain terms do not** — "브랜딩 디자이너" came back as "브랜든 집 디자인". Punctuation is inconsistent — requested on both runs, absent from the first and present in the second. **The same sentence transcribes differently run to run**: the first run mangled a job title and got the names right, the second got the job title right and heard one name as a different real name. Name errors are the worse class, because they create a profile for a person who does not exist and split that person's history in two. **Day 3 update:** the launch language is now English (see Won't Have), so this measurement describes the language V1.1 adds back rather than the one shipping. It stays here because the failure mode it found is not Korean-specific — a name heard as a different real name is the same defect in any language, and it is why the review screen now says whether a note is joining somebody or inventing them. **English extraction has not been measured the way Korean was.**
 - **Transcription errors are laundered into confident false facts** (new, Day 2). Extraction is robust in *structure* — it did not invent a person from the mangled words, and it repaired a broken clause from context — but it recorded the mangled job as a fact and inferred a specialisation ("인테리어 디자인") that appears nowhere in the transcript. Since these facts are read back before a meeting as if true, **the confirm/edit step in the Capture flow is load-bearing, not polish**: nothing may be saved without a human seeing it first.
 - Per-extraction Claude API cost at scale (fine for MVP, model before scaling)
 - App Store privacy review for contacts + microphone + **calendar + photos** access — write precise, honest usage-description strings (see `app-store-reviewer` subagent)
