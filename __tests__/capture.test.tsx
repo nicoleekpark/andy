@@ -1144,6 +1144,72 @@ describe("capture screen review step", () => {
     ]);
   });
 
+  test("should drop an answer once its name is edited, even by capitalisation alone", async () => {
+    (useAction as jest.Mock).mockReturnValue(
+      jest.fn(async () => makeDraft({ name: "priya" })),
+    );
+    const saveCapture = jest.fn(
+      async (_args: {
+        transcript: string;
+        draft: Draft;
+        source: string;
+        resolutions: { name: string; profileId: string | null }[];
+      }) => ({
+        profileId: "profile-1",
+        noteId: "note-1",
+        createdProfile: false,
+        createdMentionCount: 0,
+      }),
+    );
+    mockSaveCapture(saveCapture);
+    scopeTo("priya", [
+      {
+        name: "priya",
+        candidates: [
+          {
+            profileId: "profile-1",
+            name: "Priya",
+            relationshipContext: "client",
+            entityType: "person",
+            noteCount: 3,
+            lastNoteAt: new Date("2026-09-01T12:00:00").getTime(),
+          },
+        ],
+      },
+    ]);
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+    await reachReview(handlers, "Met priya at the conference.");
+
+    // Answer "someone new" for the name as first heard.
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Not this Priya?" }));
+    });
+    await act(async () => {
+      fireEvent.press(
+        screen.getByRole("button", { name: "New person called priya" }),
+      );
+    });
+
+    // Then fix the capitalisation, which is an ordinary correction and not a
+    // change of mind. The screen goes back to showing a plain "Adding to" line
+    // — no picker, nothing expanded — so saving must do what that line says.
+    await act(async () => {
+      fireEvent.changeText(screen.getByLabelText("Name"), "Priya");
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+    });
+
+    await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
+    // The server folds case when it matches names, so an answer keyed to
+    // "priya" would still be found by "Priya" and would create a duplicate —
+    // the exact failure this feature exists to prevent, inverted.
+    expect(saveCapture.mock.calls[0]?.[0].resolutions).toEqual([]);
+  });
+
   test("should let a candidate be opened and come back to the draft untouched", async () => {
     (useAction as jest.Mock).mockReturnValue(
       jest.fn(async () => makeDraft({ name: "지선" })),

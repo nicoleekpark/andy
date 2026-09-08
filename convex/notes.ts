@@ -124,6 +124,16 @@ export const saveCapture = mutation({
       );
     }
 
+    // One answer per name a draft can carry, plus the subject. Unbounded before
+    // this — every non-null entry costs a `ctx.db.get` before it is ever used,
+    // and a caller reaching the mutation directly is not held to what the
+    // screen would send. Same reasoning as MAX_MENTIONS, one line above.
+    if ((args.resolutions ?? []).length > MAX_MENTIONS + 1) {
+      throw new ConvexError(
+        "That note names too many people at once. Try splitting it into two.",
+      );
+    }
+
     if (args.draft.mentions.length > MAX_MENTIONS) {
       throw new ConvexError(
         "That note mentions too many people at once. Try splitting it into two.",

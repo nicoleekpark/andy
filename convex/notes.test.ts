@@ -1283,3 +1283,24 @@ test("should choose between several by the same name, or none of them", async ()
     ).toHaveLength(3);
   });
 });
+
+test("should bound how many answers one call may carry", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  // Each non-null answer costs a `ctx.db.get` before it is ever consulted, and
+  // a caller reaching the mutation directly is not held to what the screen
+  // would send. `draft.mentions` has had a ceiling since day 2; this did not.
+  await expect(
+    asAlice.mutation(api.notes.saveCapture, {
+      transcript: "지선은 브랜딩 디자이너다.",
+      draft: buildDraft({ primaryName: "지선" }),
+      source: "voice",
+      resolutions: Array.from({ length: 40 }, (_, i) => ({
+        name: `사람${i}`,
+        profileId: null,
+      })),
+    }),
+  ).rejects.toBeInstanceOf(ConvexError);
+});

@@ -224,6 +224,12 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
    */
   const [expanded, setExpanded] = useState<string[]>([]);
 
+  /** Open the picker for a name, if it is not already open. */
+  const openPicker = useCallback((name: string) => {
+    const trimmed = name.trim();
+    setExpanded((open) => (open.includes(trimmed) ? open : [...open, trimmed]));
+  }, []);
+
   const extract = useAction(api.extraction.fromTranscript);
   const readCard = useAction(api.extraction.fromBusinessCard);
   const saveCapture = useMutation(api.notes.saveCapture);
@@ -245,12 +251,17 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
    */
   const [extracted, setExtracted] = useState<Draft | null>(null);
 
-  const namesInDraft =
-    draft === null
-      ? []
-      : [draft.primary.name, ...draft.mentions.map((m) => m.name)]
-          .map((name) => name.trim())
-          .filter((name) => name !== "");
+  // Memoised because `save` depends on it: a fresh array every render would
+  // rebuild the callback constantly for no reason.
+  const namesInDraft = useMemo(
+    () =>
+      draft === null
+        ? []
+        : [draft.primary.name, ...draft.mentions.map((m) => m.name)]
+            .map((name) => name.trim())
+            .filter((name) => name !== ""),
+    [draft],
+  );
   const asked = useQuery(
     api.profiles.resolveNames,
     draft === null ? "skip" : { names: namesInDraft },
@@ -672,18 +683,21 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
         transcript,
         draft,
         source,
-        // Only the answers still being asked for. A stale one — the name was
-        // edited after it was chosen — would name somebody this note no longer
-        // mentions, and the mutation rejects those rather than ignoring them.
-        // Every answer the user actually gave, including "none of them" —
-        // `null` is a decision, `undefined` is silence. Keyed by name, and the
-        // mutation rejects an answer naming somebody the draft no longer
-        // mentions, so a name edited after being answered fails loudly rather
-        // than landing on the wrong person.
-        resolutions: Object.entries(resolutions).map(([name, profileId]) => ({
-          name,
-          profileId,
-        })),
+        // Answers for names the draft still contains — `null` included, since
+        // "none of them" is a decision and not silence.
+        //
+        // The filter is the part that matters. `resolutions` is keyed by name
+        // and nothing removes an entry when that name is edited away, so
+        // sending the whole object would carry an answer for a person this note
+        // no longer mentions. The mutation would accept it: the profile is
+        // still the caller's and still goes by that name, so its checks pass
+        // and it is `resolve()`'s answer the moment that text reappears
+        // anywhere in the draft. Silently right-looking, and wrong.
+        resolutions: namesInDraft.flatMap((name) =>
+          name in resolutions
+            ? [{ name, profileId: resolutions[name] ?? null }]
+            : [],
+        ),
       });
 
       // Never `push`: the capture is finished, and backing into a draft that
@@ -716,7 +730,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
       );
       setPhase("review");
     }
-  }, [draft, transcript, source, saveCapture, profileId, resolutions]);
+  }, [draft, transcript, source, saveCapture, profileId, resolutions, namesInDraft]);
 
   /** Edit one field of the draft's primary person. */
   const editPrimary = useCallback((patch: Partial<Draft["primary"]>) => {
@@ -797,8 +811,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
               onDisagree={
                 expanded.includes(draft.primary.name.trim())
                   ? undefined
-                  : () =>
-                      setExpanded((open) => [...open, draft.primary.name.trim()])
+                  : () => openPicker(draft.primary.name)
               }
             />
           </Field>
@@ -1057,11 +1070,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
                       onDisagree={
                         expanded.includes(mention.name.trim())
                           ? undefined
-                          : () =>
-                              setExpanded((open) => [
-                                ...open,
-                                mention.name.trim(),
-                              ])
+                          : () => openPicker(mention.name)
                       }
                     />
                   )}
