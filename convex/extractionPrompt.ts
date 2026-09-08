@@ -99,9 +99,11 @@ export const EXTRACTION_SCHEMA = {
         },
         firstMetDate: nullableString(
           "The day they FIRST met, as an ISO date (YYYY-MM-DD), resolved against today's date given in the message. " +
-            "This needs an explicit first-time signal in the note — \"처음 만났어\", \"소개받았어\", \"명함 받았어\", " +
-            "\"오늘부터 임보 시작\". " +
-            "Ordinary contact is NOT one: \"오늘 지수 만났는데\", \"어제 봤어\", \"통화했어\" describe seeing someone the " +
+            "This needs an explicit first-time signal in the note, in whichever language it is written — " +
+            "\"met for the first time\", \"was introduced to\", \"got their business card\", \"started fostering today\"; " +
+            "\"처음 만났어\", \"소개받았어\", \"명함 받았어\", \"오늘부터 임보 시작\". " +
+            "Ordinary contact is NOT one: \"saw them today\", \"caught up with\", \"had a call with\"; " +
+            "\"오늘 지수 만났는데\", \"어제 봤어\", \"통화했어\" describe seeing someone the " +
             "speaker may have known for years, and every one of those is null. " +
             "If the note does not say it was the first time, null.",
         ),
@@ -173,7 +175,7 @@ Deciding who the note is ABOUT:
 Writing the fields:
 - Write every string in the language of the note itself — the name, the key facts and the tags alike (a mention's quote is copied from the note, so it is already in its language). A Korean note produces Korean output throughout: never translate it into English, and never romanise a Korean name. The one exception is a proper noun that was itself said in English (a company, a product, a job title) — keep those in the form they were actually spoken.
 - Record only what the note supports. If a detail is not there, that field is null or an empty array — a confident guess is worse than nothing here, because these facts get read back to the user before a meeting as if they were true.
-- A note is read back weeks or months later, so a fact that depends on when it was said has to survive that. Resolve every relative time expression against today's date, given in the message, and write the resolved form: "다음 달에 이사 간다" becomes "2026년 9월에 이사 간다"; "작년에 퇴사했대" becomes "2025년에 퇴사했다". Never leave "오늘", "지난주", "다음 달", "내년" standing inside a fact — they are true on the day they are spoken and quietly wrong afterwards. Resolve only as far as you can be certain — a year, a month, a season. Do NOT compute a weekday or an exact calendar day: "다음 주 화요일" and "이번 주말" keep the speaker's own words, because a fact is always displayed next to the date the note was taken, so a relative phrase stays readable, while a miscalculated date is confidently wrong and gets acted on. If the note is genuinely vague about when, leave it vague rather than inventing a date.
+- A note is read back weeks or months later, so a fact that depends on when it was said has to survive that. Resolve every relative time expression against today's date, given in the message, and write the resolved form **in the note's own language** — resolving a date never changes what language the fact is written in. Write the resolved month the way the note's own language writes it — "October 2026" in an English note, never "2026年10月" or "2026년 10월". An English note: "moving next month" becomes "Moving in October 2026"; "quit last year" becomes "Quit their agency job in 2025". A Korean note: "다음 달에 이사 간다" becomes "2026년 9월에 이사 간다"; "작년에 퇴사했대" becomes "2025년에 퇴사했다". Never leave "today", "last week", "next month", "next year" — or "오늘", "지난주", "다음 달", "내년" — standing inside a fact; they are true on the day they are spoken and quietly wrong afterwards. Resolve only as far as you can be certain — a year, a month, a season. Do NOT compute a weekday or an exact calendar day: "next Tuesday", "this weekend", "다음 주 화요일", "이번 주말" keep the speaker's own words, because a fact is always displayed next to the date the note was taken, so a relative phrase stays readable, while a miscalculated date is confidently wrong and gets acted on. If the note is genuinely vague about when, leave it vague rather than inventing a date.
 - Prefer the specific over the general: "has a daughter starting school in March" earns its place; "is nice" does not.
 - If the transcript is too garbled or too empty to identify anyone, return the primary name as an empty string and empty arrays. Do not invent a person to fill the shape.
 
