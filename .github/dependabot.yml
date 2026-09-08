@@ -9,18 +9,28 @@ updates:
       minor-and-patch:
         update-types: ["minor", "patch"]
 
-    # Expo SDK 57 pins the versions of everything below, and Dependabot has no
-    # way to know that. Worse, CI cannot catch a bad bump: `npm run lint` and
-    # `npm run test` never build the native app, so a version the SDK does not
-    # support goes green here and fails at `eas build` — which is the one check
-    # that costs eight minutes and a queue.
+    # Native packages. The reason is not "Expo pins them" — it is that **CI
+    # cannot verify them at all**. `npm run lint` and `npm run test` never build
+    # the native app: jest renders into a fake React Native and vitest runs an
+    # in-memory database. A version that breaks the build passes both and fails
+    # at `eas build`, eight minutes and a queue later.
     #
-    # That is not hypothetical. Dependabot opened a PR moving
-    # react-native-gesture-handler from 2.32.0 to 3.2.1 while
-    # node_modules/expo/bundledNativeModules.json pins it at ~2.32.0. CI passed.
+    # That is not hypothetical. Dependabot proposed react-native-gesture-handler
+    # 2.32.0 → 3.2.1 while expo/bundledNativeModules.json pins ~2.32.0, and CI
+    # was green.
     #
-    # These move when the SDK moves — `npx expo install --fix`, as part of an
-    # SDK upgrade — not on their own schedule.
+    # 28 of these are pinned by the SDK and move with `npx expo install --fix`
+    # during an SDK upgrade. Two are not, and are listed here for the same
+    # CI-cannot-see-it reason rather than a pinning one:
+    #   expo                      — the SDK itself; bumping it *is* the upgrade
+    #   expo-speech-recognition   — third-party (jamsch), and a native module.
+    #     Day 2 pinned 56.0.3 because no SDK 57 release existed; 57.0.0 now
+    #     does, and taking it needs an EAS build and a device check, which is
+    #     its own slice — see INFRA.md #4.
+    #
+    # Ignore entries are additive: a narrower rule cannot re-open what a
+    # wildcard above it has closed. To let one of these through, remove it from
+    # this list rather than adding an exception below.
     ignore:
       - dependency-name: "expo"
       - dependency-name: "expo-*"

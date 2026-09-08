@@ -100,6 +100,20 @@ dependency-refresh commit.
 **Trigger:** the next EAS build for any reason — do the pair then, and verify on
 the device rather than in CI.
 
+### `expo-speech-recognition` has an SDK 57 release now
+
+Day 2 pinned `56.0.3` and recorded why: the package had no SDK 57 release and
+its dist-tag stopped at `sdk-55`. **`57.0.0` now exists.**
+
+It is ignored by Dependabot for the same reason as everything else native — CI
+cannot build the app, so a green check would prove nothing — not because the
+SDK pins it. It does not; the package is third-party (jamsch).
+
+Taking it is its own slice: it is the module the entire capture flow depends
+on, so it needs an EAS build, an install, and the §1 rows of `QA.md` run on the
+device. **Trigger:** the next EAS build, alongside the `react-native` pair
+above — one build can verify both.
+
 ## 5. PR preview builds — ⏸ Deferred, workflow removed
 
 `.github/workflows/preview.yml` existed and was deleted on 2026-09-04 after it
