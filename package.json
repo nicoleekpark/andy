@@ -45,7 +45,7 @@
     "@types/react": "~19.2.2",
     "concurrently": "^10.0.5",
     "convex-test": "^0.0.56",
-    "eslint": "^9.0.0",
+    "eslint": "^10.10.0",
     "eslint-config-expo": "~57.0.1",
     "typescript": "~6.0.3",
     "vitest": "^4.1.11"
