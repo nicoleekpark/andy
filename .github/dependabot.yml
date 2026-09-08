@@ -8,3 +8,38 @@ updates:
     groups:
       minor-and-patch:
         update-types: ["minor", "patch"]
+
+    # Expo SDK 57 pins the versions of everything below, and Dependabot has no
+    # way to know that. Worse, CI cannot catch a bad bump: `npm run lint` and
+    # `npm run test` never build the native app, so a version the SDK does not
+    # support goes green here and fails at `eas build` — which is the one check
+    # that costs eight minutes and a queue.
+    #
+    # That is not hypothetical. Dependabot opened a PR moving
+    # react-native-gesture-handler from 2.32.0 to 3.2.1 while
+    # node_modules/expo/bundledNativeModules.json pins it at ~2.32.0. CI passed.
+    #
+    # These move when the SDK moves — `npx expo install --fix`, as part of an
+    # SDK upgrade — not on their own schedule.
+    ignore:
+      - dependency-name: "expo"
+      - dependency-name: "expo-*"
+      - dependency-name: "@expo/*"
+      - dependency-name: "react-native"
+      - dependency-name: "react-native-*"
+      - dependency-name: "react"
+      - dependency-name: "react-dom"
+      - dependency-name: "jest-expo"
+
+      # Majors held back because the ecosystem around them has not caught up.
+      # Patches and minors still come through.
+      #   typescript 7 — "Cannot read properties of undefined (reading 'Intrinsic')"
+      #   eslint 10    — eslint-plugin-react calls getFilename, removed in 10
+      #   vitest 5     — passes, but vitest *is* the backend verification; not
+      #                  worth swapping the instrument before launch
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "vitest"
+        update-types: ["version-update:semver-major"]
