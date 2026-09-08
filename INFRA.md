@@ -60,6 +60,24 @@ Official current package is **`@sentry/react-native`** — the older `sentry-exp
 
 Already created at `.github/dependabot.yml`. Free, built into GitHub, opens a PR automatically when a dependency has a known vulnerability or a new version. These PRs still go through the normal Branching Policy (review before merge) — don't auto-merge Dependabot PRs just because they're automated.
 
+### Ignoring a dependency silences its security PRs too — unless you scope it
+
+The one thing about this file that is easy to get wrong and expensive to miss.
+GitHub's docs: Dependabot ignores a dependency *"when it opens pull requests for
+**version updates and security updates**"*. A bare `dependency-name:` entry
+means a CVE in `react-native` produces **no pull request**.
+
+The documented escape is naming the version-update types explicitly:
+*"`update-types` only affects version updates, not security updates. Security
+updates will always be created regardless of the `update-types` setting."*
+
+So every entry in `.github/dependabot.yml` lists all three
+`version-update:semver-*` levels rather than being bare. **If you add an entry,
+copy that shape.** Dependabot *alerts* in the Security tab fire either way —
+they never read this file — but an alert with no PR is one nobody acts on.
+
+[Controlling which dependencies are updated by Dependabot](https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/controlling-dependencies-updated)
+
 ### What it must not propose, and why CI cannot help
 
 `.github/dependabot.yml` ignores every Expo-pinned package. Dependabot reads

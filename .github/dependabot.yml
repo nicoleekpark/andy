@@ -9,40 +9,75 @@ updates:
       minor-and-patch:
         update-types: ["minor", "patch"]
 
-    # Native packages. The reason is not "Expo pins them" — it is that **CI
-    # cannot verify them at all**. `npm run lint` and `npm run test` never build
-    # the native app: jest renders into a fake React Native and vitest runs an
-    # in-memory database. A version that breaks the build passes both and fails
-    # at `eas build`, eight minutes and a queue later.
+    # ─────────────────────────────────────────────────────────────────────────
+    # Every entry below lists `update-types` explicitly, and that is load-bearing.
     #
-    # That is not hypothetical. Dependabot proposed react-native-gesture-handler
-    # 2.32.0 → 3.2.1 while expo/bundledNativeModules.json pins ~2.32.0, and CI
-    # was green.
+    # A bare `dependency-name` ignore suppresses **security** pull requests as
+    # well as scheduled ones — GitHub's docs say Dependabot will ignore the
+    # dependency "when it opens pull requests for version updates and security
+    # updates". Naming the three version-update types instead scopes the ignore
+    # to the scheduled kind: "`update-types` only affects version updates, not
+    # security updates. Security updates will always be created regardless."
     #
-    # 28 of these are pinned by the SDK and move with `npx expo install --fix`
-    # during an SDK upgrade. Two are not, and are listed here for the same
-    # CI-cannot-see-it reason rather than a pinning one:
-    #   expo                      — the SDK itself; bumping it *is* the upgrade
-    #   expo-speech-recognition   — third-party (jamsch), and a native module.
-    #     Day 2 pinned 56.0.3 because no SDK 57 release existed; 57.0.0 now
-    #     does, and taking it needs an EAS build and a device check, which is
-    #     its own slice — see INFRA.md #4.
+    # So: no routine noise, but a CVE in react-native still opens a PR.
+    # (Dependabot *alerts* fire either way — they never read this file.)
+    # https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/controlling-dependencies-updated
+    #
+    # WHY these are ignored at all: **CI cannot verify a native package.**
+    # `npm run lint` and `npm run test` never build the app — jest renders into
+    # a fake React Native, vitest runs an in-memory database. A version that
+    # breaks the native build passes both and fails at `eas build`, eight
+    # minutes and a queue later. Dependabot proposed
+    # react-native-gesture-handler 2.32.0 → 3.2.1 against a `~2.32.0` pin and
+    # CI was green.
+    #
+    # 28 of the 30 matched packages are pinned by the SDK and move together via
+    # `npx expo install --fix` during an upgrade. Two are not, and are here for
+    # the same CI-cannot-see-it reason rather than a pinning one:
+    #   expo                     — the SDK itself; bumping it *is* the upgrade
+    #   expo-speech-recognition  — third-party (jamsch), native, and the whole
+    #                              capture flow depends on it. 57.0.0 exists;
+    #                              taking it needs an EAS build. INFRA.md #4.
     #
     # Ignore entries are additive: a narrower rule cannot re-open what a
-    # wildcard above it has closed. To let one of these through, remove it from
-    # this list rather than adding an exception below.
+    # wildcard above it closed. To let one through, remove it from this list.
+    # ─────────────────────────────────────────────────────────────────────────
     ignore:
-      - dependency-name: "expo"
-      - dependency-name: "expo-*"
+      # `expo*` also covers `expo-*`; scoped names start with `@`, so `@expo/*`
+      # has to be listed separately.
+      - dependency-name: "expo*"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
       - dependency-name: "@expo/*"
-      - dependency-name: "react-native"
-      - dependency-name: "react-native-*"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
+      - dependency-name: "react-native*"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
       - dependency-name: "react"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
       - dependency-name: "react-dom"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
       - dependency-name: "jest-expo"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
 
       # Majors held back because the ecosystem around them has not caught up.
-      # Patches and minors still come through.
+      # Minors and patches still come through, and so do security fixes.
       #   typescript 7 — "Cannot read properties of undefined (reading 'Intrinsic')"
       #   eslint 10    — eslint-plugin-react calls getFilename, removed in 10
       #   vitest 5     — passes, but vitest *is* the backend verification; not
