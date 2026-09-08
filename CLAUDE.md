@@ -27,6 +27,7 @@ records why, and what it cost to find out.
 - **Never call the Anthropic API from client code.** All such calls go through server-side function (a Convex `action`); the key lives only in the backend's own env vars (Convex dashboard env vars).
 - **Never commit `.env`, API keys, or deploy keys.**
 - **Write or update a test before saying a feature is done.** No test = not done.
+- **If a behaviour cannot be unit-tested, it goes in `QA.md` instead.** Day 3 produced twenty bug reports from using the app and *none* were catchable by jest or vitest — those runners never touch a simulator, a microphone, a network, or the deployment. A slice that adds device-only behaviour adds a row there; a row that could become an automated test should be moved into one and deleted. `QA.md` is the manual pass, not a second copy of the suite.
 - **Convex schema changes are additive by default.** Don't drop/rename fields without a migration note in the commit message — this is real user data (voice-derived personal notes), treat it like it matters, because it does (PII).
 - **Contacts, microphone, calendar, and photos permissions are opt-in per feature, not app-wide.** Request at the point of use, not on launch.
 - **Never build toward SMS/Messages reading or Gmail inbox auto-read.** Both are out of scope for this submission (see `PROJECT_SCOPE.md` Reality Checks) — if a task seems to need either, stop and flag it rather than implementing a workaround.
