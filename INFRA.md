@@ -60,6 +60,78 @@ Official current package is **`@sentry/react-native`** — the older `sentry-exp
 
 Already created at `.github/dependabot.yml`. Free, built into GitHub, opens a PR automatically when a dependency has a known vulnerability or a new version. These PRs still go through the normal Branching Policy (review before merge) — don't auto-merge Dependabot PRs just because they're automated.
 
+### Ignoring a dependency silences its security PRs too — unless you scope it
+
+The one thing about this file that is easy to get wrong and expensive to miss.
+GitHub's docs: Dependabot ignores a dependency *"when it opens pull requests for
+**version updates and security updates**"*. A bare `dependency-name:` entry
+means a CVE in `react-native` produces **no pull request**.
+
+The documented escape is naming the version-update types explicitly:
+*"`update-types` only affects version updates, not security updates. Security
+updates will always be created regardless of the `update-types` setting."*
+
+So every entry in `.github/dependabot.yml` lists all three
+`version-update:semver-*` levels rather than being bare. **If you add an entry,
+copy that shape.** Dependabot *alerts* in the Security tab fire either way —
+they never read this file — but an alert with no PR is one nobody acts on.
+
+[Controlling which dependencies are updated by Dependabot](https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/controlling-dependencies-updated)
+
+### What it must not propose, and why CI cannot help
+
+`.github/dependabot.yml` ignores every Expo-pinned package. Dependabot reads
+`package.json` and has no idea that `node_modules/expo/bundledNativeModules.json`
+pins native versions to the SDK.
+
+**CI cannot catch a bad bump here.** `npm run lint` and `npm run test` never
+build the native app — jest renders into a fake React Native and vitest runs an
+in-memory database. A version the SDK does not support passes both and fails at
+`eas build`, eight minutes and a queue later.
+
+Observed 2026-09-08: Dependabot proposed `react-native-gesture-handler`
+2.32.0 → 3.2.1 while the SDK pins `~2.32.0`. **CI was green.** That is the
+whole argument for the ignore list.
+
+Expo-pinned packages move when the SDK moves — `npx expo install --fix` during
+an SDK upgrade — never on Dependabot's weekly schedule.
+
+### Known version skew (2026-09-08)
+
+`npx expo install --check` reports two packages behind what SDK 57 expects:
+
+```
+jest-expo@57.0.4     - expected ~57.0.5
+react-native@0.86.2  - expected 0.86.3
+```
+
+They must move **together**: `jest-expo@57.0.5` requires
+`@react-native/jest-preset@^0.86.3`, which `react-native@0.86.2` refuses as a
+peer. This is the ERESOLVE that stopped Dependabot generating a valid lock file
+for its own PR — not a Dependabot bug, a real conflict in the tree.
+
+Left alone deliberately. `react-native` is a native package, so moving it makes
+the installed dev client stale and the change is only truly verified by a fresh
+`eas build`. That is not a routine patch update and does not belong in a
+dependency-refresh commit.
+
+**Trigger:** the next EAS build for any reason — do the pair then, and verify on
+the device rather than in CI.
+
+### `expo-speech-recognition` has an SDK 57 release now
+
+Day 2 pinned `56.0.3` and recorded why: the package had no SDK 57 release and
+its dist-tag stopped at `sdk-55`. **`57.0.0` now exists.**
+
+It is ignored by Dependabot for the same reason as everything else native — CI
+cannot build the app, so a green check would prove nothing — not because the
+SDK pins it. It does not; the package is third-party (jamsch).
+
+Taking it is its own slice: it is the module the entire capture flow depends
+on, so it needs an EAS build, an install, and the §1 rows of `QA.md` run on the
+device. **Trigger:** the next EAS build, alongside the `react-native` pair
+above — one build can verify both.
+
 ## 5. PR preview builds — ⏸ Deferred, workflow removed
 
 `.github/workflows/preview.yml` existed and was deleted on 2026-09-04 after it
