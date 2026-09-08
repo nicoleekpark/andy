@@ -1170,3 +1170,116 @@ test("should still create somebody new without asking, when nobody answers to th
 
   expect(saved.createdProfile).toBe(true);
 });
+
+/**
+ * "Not any of them — a new one."
+ *
+ * A name matching exactly one profile used to join it silently. That is the
+ * moment a second person by an existing name appears, and it was the one case
+ * with no way to say so: two matches asked, one match did not.
+ */
+test("should create a second person by an existing name when the caller says so", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  const first = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "지선은 브랜딩 디자이너다.",
+    draft: buildDraft({ primaryName: "지선" }),
+    source: "voice",
+  });
+
+  const second = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "지선을 오늘 처음 만났다.",
+    draft: buildDraft({ primaryName: "지선" }),
+    source: "voice",
+    resolutions: [{ name: "지선", profileId: null }],
+  });
+
+  expect(second.createdProfile).toBe(true);
+  expect(second.profileId).not.toBe(first.profileId);
+  await t.run(async (ctx) => {
+    const named = (await ctx.db.query("profiles").collect()).filter(
+      (p) => p.name === "지선",
+    );
+    expect(named).toHaveLength(2);
+  });
+});
+
+test("should still join the only match when no answer is given", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  const first = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "지선은 브랜딩 디자이너다.",
+    draft: buildDraft({ primaryName: "지선" }),
+    source: "voice",
+  });
+
+  // The common case must not grow a question. Saying nothing still means yes.
+  const second = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "지선을 오늘 또 만났다.",
+    draft: buildDraft({ primaryName: "지선" }),
+    source: "voice",
+  });
+
+  expect(second.profileId).toBe(first.profileId);
+  expect(second.createdProfile).toBe(false);
+});
+
+test("should let a mention be a new person too, not only the subject", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  const minho = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "민호는 오래된 친구다.",
+    draft: buildDraft({ primaryName: "민호" }),
+    source: "voice",
+  });
+
+  // A different 민호 came up in somebody else's story. Keyed by name, so the
+  // same answer settles a mention and a subject alike.
+  const saved = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "지선을 민호네 집들이에서 만났다.",
+    draft: buildDraft({
+      primaryName: "지선",
+      mentions: [{ name: "민호", quote: "민호네 집들이에서" }],
+    }),
+    source: "voice",
+    resolutions: [{ name: "민호", profileId: null }],
+  });
+
+  await t.run(async (ctx) => {
+    const links = (await ctx.db.query("noteMentions").collect()).filter(
+      (l) => l.noteId === saved.noteId,
+    );
+    expect(links).toHaveLength(1);
+    expect(links[0]?.profileId).not.toBe(minho.profileId);
+    expect((await ctx.db.query("profiles").collect()).filter((p) => p.name === "민호")).toHaveLength(2);
+  });
+});
+
+test("should choose between several by the same name, or none of them", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+  await twoBySameName(t);
+
+  // Three people named 치선 is a legitimate thing to want, and the picker has
+  // to offer it alongside the two that exist.
+  const third = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "또 다른 치선을 만났다.",
+    draft: buildDraft({ primaryName: "치선" }),
+    source: "voice",
+    resolutions: [{ name: "치선", profileId: null }],
+  });
+
+  expect(third.createdProfile).toBe(true);
+  await t.run(async (ctx) => {
+    expect(
+      (await ctx.db.query("profiles").collect()).filter((p) => p.name === "치선"),
+    ).toHaveLength(3);
+  });
+});

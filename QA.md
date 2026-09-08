@@ -85,6 +85,22 @@ The screen must say which of the two is about to happen, **before** saving.
 | 5.2 | Record that name | **`WHICH …?`** with candidate cards; `Save note` is disabled |
 | 5.3 | Tap a candidate's **`View`**, then come back | The draft is **exactly as you left it** — every edit, the transcript, other answers |
 | 5.4 | Pick a card, save | Lands on that person only |
+| 5.5 | In that same picker | A **`Someone new`** card sits below the candidates — a third person by that name has to be possible |
+| 5.6 | Pick `Someone new`, save | A new profile, and the existing ones untouched. Check with `npm run db` if the home list is ambiguous |
+
+## 5a. One person, same name — refusing the only match
+
+The case that used to have no answer: the Priya you just met may not be the
+Priya already kept, and one match joined silently.
+
+| # | Do this | Expect |
+|---|---|---|
+| 5a.1 | Record a name exactly one person answers to | Line reads `Adding to … · N notes · last …`, with **`Different person?`** beside it |
+| 5a.2 | `Save note` without touching it | Joins that person. **The common case must not become a form** |
+| 5a.3 | Tap `Different person?` | Picker opens: that person, plus `Someone new` |
+| 5a.4 | Save without picking anything | Still joins the existing person — opening the picker is not an obligation |
+| 5a.5 | Pick `Someone new`, save | **Two people by that name.** Both keep their own notes |
+| 5a.6 | Same on a name under `ALSO CAME UP` | Identical behaviour — a mention can be a different person too |
 
 ## 6. Aliases
 

@@ -57,7 +57,21 @@ export const saveCapture = mutation({
      * nothing else.
      */
     resolutions: v.optional(
-      v.array(v.object({ name: v.string(), profileId: v.string() })),
+      v.array(
+        v.object({
+          name: v.string(),
+          /**
+           * Which person, or `null` for "none of them — a new one".
+           *
+           * The null case is not a convenience. A name that matches exactly one
+           * profile used to join it silently, and there was no way to say the
+           * Priya just met is not the Priya already kept. Two people sharing a
+           * name is asked about; one person sharing a name with somebody new
+           * was not, even though that is the moment the second one appears.
+           */
+          profileId: v.union(v.string(), v.null()),
+        }),
+      ),
     ),
   },
   returns: v.object({
@@ -136,9 +150,16 @@ export const saveCapture = mutation({
       }
     }
 
-    /** The caller's answer for a name, proven to be theirs and to fit. */
-    const chosen = new Map<string, Doc<"profiles">>();
+    /**
+     * The caller's answer for a name: a profile of theirs that goes by it, or
+     * `null` meaning "make a new person even though that name is taken".
+     */
+    const chosen = new Map<string, Doc<"profiles"> | null>();
     for (const resolution of args.resolutions ?? []) {
+      if (resolution.profileId === null) {
+        chosen.set(matchKey(resolution.name), null);
+        continue;
+      }
       const id = ctx.db.normalizeId("profiles", resolution.profileId);
       const picked = id === null ? null : await ctx.db.get("profiles", id);
       if (
@@ -168,17 +189,22 @@ export const saveCapture = mutation({
      */
     function resolve(name: string): Doc<"profiles"> | null {
       const key = matchKey(name);
+
+      // An answer is checked before the count, so "not any of them" works when
+      // the name matches one person as well as when it matches several. That
+      // one-match case is the whole point: it is where a second person by an
+      // existing name is born, and it used to be the case with no way out.
+      if (chosen.has(key)) {
+        return chosen.get(key) ?? null;
+      }
+
       const matches = byName.get(key) ?? [];
       if (matches.length <= 1) {
         return matches[0] ?? null;
       }
-      const pick = chosen.get(key);
-      if (pick === undefined) {
-        throw new ConvexError(
-          `You keep more than one ${name.trim()}. Say which one this note is about.`,
-        );
-      }
-      return pick;
+      throw new ConvexError(
+        `You keep more than one ${name.trim()}. Say which one this note is about.`,
+      );
     }
 
     const { primary } = args.draft;
