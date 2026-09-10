@@ -464,7 +464,7 @@ test("should leave an ordinary name untouched", () => {
   // Stripping is confined to the delimiter tokens. Everything else a person
   // might legitimately be called survives, including punctuation and scripts
   // with no case.
-  for (const name of ["Emma", "O'Brien", "J.K. Rowling", "지수", "Anne-Marie"]) {
+  for (const name of ["Emma", "O'Brien", "J.K. Rowling", "Nina", "Anne-Marie"]) {
     expect(buildUserMessage("Met today.", "2026-08-27", name)).toContain(
       `<subject>\n${name}\n</subject>`,
     );

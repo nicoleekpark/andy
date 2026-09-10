@@ -1184,23 +1184,23 @@ test("should create a second person by an existing name when the caller says so"
   const asAlice = t.withIdentity(ALICE);
 
   const first = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "지선은 브랜딩 디자이너다.",
-    draft: buildDraft({ primaryName: "지선" }),
+    transcript: "Emma is a branding designer.",
+    draft: buildDraft({ primaryName: "Emma" }),
     source: "voice",
   });
 
   const second = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "지선을 오늘 처음 만났다.",
-    draft: buildDraft({ primaryName: "지선" }),
+    transcript: "Met Emma for the first time today.",
+    draft: buildDraft({ primaryName: "Emma" }),
     source: "voice",
-    resolutions: [{ name: "지선", profileId: null }],
+    resolutions: [{ name: "Emma", profileId: null }],
   });
 
   expect(second.createdProfile).toBe(true);
   expect(second.profileId).not.toBe(first.profileId);
   await t.run(async (ctx) => {
     const named = (await ctx.db.query("profiles").collect()).filter(
-      (p) => p.name === "지선",
+      (p) => p.name === "Emma",
     );
     expect(named).toHaveLength(2);
   });
@@ -1212,15 +1212,15 @@ test("should still join the only match when no answer is given", async () => {
   const asAlice = t.withIdentity(ALICE);
 
   const first = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "지선은 브랜딩 디자이너다.",
-    draft: buildDraft({ primaryName: "지선" }),
+    transcript: "Emma is a branding designer.",
+    draft: buildDraft({ primaryName: "Emma" }),
     source: "voice",
   });
 
   // The common case must not grow a question. Saying nothing still means yes.
   const second = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "지선을 오늘 또 만났다.",
-    draft: buildDraft({ primaryName: "지선" }),
+    transcript: "Met Emma again today.",
+    draft: buildDraft({ primaryName: "Emma" }),
     source: "voice",
   });
 
@@ -1234,21 +1234,21 @@ test("should let a mention be a new person too, not only the subject", async () 
   const asAlice = t.withIdentity(ALICE);
 
   const minho = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "민호는 오래된 친구다.",
-    draft: buildDraft({ primaryName: "민호" }),
+    transcript: "Marcus is an old friend.",
+    draft: buildDraft({ primaryName: "Marcus" }),
     source: "voice",
   });
 
-  // A different 민호 came up in somebody else's story. Keyed by name, so the
+  // A different Marcus came up in somebody else's story. Keyed by name, so the
   // same answer settles a mention and a subject alike.
   const saved = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "지선을 민호네 집들이에서 만났다.",
+    transcript: "Met Emma at Marcus's housewarming.",
     draft: buildDraft({
-      primaryName: "지선",
-      mentions: [{ name: "민호", quote: "민호네 집들이에서" }],
+      primaryName: "Emma",
+      mentions: [{ name: "Marcus", quote: "at Marcus's housewarming" }],
     }),
     source: "voice",
-    resolutions: [{ name: "민호", profileId: null }],
+    resolutions: [{ name: "Marcus", profileId: null }],
   });
 
   await t.run(async (ctx) => {
@@ -1257,7 +1257,7 @@ test("should let a mention be a new person too, not only the subject", async () 
     );
     expect(links).toHaveLength(1);
     expect(links[0]?.profileId).not.toBe(minho.profileId);
-    expect((await ctx.db.query("profiles").collect()).filter((p) => p.name === "민호")).toHaveLength(2);
+    expect((await ctx.db.query("profiles").collect()).filter((p) => p.name === "Marcus")).toHaveLength(2);
   });
 });
 
@@ -1267,19 +1267,19 @@ test("should choose between several by the same name, or none of them", async ()
   const asAlice = t.withIdentity(ALICE);
   await twoBySameName(t);
 
-  // Three people named 치선 is a legitimate thing to want, and the picker has
+  // Three people named Priya is a legitimate thing to want, and the picker has
   // to offer it alongside the two that exist.
   const third = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "또 다른 치선을 만났다.",
-    draft: buildDraft({ primaryName: "치선" }),
+    transcript: "Met another Priya.",
+    draft: buildDraft({ primaryName: "Priya" }),
     source: "voice",
-    resolutions: [{ name: "치선", profileId: null }],
+    resolutions: [{ name: "Priya", profileId: null }],
   });
 
   expect(third.createdProfile).toBe(true);
   await t.run(async (ctx) => {
     expect(
-      (await ctx.db.query("profiles").collect()).filter((p) => p.name === "치선"),
+      (await ctx.db.query("profiles").collect()).filter((p) => p.name === "Priya"),
     ).toHaveLength(3);
   });
 });
@@ -1294,11 +1294,11 @@ test("should bound how many answers one call may carry", async () => {
   // would send. `draft.mentions` has had a ceiling since day 2; this did not.
   await expect(
     asAlice.mutation(api.notes.saveCapture, {
-      transcript: "지선은 브랜딩 디자이너다.",
-      draft: buildDraft({ primaryName: "지선" }),
+      transcript: "Emma is a branding designer.",
+      draft: buildDraft({ primaryName: "Emma" }),
       source: "voice",
       resolutions: Array.from({ length: 40 }, (_, i) => ({
-        name: `사람${i}`,
+        name: `Person ${i}`,
         profileId: null,
       })),
     }),

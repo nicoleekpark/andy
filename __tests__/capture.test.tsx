@@ -1016,7 +1016,7 @@ describe("capture screen review step", () => {
 
   test("should offer a new person alongside the candidates when a name is shared", async () => {
     (useAction as jest.Mock).mockReturnValue(
-      jest.fn(async () => makeDraft({ name: "지선" })),
+      jest.fn(async () => makeDraft({ name: "Emma" })),
     );
     const saveCapture = jest.fn(
       async (_args: {
@@ -1032,13 +1032,13 @@ describe("capture screen review step", () => {
       }),
     );
     mockSaveCapture(saveCapture);
-    scopeTo("지선", [
+    scopeTo("Emma", [
       {
-        name: "지선",
+        name: "Emma",
         candidates: [
           {
             profileId: "profile-a",
-            name: "지선",
+            name: "Emma",
             relationshipContext: "client",
             entityType: "person",
             noteCount: 4,
@@ -1046,8 +1046,8 @@ describe("capture screen review step", () => {
           },
           {
             profileId: "profile-b",
-            name: "지선",
-            relationshipContext: "이웃",
+            name: "Emma",
+            relationshipContext: "neighbour",
             entityType: "person",
             noteCount: 1,
             lastNoteAt: new Date("2026-08-30T12:00:00").getTime(),
@@ -1059,14 +1059,14 @@ describe("capture screen review step", () => {
 
     const result = renderRouter("src/app", { initialUrl: "/capture" });
     await result;
-    await reachReview(handlers, "지선을 오늘 만났다.");
+    await reachReview(handlers, "Met Emma today.");
 
     // Two people by a name means a third is possible, and the picker has to
     // say so — otherwise it can only ever file the note on somebody already
     // kept, which is the case it exists to handle.
     await act(async () => {
       fireEvent.press(
-        screen.getByRole("button", { name: "New person called 지선" }),
+        screen.getByRole("button", { name: "New person called Emma" }),
       );
     });
     await act(async () => {
@@ -1075,16 +1075,16 @@ describe("capture screen review step", () => {
 
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
     expect(saveCapture.mock.calls[0]?.[0].resolutions).toEqual([
-      { name: "지선", profileId: null },
+      { name: "Emma", profileId: null },
     ]);
   });
 
   test("should let a mentioned person be refused too, not only the subject", async () => {
-    const draft = makeDraft({ name: "지선" });
+    const draft = makeDraft({ name: "Emma" });
     draft.mentions[0] = {
-      name: "민호",
+      name: "Marcus",
       entityType: "person",
-      quote: "민호네 집들이에서",
+      quote: "at Marcus's housewarming",
     };
     (useAction as jest.Mock).mockReturnValue(jest.fn(async () => draft));
     const saveCapture = jest.fn(
@@ -1101,14 +1101,14 @@ describe("capture screen review step", () => {
       }),
     );
     mockSaveCapture(saveCapture);
-    scopeTo("지선", [
-      { name: "지선", candidates: [] },
+    scopeTo("Emma", [
+      { name: "Emma", candidates: [] },
       {
-        name: "민호",
+        name: "Marcus",
         candidates: [
           {
             profileId: "minho-1",
-            name: "민호",
+            name: "Marcus",
             relationshipContext: "friend",
             entityType: "person",
             noteCount: 2,
@@ -1121,17 +1121,17 @@ describe("capture screen review step", () => {
 
     const result = renderRouter("src/app", { initialUrl: "/capture" });
     await result;
-    await reachReview(handlers, "지선을 민호네 집들이에서 만났다.");
+    await reachReview(handlers, "Met Emma at Marcus's housewarming.");
 
     // The mention gets the same escape as the subject. A note can name a
-    // different 민호 than the one already kept, and joining them silently is
+    // different Marcus than the one already kept, and joining them silently is
     // the same mistake wherever it happens.
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Not this 민호?" }));
+      fireEvent.press(screen.getByRole("button", { name: "Not this Marcus?" }));
     });
     await act(async () => {
       fireEvent.press(
-        screen.getByRole("button", { name: "New person called 민호" }),
+        screen.getByRole("button", { name: "New person called Marcus" }),
       );
     });
     await act(async () => {
@@ -1140,7 +1140,7 @@ describe("capture screen review step", () => {
 
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
     expect(saveCapture.mock.calls[0]?.[0].resolutions).toEqual([
-      { name: "민호", profileId: null },
+      { name: "Marcus", profileId: null },
     ]);
   });
 
