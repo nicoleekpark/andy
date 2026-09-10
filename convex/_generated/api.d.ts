@@ -9,6 +9,7 @@
  */
 
 import type * as cleanup from "../cleanup.js";
+import type * as embeddingModel from "../embeddingModel.js";
 import type * as extraction from "../extraction.js";
 import type * as extractionPrompt from "../extractionPrompt.js";
 import type * as naming from "../naming.js";
@@ -24,6 +25,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   cleanup: typeof cleanup;
+  embeddingModel: typeof embeddingModel;
   extraction: typeof extraction;
   extractionPrompt: typeof extractionPrompt;
   naming: typeof naming;
