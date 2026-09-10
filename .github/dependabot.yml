@@ -82,9 +82,22 @@ updates:
       #   eslint 10    — eslint-plugin-react calls getFilename, removed in 10
       #   vitest 5     — passes, but vitest *is* the backend verification; not
       #                  worth swapping the instrument before launch
+      #   jest 30      — jest-expo is pinned to the Expo SDK above and cannot
+      #                  follow. It supplies the preset that fakes React Native,
+      #                  and it does not declare `jest` as a peer, so npm raises
+      #                  nothing when the two disagree: a preset the new runner
+      #                  reads differently leaves a green suite watching
+      #                  something else, which is how the three silent holes in
+      #                  this repo looked. Goes up with jest-expo, at the next
+      #                  Expo SDK bump, verified by deleting a guard rather than
+      #                  by CI going green.
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
       - dependency-name: "eslint"
         update-types: ["version-update:semver-major"]
       - dependency-name: "vitest"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "jest"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/jest"
         update-types: ["version-update:semver-major"]
