@@ -31,7 +31,7 @@ function buildPerson(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     profile: {
       _id: "profile-1",
-      name: "지수",
+      name: "Nina",
       entityType: "person",
       tags: [],
       autoCreated: false,
@@ -71,11 +71,11 @@ describe("home screen", () => {
   test("should render a row for each person when the query resolves", async () => {
     mockRecentQuery([
       buildPerson({
-        profile: { _id: "profile-1", name: "지수" },
+        profile: { _id: "profile-1", name: "Nina" },
         noteCount: 2,
       }),
       buildPerson({
-        profile: { _id: "profile-2", name: "민호" },
+        profile: { _id: "profile-2", name: "Marcus" },
         noteCount: 1,
       }),
     ]);
@@ -83,18 +83,18 @@ describe("home screen", () => {
     const result = renderRouter("src/app", { initialUrl: "/" });
     await result;
 
-    expect(screen.getByText("지수")).toBeTruthy();
-    expect(screen.getByText("민호")).toBeTruthy();
+    expect(screen.getByText("Nina")).toBeTruthy();
+    expect(screen.getByText("Marcus")).toBeTruthy();
   });
 
   test("should route to that person's profile when a row is tapped", async () => {
-    mockRecentQuery([buildPerson({ profile: { _id: "profile-42", name: "지수" } })]);
+    mockRecentQuery([buildPerson({ profile: { _id: "profile-42", name: "Nina" } })]);
 
     const result = renderRouter("src/app", { initialUrl: "/" });
     await result;
 
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "지수" }));
+      fireEvent.press(screen.getByRole("button", { name: "Nina" }));
     });
 
     expect(result.getPathname()).toBe("/profile/profile-42");

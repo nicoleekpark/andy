@@ -23,7 +23,7 @@ test("should return null when the profile belongs to a different user", async ()
   const aliceProfileId = await t.run(async (ctx) =>
     ctx.db.insert("profiles", {
       userId: aliceUserId,
-      name: "지수",
+      name: "Nina",
       entityType: "person",
       tags: [],
       autoCreated: false,
@@ -46,7 +46,7 @@ test("should throw when withNotes is called while signed out", async () => {
   const profileId = await t.run(async (ctx) =>
     ctx.db.insert("profiles", {
       userId: aliceUserId,
-      name: "지수",
+      name: "Nina",
       entityType: "person",
       tags: [],
       autoCreated: false,
@@ -83,14 +83,14 @@ test("should return the caller's own profile with its notes newest first, exclud
   const { profileId } = await t.run(async (ctx) => {
     const profileId = await ctx.db.insert("profiles", {
       userId: aliceUserId,
-      name: "지수",
+      name: "Nina",
       entityType: "person",
       tags: [],
       autoCreated: false,
     });
     const otherProfileId = await ctx.db.insert("profiles", {
       userId: aliceUserId,
-      name: "민호",
+      name: "Marcus",
       entityType: "person",
       tags: [],
       autoCreated: false,
@@ -140,7 +140,7 @@ test("should return an empty notes array, not null, for a profile with no notes"
   const profileId = await t.run(async (ctx) =>
     ctx.db.insert("profiles", {
       userId: aliceUserId,
-      name: "지수",
+      name: "Nina",
       entityType: "person",
       tags: [],
       autoCreated: false,
@@ -161,10 +161,10 @@ test("should exclude a profile that exists only because it was mentioned in anot
   // The stub is created the way the app really creates one: as a mention on
   // someone else's saved capture, not a direct insert.
   await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Met 지수 at 민호's dinner party.",
+    transcript: "Met Nina at Marcus's dinner party.",
     draft: {
       primary: {
-        name: "지수",
+        name: "Nina",
         entityType: "person",
         relationshipContext: null,
         tags: [],
@@ -173,9 +173,9 @@ test("should exclude a profile that exists only because it was mentioned in anot
       },
       mentions: [
         {
-          name: "민호",
+          name: "Marcus",
           entityType: "person",
-          quote: "언급된 자리",
+          quote: "came up here",
         },
       ],
     },
@@ -184,10 +184,10 @@ test("should exclude a profile that exists only because it was mentioned in anot
 
   const result = await asAlice.query(api.profiles.recent, {});
 
-  // Only 지수, who was actually recorded, appears — 민호 is a real row (a
+  // Only Nina, who was actually recorded, appears — Marcus is a real row (a
   // stub) but never chosen, so home must not show him.
   expect(result).toHaveLength(1);
-  expect(result[0]?.profile.name).toBe("지수");
+  expect(result[0]?.profile.name).toBe("Nina");
 });
 
 test("should order by most recent note rather than by profile creation order, and count only each profile's own notes", async () => {
@@ -258,10 +258,10 @@ test("should populate both directions of a mention: the note lists who came up i
   const asAlice = t.withIdentity(ALICE);
 
   const jisoo = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "지수를 민호네 집들이에서 만났다.",
+    transcript: "Met Nina at Marcus's housewarming.",
     draft: {
       primary: {
-        name: "지수",
+        name: "Nina",
         entityType: "person",
         relationshipContext: null,
         tags: [],
@@ -270,9 +270,9 @@ test("should populate both directions of a mention: the note lists who came up i
       },
       mentions: [
         {
-          name: "민호",
+          name: "Marcus",
           entityType: "person",
-          quote: "민호네 집들이에서",
+          quote: "at Marcus's housewarming",
         },
       ],
     },
@@ -290,22 +290,22 @@ test("should populate both directions of a mention: the note lists who came up i
   });
   expect(jisooResult?.notes).toHaveLength(1);
   expect(jisooResult?.notes[0]?.mentions).toEqual([
-    { profileId: minhoId, name: "민호", quote: "민호네 집들이에서", exists: true },
+    { profileId: minhoId, name: "Marcus", quote: "at Marcus's housewarming", exists: true },
   ]);
 
   const minhoResult = await asAlice.query(api.profiles.withNotes, {
     profileId: minhoId,
   });
-  // 민호 has no note of his own yet — he's a stub — but the other direction
+  // Marcus has no note of his own yet — he's a stub — but the other direction
   // shows where he came up.
   expect(minhoResult?.notes).toEqual([]);
   expect(minhoResult?.mentionedIn).toEqual([
     {
       noteId: jisoo.noteId,
       createdAt: expect.any(Number),
-      quote: "민호네 집들이에서",
+      quote: "at Marcus's housewarming",
       aboutProfileId: jisoo.profileId,
-      aboutName: "지수",
+      aboutName: "Nina",
     },
   ]);
 });
@@ -322,7 +322,7 @@ test("should never show a profile's own note in its own mentionedIn", async () =
   const { profileId, noteId } = await t.run(async (ctx) => {
     const profileId = await ctx.db.insert("profiles", {
       userId: aliceUserId,
-      name: "지수",
+      name: "Nina",
       entityType: "person",
       tags: [],
       autoCreated: false,
@@ -330,7 +330,7 @@ test("should never show a profile's own note in its own mentionedIn", async () =
     const noteId = await ctx.db.insert("notes", {
       userId: aliceUserId,
       profileId,
-      text: "A note about 지수 herself.",
+      text: "A note about Nina herself.",
       source: "manual",
       createdAt: 1,
     });
@@ -338,7 +338,7 @@ test("should never show a profile's own note in its own mentionedIn", async () =
       userId: aliceUserId,
       noteId,
       profileId,
-      name: "민호",
+      name: "Marcus",
       quote: "shouldn't count as a mention of herself",
     });
     return { profileId, noteId };
@@ -364,21 +364,21 @@ test("should return mentionedIn newest first", async () => {
   const { minhoId, olderNoteId, newerNoteId } = await t.run(async (ctx) => {
     const jisooId = await ctx.db.insert("profiles", {
       userId: aliceUserId,
-      name: "지수",
+      name: "Nina",
       entityType: "person",
       tags: [],
       autoCreated: false,
     });
     const hyunwooId = await ctx.db.insert("profiles", {
       userId: aliceUserId,
-      name: "현우",
+      name: "Ben",
       entityType: "person",
       tags: [],
       autoCreated: false,
     });
     const minhoId = await ctx.db.insert("profiles", {
       userId: aliceUserId,
-      name: "민호",
+      name: "Marcus",
       entityType: "person",
       tags: [],
       autoCreated: true,
@@ -387,14 +387,14 @@ test("should return mentionedIn newest first", async () => {
     const olderNoteId = await ctx.db.insert("notes", {
       userId: aliceUserId,
       profileId: jisooId,
-      text: "지수 얘기 중 민호가 나왔다.",
+      text: "Marcus came up while talking about Nina.",
       source: "manual",
       createdAt: 1,
     });
     const newerNoteId = await ctx.db.insert("notes", {
       userId: aliceUserId,
       profileId: hyunwooId,
-      text: "현우 얘기 중에도 민호가 또 나왔다.",
+      text: "Marcus came up again while talking about Ben.",
       source: "manual",
       createdAt: 2,
     });
@@ -403,14 +403,14 @@ test("should return mentionedIn newest first", async () => {
       userId: aliceUserId,
       noteId: olderNoteId,
       profileId: minhoId,
-      name: "민호",
+      name: "Marcus",
       quote: "older mention",
     });
     await ctx.db.insert("noteMentions", {
       userId: aliceUserId,
       noteId: newerNoteId,
       profileId: minhoId,
-      name: "민호",
+      name: "Marcus",
       quote: "newer mention",
     });
 
@@ -434,13 +434,13 @@ test("should never let one user's note mentioning a name leak into another user'
   const asAlice = t.withIdentity(ALICE);
   const asBob = t.withIdentity(BOB);
 
-  // Alice mentions "민호" inside her own note about 지수 — creates Alice's own
-  // stub profile named 민호.
+  // Alice mentions "Marcus" inside her own note about Nina — creates Alice's own
+  // stub profile named Marcus.
   await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "지수를 민호네 집들이에서 만났다.",
+    transcript: "Met Nina at Marcus's housewarming.",
     draft: {
       primary: {
-        name: "지수",
+        name: "Nina",
         entityType: "person",
         relationshipContext: null,
         tags: [],
@@ -449,22 +449,22 @@ test("should never let one user's note mentioning a name leak into another user'
       },
       mentions: [
         {
-          name: "민호",
+          name: "Marcus",
           entityType: "person",
-          quote: "민호네 집들이에서",
+          quote: "at Marcus's housewarming",
         },
       ],
     },
     source: "voice",
   });
 
-  // Bob has his own, unrelated 민호 — a direct profile, same name, different
+  // Bob has his own, unrelated Marcus — a direct profile, same name, different
   // person entirely, different owner.
-  const bobMinho = await asBob.mutation(api.notes.saveCapture, {
-    transcript: "민호를 직접 만났다.",
+  const bobMarcus = await asBob.mutation(api.notes.saveCapture, {
+    transcript: "Met Marcus in person.",
     draft: {
       primary: {
-        name: "민호",
+        name: "Marcus",
         entityType: "person",
         relationshipContext: null,
         tags: [],
@@ -477,12 +477,12 @@ test("should never let one user's note mentioning a name leak into another user'
   });
 
   const result = await asBob.query(api.profiles.withNotes, {
-    profileId: bobMinho.profileId,
+    profileId: bobMarcus.profileId,
   });
 
   // Same property withNotes already protects for notes, on the new link
-  // table's surface: Alice's note about 지수 must never show up here just
-  // because both profiles happen to be named 민호.
+  // table's surface: Alice's note about Nina must never show up here just
+  // because both profiles happen to be named Marcus.
   expect(result?.mentionedIn).toEqual([]);
 });
 
@@ -525,14 +525,14 @@ test("should cap mentionedIn at the five most recent and report the true total",
   const aliceUserId = await ensureUser(t, ALICE);
   const asAlice = t.withIdentity(ALICE);
 
-  // Seven notes about seven different people, each mentioning 민호. Built
+  // Seven notes about seven different people, each mentioning Marcus. Built
   // directly so `createdAt` is explicit — `saveCapture` stamps Date.now(), and
   // seven calls in one test would land in the same millisecond and make the
   // "most recent" claim depend on a tie.
   const minhoId = await t.run(async (ctx) => {
     const minho = await ctx.db.insert("profiles", {
       userId: aliceUserId,
-      name: "민호",
+      name: "Marcus",
       entityType: "person",
       tags: [],
       autoCreated: true,
@@ -557,7 +557,7 @@ test("should cap mentionedIn at the five most recent and report the true total",
         userId: aliceUserId,
         noteId,
         profileId: minho,
-        name: "민호",
+        name: "Marcus",
         quote: `quote ${i}`,
       });
     }
@@ -589,7 +589,7 @@ test("should cap mentionedIn at the five most recent and report the true total",
  */
 function capture(name: string, overrides: Record<string, unknown> = {}) {
   return {
-    transcript: `${name} 이야기.`,
+    transcript: `A note about ${name}.`,
     draft: {
       primary: {
         name,
@@ -643,8 +643,8 @@ test("should allow a rename onto a name the user already keeps", async () => {
   await ensureUser(t, ALICE);
   const asAlice = t.withIdentity(ALICE);
 
-  await asAlice.mutation(api.notes.saveCapture, capture("치선"));
-  const { profileId } = await asAlice.mutation(api.notes.saveCapture, capture("지선"));
+  await asAlice.mutation(api.notes.saveCapture, capture("Priya"));
+  const { profileId } = await asAlice.mutation(api.notes.saveCapture, capture("Emma"));
 
   // Two people share a name. An address book that refuses the second one is
   // telling the user their friend does not exist, and the case that forces it
@@ -652,7 +652,7 @@ test("should allow a rename onto a name the user already keeps", async () => {
   // somebody else's already is.
   await asAlice.mutation(api.profiles.updateProfile, {
     profileId,
-    name: "치선",
+    name: "Priya",
     entityType: "person",
     relationshipContext: "",
     firstMetDate: "",
@@ -662,7 +662,7 @@ test("should allow a rename onto a name the user already keeps", async () => {
 
   await t.run(async (ctx) => {
     const names = (await ctx.db.query("profiles").collect()).map((p) => p.name);
-    expect(names.filter((n) => n === "치선")).toHaveLength(2);
+    expect(names.filter((n) => n === "Priya")).toHaveLength(2);
   });
 });
 
@@ -671,13 +671,13 @@ test("should allow saving a profile without renaming it", async () => {
   await ensureUser(t, ALICE);
   const asAlice = t.withIdentity(ALICE);
 
-  const { profileId } = await asAlice.mutation(api.notes.saveCapture, capture("지선"));
+  const { profileId } = await asAlice.mutation(api.notes.saveCapture, capture("Emma"));
 
   // The clash check has to exclude the row being edited, or editing anything
   // else about a person would be blocked by their own name.
   await asAlice.mutation(api.profiles.updateProfile, {
     profileId,
-    name: "지선",
+    name: "Emma",
     entityType: "person",
     relationshipContext: "friend",
     firstMetDate: "",
@@ -695,7 +695,7 @@ test("should refuse an empty name and a date that is not a date", async () => {
   await ensureUser(t, ALICE);
   const asAlice = t.withIdentity(ALICE);
 
-  const { profileId } = await asAlice.mutation(api.notes.saveCapture, capture("지선"));
+  const { profileId } = await asAlice.mutation(api.notes.saveCapture, capture("Emma"));
   const base = {
     profileId,
     entityType: "person" as const,
@@ -711,7 +711,7 @@ test("should refuse an empty name and a date that is not a date", async () => {
   await expect(
     asAlice.mutation(api.profiles.updateProfile, {
       ...base,
-      name: "지선",
+      name: "Emma",
       firstMetDate: "last August",
     }),
   ).rejects.toBeInstanceOf(ConvexError);
@@ -723,29 +723,29 @@ test("should stop being a stub once somebody edits it by hand", async () => {
   const asAlice = t.withIdentity(ALICE);
 
   await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "지선을 민호네 집들이에서 만났다.",
+    transcript: "Met Emma at Marcus's housewarming.",
     draft: {
       primary: {
-        name: "지선",
+        name: "Emma",
         entityType: "person" as const,
         relationshipContext: null,
         tags: [],
         firstMetDate: null,
         keyFacts: [],
       },
-      mentions: [{ name: "민호", entityType: "person" as const, quote: "민호네" }],
+      mentions: [{ name: "Marcus", entityType: "person" as const, quote: "Marcus's" }],
     },
     source: "voice" as const,
   });
 
   const minho = await t.run(async (ctx) =>
-    (await ctx.db.query("profiles").collect()).find((p) => p.name === "민호"),
+    (await ctx.db.query("profiles").collect()).find((p) => p.name === "Marcus"),
   );
   expect(minho?.autoCreated).toBe(true);
 
   await asAlice.mutation(api.profiles.updateProfile, {
     profileId: minho!._id,
-    name: "민호",
+    name: "Marcus",
     entityType: "person",
     relationshipContext: "friend",
     firstMetDate: "",
@@ -767,7 +767,7 @@ test("should refuse to write another user's profile", async () => {
 
   const { profileId } = await t
     .withIdentity(ALICE)
-    .mutation(api.notes.saveCapture, capture("지선"));
+    .mutation(api.notes.saveCapture, capture("Emma"));
 
   await expect(
     t.withIdentity(BOB).mutation(api.profiles.updateProfile, {
@@ -782,7 +782,7 @@ test("should refuse to write another user's profile", async () => {
   ).rejects.toBeInstanceOf(ConvexError);
 
   await t.run(async (ctx) => {
-    expect((await ctx.db.get("profiles", profileId))?.name).toBe("지선");
+    expect((await ctx.db.get("profiles", profileId))?.name).toBe("Emma");
   });
 });
 
@@ -791,16 +791,16 @@ test("should not let one user's name block another user's", async () => {
   await ensureUser(t, ALICE);
   await ensureUser(t, BOB);
 
-  await t.withIdentity(ALICE).mutation(api.notes.saveCapture, capture("민호"));
+  await t.withIdentity(ALICE).mutation(api.notes.saveCapture, capture("Marcus"));
   const { profileId } = await t
     .withIdentity(BOB)
-    .mutation(api.notes.saveCapture, capture("지선"));
+    .mutation(api.notes.saveCapture, capture("Emma"));
 
   // The clash check is scoped to the caller's own rows. Anything wider would
   // leak whether a stranger keeps somebody by that name.
   await t.withIdentity(BOB).mutation(api.profiles.updateProfile, {
     profileId,
-    name: "민호",
+    name: "Marcus",
     entityType: "person",
     relationshipContext: "",
     firstMetDate: "",
@@ -809,7 +809,7 @@ test("should not let one user's name block another user's", async () => {
   });
 
   await t.run(async (ctx) => {
-    expect((await ctx.db.get("profiles", profileId))?.name).toBe("민호");
+    expect((await ctx.db.get("profiles", profileId))?.name).toBe("Marcus");
   });
 });
 
@@ -820,7 +820,7 @@ test("should refuse to write another user's profile", async () => {
 
   const { profileId } = await t
     .withIdentity(ALICE)
-    .mutation(api.notes.saveCapture, capture("지선"));
+    .mutation(api.notes.saveCapture, capture("Emma"));
 
   await expect(
     t.withIdentity(BOB).mutation(api.profiles.updateProfile, {
@@ -835,7 +835,7 @@ test("should refuse to write another user's profile", async () => {
   ).rejects.toBeInstanceOf(ConvexError);
 
   await t.run(async (ctx) => {
-    expect((await ctx.db.get("profiles", profileId))?.name).toBe("지선");
+    expect((await ctx.db.get("profiles", profileId))?.name).toBe("Emma");
   });
 });
 
@@ -844,16 +844,16 @@ test("should not let one user's name block another user's", async () => {
   await ensureUser(t, ALICE);
   await ensureUser(t, BOB);
 
-  await t.withIdentity(ALICE).mutation(api.notes.saveCapture, capture("민호"));
+  await t.withIdentity(ALICE).mutation(api.notes.saveCapture, capture("Marcus"));
   const { profileId } = await t
     .withIdentity(BOB)
-    .mutation(api.notes.saveCapture, capture("지선"));
+    .mutation(api.notes.saveCapture, capture("Emma"));
 
   // The clash check is scoped to the caller's own rows. Anything wider would
   // leak whether a stranger keeps somebody by that name.
   await t.withIdentity(BOB).mutation(api.profiles.updateProfile, {
     profileId,
-    name: "민호",
+    name: "Marcus",
     entityType: "person",
     relationshipContext: "",
     firstMetDate: "",
@@ -862,7 +862,7 @@ test("should not let one user's name block another user's", async () => {
   });
 
   await t.run(async (ctx) => {
-    expect((await ctx.db.get("profiles", profileId))?.name).toBe("민호");
+    expect((await ctx.db.get("profiles", profileId))?.name).toBe("Marcus");
   });
 });
 
@@ -876,34 +876,34 @@ test("should ask only about names more than one person answers to", async () => 
   await ensureUser(t, ALICE);
   const asAlice = t.withIdentity(ALICE);
 
-  const first = await asAlice.mutation(api.notes.saveCapture, capture("치선"));
-  const second = await asAlice.mutation(api.notes.saveCapture, capture("지선"));
+  const first = await asAlice.mutation(api.notes.saveCapture, capture("Priya"));
+  const second = await asAlice.mutation(api.notes.saveCapture, capture("Emma"));
   await asAlice.mutation(api.profiles.updateProfile, {
     profileId: second.profileId,
-    name: "치선",
+    name: "Priya",
     entityType: "person",
-    relationshipContext: "이웃",
+    relationshipContext: "neighbour",
     firstMetDate: "",
     tags: [],
     aliases: [],
   });
 
   const asked = await asAlice.query(api.profiles.resolveNames, {
-    names: ["치선", "민호", "치선"],
+    names: ["Priya", "Marcus", "Priya"],
   });
 
   // Two names, not three: the repeat is the same question asked twice.
   expect(asked).toHaveLength(2);
-  const chiseon = asked.find((one) => one.name === "치선");
+  const chiseon = asked.find((one) => one.name === "Priya");
   expect(chiseon?.candidates.map((c) => c.profileId).sort()).toEqual(
     [first.profileId, second.profileId].sort(),
   );
-  // 민호 is nobody yet. Returned with no candidates rather than left out — the
+  // Marcus is nobody yet. Returned with no candidates rather than left out — the
   // absence is what tells the screen a new person is about to be invented,
   // which is how a misheard name gets noticed before it becomes one.
-  expect(asked.find((one) => one.name === "민호")?.candidates).toEqual([]);
+  expect(asked.find((one) => one.name === "Marcus")?.candidates).toEqual([]);
   // Identical names are not a choice — what separates them has to come too.
-  const neighbour = asked[0]?.candidates.find((c) => c.relationshipContext === "이웃");
+  const neighbour = asked[0]?.candidates.find((c) => c.relationshipContext === "neighbour");
   expect(neighbour?.noteCount).toBe(1);
   expect(neighbour?.lastNoteAt).not.toBeNull();
 });
@@ -913,16 +913,16 @@ test("should not offer another user's people as candidates", async () => {
   await ensureUser(t, ALICE);
   await ensureUser(t, BOB);
 
-  await t.withIdentity(ALICE).mutation(api.notes.saveCapture, capture("치선"));
-  await t.withIdentity(ALICE).mutation(api.notes.saveCapture, capture("민호"));
-  await t.withIdentity(BOB).mutation(api.notes.saveCapture, capture("치선"));
+  await t.withIdentity(ALICE).mutation(api.notes.saveCapture, capture("Priya"));
+  await t.withIdentity(ALICE).mutation(api.notes.saveCapture, capture("Marcus"));
+  await t.withIdentity(BOB).mutation(api.notes.saveCapture, capture("Priya"));
 
-  // Bob keeps exactly one 치선, so there is nothing to ask him. Counting
+  // Bob keeps exactly one Priya, so there is nothing to ask him. Counting
   // Alice's would both invent a question and tell him a stranger keeps
   // somebody by that name.
   const asked = await t
     .withIdentity(BOB)
-    .query(api.profiles.resolveNames, { names: ["치선"] });
+    .query(api.profiles.resolveNames, { names: ["Priya"] });
   expect(asked[0]?.candidates).toHaveLength(1);
 });
 
@@ -939,17 +939,17 @@ test("should take the person, their notes, and the links inside those notes", as
   const asAlice = t.withIdentity(ALICE);
 
   const { profileId } = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "지선을 민호네 집들이에서 만났다.",
+    transcript: "Met Emma at Marcus's housewarming.",
     draft: {
       primary: {
-        name: "지선",
+        name: "Emma",
         entityType: "person" as const,
         relationshipContext: null,
         tags: [],
         firstMetDate: null,
         keyFacts: [],
       },
-      mentions: [{ name: "민호", entityType: "person" as const, quote: "민호네" }],
+      mentions: [{ name: "Marcus", entityType: "person" as const, quote: "Marcus's" }],
     },
     source: "voice" as const,
   });
@@ -957,7 +957,7 @@ test("should take the person, their notes, and the links inside those notes", as
   const result = await asAlice.mutation(api.profiles.remove, { profileId });
 
   expect(result.removedNoteCount).toBe(1);
-  // 민호 existed only because that note named him.
+  // Marcus existed only because that note named him.
   expect(result.removedAutoCreatedCount).toBe(1);
   await t.run(async (ctx) => {
     expect(await ctx.db.query("profiles").collect()).toHaveLength(0);
@@ -971,48 +971,48 @@ test("should leave other people's notes saying what they said, minus a way throu
   await ensureUser(t, ALICE);
   const asAlice = t.withIdentity(ALICE);
 
-  // A note about 지선 that names 민호, then a note of 민호's own so he is
+  // A note about Emma that names Marcus, then a note of Marcus's own so he is
   // somebody the user chose rather than a row Andy invented.
   await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "지선을 민호네 집들이에서 만났다.",
+    transcript: "Met Emma at Marcus's housewarming.",
     draft: {
       primary: {
-        name: "지선",
+        name: "Emma",
         entityType: "person" as const,
         relationshipContext: null,
         tags: [],
         firstMetDate: null,
         keyFacts: [],
       },
-      mentions: [{ name: "민호", entityType: "person" as const, quote: "민호네" }],
+      mentions: [{ name: "Marcus", entityType: "person" as const, quote: "Marcus's" }],
     },
     source: "voice" as const,
   });
-  const minho = await asAlice.mutation(api.notes.saveCapture, capture("민호"));
+  const minho = await asAlice.mutation(api.notes.saveCapture, capture("Marcus"));
 
   await asAlice.mutation(api.profiles.remove, { profileId: minho.profileId });
 
   await t.run(async (ctx) => {
-    // 지선's note stays, and so does the link inside it. Deleting somebody must
+    // Emma's note stays, and so does the link inside it. Deleting somebody must
     // not rewrite what everyone who mentioned them wrote down.
     expect(await ctx.db.query("notes").collect()).toHaveLength(1);
     const links = await ctx.db.query("noteMentions").collect();
     expect(links).toHaveLength(1);
-    expect(links[0]?.name).toBe("민호");
+    expect(links[0]?.name).toBe("Marcus");
     const names = (await ctx.db.query("profiles").collect()).map((p) => p.name);
-    expect(names).toEqual(["지선"]);
+    expect(names).toEqual(["Emma"]);
   });
 
   // And the note reports it as a name that no longer leads anywhere, so the
   // screen can show it without offering to open it.
   const jiseon = await t.run(async (ctx) =>
-    (await ctx.db.query("profiles").collect()).find((p) => p.name === "지선"),
+    (await ctx.db.query("profiles").collect()).find((p) => p.name === "Emma"),
   );
   const timeline = await asAlice.query(api.profiles.withNotes, {
     profileId: jiseon!._id,
   });
   expect(timeline?.notes[0]?.mentions[0]).toMatchObject({
-    name: "민호",
+    name: "Marcus",
     exists: false,
   });
 });
@@ -1023,27 +1023,27 @@ test("should show a mentioned person's current name while they still exist", asy
   const asAlice = t.withIdentity(ALICE);
 
   const { profileId } = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "지선을 민호네 집들이에서 만났다.",
+    transcript: "Met Emma at Marcus's housewarming.",
     draft: {
       primary: {
-        name: "지선",
+        name: "Emma",
         entityType: "person" as const,
         relationshipContext: null,
         tags: [],
         firstMetDate: null,
         keyFacts: [],
       },
-      mentions: [{ name: "민호", entityType: "person" as const, quote: "민호네" }],
+      mentions: [{ name: "Marcus", entityType: "person" as const, quote: "Marcus's" }],
     },
     source: "voice" as const,
   });
 
   const minho = await t.run(async (ctx) =>
-    (await ctx.db.query("profiles").collect()).find((p) => p.name === "민호"),
+    (await ctx.db.query("profiles").collect()).find((p) => p.name === "Marcus"),
   );
   await asAlice.mutation(api.profiles.updateProfile, {
     profileId: minho!._id,
-    name: "민호 박",
+    name: "Marcus Park",
     entityType: "person",
     relationshipContext: "",
     firstMetDate: "",
@@ -1055,7 +1055,7 @@ test("should show a mentioned person's current name while they still exist", asy
   // that mentions them, or the app shows two spellings of one person.
   const timeline = await asAlice.query(api.profiles.withNotes, { profileId });
   expect(timeline?.notes[0]?.mentions[0]).toMatchObject({
-    name: "민호 박",
+    name: "Marcus Park",
     exists: true,
   });
 });
@@ -1065,8 +1065,8 @@ test("should keep a mentioned person who is still reachable from elsewhere", asy
   await ensureUser(t, ALICE);
   const asAlice = t.withIdentity(ALICE);
 
-  const withMinho = (primaryName: string) => ({
-    transcript: `${primaryName}과 민호를 봤다.`,
+  const withMarcus = (primaryName: string) => ({
+    transcript: `Saw ${primaryName} and Marcus.`,
     draft: {
       primary: {
         name: primaryName,
@@ -1076,13 +1076,13 @@ test("should keep a mentioned person who is still reachable from elsewhere", asy
         firstMetDate: null,
         keyFacts: [],
       },
-      mentions: [{ name: "민호", entityType: "person" as const, quote: "민호를" }],
+      mentions: [{ name: "Marcus", entityType: "person" as const, quote: "Marcus" }],
     },
     source: "voice" as const,
   });
 
-  const jiseon = await asAlice.mutation(api.notes.saveCapture, withMinho("지선"));
-  await asAlice.mutation(api.notes.saveCapture, withMinho("수진"));
+  const jiseon = await asAlice.mutation(api.notes.saveCapture, withMarcus("Emma"));
+  await asAlice.mutation(api.notes.saveCapture, withMarcus("Dana"));
 
   const result = await asAlice.mutation(api.profiles.remove, {
     profileId: jiseon.profileId,
@@ -1091,7 +1091,7 @@ test("should keep a mentioned person who is still reachable from elsewhere", asy
   expect(result.removedAutoCreatedCount).toBe(0);
   await t.run(async (ctx) => {
     const names = (await ctx.db.query("profiles").collect()).map((p) => p.name);
-    expect(names.sort()).toEqual(["민호", "수진"]);
+    expect(names.sort()).toEqual(["Dana", "Marcus"]);
   });
 });
 
@@ -1100,7 +1100,7 @@ test("should take the metrics and calendar links filed against them", async () =
   await ensureUser(t, ALICE);
   const asAlice = t.withIdentity(ALICE);
 
-  const { profileId } = await asAlice.mutation(api.notes.saveCapture, capture("콩이"));
+  const { profileId } = await asAlice.mutation(api.notes.saveCapture, capture("Biscuit"));
 
   // Nothing writes these tables yet, so they are inserted directly — the day
   // something does is not the day anybody will remember this cascade exists.
@@ -1138,7 +1138,7 @@ test("should refuse to delete another user's person", async () => {
 
   const { profileId } = await t
     .withIdentity(ALICE)
-    .mutation(api.notes.saveCapture, capture("지선"));
+    .mutation(api.notes.saveCapture, capture("Emma"));
 
   await expect(
     t.withIdentity(BOB).mutation(api.profiles.remove, { profileId }),
@@ -1159,18 +1159,18 @@ test("should file a note under the person whose alias was spoken", async () => {
   await ensureUser(t, ALICE);
   const asAlice = t.withIdentity(ALICE);
 
-  const { profileId } = await asAlice.mutation(api.notes.saveCapture, capture("지선"));
+  const { profileId } = await asAlice.mutation(api.notes.saveCapture, capture("Emma"));
   await asAlice.mutation(api.profiles.updateProfile, {
     profileId,
-    name: "지선",
+    name: "Emma",
     entityType: "person",
     relationshipContext: "",
     firstMetDate: "",
     tags: [],
-    aliases: ["지선 언니"],
+    aliases: ["Em"],
   });
 
-  const saved = await asAlice.mutation(api.notes.saveCapture, capture("지선 언니"));
+  const saved = await asAlice.mutation(api.notes.saveCapture, capture("Em"));
 
   // The same person, not a second one. Without this, "John", "John Maxwell"
   // and "Mr. Maxwell" are three profiles whose notes never meet.
@@ -1183,29 +1183,29 @@ test("should tell the capture screen a name is shared when an alias collides", a
   await ensureUser(t, ALICE);
   const asAlice = t.withIdentity(ALICE);
 
-  const jiseon = await asAlice.mutation(api.notes.saveCapture, capture("지선"));
-  const soojin = await asAlice.mutation(api.notes.saveCapture, capture("수진"));
+  const jiseon = await asAlice.mutation(api.notes.saveCapture, capture("Emma"));
+  const soojin = await asAlice.mutation(api.notes.saveCapture, capture("Dana"));
   await asAlice.mutation(api.profiles.updateProfile, {
     profileId: soojin.profileId,
-    name: "수진",
+    name: "Dana",
     entityType: "person",
     relationshipContext: "",
     firstMetDate: "",
     tags: [],
-    aliases: ["지선"],
+    aliases: ["Emma"],
   });
 
   // An alias that collides with somebody's name makes that name a question,
   // and it has to be the same question the mutation would ask — the screen
   // asking about a different set of names than the mutation acts on is how a
   // note gets filed against somebody nobody was offered.
-  const asked = await asAlice.query(api.profiles.resolveNames, { names: ["지선"] });
+  const asked = await asAlice.query(api.profiles.resolveNames, { names: ["Emma"] });
   expect(asked[0]?.candidates.map((c) => c.profileId).sort()).toEqual(
     [jiseon.profileId, soojin.profileId].sort(),
   );
 
   await expect(
-    asAlice.mutation(api.notes.saveCapture, capture("지선")),
+    asAlice.mutation(api.notes.saveCapture, capture("Emma")),
   ).rejects.toBeInstanceOf(ConvexError);
 });
 
@@ -1214,24 +1214,24 @@ test("should accept a choice made under an alias rather than the filed name", as
   await ensureUser(t, ALICE);
   const asAlice = t.withIdentity(ALICE);
 
-  const jiseon = await asAlice.mutation(api.notes.saveCapture, capture("지선"));
-  const soojin = await asAlice.mutation(api.notes.saveCapture, capture("수진"));
+  const jiseon = await asAlice.mutation(api.notes.saveCapture, capture("Emma"));
+  const soojin = await asAlice.mutation(api.notes.saveCapture, capture("Dana"));
   await asAlice.mutation(api.profiles.updateProfile, {
     profileId: soojin.profileId,
-    name: "수진",
+    name: "Dana",
     entityType: "person",
     relationshipContext: "",
     firstMetDate: "",
     tags: [],
-    aliases: ["지선"],
+    aliases: ["Emma"],
   });
 
   // The check that a chosen profile really goes by the name it was chosen for
-  // has to know about aliases too, or picking 수진 under "지선" — exactly what
+  // has to know about aliases too, or picking Dana under "Emma" — exactly what
   // the screen offered — would be rejected as a stale answer.
   const saved = await asAlice.mutation(api.notes.saveCapture, {
-    ...capture("지선"),
-    resolutions: [{ name: "지선", profileId: soojin.profileId }],
+    ...capture("Emma"),
+    resolutions: [{ name: "Emma", profileId: soojin.profileId }],
   });
   expect(saved.profileId).toBe(soojin.profileId);
   expect(saved.profileId).not.toBe(jiseon.profileId);
@@ -1242,20 +1242,20 @@ test("should tidy the names it is given and refuse to store one twice", async ()
   await ensureUser(t, ALICE);
   const asAlice = t.withIdentity(ALICE);
 
-  const { profileId } = await asAlice.mutation(api.notes.saveCapture, capture("지선"));
+  const { profileId } = await asAlice.mutation(api.notes.saveCapture, capture("Emma"));
   await asAlice.mutation(api.profiles.updateProfile, {
     profileId,
-    name: "지선",
+    name: "Emma",
     entityType: "person",
     relationshipContext: "",
     firstMetDate: "",
     tags: [],
-    aliases: ["  지선 언니  ", "지선 언니", "", "지선"],
+    aliases: ["  Em  ", "Em", "", "Emma"],
   });
 
   await t.run(async (ctx) => {
     // Trimmed, deduplicated, and never repeating the name it is filed under —
     // an alias identical to the name can only ever be noise.
-    expect((await ctx.db.get("profiles", profileId))?.aliases).toEqual(["지선 언니"]);
+    expect((await ctx.db.get("profiles", profileId))?.aliases).toEqual(["Em"]);
   });
 });
