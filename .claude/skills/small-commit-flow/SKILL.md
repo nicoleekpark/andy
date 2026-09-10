@@ -11,12 +11,28 @@ This repo ships fast because every change is small, tested, and reversible. Foll
 2. **Branch from `main` before touching any code** — `git checkout -b feat/<short-slice-name>` (or `fix/...`, `chore/...`). Per `CLAUDE.md`'s Branching Policy, nothing gets committed to `main` directly, no exceptions for size.
 3. **If the slice uses an API/library you're not fully certain of the current syntax for** (Convex, Clerk, Expo/EAS, EventKit, WidgetKit, etc.), delegate to the `docs-verifier` subagent first. Don't guess on fast-moving APIs — a stale assumption (expo-av, removed in SDK 55) caught late costs more than a quick check up front.
 4. **Implement** just that slice.
-5. **Delegate to the `test-writer` subagent** to write and run the minimal test(s) for it. Do not mark the slice done until this comes back passing.
-6. **Delegate to the `security-reviewer` subagent** if the slice touches data access, auth, or an external API call. This is a blocking gate — do not proceed past a 🛑 block.
-7. **Delegate to the `code-reviewer` subagent** for a constructive pass — DRY, scope adherence against `PROJECT_SCOPE.md`, consistency, obvious bugs. Act on anything flagged as "must fix before committing"; use judgment on the rest.
-8. **Run lint/typecheck** (`npm run lint`) — must be clean.
-9. **Commit on the branch, push it, and open a PR** (`gh pr create`) — never merge it. The PR description is the handover report below, not a placeholder.
-10. **Report back so they can review, then wait.** The report — which doubles as the PR description — is the deliverable of this step, not a formality:
+5. **Write the tests — then break the code and prove they notice.** A passing test proves nothing on its own. Delete the guard you just added, re-run, and confirm *those* tests go red and no others; then restore it. If the suite stays green, the test is watching something else and has to be rewritten before the slice is done.
+
+   This is not a nicety. Every silent hole this project has found came out of this step, and each one had a green suite over it: the `autoCreated` guard could be deleted and everything passed, because the other tests were tripping on a different guard; case-folding could be deleted and everything passed, because the duplicate-name test used `민호` and Korean has no case; a deleted person's name could be made tappable again and everything passed, because the tests checked it was *visible*, not that it was *inert*. Writing more tests would not have found any of them.
+
+   It also works on other people's suggestions. A review's proposed fix can be applied and run against the review's own repro — that is how a correct diagnosis with a backwards remedy gets caught.
+
+6. **Run the review gates the changed files call for.** Decided by `git diff --name-only main...HEAD`, not by judgement about what the change "really" touches — that judgement is the thing that failed:
+
+   | A file changed under | Gate | |
+   | --- | --- | --- |
+   | `convex/` | **`security-reviewer`** | blocking — do not proceed past a 🛑 |
+   | `src/`, `__tests__/` | **`code-reviewer`** | act on "must fix"; judgement on the rest |
+   | `app.json`, or any permission string | **`app-store-reviewer`** | blocking |
+   | only `*.md`, `*.yml`, `package*.json`, `.github/` | none | |
+
+   Two or three at once is normal — they are independent, so launch them together rather than in series; that is most of the reason to skip them gone.
+
+   A `convex/` change you are certain is harmless still gets `security-reviewer`. Being certain is free and has been wrong: a resolution path that "carries no id, so there is nothing to check" was correct about that and wrong about the thing next to it.
+
+7. **Run lint/typecheck** (`npm run lint`) — must be clean. Never behind a pipe: `npm run lint | tail -3` reports `tail`'s exit code, which is how a commit once landed carrying two type errors.
+8. **Commit on the branch, push it, and open a PR** (`gh pr create`) — never merge it. The PR description is the handover report below, not a placeholder.
+9. **Report back so they can review, then wait.** The report — which doubles as the PR description — is the deliverable of this step, not a formality:
    - what changed, file by file, and **why** — including anything discovered mid-slice that wasn't in the plan
    - the commands they can run to verify it themselves (`npm run lint`, `npm run test`, …) with the results you actually got
    - what you deliberately deferred, and to which slice
