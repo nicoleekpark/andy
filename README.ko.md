@@ -2,17 +2,20 @@
 
 > 이 파일은 `README.md` 원본(영어)의 한국어 번역본입니다. 원본이 수정되면 이 파일도 함께 업데이트해야 합니다.
 
-사람에 대해 음성으로 메모 → LLM이 검색 가능한 프로필로 구조화 → 자연어 검색, Siri 단축어, 홈 화면 위젯으로 나중에 회상.
+사람에 대해 음성으로 메모 → LLM이 검색 가능한 프로필로 구조화 → **평범한 말로 물어서 되찾고, 미팅 전에 브리핑을 받음.**
 
-전체 기능 스코프, 아키텍처, 빌드 계획은 [`PROJECT_SCOPE.md`](./PROJECT_SCOPE.md) 참고. Claude Code가 이 레포에서 어떻게 작업해야 하는지는 [`CLAUDE.md`](./CLAUDE.md) 참고.
+전체 기능 스코프, 아키텍처, 빌드 계획은 [`PROJECT_SCOPE.md`](./PROJECT_SCOPE.md) 참고 — **Day 4에 내린 V1 스코프 컷**도 거기 있고, 위 문장에서 Siri 단축어와 홈 위젯이 빠진 것이 그 결과임. 둘 다 V1.1 대기열의 맨 앞임. Claude Code가 이 레포에서 어떻게 작업해야 하는지는 [`CLAUDE.md`](./CLAUDE.md) 참고.
 
 ## 스택
 
 - Expo (React Native) + TypeScript
 - Convex (데이터베이스, 백엔드 함수, 실시간 동기화, 벡터 검색, 파일 스토리지)
 - Clerk (인증 — V1은 Apple Sign-In)
-- Claude API (추출 + RAG 챗봇, Convex action에서만 서버사이드로 호출)
-- expo-contacts, expo-audio(녹음), expo-speech-recognition(전사), expo-speech(Siri 응답용 TTS), expo-local-authentication(비밀번호/생체인증 앱 잠금)
+- Claude API (추출, 명함용 비전, 검색된 노트 위에서의 답변 — Convex action에서만 서버사이드로 호출, 클라이언트에서는 절대 호출하지 않음)
+- OpenAI `text-embedding-3-large` 1024차원 (노트 임베딩, 역시 서버사이드 전용)
+- expo-audio(녹음), expo-speech-recognition(전사), expo-image-picker(명함 + 사진 첨부), expo-calendar(브리핑), expo-notifications, expo-local-authentication(비밀번호/생체인증 앱 잠금)
+
+_`expo-contacts`와 `expo-speech`는 V1 의존성이 아님 — 연락처 동기화와 Siri 단축어는 Day 4에 잘렸음._
 
 ## 기술 스택 결정 (이유, 그리고 함께 고려했던 대안들)
 

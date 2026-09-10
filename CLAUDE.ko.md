@@ -2,7 +2,9 @@
 
 ## 프로젝트
 
-"Andy" — Expo(React Native) + Convex 앱. 음성 노트 → Claude가 추출한 구조화된 프로필 → 시맨틱 리콜 검색, Siri 단축어, 홈 위젯. 전체 스코프: `PROJECT_SCOPE.md` 참고.
+"Andy" — Expo(React Native) + Convex 앱. 음성 노트 → Claude가 추출한 구조화된 프로필 → **근거 노트와 함께 답하는 시맨틱 리콜**, 그리고 캘린더 기반 브리핑. 전체 스코프: `PROJECT_SCOPE.md` 참고.
+
+**V1 스코프는 Day 4에 잘렸음**(`PROJECT_SCOPE.md`의 "V1 스코프 컷"). V1에서 빠진 것: 홈 위젯, Siri 단축어, 연락처 동기화, 반려동물 지표 UI, 태그 필터, vCard. **위젯은 V1 이후 가장 먼저 만들 것으로 이미 정해져 있으니 다시 논의하지 말 것.** 여기 적힌 것은 미리 만들라는 힌트가 아님: 아래 Scope Discipline 규칙은 그대로 적용되고, **잘린 기능은 애초에 없던 기능보다 더 바깥**임.
 
 ## 스택 & 명령어
 

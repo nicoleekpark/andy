@@ -18,13 +18,15 @@ If it's the former — convert this into a real number (D7 retention, # of voice
 
 ## One-liner
 
-Voice-note a person (or a foster cat) → LLM structures it into a searchable profile → recall it later via natural-language search, Siri Shortcut, or a home-screen widget — without needing to remember a name.
+Voice-note a person (or a foster cat) → LLM structures it into a searchable profile → ask for it back in plain language, and get briefed before you walk into the meeting — without needing to remember a name.
+
+_(Until day 4 this line ended "…via natural-language search, Siri Shortcut, or a home-screen widget". Siri and the widget were cut from V1 that day and are the first two items in the V1.1 queue; the line now names what V1 actually does.)_
 
 ## Product Narrative — "The Briefing"
 
 Andy whispering the ambassador's name and key facts into Miranda's ear before she has to greet him. The app's job is to surface exactly what you need to know about someone, exactly when you need it — before a meeting (calendar-triggered briefing) and right after (a nudge to capture what's new) — without you having to go dig for it.
 
-**Timeline: extended to 10–12 days** (from the original 7) to properly fit Calendar-triggered briefing/nudge and cross-profile mention search — both are now Must-have, not stretch goals.
+**Timeline: extended to 10–12 days** (from the original 7) to properly fit Calendar-triggered briefing/nudge and cross-profile mention search — both are Must-have, not stretch goals. **Day-4 update:** the day count did not hold (measured: one plan-day has been costing ~2.5 working days), so on day 4 the *scope* was cut instead of the date being moved again. Briefing and recall survived the cut precisely because they are the two things this extension was bought for — see "The V1 scope cut" below.
 
 ## Decision Framework Recap
 
@@ -36,8 +38,11 @@ Leverage   : Semantic (vector) search over voice-derived notes = core moat.
              TypeScript-unified stack (Expo + Convex) = smallest surface
              area for an AI coding agent to make mistakes in.
 Risk       : iOS cannot auto-surface caller profiles during a real cellular
-             call (confirmed infeasible — see below). Scope replaces this
-             with Siri Shortcut + widget, which IS achievable this week.
+             call (confirmed infeasible — see below). Scope replaced this
+             with Siri Shortcut + widget — both cut from V1 on day 4 (new
+             native targets, and this machine cannot build native locally),
+             so V1 answers "recall it fast" with Ask Andy and the Calendar
+             briefing instead. Widget is first back in V1.1.
 ```
 
 ## Reality Checks Baked Into This Scope
@@ -82,7 +87,7 @@ Risk       : iOS cannot auto-surface caller profiles during a real cellular
 9. **No custom Siri wake word ("Hey Andy") is possible.** iOS has no
    API for third-party apps to register their own always-listening wake
    phrase — "Hey Siri"/"Siri" is the only system wake word, by design.
-   The already-scoped Siri Shortcut ("Hey Siri, look up John Doe from Andy") is the correct pattern via App Intents — the app name is
+   The Siri Shortcut ("Hey Siri, look up John Doe from Andy", now V1.1) is the correct pattern via App Intents — the app name is
    part of the spoken phrase. Don't chase a true custom wake word.
 10. **True end-to-end encryption is not compatible with this
     architecture, on purpose — not an oversight.** Extraction requires
@@ -131,28 +136,31 @@ Researched directly rather than assumed:
 - [x] Voice recording → on-device/API transcription → Claude extraction into structured profile (name, relationship context, key facts, tags, first-met date) — day 2–3; typed entry is a second door into the same pipeline
 - [x] Manual profile create/edit (fallback when voice isn't used) — day 3: type a note, edit and delete a note, edit and delete a person, and name a person's aliases
 - [ ] **Business card photo → profile** — same Claude extraction action as voice, given an image input instead; extracts name/title/company directly from a photo (near-zero marginal cost, reuses the existing pipeline)
-- [ ] **Cross-profile mention-graph search** — semantic search runs over every _note_ (not just profile-primary fields), so "X 생일파티에서 만난 메타 개발자" surfaces a person even if they only exist as a mention inside someone else's profile, not as their own profile. See schema note below.
+- [ ] **Ask Andy — semantic recall across every note, answered in prose over its own sources.** One screen, not two. Retrieval runs over every _note_ (not just profile-primary fields), so "the Meta developer I met at X's birthday" surfaces a person who exists only as a mention inside somebody else's note. The same retrieval then feeds a Claude call that answers in a sentence **and shows the notes it used, tappable**. Absorbed the Should-Have "simple RAG chatbot" (day-04 scope cut): retrieval *is* that feature's expensive half, so what remains is one action and no second screen — and two boxes would make the user guess which one to ask. The citations are not polish: Day 2 measured extraction laundering a mistranscription into a confident false fact, and an answer with no visible source is that same failure with the evidence removed. See schema note below.
 - [x] Timeline per profile — chronological list of notes/interactions — day 3, newest first, with who came up in each note
-- [ ] iOS Contacts sync — per-profile opt-in, read existing contact + optionally write back a note/tag (expo-contacts)
 - [ ] **Calendar Briefing** — read calendar (EventKit — covers Apple + Google + CalDAV in one API, see Reality Checks), fuzzy-match attendee/title names to profiles, schedule a local pre-meeting notification (last notes digest) and a post-meeting nudge ("오늘 A랑 어땠어? 새로 기억할 것?")
 - [ ] **Follow-up email draft** — generate a draft from stored notes, hand off via `mailto:` deep link (no inbox read, no OAuth)
 - [ ] Manual photo attachment per profile (expo-image-picker)
-- [ ] **Pet/animal metrics log** — structured time-series sub-record per profile (date, metric type, value, unit) for weight/health tracking, separate from free-text notes
 - [ ] **Passcode/biometric app lock** (expo-local-authentication) — this app stores notes about other people without their consent; a lock screen is table stakes for trust, cheap to add
-- [ ] Siri Shortcut — "Hey Siri, look up John Doe from Andy" → returns spoken/text summary of latest note
-- [ ] Home screen widget — pinned + 5 most-recent profiles for instant glance, **plus a second widget variant with a single quick-record button** (tap → app opens directly into an armed capture screen, recording starts immediately; true zero-app-open background recording is not reliable via widget extensions, see Entry-Input Channels below)
 - [ ] Realtime sync across the user's own devices
 - [ ] **iPad support, free** — don't restrict device family in `app.json`; the iPhone UI runs in scaled/compatibility mode on iPad automatically. No dedicated iPad layout in V1, but full functionality.
 
 ### Should Have
 
-- [ ] Simple RAG chatbot — "브라이언이랑 마지막에 무슨 얘기했지?" free-form Q&A grounded in the user's own notes
-- [ ] Tag/category system (client / friend / networking / foster-animal / other), with search filterable by tag and date range
-- [ ] Quick-entry buttons for common metric types on animal profiles (e.g. "weight," "vet visit") — templated shortcuts on top of the `metrics` table, not a separate feature
-- [ ] vCard export per profile
+**Empty, deliberately** — emptied by the day-04 scope cut (see "The V1 scope cut" below).
+
+The RAG chatbot was *promoted* into Must Have, folded into Ask Andy above, because retrieval pays for most of it. The other three were moved down to Could Have rather than kept as a maybe: a Should Have that will not be reached is a Must Have's competitor for attention, and this list is read as the agreed boundary of V1. If something earns its way back, it comes back as a Must Have with a day against it.
 
 ### Could Have (V1.1+)
 
+> **The queue starts here, and the first item is settled.** Everything below was cut from V1 on day 4; the widget is the one with a decision already attached to it, so it does not get re-argued later.
+
+- [ ] **Home screen widget — ⭐ the first thing built once V1's scope above is complete.** Both variants, as originally specified: a glance widget (pinned + 5 most-recent profiles) and a quick-record variant (tap → app opens straight into an armed capture screen, recording already running; true zero-app-open widget recording stays out, see the entry below). **Decided on day 4, at the same time as the cut, so that "what's next" is not a fresh argument after launch.** It was cut for one reason and it is not a doubt about the feature: WidgetKit is a *new native target* (App Group, extension, shared container), and `npx expo run:ios` does not work in this environment — Expo SDK 57 needs Swift 6.3 → Xcode 26.4 → macOS Tahoe (`README.md` Commands). Every iteration is an ~8-minute EAS cloud build plus queue. That turns the fiddliest work in the project into its slowest loop, which is a bad trade *against a deadline* and a fine one without. It comes back first because it is the only cut feature that changes the **capture** half of the loop rather than the recall half: the Success Signal asks whether the app gets reached for unprompted, and a widget is the shortest path from "I should note this" to a running microphone.
+- [ ] **Siri Shortcut** — "Hey Siri, look up John Doe from Andy" → spoken/text summary of the latest note. Cut alongside the widget on day 4 and for the same reason (App Intents is a native target, same 8-minute loop). Worth recording *why it was ever Must*: it entered the scope as the **substitute** for the iOS call-time popup, which is infeasible (see Reality Checks) — a replacement for something absent, not a pillar of its own. Second in the queue, after the widget.
+- [ ] **iOS Contacts sync** — per-profile opt-in, read an existing contact + optionally write back a note/tag (expo-contacts). Cut on day 4: it is an import convenience sitting outside the capture → recall loop, and it costs a new permission (so an `app-store-reviewer` pass) for a job the user can do by speaking a name once.
+- [ ] **Pet/animal metrics log** — structured time-series per profile (date, metric type, value, unit) for weight/health tracking, plus quick-entry buttons for common types ("weight", "vet visit") on animal profiles. Cut on day 4. The `metrics` table already exists in the schema and the entity model already carries `entityType: "animal"`, so the *generalisation* this project cares about (Mission Alignment) is intact — a foster cat is a first-class profile with notes and a timeline today. What is deferred is the structured chart on top of it; until then "Mochi was 3.2kg today" is a note like any other, which is degraded but not missing.
+- [ ] **Tag/category filters** (client / friend / networking / foster-animal / other) with search filterable by tag and date range. Cut on day 4. Tags themselves already exist, are extracted, and are editable on the profile screen — this is the *filtering UI* over them, and Ask Andy answers most of what it would be used for.
+- [ ] vCard export per profile — cut on day 4, lowest-value item on the list.
 - [ ] Google Sign-In (alongside the Android build, where it actually matters — see README Tech Stack Decisions)
 - [ ] **Multilingual capture, Korean first** — ⚠ carries a known bug that only becomes reachable here: `capture-screen.tsx`'s `error` handler starts with `if (!recordingRef.current) return;`, and `recordingRef` is only set by the `start` event. An unsupported locale makes the native module send `language-not-supported` *before* `start` fires, so the error is dropped and the screen sits on "Starting…" forever with no way out. Unreachable today — `en-US` and `ko-KR` are both universally supported — and reachable the moment a locale picker exists. Fix is to drop the guard from the `error` handler only; it belongs on `end`, where a stale event after review has already begun is the thing being kept out. — a locale picker (or reading the device's preferred locale) instead of a constant, plus a re-measurement of extraction quality in each language the way day 2 measured Korean. The embedding model chosen for launch (`text-embedding-3-large`) is already multilingual and scored highest of any commercial API on the one benchmark that isolates Korean, so **the stored vectors do not have to be rebuilt** — this is a capture-side change, not a search-side one. Trigger: launch, or a user who cannot use the app in English.
 - [ ] Gmail inbox auto-read (blocked on Google OAuth sensitive-scope verification — start that process early if pursuing this, it has its own multi-week lead time)
@@ -166,7 +174,7 @@ Researched directly rather than assumed:
 - [ ] Android call-time overlay (post Play policy re-verification)
 - [ ] Multi-user / shared profiles (e.g. shared foster-cat log with a partner)
 - [ ] Map view / calendar view of entries, streak-style reminders — lower priority for this app specifically: recall here is person-first, not place/date-first, and the calendar-triggered nudge already covers the "remember to log something" job better than a generic streak reminder would
-- [ ] **True interactive-widget recording** (start and hold a recording entirely without the app ever opening) — technically possible in principle but the widget extension process isn't built to hold a live long-running mic session reliably; revisit only if the deep-link version (in Must Have) feels too slow in practice
+- [ ] **True interactive-widget recording** (start and hold a recording entirely without the app ever opening) — technically possible in principle but the widget extension process isn't built to hold a live long-running mic session reliably; revisit only if the deep-link version (now the first Could Have entry above, not Must Have) feels too slow in practice
 - [ ] **Apple Watch companion app** — confirmed this requires a genuinely separate native Swift/SwiftUI codebase (React Native doesn't run on watchOS at all), plus watchOS's own interactive-widget/complication APIs have documented reliability issues on Apple's developer forums. This is a real fourth platform, not an extension of the phone app. Validate the Success Signal on the core phone experience first — don't build a watch app for a loop that isn't sticky yet on the phone.
 - [ ] **Laptop capture via a lightweight web page** (not a native Mac app) — a minimal browser page hitting the same Convex functions (type a note, or record via the Web Audio API) covers most of the "capture from my laptop" need at a fraction of the cost of Mac Catalyst or React Native macOS, which would each be a genuine separate platform effort
 
@@ -178,6 +186,58 @@ Researched directly rather than assumed:
 - Video notes
 - Non-Korean/English transcription
 - **Any language but English at launch.** V1 ships English-only: `DEFAULT_LOCALE` is `en-US`, and the embedding model is chosen for English retrieval. Korean was the development default for days 1–3 and is the first language V1.1 adds back — nothing in the pipeline is English-specific (the extraction prompt writes in whatever language the note is in), so this is a default and a benchmark choice, not an architecture. See Could Have.
+
+## The V1 scope cut — decided day 4 (2026-09-10)
+
+The 10–12 day plan stopped describing reality, so the scope was cut rather than the date moved a second time.
+
+### The measurement that forced it
+
+```
+started            2026-08-25
+decided            2026-09-10        16 calendar days
+days with commits  10
+plan-days done     4  (Day 1–4)
+                   ────────────────────────────────
+                   1 plan-day ≈ 2.5 working days
+```
+
+Days 5–12 are eight plan-days: about four more working weeks at the measured rate. Commit density has fallen too (22 · 23 · 16 early, 3 · 3 · 6 recently) — expected, since slices got harder and the review gates landed, but it means the early rate is not coming back.
+
+### What survived, and why it was not a preference
+
+Three lines already in this document decided most of it:
+
+| This document already said | Consequence |
+| --- | --- |
+| "Semantic (vector) search over voice-derived notes = **core moat**" (Decision Framework) | Recall cannot be cut — it is the reason the app exists |
+| "Timeline **extended from 7 to 10–12 days** to properly fit Calendar briefing and mention search" (Product Narrative) | The extension was *bought* for these two; cutting them would spend the extension on nothing |
+| "Scope **replaces** [the infeasible call popup] **with Siri Shortcut + widget**" (Decision Framework, Risk) | Siri and the widget entered as a substitute for an absent feature, not as pillars — the weakest claim on V1 |
+
+**Kept:** Ask Andy (recall + answers with sources) · Calendar briefing and nudge · app lock · business-card photo · manual photo attach · follow-up email draft · realtime sync and iPad (both free).
+
+**Cut to V1.1, in queue order:** home widget ⭐ · Siri Shortcut · Contacts sync · pet metrics UI · tag filters · vCard export.
+
+### The environment cost that decided the widget and Siri
+
+`npx expo run:ios` **does not work on this machine** — Expo SDK 57 needs Swift 6.3 → Xcode 26.4 → macOS Tahoe (`README.md`, Commands). Every native-touching iteration is an ~8-minute EAS cloud build plus queue.
+
+WidgetKit and App Intents are both *new native targets*. Cutting them removes the project's fiddliest work from its slowest loop. This is a measured property of this environment, not a judgement about the features — which is why the widget is scheduled back in first rather than left to a later argument.
+
+### AI is not what was cut
+
+Worth stating plainly, because the cut list is long enough to read as a retreat from the AI surface. It is the opposite — the RAG chatbot was **promoted** out of Should Have into Must Have, and V1 ships four distinct model-powered capabilities:
+
+| | Where |
+| --- | --- |
+| Claude extraction — transcript → structured profile + who was mentioned | ✅ `convex/extraction.ts` |
+| Claude vision — business card photo through the same action | day 8 |
+| Embeddings + vector recall — find a person with no name, from any note | day 5 |
+| Claude answers over retrieved notes, with the notes shown | day 5, same screen |
+
+### What would reopen this
+
+A hard external date, or Ask Andy and the Briefing both landing early enough that a native target fits before the buffer. Neither is true today.
 
 ## User Flow (lightweight — enough to remove Day 1 ambiguity, not a full IA doc)
 
@@ -226,7 +286,8 @@ tap nudge → opens capture flow pre-scoped to that profile
 /note/[id]             → correct or delete a saved note
 /capture               → capture from home, subject decided from what is said
 /search                → recall search results
-/settings              → contacts sync toggle, calendar permission, account
+/settings              → calendar permission, app lock, account
+                         (contacts toggle returns with contacts sync, V1.1)
 ```
 
 ## Entry-Input Channels
@@ -236,11 +297,11 @@ Every channel below is just a different front door into the _same_ capture → e
 | Channel                           | Status        | Notes                                                                       |
 | --------------------------------- | ------------- | --------------------------------------------------------------------------- |
 | In-app record button              | V1            | Core flow                                                                   |
-| Home widget — glance              | V1            | Pinned/recent profiles                                                      |
-| Home widget — quick record        | V1            | Tap → app opens to armed capture screen (not zero-app-open, see Could Have) |
+| Home widget — glance              | **V1.1 ⭐**   | Pinned/recent profiles. Cut day 4; first thing back                         |
+| Home widget — quick record        | **V1.1 ⭐**   | Tap → app opens to armed capture screen. Cut day 4, returns with the glance variant |
 | Business card photo               | V1            | Same extraction action, image input                                         |
 | iPad                              | V1, free      | Compatibility-mode, no extra work                                           |
-| Siri Shortcut                     | V1            | "Hey Siri, search John Doe from Andy"                                       |
+| Siri Shortcut                     | **V1.1**      | "Hey Siri, search John Doe from Andy". Cut day 4; second in the queue       |
 | SMS to a dedicated number         | V1.1          | Needs Twilio number + webhook                                               |
 | Email to a dedicated address      | V1.1          | Needs inbound-parse webhook                                                 |
 | Laptop web capture page           | V1.1          | Cheaper than a native Mac app                                               |
@@ -334,7 +395,8 @@ Voice/Photo Input (expo-speech-recognition captures the mic, expo-image-picker f
    → Convex vector index (per-note, not per-profile)
    → Recall: natural-language query → embed → vector search → results
        (grouped by profile, mention-hits labeled separately)
-   → Surfaces: in-app search | Siri Shortcut | home widget | RAG chatbot
+   → Surfaces: Ask Andy (one screen: results + an answer over them)
+                (V1.1 adds the home widget, then the Siri Shortcut)
 
 Calendar Briefing (parallel path)
    EventKit calendar read (covers Apple + Google + CalDAV, one API) →
@@ -354,29 +416,33 @@ Follow-up Email (on demand)
 - **Frontend**: Expo (React Native) + TypeScript
 - **Backend**: Convex (DB, functions, realtime, vector search, file storage)
 - **Auth**: Clerk — Apple Sign-In only for V1 (see README Tech Stack Decisions for why, and why not Convex Auth/Firebase/Supabase)
-- **LLM**: Claude API (Haiku for extraction/cost, Sonnet for chatbot quality; multimodal for business-card photo extraction) — called only from Convex actions, key never on-device
-- **Contacts**: expo-contacts
-- **Voice**: expo-speech-recognition — it captures the microphone *and* transcribes, so no separate recorder is needed (expo-audio was installed Day 2 as a fallback hedge and removed once on-device recognition was proven; expo-av is removed as of Expo SDK 55 — do not use it). If the audio file itself is ever wanted, this same library writes one via `recordingOptions.persist`. expo-speech is text-to-speech only (Siri Shortcut's spoken response, not transcription)
+- **LLM**: Claude API (Haiku for extraction/cost, Sonnet for answer quality; multimodal for business-card photo extraction) — called only from Convex actions, key never on-device
+- **Embeddings**: OpenAI `text-embedding-3-large` at 1024 dimensions — also Convex-actions-only. Chosen for English retrieval at launch and because it is multilingual enough that V1.1's Korean support will **not** require re-embedding stored notes
+- **Voice**: expo-speech-recognition — it captures the microphone *and* transcribes, so no separate recorder is needed (expo-audio was installed Day 2 as a fallback hedge and removed once on-device recognition was proven; expo-av is removed as of Expo SDK 55 — do not use it). If the audio file itself is ever wanted, this same library writes one via `recordingOptions.persist`. expo-speech is text-to-speech only and is **not a V1 dependency** — it existed for the Siri Shortcut's spoken response, which was cut on day 4
 - **Security**: expo-local-authentication (passcode/biometric app lock)
-- **Shortcuts/Widgets**: native iOS App Intents (requires a small native/Expo config plugin — budget real time for this, it's the least "just works" part of the stack)
+- **Shortcuts/Widgets (V1.1, not V1)**: native iOS App Intents + WidgetKit, each a new native target with its own config plugin. Budget real time: this is the least "just works" part of the stack, and on this machine every iteration is an ~8-minute EAS cloud build because `npx expo run:ios` does not work here. That cost is what moved both out of V1 on day 4 — see "The V1 scope cut"
 
 ## 10–12 Day Plan
 
-_(unchanged length — the Day One-inspired additions below are cheap enough to fold into existing days: business-card extraction reuses Day 2's pipeline, passcode lock is a couple hours added to Day 9)_
+_Rewritten on day 4. The original table is preserved in `dev-reports/day-04.dev.md`; what changed and why is "The V1 scope cut" below._
+
+**Day 4 was not the day the table said it was.** It went to branch/PR discipline, CI, the switch to an English launch and the extraction bugs that surfaced, dependency triage, and retroactively running the review gates four slices had skipped. None of the planned search work happened, which is what forced the cut.
+
+**Read the day numbers as sequence, not as dates.** Measured across days 1–4: one plan-day has cost about 2.5 working days (16 calendar days, 10 days with commits, 4 plan-days done). Days 5–12 are eight plan-days; at the measured rate that is roughly four more working weeks, and no reordering of this table changes that.
 
 | Day   | Focus                                                                                                                                                                       |
 | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1     | Expo + Convex project init, Clerk auth (Apple Sign-In), schema (incl. `mentionedEntityIds`, `Metric`), CI skeleton                                                          |
-| 2     | Voice capture → transcription → Claude extraction pipeline (primary profile + secondary mentions) + **business-card photo as a second input to the same extraction action** |
-| 3     | Profile CRUD + timeline UI + manual entry fallback + pet metrics log UI + quick-entry metric buttons                                                                        |
-| 4     | Per-note vector index + cross-profile mention search + RAG chatbot                                                                                                          |
-| 5     | Contacts sync + manual photo attach + follow-up email draft (mailto)                                                                                                        |
+| 1 ✅  | Expo + Convex project init, Clerk auth (Apple Sign-In), schema, CI skeleton                                                                                                  |
+| 2 ✅  | Voice capture → transcription → Claude extraction pipeline (primary profile + secondary mentions). _Business-card photo slipped to day 8._                                   |
+| 3 ✅  | Profile CRUD + timeline UI + manual entry fallback + the mention graph, aliases, duplicate-name disambiguation. _Pet metrics UI cut to V1.1._                                |
+| 4 ✅  | _Not the planned work._ Branch/PR discipline + CI, English launch and the extraction bugs it exposed, dependency triage, retroactive review gates, **this scope cut**         |
+| 5     | **Ask Andy** — per-note embeddings + vector recall + the answer-with-sources screen (one screen, both halves)                                                                |
 | 6     | Calendar read (EventKit) + attendee/profile fuzzy matching                                                                                                                  |
-| 7     | Local notification scheduling (pre-meeting briefing, post-meeting nudge) + capture-from-nudge flow                                                                          |
-| 8     | Siri Shortcut + home widget (glance variant + quick-record variant, same widget extension work)                                                                             |
-| 9     | Tags + search filters, vCard export, notification-count guardrail (64-cap), **passcode/biometric lock**, bug bash                                                           |
+| 7     | Local notification scheduling (pre-meeting briefing, post-meeting nudge) + capture-from-nudge flow + the 64-pending guardrail                                               |
+| 8     | Business-card photo → profile (Claude vision, same extraction action) + manual photo attach — one permission, one picker, two features                                      |
+| 9     | Follow-up email draft (`mailto:`), **passcode/biometric lock**, bug bash                                                                                                    |
 | 10    | Privacy strings, `app-store-reviewer` pass, polish                                                                                                                          |
-| 11–12 | Buffer — physical-device end-to-end test, EAS build, TestFlight, submit (buffer absorbs whatever slipped, don't skip it)                                                    |
+| 11–12 | Buffer — physical-device end-to-end test, `QA.md` full pass, EAS build, TestFlight, submit (buffer absorbs whatever slipped, don't skip it)                                 |
 
 ## Open Risks to Revisit
 

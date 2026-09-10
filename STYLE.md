@@ -40,7 +40,7 @@ family string in a screen.
   should feel like it belongs on the phone, not like an imported web font.
   `fonts` has no `body` token on purpose: a token holding `"System"` would
   invite somebody to apply it, which is the same as not having decided.
-- **Utility (dates, tags, pet metrics)**: **IBM Plex Mono** — a ledger reads as
+- **Utility (dates, tags, note counts)**: **IBM Plex Mono** — a ledger reads as
   a record because its numbers line up, which a proportional face cannot do.
 
 The splash is held until both load (`useFonts`), because swapping a face in
@@ -50,7 +50,7 @@ forever — an entire screen lost to a typeface is the worse failure.
 
 ## Signature Element — spend the one risk here
 
-The **Briefing card** (pre-meeting digest / post-meeting nudge) is the single place that looks different from everything else: a `brass` left-edge accent stripe, a soft dashed top border (evokes a torn note edge), quiet icon. Every other screen — profile list, search results, settings — stays plain and disciplined. Don't spread this treatment elsewhere or it stops being a signature.
+The **Briefing card** (pre-meeting digest / post-meeting nudge) is the single place that looks different from everything else — and it survived the day-4 scope cut precisely because it is the app's signature, not despite it: a `brass` left-edge accent stripe, a soft dashed top border (evokes a torn note edge), quiet icon. Every other screen — profile list, search results, settings — stays plain and disciplined. Don't spread this treatment elsewhere or it stops being a signature.
 
 ## One Structural Idea
 

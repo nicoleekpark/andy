@@ -2,7 +2,9 @@
 
 ## Project
 
-"Andy" — Expo (React Native) + Convex app. Voice notes → Claude-extracted structured profiles → semantic recall search, Siri Shortcut, home widget. Full scope: `PROJECT_SCOPE.md`.
+"Andy" — Expo (React Native) + Convex app. Voice notes → Claude-extracted structured profiles → semantic recall answered over its own sources, plus a calendar-triggered briefing. Full scope: `PROJECT_SCOPE.md`.
+
+**V1 scope was cut on day 4** (`PROJECT_SCOPE.md` → "The V1 scope cut"). Out of V1: home widget, Siri Shortcut, contacts sync, pet-metrics UI, tag filters, vCard. The widget is decided as the first thing built after V1 — don't re-open that. Nothing here is a hint to build them early: the Scope Discipline rule below still applies, and a cut feature is further out of scope than one that was never in.
 
 ## Stack & Commands
 
