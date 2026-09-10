@@ -12,7 +12,7 @@ import type { Draft } from "@convex/extractionPrompt";
 /**
  * src/app/(app)/profile/[id]/capture.tsx's whole reason to exist is the
  * confirm/edit step between transcript and saved fact — see that file's
- * top-of-file comment for the measured case (Korean "브랜딩 디자이너" mangled
+ * top-of-file comment for the measured case (Korean "branding designer" mangled
  * into "브랜든 집 디자인", with an invented specialisation on top) that makes
  * "what the user edited is what gets saved" the property worth pinning, not
  * merely that the review screen renders.
@@ -126,8 +126,8 @@ function makeCardDraft(): { draft: Draft; cardText: string } {
         tags: ["Notion", "developer relations"],
         firstMetDate: null,
         keyFacts: [
-          "Notion에서 developer relations을 한다",
-          "이메일: sarah@notion.so",
+          "Does developer relations at Notion",
+          "email: sarah@notion.so",
         ],
       },
       mentions: [],
@@ -144,7 +144,7 @@ function makeDraft(overrides: Partial<Draft["primary"]> = {}): Draft {
       relationshipContext: "client",
       tags: ["designer"],
       firstMetDate: null,
-      keyFacts: ["브랜든 집 디자인 전문가"],
+      keyFacts: ["brandon house design specialist"],
       ...overrides,
     },
     mentions: [
@@ -235,9 +235,9 @@ describe("capture screen review step", () => {
     await reachReview(handlers, "spoken transcript");
 
     expect(screen.getByDisplayValue("Jisoo")).toBeTruthy();
-    expect(screen.getByDisplayValue("브랜든 집 디자인 전문가")).toBeTruthy();
+    expect(screen.getByDisplayValue("brandon house design specialist")).toBeTruthy();
     // Mentions are editable inputs, not static text — the name is precisely the
-    // field on-device transcription got wrong on 2026-08-27 (민호 heard as 민우),
+    // field on-device transcription got wrong on 2026-08-27 (Minho heard as Minwoo),
     // so it has to be correctable rather than only deletable.
     expect(screen.getByDisplayValue("Minho")).toBeTruthy();
     // The quote is editable too. It is copied verbatim from the transcript, and
@@ -266,14 +266,14 @@ describe("capture screen review step", () => {
     // is the property the whole review step exists for.
     await fireEvent.changeText(
       screen.getByLabelText("Fact 1"),
-      "브랜딩 디자이너",
+      "branding designer",
     );
     await fireEvent.press(screen.getByRole("button", { name: "Save note" }));
 
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
     const [call] = saveCapture.mock.calls[0];
-    expect(call.draft.primary.keyFacts).toEqual(["브랜딩 디자이너"]);
-    expect(call.draft.primary.keyFacts).not.toContain("브랜든 집 디자인 전문가");
+    expect(call.draft.primary.keyFacts).toEqual(["branding designer"]);
+    expect(call.draft.primary.keyFacts).not.toContain("brandon house design specialist");
   });
 
   test("should omit a removed key fact, tag, and mention from what is saved", async () => {
@@ -342,13 +342,13 @@ describe("capture screen review step", () => {
 
     await fireEvent.changeText(
       screen.getByLabelText("Fact 1"),
-      "브랜딩 디자이너",
+      "branding designer",
     );
     await fireEvent.press(screen.getByRole("button", { name: "Save note" }));
 
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
     // Still on review, with the edit intact — not lost, not re-navigated away.
-    expect(screen.getByDisplayValue("브랜딩 디자이너")).toBeTruthy();
+    expect(screen.getByDisplayValue("branding designer")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Save note" })).toBeTruthy();
   });
 
@@ -371,12 +371,12 @@ describe("capture screen review step", () => {
       initialUrl: "/profile/contact-1/capture",
     });
     await result;
-    await reachReview(handlers, "오늘 지수 만났어");
+    await reachReview(handlers, "Saw Jisoo today");
 
     // The user corrects the fact the transcription mangled.
-    const fact = screen.getByDisplayValue("브랜든 집 디자인 전문가");
+    const fact = screen.getByDisplayValue("brandon house design specialist");
     await act(async () => {
-      fireEvent.changeText(fact, "브랜딩 디자이너");
+      fireEvent.changeText(fact, "branding designer");
     });
 
     // A stray second `end` — a real recogniser quirk. If it were honoured it
@@ -386,13 +386,13 @@ describe("capture screen review step", () => {
     });
 
     expect(extract).toHaveBeenCalledTimes(1);
-    expect(screen.getByDisplayValue("브랜딩 디자이너")).toBeTruthy();
+    expect(screen.getByDisplayValue("branding designer")).toBeTruthy();
 
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Save note" }));
     });
     const [call] = saveCapture.mock.calls[0];
-    expect(call.draft.primary.keyFacts).toContain("브랜딩 디자이너");
+    expect(call.draft.primary.keyFacts).toContain("branding designer");
   });
 
   test("should save a corrected mention name, the field transcription actually gets wrong", async () => {
@@ -473,7 +473,7 @@ describe("capture screen review step", () => {
 
   test("should say a name matching nobody is about to invent somebody", async () => {
     (useAction as jest.Mock).mockReturnValue(
-      jest.fn(async () => makeDraft({ name: "조깅" })),
+      jest.fn(async () => makeDraft({ name: "Jogging" })),
     );
     mockSaveCapture(jest.fn(async () => ({
       profileId: "profile-1",
@@ -481,14 +481,14 @@ describe("capture screen review step", () => {
       createdProfile: true,
       createdMentionCount: 0,
     })));
-    // Recognition heard "조 킹" as "조깅". Nobody answers to it, so saving
+    // Recognition heard "Joe King" as "Jogging". Nobody answers to it, so saving
     // would create a person the user never met — silently, until now.
-    scopeTo("조깅", [{ name: "조깅", candidates: [] }]);
+    scopeTo("Jogging", [{ name: "Jogging", candidates: [] }]);
     const handlers = captureListeners();
 
     const result = renderRouter("src/app", { initialUrl: "/capture" });
     await result;
-    await reachReview(handlers, "조 킹을 오늘 만났다.");
+    await reachReview(handlers, "Met Joe King today.");
 
     expect(screen.getByText("New person — nobody by this name yet.")).toBeTruthy();
     // Still saveable: inventing somebody is often exactly right. The screen
@@ -498,7 +498,7 @@ describe("capture screen review step", () => {
 
   test("should name the person a note is being added to", async () => {
     (useAction as jest.Mock).mockReturnValue(
-      jest.fn(async () => makeDraft({ name: "지선" })),
+      jest.fn(async () => makeDraft({ name: "Jiseon" })),
     );
     mockSaveCapture(jest.fn(async () => ({
       profileId: "profile-1",
@@ -506,13 +506,13 @@ describe("capture screen review step", () => {
       createdProfile: false,
       createdMentionCount: 0,
     })));
-    scopeTo("지선", [
+    scopeTo("Jiseon", [
       {
-        name: "지선",
+        name: "Jiseon",
         candidates: [
           {
             profileId: "profile-1",
-            name: "지선",
+            name: "Jiseon",
             relationshipContext: "friend",
             entityType: "person",
             noteCount: 3,
@@ -525,27 +525,27 @@ describe("capture screen review step", () => {
 
     const result = renderRouter("src/app", { initialUrl: "/capture" });
     await result;
-    await reachReview(handlers, "지선을 오늘 만났다.");
+    await reachReview(handlers, "Met Jiseon today.");
 
     // Naming them, and what is already recorded, so landing on the wrong
     // person by a near-miss is as visible as inventing one.
     expect(
-      screen.getByText("Adding to 지선 · friend · 3 notes · last 2026-08-30"),
+      screen.getByText("Adding to Jiseon · friend · 3 notes · last 2026-08-30"),
     ).toBeTruthy();
   });
 
   test("should read the corrected transcript again, and use its result", async () => {
-    const heard = makeDraft({ name: "지선" });
+    const heard = makeDraft({ name: "Jiseon" });
     heard.mentions[0] = {
-      name: "민우",
+      name: "Minwoo",
       entityType: "person",
-      quote: "민우네 집들이에서",
+      quote: "at Minwoo's housewarming",
     };
-    const reheard = makeDraft({ name: "지선" });
+    const reheard = makeDraft({ name: "Jiseon" });
     reheard.mentions[0] = {
-      name: "민호",
+      name: "Minho",
       entityType: "person",
-      quote: "민호네 집들이에서",
+      quote: "at Minho's housewarming",
     };
     // Counted rather than read off `extract.mock.calls` inside its own
     // initializer, which makes the mock's type refer to itself.
@@ -563,14 +563,14 @@ describe("capture screen review step", () => {
       createdProfile: false,
       createdMentionCount: 0,
     })));
-    scopeTo("지선");
+    scopeTo("Jiseon");
     mockCardAlert("Read again");
     const handlers = captureListeners();
 
     const result = renderRouter("src/app", { initialUrl: "/capture" });
     await result;
-    await reachReview(handlers, "지선을 민우네 집들이에서 만났다.");
-    expect(screen.getByDisplayValue("민우")).toBeTruthy();
+    await reachReview(handlers, "Met Jiseon at Minwoo's housewarming.");
+    expect(screen.getByDisplayValue("Minwoo")).toBeTruthy();
 
     // The mistake is a word in the note, so fixing it there should be enough —
     // otherwise the same correction has to be typed again into every field
@@ -578,7 +578,7 @@ describe("capture screen review step", () => {
     await act(async () => {
       fireEvent.changeText(
         screen.getByLabelText("What you said"),
-        "지선을 민호네 집들이에서 만났다.",
+        "Met Jiseon at Minho's housewarming.",
       );
     });
     await act(async () => {
@@ -587,25 +587,25 @@ describe("capture screen review step", () => {
 
     await waitFor(() => expect(extract).toHaveBeenCalledTimes(2));
     expect(extract.mock.calls[1]?.[0].text).toBe(
-      "지선을 민호네 집들이에서 만났다.",
+      "Met Jiseon at Minho's housewarming.",
     );
-    await waitFor(() => expect(screen.getByDisplayValue("민호")).toBeTruthy());
+    await waitFor(() => expect(screen.getByDisplayValue("Minho")).toBeTruthy());
   });
 
   test("should ask before throwing away edits, and keep them when the answer is no", async () => {
-    const heard = makeDraft({ name: "지선" });
+    const heard = makeDraft({ name: "Jiseon" });
     const extract = jest.fn(async () => heard);
     (useAction as jest.Mock).mockReturnValue(extract);
-    scopeTo("지선");
+    scopeTo("Jiseon");
     mockCardAlert("Cancel");
     const handlers = captureListeners();
 
     const result = renderRouter("src/app", { initialUrl: "/capture" });
     await result;
-    await reachReview(handlers, "지선을 오늘 만났다.");
+    await reachReview(handlers, "Met Jiseon today.");
 
     await act(async () => {
-      fireEvent.changeText(screen.getByLabelText("Name"), "지선 Kim");
+      fireEvent.changeText(screen.getByLabelText("Name"), "Jiseon Kim");
     });
     await act(async () => {
       fireEvent.press(screen.getByLabelText("Read it again"));
@@ -614,19 +614,19 @@ describe("capture screen review step", () => {
     // A re-read replaces everything above it, so declining has to leave the
     // edit exactly where it was.
     expect(extract).toHaveBeenCalledTimes(1);
-    expect(screen.getByDisplayValue("지선 Kim")).toBeTruthy();
+    expect(screen.getByDisplayValue("Jiseon Kim")).toBeTruthy();
   });
 
   test("should not ask when nothing has been edited", async () => {
-    const extract = jest.fn(async () => makeDraft({ name: "지선" }));
+    const extract = jest.fn(async () => makeDraft({ name: "Jiseon" }));
     (useAction as jest.Mock).mockReturnValue(extract);
-    scopeTo("지선");
+    scopeTo("Jiseon");
     const alert = mockCardAlert("Read again");
     const handlers = captureListeners();
 
     const result = renderRouter("src/app", { initialUrl: "/capture" });
     await result;
-    await reachReview(handlers, "지선을 오늘 만났다.");
+    await reachReview(handlers, "Met Jiseon today.");
 
     await act(async () => {
       fireEvent.press(screen.getByLabelText("Read it again"));
@@ -643,18 +643,18 @@ describe("capture screen review step", () => {
     const extract = jest.fn(async (): Promise<Draft> => {
       reads += 1;
       if (reads === 1) {
-        return makeDraft({ name: "지선" });
+        return makeDraft({ name: "Jiseon" });
       }
       throw new Error("Andy couldn't make sense of that one.");
     });
     (useAction as jest.Mock).mockReturnValue(extract);
-    scopeTo("지선");
+    scopeTo("Jiseon");
     mockCardAlert("Read again");
     const handlers = captureListeners();
 
     const result = renderRouter("src/app", { initialUrl: "/capture" });
     await result;
-    await reachReview(handlers, "지선을 오늘 만났다.");
+    await reachReview(handlers, "Met Jiseon today.");
 
     await act(async () => {
       fireEvent.press(screen.getByLabelText("Read it again"));
@@ -665,13 +665,13 @@ describe("capture screen review step", () => {
     await waitFor(() =>
       expect(screen.getByText("Andy couldn't make sense of that one.")).toBeTruthy(),
     );
-    expect(screen.getByDisplayValue("지선")).toBeTruthy();
+    expect(screen.getByDisplayValue("Jiseon")).toBeTruthy();
   });
 
   test("should send typed words through the same pipeline, filed as written", async () => {
     const extract = jest.fn(
       async (_args: { text: string; today: string; aboutName?: string }) =>
-        makeDraft({ name: "지선" }),
+        makeDraft({ name: "Jiseon" }),
     );
     (useAction as jest.Mock).mockReturnValue(extract);
     const saveCapture = jest.fn(
@@ -688,7 +688,7 @@ describe("capture screen review step", () => {
       }),
     );
     mockSaveCapture(saveCapture);
-    scopeTo("지선");
+    scopeTo("Jiseon");
     captureListeners();
 
     const result = renderRouter("src/app", { initialUrl: "/capture" });
@@ -700,7 +700,7 @@ describe("capture screen review step", () => {
     await act(async () => {
       fireEvent.changeText(
         screen.getByLabelText("Type a note"),
-        "지선은 브랜딩 디자이너다.",
+        "Jiseon is a branding designer.",
       );
     });
     await act(async () => {
@@ -709,7 +709,7 @@ describe("capture screen review step", () => {
 
     // Same extraction, same review step, same save — only the door differs.
     await waitFor(() =>
-      expect(extract.mock.calls[0]?.[0].text).toBe("지선은 브랜딩 디자이너다."),
+      expect(extract.mock.calls[0]?.[0].text).toBe("Jiseon is a branding designer."),
     );
     expect(screen.getByText("What you wrote")).toBeTruthy();
 
@@ -723,7 +723,7 @@ describe("capture screen review step", () => {
 
   test("should give typing the whole screen rather than a field under the record button", async () => {
     (useAction as jest.Mock).mockReturnValue(jest.fn(async () => makeDraft()));
-    scopeTo("지선");
+    scopeTo("Jiseon");
     captureListeners();
 
     const result = renderRouter("src/app", { initialUrl: "/capture" });
@@ -745,7 +745,7 @@ describe("capture screen review step", () => {
 
   test("should put the recording screen back when typing is cancelled", async () => {
     (useAction as jest.Mock).mockReturnValue(jest.fn(async () => makeDraft()));
-    scopeTo("지선");
+    scopeTo("Jiseon");
     captureListeners();
 
     const result = renderRouter("src/app", { initialUrl: "/capture" });
@@ -764,7 +764,7 @@ describe("capture screen review step", () => {
   test("should not read an empty typed note", async () => {
     const extract = jest.fn(async () => makeDraft());
     (useAction as jest.Mock).mockReturnValue(extract);
-    scopeTo("지선");
+    scopeTo("Jiseon");
     captureListeners();
 
     const result = renderRouter("src/app", { initialUrl: "/capture" });
@@ -779,7 +779,7 @@ describe("capture screen review step", () => {
   });
 
   test("should let a fact be added to a draft that came back with none", async () => {
-    const draft = makeDraft({ name: "지선", keyFacts: [] });
+    const draft = makeDraft({ name: "Jiseon", keyFacts: [] });
     (useAction as jest.Mock).mockReturnValue(jest.fn(async () => draft));
     const saveCapture = jest.fn(
       async (_args: {
@@ -795,12 +795,12 @@ describe("capture screen review step", () => {
       }),
     );
     mockSaveCapture(saveCapture);
-    scopeTo("지선");
+    scopeTo("Jiseon");
     const handlers = captureListeners();
 
     const result = renderRouter("src/app", { initialUrl: "/capture" });
     await result;
-    await reachReview(handlers, "지선을 오늘 만났다.");
+    await reachReview(handlers, "Met Jiseon today.");
 
     // "Nothing pulled out of this one" was a dead end, on exactly the notes
     // extraction understood least.
@@ -809,7 +809,7 @@ describe("capture screen review step", () => {
       fireEvent.press(screen.getByRole("button", { name: "Add a fact" }));
     });
     await act(async () => {
-      fireEvent.changeText(screen.getByLabelText("Fact 1"), "브랜딩 디자이너다.");
+      fireEvent.changeText(screen.getByLabelText("Fact 1"), "Is a branding designer.");
     });
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Save note" }));
@@ -817,18 +817,18 @@ describe("capture screen review step", () => {
 
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
     expect(saveCapture.mock.calls[0]?.[0].draft.primary.keyFacts).toEqual([
-      "브랜딩 디자이너다.",
+      "Is a branding designer.",
     ]);
   });
 
   test("should say a misheard mention is about to invent somebody too", async () => {
-    const draft = makeDraft({ name: "지선" });
-    // Recognition heard "민호" as "민우". The subject is fine; the person the
+    const draft = makeDraft({ name: "Jiseon" });
+    // Recognition heard "Minho" as "Minwoo". The subject is fine; the person the
     // note says they were with is a stranger.
     draft.mentions[0] = {
-      name: "민우",
+      name: "Minwoo",
       entityType: "person",
-      quote: "민우네 집들이에서",
+      quote: "at Minwoo's housewarming",
     };
     (useAction as jest.Mock).mockReturnValue(jest.fn(async () => draft));
     mockSaveCapture(jest.fn(async () => ({
@@ -837,13 +837,13 @@ describe("capture screen review step", () => {
       createdProfile: false,
       createdMentionCount: 1,
     })));
-    scopeTo("지선", [
+    scopeTo("Jiseon", [
       {
-        name: "지선",
+        name: "Jiseon",
         candidates: [
           {
             profileId: "profile-1",
-            name: "지선",
+            name: "Jiseon",
             relationshipContext: "friend",
             entityType: "person",
             noteCount: 3,
@@ -851,30 +851,30 @@ describe("capture screen review step", () => {
           },
         ],
       },
-      { name: "민우", candidates: [] },
+      { name: "Minwoo", candidates: [] },
     ]);
     const handlers = captureListeners();
 
     const result = renderRouter("src/app", { initialUrl: "/capture" });
     await result;
-    await reachReview(handlers, "지선을 민우네 집들이에서 만났다.");
+    await reachReview(handlers, "Met Jiseon at Minwoo's housewarming.");
 
     // Both lines, and they say different things: the subject is somebody the
     // user keeps, the mention is not.
     expect(
-      screen.getByText("Adding to 지선 · friend · 3 notes · last 2026-08-30"),
+      screen.getByText("Adding to Jiseon · friend · 3 notes · last 2026-08-30"),
     ).toBeTruthy();
     expect(screen.getByText("New person — nobody by this name yet.")).toBeTruthy();
   });
 
   test("should say nothing about a mention that repeats the subject", async () => {
-    const draft = makeDraft({ name: "지선" });
+    const draft = makeDraft({ name: "Jiseon" });
     // saveCapture drops a mention that is really the subject, so a line
     // promising anything about it would describe a row never written.
     draft.mentions[0] = {
-      name: "지선",
+      name: "Jiseon",
       entityType: "person",
-      quote: "지선이랑",
+      quote: "with Jiseon",
     };
     (useAction as jest.Mock).mockReturnValue(jest.fn(async () => draft));
     mockSaveCapture(jest.fn(async () => ({
@@ -883,12 +883,12 @@ describe("capture screen review step", () => {
       createdProfile: true,
       createdMentionCount: 0,
     })));
-    scopeTo("지선", [{ name: "지선", candidates: [] }]);
+    scopeTo("Jiseon", [{ name: "Jiseon", candidates: [] }]);
     const handlers = captureListeners();
 
     const result = renderRouter("src/app", { initialUrl: "/capture" });
     await result;
-    await reachReview(handlers, "지선을 오늘 만났다.");
+    await reachReview(handlers, "Met Jiseon today.");
 
     // Once, for the subject — not twice.
     expect(
@@ -898,7 +898,7 @@ describe("capture screen review step", () => {
 
   test("should let a candidate be opened and come back to the draft untouched", async () => {
     (useAction as jest.Mock).mockReturnValue(
-      jest.fn(async () => makeDraft({ name: "지선" })),
+      jest.fn(async () => makeDraft({ name: "Jiseon" })),
     );
     const saveCapture = jest.fn(
       async (_args: {
@@ -914,13 +914,13 @@ describe("capture screen review step", () => {
       }),
     );
     mockSaveCapture(saveCapture);
-    scopeTo("지선", [
+    scopeTo("Jiseon", [
       {
-        name: "지선",
+        name: "Jiseon",
         candidates: [
           {
             profileId: "profile-a",
-            name: "지선",
+            name: "Jiseon",
             relationshipContext: "client",
             entityType: "person",
             noteCount: 4,
@@ -928,8 +928,8 @@ describe("capture screen review step", () => {
           },
           {
             profileId: "profile-b",
-            name: "지선",
-            relationshipContext: "이웃",
+            name: "Jiseon",
+            relationshipContext: "neighbour",
             entityType: "person",
             noteCount: 1,
             lastNoteAt: new Date("2026-08-30T12:00:00").getTime(),
@@ -941,19 +941,19 @@ describe("capture screen review step", () => {
 
     const result = renderRouter("src/app", { initialUrl: "/capture" });
     await result;
-    await reachReview(handlers, "지선을 오늘 만났다.");
+    await reachReview(handlers, "Met Jiseon today.");
 
-    // A line of summary does not settle which 지선 this is; what is written on
+    // A line of summary does not settle which Jiseon this is; what is written on
     // each of them does. So the choice has to survive going to look.
     await act(async () => {
       fireEvent.changeText(
         screen.getByLabelText("What you said"),
-        "지선을 오늘 카페에서 만났다.",
+        "Met Jiseon at the cafe today.",
       );
     });
     await act(async () => {
       fireEvent.press(
-        screen.getByLabelText("View 지선, 이웃 · 1 note · last 2026-08-30"),
+        screen.getByLabelText("View Jiseon, neighbour · 1 note · last 2026-08-30"),
       );
     });
     expect(result.getPathname()).toBe("/profile/profile-b");
@@ -965,12 +965,12 @@ describe("capture screen review step", () => {
     // Every edit still here. Losing a transcript to a trip the screen invited
     // would make looking cost more than guessing.
     expect(
-      screen.getByDisplayValue("지선을 오늘 카페에서 만났다."),
+      screen.getByDisplayValue("Met Jiseon at the cafe today."),
     ).toBeTruthy();
 
     await act(async () => {
       fireEvent.press(
-        screen.getByLabelText("지선, 이웃 · 1 note · last 2026-08-30"),
+        screen.getByLabelText("Jiseon, neighbour · 1 note · last 2026-08-30"),
       );
     });
     await act(async () => {
@@ -979,15 +979,15 @@ describe("capture screen review step", () => {
 
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
     const [args] = saveCapture.mock.calls[0] ?? [];
-    expect(args?.transcript).toBe("지선을 오늘 카페에서 만났다.");
+    expect(args?.transcript).toBe("Met Jiseon at the cafe today.");
     expect(args?.resolutions).toEqual([
-      { name: "지선", profileId: "profile-b" },
+      { name: "Jiseon", profileId: "profile-b" },
     ]);
   });
 
   test("should refuse to save until the user says which of two people by one name it is", async () => {
     (useAction as jest.Mock).mockReturnValue(
-      jest.fn(async () => makeDraft({ name: "치선" })),
+      jest.fn(async () => makeDraft({ name: "Chiseon" })),
     );
     const saveCapture = jest.fn(
       async (_args: {
@@ -1003,13 +1003,13 @@ describe("capture screen review step", () => {
       }),
     );
     mockSaveCapture(saveCapture);
-    scopeTo("치선", [
+    scopeTo("Chiseon", [
       {
-        name: "치선",
+        name: "Chiseon",
         candidates: [
           {
             profileId: "profile-a",
-            name: "치선",
+            name: "Chiseon",
             relationshipContext: "client",
             entityType: "person",
             noteCount: 4,
@@ -1017,8 +1017,8 @@ describe("capture screen review step", () => {
           },
           {
             profileId: "profile-b",
-            name: "치선",
-            relationshipContext: "이웃",
+            name: "Chiseon",
+            relationshipContext: "neighbour",
             entityType: "person",
             noteCount: 1,
             lastNoteAt: new Date("2026-08-30T12:00:00").getTime(),
@@ -1030,7 +1030,7 @@ describe("capture screen review step", () => {
 
     const result = renderRouter("src/app", { initialUrl: "/capture" });
     await result;
-    await reachReview(handlers, "치선을 오늘 만났다.");
+    await reachReview(handlers, "Met Chiseon today.");
 
     // Saving on a coin toss is the failure this replaces, so the button is
     // shut until the question is answered rather than showing an error after.
@@ -1040,11 +1040,11 @@ describe("capture screen review step", () => {
     ).toBeTruthy();
     // Identical names are not a choice: what tells them apart has to be there.
     expect(screen.getByText("client · 4 notes · last 2026-08-01")).toBeTruthy();
-    expect(screen.getByText("이웃 · 1 note · last 2026-08-30")).toBeTruthy();
+    expect(screen.getByText("neighbour · 1 note · last 2026-08-30")).toBeTruthy();
 
     await act(async () => {
       fireEvent.press(
-        screen.getByLabelText("치선, 이웃 · 1 note · last 2026-08-30"),
+        screen.getByLabelText("Chiseon, neighbour · 1 note · last 2026-08-30"),
       );
     });
     await act(async () => {
@@ -1053,7 +1053,7 @@ describe("capture screen review step", () => {
 
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
     expect(saveCapture.mock.calls[0]?.[0].resolutions).toEqual([
-      { name: "치선", profileId: "profile-b" },
+      { name: "Chiseon", profileId: "profile-b" },
     ]);
   });
 
@@ -1092,20 +1092,20 @@ describe("capture screen review step", () => {
   test("should tell extraction who the note is about when the route names a profile", async () => {
     const extract = jest.fn(async () => makeDraft());
     (useAction as jest.Mock).mockReturnValue(extract);
-    scopeTo("지선");
+    scopeTo("Jiseon");
     const handlers = captureListeners();
 
     const result = renderRouter("src/app", {
       initialUrl: "/profile/contact-1/capture",
     });
     await result;
-    await reachReview(handlers, "어머니가 편찮으셔서 주말마다 뵌다.");
+    await reachReview(handlers, "His mother is unwell so he visits every weekend.");
 
-    // The whole point of scoping: a note recorded on 지선's page that talks only
-    // about her mother is still a note about 지선. Nothing in the words says so,
+    // The whole point of scoping: a note recorded on Jiseon's page that talks only
+    // about her mother is still a note about Jiseon. Nothing in the words says so,
     // so the subject has to be carried rather than inferred.
     expect(extract).toHaveBeenCalledWith(
-      expect.objectContaining({ aboutName: "지선" }),
+      expect.objectContaining({ aboutName: "Jiseon" }),
     );
   });
 
@@ -1185,7 +1185,7 @@ describe("capture screen review step", () => {
     // The quote is the note's own words about someone who is not its subject,
     // and it is written to `noteMentions` where it shows on both people's
     // pages. Recognition mangles it exactly as often as it mangles a name —
-    // "주말마다 어머니를 뵌다" came back as "팬다" on a real recording — so the
+    // "주말마다 his mother를 뵌다" came back as "팬다" on a real recording — so the
     // user has to be able to correct it, and until this test they could not.
     await act(async () => {
       fireEvent.changeText(
@@ -1266,7 +1266,7 @@ describe("capture screen review step", () => {
   });
 
   test("should let a wrongly-inferred first-met date be cleared before saving", async () => {
-    // Whether "오늘 지수 만났는데" describes a first meeting is not decidable from
+    // Whether "saw Jisoo today" describes a first meeting is not decidable from
     // the sentence, and extraction fills the date about half the time. That
     // makes it exactly the kind of value a person has to be able to see and
     // clear — it used to be saved without ever appearing on screen.
@@ -1287,7 +1287,7 @@ describe("capture screen review step", () => {
       initialUrl: "/profile/contact-1/capture",
     });
     await result;
-    await reachReview(handlers, "오늘 지수 만났는데");
+    await reachReview(handlers, "saw Jisoo today");
 
     expect(screen.getByDisplayValue("2026-08-27")).toBeTruthy();
     await act(async () => {

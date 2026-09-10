@@ -107,7 +107,7 @@ describe("edit profile screen", () => {
   });
 
   test("should send the kind the user picked", async () => {
-    (useQuery as jest.Mock).mockReturnValue(profile({ name: "콩이" }));
+    (useQuery as jest.Mock).mockReturnValue(profile({ name: "Kongi" }));
     const updateProfile = jest.fn(async (_args: Args) => null);
     mockUpdateProfile(updateProfile);
 
@@ -158,7 +158,7 @@ describe("edit profile screen", () => {
     (useQuery as jest.Mock).mockReturnValue(profile());
     mockUpdateProfile(
       jest.fn(async () => {
-        throw new Error("You already have someone called 민호.");
+        throw new Error("You already have someone called Minho.");
       }),
     );
 
@@ -174,7 +174,7 @@ describe("edit profile screen", () => {
     // The message names the person it clashed with, which is the whole reason
     // it is worth showing rather than replacing with a generic failure.
     await waitFor(() =>
-      expect(screen.getByText("You already have someone called 민호.")).toBeTruthy(),
+      expect(screen.getByText("You already have someone called Minho.")).toBeTruthy(),
     );
     // Still on the form, with the edit intact rather than thrown away.
     expect(screen.getByLabelText("Name")).toBeTruthy();
@@ -209,7 +209,7 @@ describe("edit profile screen", () => {
 
   test("should count what is about to be lost before deleting", async () => {
     (useQuery as jest.Mock).mockReturnValue({
-      ...profile({ name: "지선" }),
+      ...profile({ name: "Jiseon" }),
       notes: [
         { note: { _id: "note-1", createdAt: 0, text: "one", source: "voice" }, mentions: [] },
         { note: { _id: "note-2", createdAt: 0, text: "two", source: "voice" }, mentions: [] },
@@ -231,9 +231,9 @@ describe("edit profile screen", () => {
       fireEvent.press(screen.getByRole("button", { name: "Delete this person" }));
     });
 
-    // "Delete 지선?" reads the same for an empty row and for years of notes,
+    // "Delete Jiseon?" reads the same for an empty row and for years of notes,
     // and those are not the same decision.
-    expect(alert.mock.calls[0]?.[0]).toBe("Delete 지선?");
+    expect(alert.mock.calls[0]?.[0]).toBe("Delete Jiseon?");
     const body = alert.mock.calls[0]?.[1] ?? "";
     expect(body).toContain("2 notes go with them");
     // Both rules, because each one surprises somebody: what follows them out,
@@ -292,7 +292,7 @@ describe("edit profile screen", () => {
   });
 
   test("should let another name be added, and send it with the rest", async () => {
-    (useQuery as jest.Mock).mockReturnValue(profile({ name: "지선" }));
+    (useQuery as jest.Mock).mockReturnValue(profile({ name: "Jiseon" }));
     const updateProfile = jest.fn(async (_args: Args) => null);
     mockUpdateProfile(updateProfile);
 
@@ -305,14 +305,14 @@ describe("edit profile screen", () => {
       fireEvent.press(screen.getByRole("button", { name: "Add another name" }));
     });
     await act(async () => {
-      fireEvent.changeText(screen.getByLabelText("Other name 1"), "지선 언니");
+      fireEvent.changeText(screen.getByLabelText("Other name 1"), "Jiseon unni");
     });
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Save changes" }));
     });
 
     await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
-    expect(updateProfile.mock.calls[0]?.[0].aliases).toEqual(["지선 언니"]);
+    expect(updateProfile.mock.calls[0]?.[0].aliases).toEqual(["Jiseon unni"]);
     // Everything else still goes with it, the way every other field does.
     expect(updateProfile.mock.calls[0]?.[0].tags).toEqual(["cleaning"]);
   });

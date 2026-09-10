@@ -27,7 +27,7 @@ function buildDraft(overrides: {
 } = {}) {
   return {
     primary: {
-      name: overrides.primaryName ?? "지수",
+      name: overrides.primaryName ?? "Jisoo",
       entityType: overrides.primaryEntityType ?? ("person" as const),
       relationshipContext: overrides.relationshipContext ?? null,
       tags: overrides.tags ?? [],
@@ -55,8 +55,8 @@ test("should create a new profile with createdProfile true and autoCreated false
   const asAlice = t.withIdentity(ALICE);
 
   const result = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Met 지수 at a cafe.",
-    draft: buildDraft({ primaryName: "지수" }),
+    transcript: "Met Jisoo at a cafe.",
+    draft: buildDraft({ primaryName: "Jisoo" }),
     source: "voice",
   });
 
@@ -64,7 +64,7 @@ test("should create a new profile with createdProfile true and autoCreated false
 
   await t.run(async (ctx) => {
     const profile = await ctx.db.get(result.profileId);
-    expect(profile).toMatchObject({ name: "지수", autoCreated: false });
+    expect(profile).toMatchObject({ name: "Jisoo", autoCreated: false });
   });
 });
 
@@ -142,10 +142,10 @@ test("should create a stub profile for a mentioned person and promote it to a no
   const asAlice = t.withIdentity(ALICE);
 
   const first = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Met 지수 at 민호's dinner party.",
+    transcript: "Met Jisoo at Minho's dinner party.",
     draft: buildDraft({
-      primaryName: "지수",
-      mentions: [{ name: "민호" }],
+      primaryName: "Jisoo",
+      mentions: [{ name: "Minho" }],
     }),
     source: "voice",
   });
@@ -161,8 +161,8 @@ test("should create a stub profile for a mentioned person and promote it to a no
   });
 
   const second = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Caught up with 민호 one-on-one.",
-    draft: buildDraft({ primaryName: "민호" }),
+    transcript: "Caught up with Minho one-on-one.",
+    draft: buildDraft({ primaryName: "Minho" }),
     source: "voice",
   });
   expect(second.createdProfile).toBe(false);
@@ -180,13 +180,13 @@ test("should link each mention to the note with its quote, dedupe a repeated nam
   const asAlice = t.withIdentity(ALICE);
 
   const result = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Dinner with 지수, 민호, and 민호 again, also 지수 was there.",
+    transcript: "Dinner with Jisoo, Minho, and Minho again, also Jisoo was there.",
     draft: buildDraft({
-      primaryName: "지수",
+      primaryName: "Jisoo",
       mentions: [
-        { name: "민호", quote: "민호네 집들이에서" },
-        { name: "민호", quote: "민호도 왔어" },
-        { name: "지수", quote: "지수 만났는데" },
+        { name: "Minho", quote: "at Minho's housewarming" },
+        { name: "Minho", quote: "Minho came too" },
+        { name: "Jisoo", quote: "saw Jisoo" },
       ],
     }),
     source: "voice",
@@ -196,22 +196,22 @@ test("should link each mention to the note with its quote, dedupe a repeated nam
 
   await t.run(async (ctx) => {
     const links = await ctx.db.query("noteMentions").collect();
-    // 민호 twice and 지수 (the primary) in the draft, one link out: a note never
+    // Minho twice and Jisoo (the primary) in the draft, one link out: a note never
     // lists its own subject as a mention of itself, and a repeated name is one
     // person.
     expect(links).toHaveLength(1);
     expect(links[0].noteId).toBe(result.noteId);
     // The first quote seen wins, the same way the first spelling of a tag does.
-    expect(links[0].quote).toBe("민호네 집들이에서");
+    expect(links[0].quote).toBe("at Minho's housewarming");
 
     const mentioned = await ctx.db.get("profiles", links[0].profileId);
-    expect(mentioned?.name).toBe("민호");
+    expect(mentioned?.name).toBe("Minho");
 
     const allProfiles = await ctx.db
       .query("profiles")
       .withIndex("by_user", (q) => q.eq("userId", mentioned!.userId))
       .collect();
-    // Only 지수 (primary) and 민호 (mention) — no duplicate 민호 row.
+    // Only Jisoo (primary) and Minho (mention) — no duplicate Minho row.
     expect(allProfiles).toHaveLength(2);
   });
 });
@@ -224,19 +224,19 @@ test("should store a different quote on each noteMentions row when the same pers
   // The quote belongs to the link, not to the mentioned profile — this is the
   // whole reason noteMentions is a table rather than an array on the profile.
   const first = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "지수를 민호네 집들이에서 만났다.",
+    transcript: "Met Jisoo at Minho's housewarming.",
     draft: buildDraft({
-      primaryName: "지수",
-      mentions: [{ name: "민호", quote: "민호네 집들이에서" }],
+      primaryName: "Jisoo",
+      mentions: [{ name: "Minho", quote: "at Minho's housewarming" }],
     }),
     source: "voice",
   });
 
   const second = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "오늘 민호랑 통화했다는 얘기를 지수한테 들었다.",
+    transcript: "Jisoo told me she called Minho today.",
     draft: buildDraft({
-      primaryName: "지수",
-      mentions: [{ name: "민호", quote: "민호랑 통화했다는" }],
+      primaryName: "Jisoo",
+      mentions: [{ name: "Minho", quote: "said she called Minho" }],
     }),
     source: "voice",
   });
@@ -246,9 +246,9 @@ test("should store a different quote on each noteMentions row when the same pers
     expect(links).toHaveLength(2);
 
     const byNote = new Map(links.map((link) => [link.noteId, link]));
-    expect(byNote.get(first.noteId)?.quote).toBe("민호네 집들이에서");
-    expect(byNote.get(second.noteId)?.quote).toBe("민호랑 통화했다는");
-    // Both rows point at the same 민호 profile — it's the quote that differs,
+    expect(byNote.get(first.noteId)?.quote).toBe("at Minho's housewarming");
+    expect(byNote.get(second.noteId)?.quote).toBe("said she called Minho");
+    // Both rows point at the same Minho profile — it's the quote that differs,
     // not the person.
     expect(byNote.get(first.noteId)?.profileId).toBe(
       byNote.get(second.noteId)?.profileId,
@@ -265,10 +265,10 @@ test("should still create a noteMentions link when the mention's quote is empty"
   // rows have no quote at all — an empty quote is not a reason to drop the
   // person, the screens just treat it as nothing to show.
   const result = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "지수, 민호 얘기도 잠깐 나왔다.",
+    transcript: "Jisoo, and Minho came up briefly too.",
     draft: buildDraft({
-      primaryName: "지수",
-      mentions: [{ name: "민호", quote: "" }],
+      primaryName: "Jisoo",
+      mentions: [{ name: "Minho", quote: "" }],
     }),
     source: "voice",
   });
@@ -281,7 +281,7 @@ test("should still create a noteMentions link when the mention's quote is empty"
     expect(links[0].quote).toBe("");
 
     const mentioned = await ctx.db.get("profiles", links[0].profileId);
-    expect(mentioned?.name).toBe("민호");
+    expect(mentioned?.name).toBe("Minho");
   });
 });
 
@@ -423,14 +423,14 @@ test("should give user B a new profile of their own, never user A's, when both s
   const asBob = t.withIdentity(BOB);
 
   const aliceResult = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Met 지수 at a networking event.",
-    draft: buildDraft({ primaryName: "지수", tags: ["networking"] }),
+    transcript: "Met Jisoo at a networking event.",
+    draft: buildDraft({ primaryName: "Jisoo", tags: ["networking"] }),
     source: "voice",
   });
 
   const bobResult = await asBob.mutation(api.notes.saveCapture, {
-    transcript: "Met 지수 too, different person entirely.",
-    draft: buildDraft({ primaryName: "지수", tags: ["gym"] }),
+    transcript: "Met Jisoo too, different person entirely.",
+    draft: buildDraft({ primaryName: "Jisoo", tags: ["gym"] }),
     source: "voice",
   });
 
@@ -459,17 +459,17 @@ test("should give user B their own new profile for a mentioned name, never resol
   const asAlice = t.withIdentity(ALICE);
   const asBob = t.withIdentity(BOB);
 
-  // Alice already has a profile named 민호 (created as a primary, not a stub).
+  // Alice already has a profile named Minho (created as a primary, not a stub).
   const alicePrimary = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Met 민호 directly.",
-    draft: buildDraft({ primaryName: "민호" }),
+    transcript: "Met Minho directly.",
+    draft: buildDraft({ primaryName: "Minho" }),
     source: "voice",
   });
 
-  // Bob saves a capture that merely mentions someone also named 민호.
+  // Bob saves a capture that merely mentions someone also named Minho.
   const bobResult = await asBob.mutation(api.notes.saveCapture, {
-    transcript: "Met 지수, who mentioned her friend 민호.",
-    draft: buildDraft({ primaryName: "지수", mentions: [{ name: "민호" }] }),
+    transcript: "Met Jisoo, who mentioned her friend Minho.",
+    draft: buildDraft({ primaryName: "Jisoo", mentions: [{ name: "Minho" }] }),
     source: "voice",
   });
 
@@ -520,7 +520,7 @@ test("should refuse and write nothing when the draft as a whole is larger than M
   // The mention count and the transcript are both well within their own limits;
   // it is the draft's own content that is oversized here, which is exactly the
   // gap this cap exists to close.
-  const oversizedTag = "가".repeat(MAX_DRAFT_CHARS);
+  const oversizedTag = "a".repeat(MAX_DRAFT_CHARS);
 
   await expect(
     asAlice.mutation(api.notes.saveCapture, {
@@ -541,22 +541,22 @@ test("should leave a mentioned person's profile carrying nothing but their name 
   await ensureUser(t, ALICE);
   const asAlice = t.withIdentity(ALICE);
 
-  // 민호 appears only inside a note about 지수. The review screen shows a
+  // Minho appears only inside a note about Jisoo. The review screen shows a
   // mention's name and its quote and nothing else, so anything else a draft
   // claimed about him was never put in front of the user to confirm — and an
   // unconfirmed claim must not end up on a person's profile.
   await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "지수를 민호네 집들이에서 만났다.",
+    transcript: "Met Jisoo at Minho's housewarming.",
     draft: buildDraft({
-      primaryName: "지수",
-      mentions: [{ name: "민호", quote: "민호네 집들이에서" }],
+      primaryName: "Jisoo",
+      mentions: [{ name: "Minho", quote: "at Minho's housewarming" }],
     }),
     source: "voice",
   });
 
   await t.run(async (ctx) => {
     const minho = (await ctx.db.query("profiles").collect()).find(
-      (p) => p.name === "민호",
+      (p) => p.name === "Minho",
     );
     expect(minho).toBeDefined();
     expect(minho?.autoCreated).toBe(true);
@@ -568,7 +568,7 @@ test("should leave a mentioned person's profile carrying nothing but their name 
     // What the note did say about him is on the link, verbatim, where it can be
     // read back against the note it came from.
     const link = (await ctx.db.query("noteMentions").collect())[0];
-    expect(link?.quote).toBe("민호네 집들이에서");
+    expect(link?.quote).toBe("at Minho's housewarming");
   });
 });
 
@@ -578,23 +578,23 @@ test("should fill a promoted stub's relationship from its own first note by the 
   const asAlice = t.withIdentity(ALICE);
 
   await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "지수를 민호네 집들이에서 만났다.",
-    draft: buildDraft({ primaryName: "지수", mentions: [{ name: "민호" }] }),
+    transcript: "Met Jisoo at Minho's housewarming.",
+    draft: buildDraft({ primaryName: "Jisoo", mentions: [{ name: "Minho" }] }),
     source: "voice",
   });
 
-  // A note about 민호 himself. Nothing has to be overwritten for this to land:
+  // A note about Minho himself. Nothing has to be overwritten for this to land:
   // the stub arrived with the field empty, so promotion needs no exception for
   // it — which is the point of the mention no longer writing one.
   await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "민호는 오래된 친구다.",
-    draft: buildDraft({ primaryName: "민호", relationshipContext: "friend" }),
+    transcript: "Minho is an old friend.",
+    draft: buildDraft({ primaryName: "Minho", relationshipContext: "friend" }),
     source: "voice",
   });
 
   await t.run(async (ctx) => {
     const minho = (await ctx.db.query("profiles").collect()).find(
-      (p) => p.name === "민호",
+      (p) => p.name === "Minho",
     );
     expect(minho?.autoCreated).toBe(false);
     expect(minho?.relationshipContext).toBe("friend");
@@ -609,26 +609,26 @@ test("should let a direct note correct the kind a passing mention had to guess",
   // entityType is the one thing a stub cannot be created without, so it is the
   // one thing promotion still overwrites rather than fills.
   await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "지수가 콩이 얘기를 했다.",
+    transcript: "Jisoo talked about Kongi.",
     draft: buildDraft({
-      primaryName: "지수",
-      mentions: [{ name: "콩이", entityType: "person" }],
+      primaryName: "Jisoo",
+      mentions: [{ name: "Kongi", entityType: "person" }],
     }),
     source: "voice",
   });
 
   await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "콩이는 지수네 강아지다.",
-    draft: buildDraft({ primaryName: "콩이", primaryEntityType: "animal" }),
+    transcript: "Kongi is Jisoo's dog.",
+    draft: buildDraft({ primaryName: "Kongi", primaryEntityType: "animal" }),
     source: "voice",
   });
 
   await t.run(async (ctx) => {
     const kong = (await ctx.db.query("profiles").collect()).find(
-      (p) => p.name === "콩이",
+      (p) => p.name === "Kongi",
     );
     expect(kong?.autoCreated).toBe(false);
-    // The mention guessed "person"; the note about 콩이 says otherwise and wins.
+    // The mention guessed "person"; the note about Kongi says otherwise and wins.
     expect(kong?.entityType).toBe("animal");
   });
 });
@@ -702,16 +702,16 @@ test("should return a note with its profile's name to its owner", async () => {
   const asAlice = t.withIdentity(ALICE);
 
   const { noteId } = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "지선은 브랜딩 디자이너다.",
-    draft: buildDraft({ primaryName: "지선", keyFacts: ["브랜딩 디자이너다."] }),
+    transcript: "Jiseon is a branding designer.",
+    draft: buildDraft({ primaryName: "Jiseon", keyFacts: ["Is a branding designer."] }),
     source: "voice",
   });
 
   const result = await asAlice.query(api.notes.byId, { noteId });
 
-  expect(result?.note.text).toBe("지선은 브랜딩 디자이너다.");
-  expect(result?.note.keyFacts).toEqual(["브랜딩 디자이너다."]);
-  expect(result?.profileName).toBe("지선");
+  expect(result?.note.text).toBe("Jiseon is a branding designer.");
+  expect(result?.note.keyFacts).toEqual(["Is a branding designer."]);
+  expect(result?.profileName).toBe("Jiseon");
 });
 
 test("should hide another user's note behind the same null as a note that does not exist", async () => {
@@ -720,8 +720,8 @@ test("should hide another user's note behind the same null as a note that does n
   await ensureUser(t, BOB);
 
   const { noteId } = await t.withIdentity(ALICE).mutation(api.notes.saveCapture, {
-    transcript: "지선은 브랜딩 디자이너다.",
-    draft: buildDraft({ primaryName: "지선" }),
+    transcript: "Jiseon is a branding designer.",
+    draft: buildDraft({ primaryName: "Jiseon" }),
     source: "voice",
   });
 
@@ -743,25 +743,25 @@ test("should save a corrected fact and transcript over the ones extraction wrote
   // the mother onto the person the note was filed under, and until now that
   // was permanent the moment it was saved.
   const { noteId } = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "어머니가 암에 걸리셔서 요즘 많이 힘들어 하신데",
+    transcript: "His mother has cancer and is having a hard time",
     draft: buildDraft({
-      primaryName: "지선",
-      keyFacts: ["어머니가 암에 걸렸다", "어머니 때문에 요즘 힘들어하고 있다"],
+      primaryName: "Jiseon",
+      keyFacts: ["His mother has cancer", "Is having a hard time because of his mother"],
     }),
     source: "voice",
   });
 
   await asAlice.mutation(api.notes.updateNote, {
     noteId,
-    text: "어머니가 암에 걸리셔서 요즘 많이 힘들어 하신대",
-    keyFacts: ["어머니가 암에 걸렸다", "어머니가 요즘 많이 힘들어하신다"],
+    text: "His mother has cancer and is having a hard time",
+    keyFacts: ["His mother has cancer", "His mother is having a hard time"],
   });
 
   const result = await asAlice.query(api.notes.byId, { noteId });
-  expect(result?.note.text).toBe("어머니가 암에 걸리셔서 요즘 많이 힘들어 하신대");
+  expect(result?.note.text).toBe("His mother has cancer and is having a hard time");
   expect(result?.note.keyFacts).toEqual([
-    "어머니가 암에 걸렸다",
-    "어머니가 요즘 많이 힘들어하신다",
+    "His mother has cancer",
+    "His mother is having a hard time",
   ]);
 });
 
@@ -771,14 +771,14 @@ test("should drop a fact that was blanked out, and store no facts at all rather 
   const asAlice = t.withIdentity(ALICE);
 
   const { noteId } = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "지선은 브랜딩 디자이너다.",
-    draft: buildDraft({ primaryName: "지선", keyFacts: ["브랜딩 디자이너다."] }),
+    transcript: "Jiseon is a branding designer.",
+    draft: buildDraft({ primaryName: "Jiseon", keyFacts: ["Is a branding designer."] }),
     source: "voice",
   });
 
   await asAlice.mutation(api.notes.updateNote, {
     noteId,
-    text: "지선은 브랜딩 디자이너다.",
+    text: "Jiseon is a branding designer.",
     keyFacts: ["   ", ""],
   });
 
@@ -796,8 +796,8 @@ test("should refuse to write another user's note", async () => {
   await ensureUser(t, BOB);
 
   const { noteId } = await t.withIdentity(ALICE).mutation(api.notes.saveCapture, {
-    transcript: "지선은 브랜딩 디자이너다.",
-    draft: buildDraft({ primaryName: "지선" }),
+    transcript: "Jiseon is a branding designer.",
+    draft: buildDraft({ primaryName: "Jiseon" }),
     source: "voice",
   });
 
@@ -811,7 +811,7 @@ test("should refuse to write another user's note", async () => {
 
   await t.run(async (ctx) => {
     const note = await ctx.db.get("notes", noteId);
-    expect(note?.text).toBe("지선은 브랜딩 디자이너다.");
+    expect(note?.text).toBe("Jiseon is a branding designer.");
   });
 });
 
@@ -821,8 +821,8 @@ test("should refuse to empty a note rather than deleting it by stealth", async (
   const asAlice = t.withIdentity(ALICE);
 
   const { noteId } = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "지선은 브랜딩 디자이너다.",
-    draft: buildDraft({ primaryName: "지선" }),
+    transcript: "Jiseon is a branding designer.",
+    draft: buildDraft({ primaryName: "Jiseon" }),
     source: "voice",
   });
 
@@ -837,8 +837,8 @@ test("should reject a transcript longer than the capture path would have accepte
   const asAlice = t.withIdentity(ALICE);
 
   const { noteId } = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "지선은 브랜딩 디자이너다.",
-    draft: buildDraft({ primaryName: "지선" }),
+    transcript: "Jiseon is a branding designer.",
+    draft: buildDraft({ primaryName: "Jiseon" }),
     source: "voice",
   });
 
@@ -848,7 +848,7 @@ test("should reject a transcript longer than the capture path would have accepte
   await expect(
     asAlice.mutation(api.notes.updateNote, {
       noteId,
-      text: "가".repeat(MAX_TRANSCRIPT_CHARS + 1),
+      text: "a".repeat(MAX_TRANSCRIPT_CHARS + 1),
       keyFacts: [],
     }),
   ).rejects.toBeInstanceOf(ConvexError);
@@ -860,10 +860,10 @@ test("should take a note's mention links with it, so nothing points at a note th
   const asAlice = t.withIdentity(ALICE);
 
   const { noteId } = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "지선을 민호네 집들이에서 만났다.",
+    transcript: "Met Jiseon at Minho's housewarming.",
     draft: buildDraft({
-      primaryName: "지선",
-      mentions: [{ name: "민호", quote: "민호네 집들이에서" }],
+      primaryName: "Jiseon",
+      mentions: [{ name: "Minho", quote: "at Minho's housewarming" }],
     }),
     source: "voice",
   });
@@ -884,8 +884,8 @@ test("should remove a stub the deleted note was the last reason to keep", async 
   const asAlice = t.withIdentity(ALICE);
 
   const { noteId } = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "지선을 민호네 집들이에서 만났다.",
-    draft: buildDraft({ primaryName: "지선", mentions: [{ name: "민호" }] }),
+    transcript: "Met Jiseon at Minho's housewarming.",
+    draft: buildDraft({ primaryName: "Jiseon", mentions: [{ name: "Minho" }] }),
     source: "voice",
   });
 
@@ -894,12 +894,12 @@ test("should remove a stub the deleted note was the last reason to keep", async 
   expect(removedStubCount).toBe(1);
   await t.run(async (ctx) => {
     const names = (await ctx.db.query("profiles").collect()).map((p) => p.name);
-    // 민호 only ever existed because that note named him in passing; with it
+    // Minho only ever existed because that note named him in passing; with it
     // gone he has no notes, no mentions and no screen that can reach him.
-    expect(names).not.toContain("민호");
-    // 지선 stays. She was chosen, and losing her last note is not a decision to
+    expect(names).not.toContain("Minho");
+    // Jiseon stays. She was chosen, and losing her last note is not a decision to
     // stop keeping her.
-    expect(names).toContain("지선");
+    expect(names).toContain("Jiseon");
   });
 });
 
@@ -909,13 +909,13 @@ test("should keep a mentioned person who is still mentioned somewhere else", asy
   const asAlice = t.withIdentity(ALICE);
 
   const first = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "지선을 민호네 집들이에서 만났다.",
-    draft: buildDraft({ primaryName: "지선", mentions: [{ name: "민호" }] }),
+    transcript: "Met Jiseon at Minho's housewarming.",
+    draft: buildDraft({ primaryName: "Jiseon", mentions: [{ name: "Minho" }] }),
     source: "voice",
   });
   await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "수진이도 민호를 안다고 한다.",
-    draft: buildDraft({ primaryName: "수진", mentions: [{ name: "민호" }] }),
+    transcript: "Sujin says she knows Minho too.",
+    draft: buildDraft({ primaryName: "Sujin", mentions: [{ name: "Minho" }] }),
     source: "voice",
   });
 
@@ -926,7 +926,7 @@ test("should keep a mentioned person who is still mentioned somewhere else", asy
   expect(removedStubCount).toBe(0);
   await t.run(async (ctx) => {
     const names = (await ctx.db.query("profiles").collect()).map((p) => p.name);
-    expect(names).toContain("민호");
+    expect(names).toContain("Minho");
   });
 });
 
@@ -936,14 +936,14 @@ test("should keep a promoted stub that now has notes of its own", async () => {
   const asAlice = t.withIdentity(ALICE);
 
   const first = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "지선을 민호네 집들이에서 만났다.",
-    draft: buildDraft({ primaryName: "지선", mentions: [{ name: "민호" }] }),
+    transcript: "Met Jiseon at Minho's housewarming.",
+    draft: buildDraft({ primaryName: "Jiseon", mentions: [{ name: "Minho" }] }),
     source: "voice",
   });
-  // 민호 stops being a stub the moment he gets a note of his own.
+  // Minho stops being a stub the moment he gets a note of his own.
   await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "민호는 오래된 친구다.",
-    draft: buildDraft({ primaryName: "민호" }),
+    transcript: "Minho is an old friend.",
+    draft: buildDraft({ primaryName: "Minho" }),
     source: "voice",
   });
 
@@ -951,7 +951,7 @@ test("should keep a promoted stub that now has notes of its own", async () => {
 
   await t.run(async (ctx) => {
     const minho = (await ctx.db.query("profiles").collect()).find(
-      (p) => p.name === "민호",
+      (p) => p.name === "Minho",
     );
     expect(minho).toBeDefined();
     expect(minho?.autoCreated).toBe(false);
@@ -964,8 +964,8 @@ test("should refuse to delete another user's note", async () => {
   await ensureUser(t, BOB);
 
   const { noteId } = await t.withIdentity(ALICE).mutation(api.notes.saveCapture, {
-    transcript: "지선은 브랜딩 디자이너다.",
-    draft: buildDraft({ primaryName: "지선" }),
+    transcript: "Jiseon is a branding designer.",
+    draft: buildDraft({ primaryName: "Jiseon" }),
     source: "voice",
   });
 
@@ -983,16 +983,16 @@ test("should keep a person the user chose even once nothing is left pointing at 
   await ensureUser(t, ALICE);
   const asAlice = t.withIdentity(ALICE);
 
-  // 민호 arrives as a real profile: this note is about him.
+  // Minho arrives as a real profile: this note is about him.
   const own = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "민호는 오래된 친구다.",
-    draft: buildDraft({ primaryName: "민호" }),
+    transcript: "Minho is an old friend.",
+    draft: buildDraft({ primaryName: "Minho" }),
     source: "voice",
   });
   // And is separately mentioned in a note about somebody else.
   const mentioning = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "지선을 민호네 집들이에서 만났다.",
-    draft: buildDraft({ primaryName: "지선", mentions: [{ name: "민호" }] }),
+    transcript: "Met Jiseon at Minho's housewarming.",
+    draft: buildDraft({ primaryName: "Jiseon", mentions: [{ name: "Minho" }] }),
     source: "voice",
   });
 
@@ -1007,7 +1007,7 @@ test("should keep a person the user chose even once nothing is left pointing at 
   expect(removedStubCount).toBe(0);
   await t.run(async (ctx) => {
     const names = (await ctx.db.query("profiles").collect()).map((p) => p.name);
-    expect(names).toContain("민호");
+    expect(names).toContain("Minho");
   });
 });
 
@@ -1022,20 +1022,20 @@ test("should keep a person the user chose even once nothing is left pointing at 
 async function twoBySameName(t: ReturnType<typeof convexTest>) {
   const asAlice = t.withIdentity(ALICE);
   const first = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "치선은 브랜딩 디자이너다.",
-    draft: buildDraft({ primaryName: "치선" }),
+    transcript: "Chiseon is a branding designer.",
+    draft: buildDraft({ primaryName: "Chiseon" }),
     source: "voice",
   });
   const second = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "지선은 옆집 이웃이다.",
-    draft: buildDraft({ primaryName: "지선" }),
+    transcript: "Jiseon is the next-door neighbour.",
+    draft: buildDraft({ primaryName: "Jiseon" }),
     source: "voice",
   });
   await asAlice.mutation(api.profiles.updateProfile, {
     profileId: second.profileId,
-    name: "치선",
+    name: "Chiseon",
     entityType: "person",
-    relationshipContext: "이웃",
+    relationshipContext: "neighbour",
     firstMetDate: "",
     tags: [],
     aliases: [],
@@ -1051,8 +1051,8 @@ test("should refuse to guess which of two people by the same name a note is abou
 
   await expect(
     asAlice.mutation(api.notes.saveCapture, {
-      transcript: "치선을 오늘 만났다.",
-      draft: buildDraft({ primaryName: "치선" }),
+      transcript: "Met Chiseon today.",
+      draft: buildDraft({ primaryName: "Chiseon" }),
       source: "voice",
     }),
   ).rejects.toBeInstanceOf(ConvexError);
@@ -1070,10 +1070,10 @@ test("should file the note on the person the caller picked", async () => {
   const { second } = await twoBySameName(t);
 
   const saved = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "치선을 오늘 만났다.",
-    draft: buildDraft({ primaryName: "치선" }),
+    transcript: "Met Chiseon today.",
+    draft: buildDraft({ primaryName: "Chiseon" }),
     source: "voice",
-    resolutions: [{ name: "치선", profileId: second }],
+    resolutions: [{ name: "Chiseon", profileId: second }],
   });
 
   // The one the person who was there chose, not the one written first.
@@ -1088,14 +1088,14 @@ test("should settle an ambiguous mention by the same answer, not a second mechan
   const { first } = await twoBySameName(t);
 
   const saved = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "민호를 치선이랑 같이 봤다.",
+    transcript: "Saw Minho together with Chiseon.",
     draft: buildDraft({
-      primaryName: "민호",
-      mentions: [{ name: "치선", quote: "치선이랑 같이" }],
+      primaryName: "Minho",
+      mentions: [{ name: "Chiseon", quote: "together with Chiseon" }],
     }),
     source: "voice",
     // Keyed by name, so the primary and every mention are settled the same way.
-    resolutions: [{ name: "치선", profileId: first }],
+    resolutions: [{ name: "Chiseon", profileId: first }],
   });
 
   await t.run(async (ctx) => {
@@ -1114,8 +1114,8 @@ test("should refuse an answer naming somebody else's profile", async () => {
   await twoBySameName(t);
 
   const bobsOwn = await t.withIdentity(BOB).mutation(api.notes.saveCapture, {
-    transcript: "치선은 내 친구다.",
-    draft: buildDraft({ primaryName: "치선" }),
+    transcript: "Chiseon is my friend.",
+    draft: buildDraft({ primaryName: "Chiseon" }),
     source: "voice",
   });
 
@@ -1123,10 +1123,10 @@ test("should refuse an answer naming somebody else's profile", async () => {
   // has to hold: an id is only ever a way to choose among the caller's own.
   await expect(
     t.withIdentity(ALICE).mutation(api.notes.saveCapture, {
-      transcript: "치선을 오늘 만났다.",
-      draft: buildDraft({ primaryName: "치선" }),
+      transcript: "Met Chiseon today.",
+      draft: buildDraft({ primaryName: "Chiseon" }),
       source: "voice",
-      resolutions: [{ name: "치선", profileId: bobsOwn.profileId }],
+      resolutions: [{ name: "Chiseon", profileId: bobsOwn.profileId }],
     }),
   ).rejects.toBeInstanceOf(ConvexError);
 });
@@ -1138,8 +1138,8 @@ test("should refuse an answer that does not go by the name it claims to settle",
   await twoBySameName(t);
 
   const other = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "민호는 오래된 친구다.",
-    draft: buildDraft({ primaryName: "민호" }),
+    transcript: "Minho is an old friend.",
+    draft: buildDraft({ primaryName: "Minho" }),
     source: "voice",
   });
 
@@ -1147,10 +1147,10 @@ test("should refuse an answer that does not go by the name it claims to settle",
   // answer now points at somebody this note never mentions.
   await expect(
     asAlice.mutation(api.notes.saveCapture, {
-      transcript: "치선을 오늘 만났다.",
-      draft: buildDraft({ primaryName: "치선" }),
+      transcript: "Met Chiseon today.",
+      draft: buildDraft({ primaryName: "Chiseon" }),
       source: "voice",
-      resolutions: [{ name: "치선", profileId: other.profileId }],
+      resolutions: [{ name: "Chiseon", profileId: other.profileId }],
     }),
   ).rejects.toBeInstanceOf(ConvexError);
 });
@@ -1163,8 +1163,8 @@ test("should still create somebody new without asking, when nobody answers to th
 
   // Only a name two people answer to is a question. One match, or none, is not.
   const saved = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "수진을 오늘 처음 만났다.",
-    draft: buildDraft({ primaryName: "수진" }),
+    transcript: "Met Sujin for the first time today.",
+    draft: buildDraft({ primaryName: "Sujin" }),
     source: "voice",
   });
 

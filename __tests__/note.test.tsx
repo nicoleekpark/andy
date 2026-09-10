@@ -65,7 +65,7 @@ function mockQueries(note: ReturnType<typeof savedNote> | null) {
       : {
           profile: {
             _id: "contact-1",
-            name: "지선",
+            name: "Jiseon",
             entityType: "person",
             tags: [],
             autoCreated: false,
@@ -84,13 +84,13 @@ function savedNote(overrides: Record<string, unknown> = {}) {
       _creationTime: 0,
       userId: "user-1",
       profileId: "contact-1",
-      text: "어머니가 암에 걸리셔서 요즘 많이 힘들어 하신데",
-      keyFacts: ["어머니가 암에 걸렸다", "어머니 때문에 요즘 힘들어하고 있다"],
+      text: "His mother has cancer and is having a hard time",
+      keyFacts: ["His mother has cancer", "Is having a hard time because of his mother"],
       source: "voice",
       createdAt: new Date("2026-08-31").getTime(),
       ...overrides,
     },
-    profileName: "지선",
+    profileName: "Jiseon",
   };
 }
 
@@ -127,7 +127,7 @@ describe("note screen", () => {
     await act(async () => {
       fireEvent.changeText(
         screen.getByLabelText("Fact 2"),
-        "어머니가 요즘 많이 힘들어하신다",
+        "His mother is having a hard time",
       );
     });
     await act(async () => {
@@ -140,10 +140,10 @@ describe("note screen", () => {
     // changed would blank the rest, and the first keystroke is exactly where
     // that kind of bug hides.
     expect(args?.keyFacts).toEqual([
-      "어머니가 암에 걸렸다",
-      "어머니가 요즘 많이 힘들어하신다",
+      "His mother has cancer",
+      "His mother is having a hard time",
     ]);
-    expect(args?.text).toBe("어머니가 암에 걸리셔서 요즘 많이 힘들어 하신데");
+    expect(args?.text).toBe("His mother has cancer and is having a hard time");
     // Back to the timeline, not stacked on top of it.
     await waitFor(() => expect(result.getPathname()).toBe("/profile/contact-1"));
   });
@@ -163,11 +163,11 @@ describe("note screen", () => {
     });
 
     // 하신데 → 하신대. One syllable, and it is the one that turns the sentence
-    // back into something 지선 reported rather than something she did.
+    // back into something Jiseon reported rather than something she did.
     await act(async () => {
       fireEvent.changeText(
         screen.getByLabelText("Note text"),
-        "어머니가 암에 걸리셔서 요즘 많이 힘들어 하신대",
+        "His mother has cancer and is having a hard time",
       );
     });
     await act(async () => {
@@ -176,10 +176,10 @@ describe("note screen", () => {
 
     await waitFor(() => expect(updateNote).toHaveBeenCalledTimes(1));
     const [args] = updateNote.mock.calls[0] ?? [];
-    expect(args?.text).toBe("어머니가 암에 걸리셔서 요즘 많이 힘들어 하신대");
+    expect(args?.text).toBe("His mother has cancer and is having a hard time");
     expect(args?.keyFacts).toEqual([
-      "어머니가 암에 걸렸다",
-      "어머니 때문에 요즘 힘들어하고 있다",
+      "His mother has cancer",
+      "Is having a hard time because of his mother",
     ]);
   });
 
@@ -310,7 +310,7 @@ describe("note screen", () => {
     await act(async () => {
       fireEvent.changeText(
         screen.getByLabelText("Fact 1"),
-        "어머니가 요즘 많이 힘들어하신다",
+        "His mother is having a hard time",
       );
     });
     await act(async () => {
@@ -319,7 +319,7 @@ describe("note screen", () => {
 
     await waitFor(() => expect(updateNote).toHaveBeenCalledTimes(1));
     expect(updateNote.mock.calls[0]?.[0].keyFacts).toEqual([
-      "어머니가 요즘 많이 힘들어하신다",
+      "His mother is having a hard time",
     ]);
   });
 });
