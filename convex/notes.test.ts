@@ -27,7 +27,7 @@ function buildDraft(overrides: {
 } = {}) {
   return {
     primary: {
-      name: overrides.primaryName ?? "Jisoo",
+      name: overrides.primaryName ?? "Nina",
       entityType: overrides.primaryEntityType ?? ("person" as const),
       relationshipContext: overrides.relationshipContext ?? null,
       tags: overrides.tags ?? [],
@@ -55,8 +55,8 @@ test("should create a new profile with createdProfile true and autoCreated false
   const asAlice = t.withIdentity(ALICE);
 
   const result = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Met Jisoo at a cafe.",
-    draft: buildDraft({ primaryName: "Jisoo" }),
+    transcript: "Met Nina at a cafe.",
+    draft: buildDraft({ primaryName: "Nina" }),
     source: "voice",
   });
 
@@ -64,7 +64,7 @@ test("should create a new profile with createdProfile true and autoCreated false
 
   await t.run(async (ctx) => {
     const profile = await ctx.db.get(result.profileId);
-    expect(profile).toMatchObject({ name: "Jisoo", autoCreated: false });
+    expect(profile).toMatchObject({ name: "Nina", autoCreated: false });
   });
 });
 
@@ -107,9 +107,9 @@ test("should not erase existing relationshipContext, firstMetDate, or tags when 
   const asAlice = t.withIdentity(ALICE);
 
   const first = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Met Jisoo, a client, first met 2026-01-15.",
+    transcript: "Met Nina, a client, first met 2026-01-15.",
     draft: buildDraft({
-      primaryName: "Jisoo",
+      primaryName: "Nina",
       relationshipContext: "client",
       firstMetDate: "2026-01-15",
       tags: ["design"],
@@ -118,9 +118,9 @@ test("should not erase existing relationshipContext, firstMetDate, or tags when 
   });
 
   await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Talked to Jisoo again, no new details about how we met.",
+    transcript: "Talked to Nina again, no new details about how we met.",
     draft: buildDraft({
-      primaryName: "Jisoo",
+      primaryName: "Nina",
       relationshipContext: null,
       firstMetDate: null,
       tags: ["coffee"],
@@ -142,10 +142,10 @@ test("should create a stub profile for a mentioned person and promote it to a no
   const asAlice = t.withIdentity(ALICE);
 
   const first = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Met Jisoo at Minho's dinner party.",
+    transcript: "Met Nina at Marcus's dinner party.",
     draft: buildDraft({
-      primaryName: "Jisoo",
-      mentions: [{ name: "Minho" }],
+      primaryName: "Nina",
+      mentions: [{ name: "Marcus" }],
     }),
     source: "voice",
   });
@@ -161,8 +161,8 @@ test("should create a stub profile for a mentioned person and promote it to a no
   });
 
   const second = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Caught up with Minho one-on-one.",
-    draft: buildDraft({ primaryName: "Minho" }),
+    transcript: "Caught up with Marcus one-on-one.",
+    draft: buildDraft({ primaryName: "Marcus" }),
     source: "voice",
   });
   expect(second.createdProfile).toBe(false);
@@ -180,13 +180,13 @@ test("should link each mention to the note with its quote, dedupe a repeated nam
   const asAlice = t.withIdentity(ALICE);
 
   const result = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Dinner with Jisoo, Minho, and Minho again, also Jisoo was there.",
+    transcript: "Dinner with Nina, Marcus, and Marcus again, also Nina was there.",
     draft: buildDraft({
-      primaryName: "Jisoo",
+      primaryName: "Nina",
       mentions: [
-        { name: "Minho", quote: "at Minho's housewarming" },
-        { name: "Minho", quote: "Minho came too" },
-        { name: "Jisoo", quote: "saw Jisoo" },
+        { name: "Marcus", quote: "at Marcus's housewarming" },
+        { name: "Marcus", quote: "Marcus came too" },
+        { name: "Nina", quote: "saw Nina" },
       ],
     }),
     source: "voice",
@@ -196,22 +196,22 @@ test("should link each mention to the note with its quote, dedupe a repeated nam
 
   await t.run(async (ctx) => {
     const links = await ctx.db.query("noteMentions").collect();
-    // Minho twice and Jisoo (the primary) in the draft, one link out: a note never
+    // Marcus twice and Nina (the primary) in the draft, one link out: a note never
     // lists its own subject as a mention of itself, and a repeated name is one
     // person.
     expect(links).toHaveLength(1);
     expect(links[0].noteId).toBe(result.noteId);
     // The first quote seen wins, the same way the first spelling of a tag does.
-    expect(links[0].quote).toBe("at Minho's housewarming");
+    expect(links[0].quote).toBe("at Marcus's housewarming");
 
     const mentioned = await ctx.db.get("profiles", links[0].profileId);
-    expect(mentioned?.name).toBe("Minho");
+    expect(mentioned?.name).toBe("Marcus");
 
     const allProfiles = await ctx.db
       .query("profiles")
       .withIndex("by_user", (q) => q.eq("userId", mentioned!.userId))
       .collect();
-    // Only Jisoo (primary) and Minho (mention) — no duplicate Minho row.
+    // Only Nina (primary) and Marcus (mention) — no duplicate Marcus row.
     expect(allProfiles).toHaveLength(2);
   });
 });
@@ -224,19 +224,19 @@ test("should store a different quote on each noteMentions row when the same pers
   // The quote belongs to the link, not to the mentioned profile — this is the
   // whole reason noteMentions is a table rather than an array on the profile.
   const first = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Met Jisoo at Minho's housewarming.",
+    transcript: "Met Nina at Marcus's housewarming.",
     draft: buildDraft({
-      primaryName: "Jisoo",
-      mentions: [{ name: "Minho", quote: "at Minho's housewarming" }],
+      primaryName: "Nina",
+      mentions: [{ name: "Marcus", quote: "at Marcus's housewarming" }],
     }),
     source: "voice",
   });
 
   const second = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Jisoo told me she called Minho today.",
+    transcript: "Nina told me she called Marcus today.",
     draft: buildDraft({
-      primaryName: "Jisoo",
-      mentions: [{ name: "Minho", quote: "said she called Minho" }],
+      primaryName: "Nina",
+      mentions: [{ name: "Marcus", quote: "said she called Marcus" }],
     }),
     source: "voice",
   });
@@ -246,9 +246,9 @@ test("should store a different quote on each noteMentions row when the same pers
     expect(links).toHaveLength(2);
 
     const byNote = new Map(links.map((link) => [link.noteId, link]));
-    expect(byNote.get(first.noteId)?.quote).toBe("at Minho's housewarming");
-    expect(byNote.get(second.noteId)?.quote).toBe("said she called Minho");
-    // Both rows point at the same Minho profile — it's the quote that differs,
+    expect(byNote.get(first.noteId)?.quote).toBe("at Marcus's housewarming");
+    expect(byNote.get(second.noteId)?.quote).toBe("said she called Marcus");
+    // Both rows point at the same Marcus profile — it's the quote that differs,
     // not the person.
     expect(byNote.get(first.noteId)?.profileId).toBe(
       byNote.get(second.noteId)?.profileId,
@@ -265,10 +265,10 @@ test("should still create a noteMentions link when the mention's quote is empty"
   // rows have no quote at all — an empty quote is not a reason to drop the
   // person, the screens just treat it as nothing to show.
   const result = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Jisoo, and Minho came up briefly too.",
+    transcript: "Nina, and Marcus came up briefly too.",
     draft: buildDraft({
-      primaryName: "Jisoo",
-      mentions: [{ name: "Minho", quote: "" }],
+      primaryName: "Nina",
+      mentions: [{ name: "Marcus", quote: "" }],
     }),
     source: "voice",
   });
@@ -281,7 +281,7 @@ test("should still create a noteMentions link when the mention's quote is empty"
     expect(links[0].quote).toBe("");
 
     const mentioned = await ctx.db.get("profiles", links[0].profileId);
-    expect(mentioned?.name).toBe("Minho");
+    expect(mentioned?.name).toBe("Marcus");
   });
 });
 
@@ -312,9 +312,9 @@ test("should store keyFacts on the note when present and store nothing when the 
   const asAlice = t.withIdentity(ALICE);
 
   const withFacts = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Jisoo has a daughter starting school in March.",
+    transcript: "Nina has a daughter starting school in March.",
     draft: buildDraft({
-      primaryName: "Jisoo With Facts",
+      primaryName: "Nina With Facts",
       keyFacts: ["Has a daughter starting school in March."],
     }),
     source: "voice",
@@ -423,14 +423,14 @@ test("should give user B a new profile of their own, never user A's, when both s
   const asBob = t.withIdentity(BOB);
 
   const aliceResult = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Met Jisoo at a networking event.",
-    draft: buildDraft({ primaryName: "Jisoo", tags: ["networking"] }),
+    transcript: "Met Nina at a networking event.",
+    draft: buildDraft({ primaryName: "Nina", tags: ["networking"] }),
     source: "voice",
   });
 
   const bobResult = await asBob.mutation(api.notes.saveCapture, {
-    transcript: "Met Jisoo too, different person entirely.",
-    draft: buildDraft({ primaryName: "Jisoo", tags: ["gym"] }),
+    transcript: "Met Nina too, different person entirely.",
+    draft: buildDraft({ primaryName: "Nina", tags: ["gym"] }),
     source: "voice",
   });
 
@@ -459,17 +459,17 @@ test("should give user B their own new profile for a mentioned name, never resol
   const asAlice = t.withIdentity(ALICE);
   const asBob = t.withIdentity(BOB);
 
-  // Alice already has a profile named Minho (created as a primary, not a stub).
+  // Alice already has a profile named Marcus (created as a primary, not a stub).
   const alicePrimary = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Met Minho directly.",
-    draft: buildDraft({ primaryName: "Minho" }),
+    transcript: "Met Marcus directly.",
+    draft: buildDraft({ primaryName: "Marcus" }),
     source: "voice",
   });
 
-  // Bob saves a capture that merely mentions someone also named Minho.
+  // Bob saves a capture that merely mentions someone also named Marcus.
   const bobResult = await asBob.mutation(api.notes.saveCapture, {
-    transcript: "Met Jisoo, who mentioned her friend Minho.",
-    draft: buildDraft({ primaryName: "Jisoo", mentions: [{ name: "Minho" }] }),
+    transcript: "Met Nina, who mentioned her friend Marcus.",
+    draft: buildDraft({ primaryName: "Nina", mentions: [{ name: "Marcus" }] }),
     source: "voice",
   });
 
@@ -541,22 +541,22 @@ test("should leave a mentioned person's profile carrying nothing but their name 
   await ensureUser(t, ALICE);
   const asAlice = t.withIdentity(ALICE);
 
-  // Minho appears only inside a note about Jisoo. The review screen shows a
+  // Marcus appears only inside a note about Nina. The review screen shows a
   // mention's name and its quote and nothing else, so anything else a draft
   // claimed about him was never put in front of the user to confirm — and an
   // unconfirmed claim must not end up on a person's profile.
   await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Met Jisoo at Minho's housewarming.",
+    transcript: "Met Nina at Marcus's housewarming.",
     draft: buildDraft({
-      primaryName: "Jisoo",
-      mentions: [{ name: "Minho", quote: "at Minho's housewarming" }],
+      primaryName: "Nina",
+      mentions: [{ name: "Marcus", quote: "at Marcus's housewarming" }],
     }),
     source: "voice",
   });
 
   await t.run(async (ctx) => {
     const minho = (await ctx.db.query("profiles").collect()).find(
-      (p) => p.name === "Minho",
+      (p) => p.name === "Marcus",
     );
     expect(minho).toBeDefined();
     expect(minho?.autoCreated).toBe(true);
@@ -568,7 +568,7 @@ test("should leave a mentioned person's profile carrying nothing but their name 
     // What the note did say about him is on the link, verbatim, where it can be
     // read back against the note it came from.
     const link = (await ctx.db.query("noteMentions").collect())[0];
-    expect(link?.quote).toBe("at Minho's housewarming");
+    expect(link?.quote).toBe("at Marcus's housewarming");
   });
 });
 
@@ -578,23 +578,23 @@ test("should fill a promoted stub's relationship from its own first note by the 
   const asAlice = t.withIdentity(ALICE);
 
   await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Met Jisoo at Minho's housewarming.",
-    draft: buildDraft({ primaryName: "Jisoo", mentions: [{ name: "Minho" }] }),
+    transcript: "Met Nina at Marcus's housewarming.",
+    draft: buildDraft({ primaryName: "Nina", mentions: [{ name: "Marcus" }] }),
     source: "voice",
   });
 
-  // A note about Minho himself. Nothing has to be overwritten for this to land:
+  // A note about Marcus himself. Nothing has to be overwritten for this to land:
   // the stub arrived with the field empty, so promotion needs no exception for
   // it — which is the point of the mention no longer writing one.
   await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Minho is an old friend.",
-    draft: buildDraft({ primaryName: "Minho", relationshipContext: "friend" }),
+    transcript: "Marcus is an old friend.",
+    draft: buildDraft({ primaryName: "Marcus", relationshipContext: "friend" }),
     source: "voice",
   });
 
   await t.run(async (ctx) => {
     const minho = (await ctx.db.query("profiles").collect()).find(
-      (p) => p.name === "Minho",
+      (p) => p.name === "Marcus",
     );
     expect(minho?.autoCreated).toBe(false);
     expect(minho?.relationshipContext).toBe("friend");
@@ -609,26 +609,26 @@ test("should let a direct note correct the kind a passing mention had to guess",
   // entityType is the one thing a stub cannot be created without, so it is the
   // one thing promotion still overwrites rather than fills.
   await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Jisoo talked about Kongi.",
+    transcript: "Nina talked about Biscuit.",
     draft: buildDraft({
-      primaryName: "Jisoo",
-      mentions: [{ name: "Kongi", entityType: "person" }],
+      primaryName: "Nina",
+      mentions: [{ name: "Biscuit", entityType: "person" }],
     }),
     source: "voice",
   });
 
   await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Kongi is Jisoo's dog.",
-    draft: buildDraft({ primaryName: "Kongi", primaryEntityType: "animal" }),
+    transcript: "Biscuit is Nina's dog.",
+    draft: buildDraft({ primaryName: "Biscuit", primaryEntityType: "animal" }),
     source: "voice",
   });
 
   await t.run(async (ctx) => {
     const kong = (await ctx.db.query("profiles").collect()).find(
-      (p) => p.name === "Kongi",
+      (p) => p.name === "Biscuit",
     );
     expect(kong?.autoCreated).toBe(false);
-    // The mention guessed "person"; the note about Kongi says otherwise and wins.
+    // The mention guessed "person"; the note about Biscuit says otherwise and wins.
     expect(kong?.entityType).toBe("animal");
   });
 });
@@ -702,16 +702,16 @@ test("should return a note with its profile's name to its owner", async () => {
   const asAlice = t.withIdentity(ALICE);
 
   const { noteId } = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Jiseon is a branding designer.",
-    draft: buildDraft({ primaryName: "Jiseon", keyFacts: ["Is a branding designer."] }),
+    transcript: "Emma is a branding designer.",
+    draft: buildDraft({ primaryName: "Emma", keyFacts: ["Is a branding designer."] }),
     source: "voice",
   });
 
   const result = await asAlice.query(api.notes.byId, { noteId });
 
-  expect(result?.note.text).toBe("Jiseon is a branding designer.");
+  expect(result?.note.text).toBe("Emma is a branding designer.");
   expect(result?.note.keyFacts).toEqual(["Is a branding designer."]);
-  expect(result?.profileName).toBe("Jiseon");
+  expect(result?.profileName).toBe("Emma");
 });
 
 test("should hide another user's note behind the same null as a note that does not exist", async () => {
@@ -720,8 +720,8 @@ test("should hide another user's note behind the same null as a note that does n
   await ensureUser(t, BOB);
 
   const { noteId } = await t.withIdentity(ALICE).mutation(api.notes.saveCapture, {
-    transcript: "Jiseon is a branding designer.",
-    draft: buildDraft({ primaryName: "Jiseon" }),
+    transcript: "Emma is a branding designer.",
+    draft: buildDraft({ primaryName: "Emma" }),
     source: "voice",
   });
 
@@ -745,7 +745,7 @@ test("should save a corrected fact and transcript over the ones extraction wrote
   const { noteId } = await asAlice.mutation(api.notes.saveCapture, {
     transcript: "His mother has cancer and is having a hard time",
     draft: buildDraft({
-      primaryName: "Jiseon",
+      primaryName: "Emma",
       keyFacts: ["His mother has cancer", "Is having a hard time because of his mother"],
     }),
     source: "voice",
@@ -771,14 +771,14 @@ test("should drop a fact that was blanked out, and store no facts at all rather 
   const asAlice = t.withIdentity(ALICE);
 
   const { noteId } = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Jiseon is a branding designer.",
-    draft: buildDraft({ primaryName: "Jiseon", keyFacts: ["Is a branding designer."] }),
+    transcript: "Emma is a branding designer.",
+    draft: buildDraft({ primaryName: "Emma", keyFacts: ["Is a branding designer."] }),
     source: "voice",
   });
 
   await asAlice.mutation(api.notes.updateNote, {
     noteId,
-    text: "Jiseon is a branding designer.",
+    text: "Emma is a branding designer.",
     keyFacts: ["   ", ""],
   });
 
@@ -796,8 +796,8 @@ test("should refuse to write another user's note", async () => {
   await ensureUser(t, BOB);
 
   const { noteId } = await t.withIdentity(ALICE).mutation(api.notes.saveCapture, {
-    transcript: "Jiseon is a branding designer.",
-    draft: buildDraft({ primaryName: "Jiseon" }),
+    transcript: "Emma is a branding designer.",
+    draft: buildDraft({ primaryName: "Emma" }),
     source: "voice",
   });
 
@@ -811,7 +811,7 @@ test("should refuse to write another user's note", async () => {
 
   await t.run(async (ctx) => {
     const note = await ctx.db.get("notes", noteId);
-    expect(note?.text).toBe("Jiseon is a branding designer.");
+    expect(note?.text).toBe("Emma is a branding designer.");
   });
 });
 
@@ -821,8 +821,8 @@ test("should refuse to empty a note rather than deleting it by stealth", async (
   const asAlice = t.withIdentity(ALICE);
 
   const { noteId } = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Jiseon is a branding designer.",
-    draft: buildDraft({ primaryName: "Jiseon" }),
+    transcript: "Emma is a branding designer.",
+    draft: buildDraft({ primaryName: "Emma" }),
     source: "voice",
   });
 
@@ -837,8 +837,8 @@ test("should reject a transcript longer than the capture path would have accepte
   const asAlice = t.withIdentity(ALICE);
 
   const { noteId } = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Jiseon is a branding designer.",
-    draft: buildDraft({ primaryName: "Jiseon" }),
+    transcript: "Emma is a branding designer.",
+    draft: buildDraft({ primaryName: "Emma" }),
     source: "voice",
   });
 
@@ -860,10 +860,10 @@ test("should take a note's mention links with it, so nothing points at a note th
   const asAlice = t.withIdentity(ALICE);
 
   const { noteId } = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Met Jiseon at Minho's housewarming.",
+    transcript: "Met Emma at Marcus's housewarming.",
     draft: buildDraft({
-      primaryName: "Jiseon",
-      mentions: [{ name: "Minho", quote: "at Minho's housewarming" }],
+      primaryName: "Emma",
+      mentions: [{ name: "Marcus", quote: "at Marcus's housewarming" }],
     }),
     source: "voice",
   });
@@ -884,8 +884,8 @@ test("should remove a stub the deleted note was the last reason to keep", async 
   const asAlice = t.withIdentity(ALICE);
 
   const { noteId } = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Met Jiseon at Minho's housewarming.",
-    draft: buildDraft({ primaryName: "Jiseon", mentions: [{ name: "Minho" }] }),
+    transcript: "Met Emma at Marcus's housewarming.",
+    draft: buildDraft({ primaryName: "Emma", mentions: [{ name: "Marcus" }] }),
     source: "voice",
   });
 
@@ -894,12 +894,12 @@ test("should remove a stub the deleted note was the last reason to keep", async 
   expect(removedStubCount).toBe(1);
   await t.run(async (ctx) => {
     const names = (await ctx.db.query("profiles").collect()).map((p) => p.name);
-    // Minho only ever existed because that note named him in passing; with it
+    // Marcus only ever existed because that note named him in passing; with it
     // gone he has no notes, no mentions and no screen that can reach him.
-    expect(names).not.toContain("Minho");
-    // Jiseon stays. She was chosen, and losing her last note is not a decision to
+    expect(names).not.toContain("Marcus");
+    // Emma stays. She was chosen, and losing her last note is not a decision to
     // stop keeping her.
-    expect(names).toContain("Jiseon");
+    expect(names).toContain("Emma");
   });
 });
 
@@ -909,13 +909,13 @@ test("should keep a mentioned person who is still mentioned somewhere else", asy
   const asAlice = t.withIdentity(ALICE);
 
   const first = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Met Jiseon at Minho's housewarming.",
-    draft: buildDraft({ primaryName: "Jiseon", mentions: [{ name: "Minho" }] }),
+    transcript: "Met Emma at Marcus's housewarming.",
+    draft: buildDraft({ primaryName: "Emma", mentions: [{ name: "Marcus" }] }),
     source: "voice",
   });
   await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Sujin says she knows Minho too.",
-    draft: buildDraft({ primaryName: "Sujin", mentions: [{ name: "Minho" }] }),
+    transcript: "Dana says she knows Marcus too.",
+    draft: buildDraft({ primaryName: "Dana", mentions: [{ name: "Marcus" }] }),
     source: "voice",
   });
 
@@ -926,7 +926,7 @@ test("should keep a mentioned person who is still mentioned somewhere else", asy
   expect(removedStubCount).toBe(0);
   await t.run(async (ctx) => {
     const names = (await ctx.db.query("profiles").collect()).map((p) => p.name);
-    expect(names).toContain("Minho");
+    expect(names).toContain("Marcus");
   });
 });
 
@@ -936,14 +936,14 @@ test("should keep a promoted stub that now has notes of its own", async () => {
   const asAlice = t.withIdentity(ALICE);
 
   const first = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Met Jiseon at Minho's housewarming.",
-    draft: buildDraft({ primaryName: "Jiseon", mentions: [{ name: "Minho" }] }),
+    transcript: "Met Emma at Marcus's housewarming.",
+    draft: buildDraft({ primaryName: "Emma", mentions: [{ name: "Marcus" }] }),
     source: "voice",
   });
-  // Minho stops being a stub the moment he gets a note of his own.
+  // Marcus stops being a stub the moment he gets a note of his own.
   await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Minho is an old friend.",
-    draft: buildDraft({ primaryName: "Minho" }),
+    transcript: "Marcus is an old friend.",
+    draft: buildDraft({ primaryName: "Marcus" }),
     source: "voice",
   });
 
@@ -951,7 +951,7 @@ test("should keep a promoted stub that now has notes of its own", async () => {
 
   await t.run(async (ctx) => {
     const minho = (await ctx.db.query("profiles").collect()).find(
-      (p) => p.name === "Minho",
+      (p) => p.name === "Marcus",
     );
     expect(minho).toBeDefined();
     expect(minho?.autoCreated).toBe(false);
@@ -964,8 +964,8 @@ test("should refuse to delete another user's note", async () => {
   await ensureUser(t, BOB);
 
   const { noteId } = await t.withIdentity(ALICE).mutation(api.notes.saveCapture, {
-    transcript: "Jiseon is a branding designer.",
-    draft: buildDraft({ primaryName: "Jiseon" }),
+    transcript: "Emma is a branding designer.",
+    draft: buildDraft({ primaryName: "Emma" }),
     source: "voice",
   });
 
@@ -983,16 +983,16 @@ test("should keep a person the user chose even once nothing is left pointing at 
   await ensureUser(t, ALICE);
   const asAlice = t.withIdentity(ALICE);
 
-  // Minho arrives as a real profile: this note is about him.
+  // Marcus arrives as a real profile: this note is about him.
   const own = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Minho is an old friend.",
-    draft: buildDraft({ primaryName: "Minho" }),
+    transcript: "Marcus is an old friend.",
+    draft: buildDraft({ primaryName: "Marcus" }),
     source: "voice",
   });
   // And is separately mentioned in a note about somebody else.
   const mentioning = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Met Jiseon at Minho's housewarming.",
-    draft: buildDraft({ primaryName: "Jiseon", mentions: [{ name: "Minho" }] }),
+    transcript: "Met Emma at Marcus's housewarming.",
+    draft: buildDraft({ primaryName: "Emma", mentions: [{ name: "Marcus" }] }),
     source: "voice",
   });
 
@@ -1007,7 +1007,7 @@ test("should keep a person the user chose even once nothing is left pointing at 
   expect(removedStubCount).toBe(0);
   await t.run(async (ctx) => {
     const names = (await ctx.db.query("profiles").collect()).map((p) => p.name);
-    expect(names).toContain("Minho");
+    expect(names).toContain("Marcus");
   });
 });
 
@@ -1022,18 +1022,18 @@ test("should keep a person the user chose even once nothing is left pointing at 
 async function twoBySameName(t: ReturnType<typeof convexTest>) {
   const asAlice = t.withIdentity(ALICE);
   const first = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Chiseon is a branding designer.",
-    draft: buildDraft({ primaryName: "Chiseon" }),
+    transcript: "Priya is a branding designer.",
+    draft: buildDraft({ primaryName: "Priya" }),
     source: "voice",
   });
   const second = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Jiseon is the next-door neighbour.",
-    draft: buildDraft({ primaryName: "Jiseon" }),
+    transcript: "Emma is the next-door neighbour.",
+    draft: buildDraft({ primaryName: "Emma" }),
     source: "voice",
   });
   await asAlice.mutation(api.profiles.updateProfile, {
     profileId: second.profileId,
-    name: "Chiseon",
+    name: "Priya",
     entityType: "person",
     relationshipContext: "neighbour",
     firstMetDate: "",
@@ -1051,8 +1051,8 @@ test("should refuse to guess which of two people by the same name a note is abou
 
   await expect(
     asAlice.mutation(api.notes.saveCapture, {
-      transcript: "Met Chiseon today.",
-      draft: buildDraft({ primaryName: "Chiseon" }),
+      transcript: "Met Priya today.",
+      draft: buildDraft({ primaryName: "Priya" }),
       source: "voice",
     }),
   ).rejects.toBeInstanceOf(ConvexError);
@@ -1070,10 +1070,10 @@ test("should file the note on the person the caller picked", async () => {
   const { second } = await twoBySameName(t);
 
   const saved = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Met Chiseon today.",
-    draft: buildDraft({ primaryName: "Chiseon" }),
+    transcript: "Met Priya today.",
+    draft: buildDraft({ primaryName: "Priya" }),
     source: "voice",
-    resolutions: [{ name: "Chiseon", profileId: second }],
+    resolutions: [{ name: "Priya", profileId: second }],
   });
 
   // The one the person who was there chose, not the one written first.
@@ -1088,14 +1088,14 @@ test("should settle an ambiguous mention by the same answer, not a second mechan
   const { first } = await twoBySameName(t);
 
   const saved = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Saw Minho together with Chiseon.",
+    transcript: "Saw Marcus together with Priya.",
     draft: buildDraft({
-      primaryName: "Minho",
-      mentions: [{ name: "Chiseon", quote: "together with Chiseon" }],
+      primaryName: "Marcus",
+      mentions: [{ name: "Priya", quote: "together with Priya" }],
     }),
     source: "voice",
     // Keyed by name, so the primary and every mention are settled the same way.
-    resolutions: [{ name: "Chiseon", profileId: first }],
+    resolutions: [{ name: "Priya", profileId: first }],
   });
 
   await t.run(async (ctx) => {
@@ -1114,8 +1114,8 @@ test("should refuse an answer naming somebody else's profile", async () => {
   await twoBySameName(t);
 
   const bobsOwn = await t.withIdentity(BOB).mutation(api.notes.saveCapture, {
-    transcript: "Chiseon is my friend.",
-    draft: buildDraft({ primaryName: "Chiseon" }),
+    transcript: "Priya is my friend.",
+    draft: buildDraft({ primaryName: "Priya" }),
     source: "voice",
   });
 
@@ -1123,10 +1123,10 @@ test("should refuse an answer naming somebody else's profile", async () => {
   // has to hold: an id is only ever a way to choose among the caller's own.
   await expect(
     t.withIdentity(ALICE).mutation(api.notes.saveCapture, {
-      transcript: "Met Chiseon today.",
-      draft: buildDraft({ primaryName: "Chiseon" }),
+      transcript: "Met Priya today.",
+      draft: buildDraft({ primaryName: "Priya" }),
       source: "voice",
-      resolutions: [{ name: "Chiseon", profileId: bobsOwn.profileId }],
+      resolutions: [{ name: "Priya", profileId: bobsOwn.profileId }],
     }),
   ).rejects.toBeInstanceOf(ConvexError);
 });
@@ -1138,8 +1138,8 @@ test("should refuse an answer that does not go by the name it claims to settle",
   await twoBySameName(t);
 
   const other = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Minho is an old friend.",
-    draft: buildDraft({ primaryName: "Minho" }),
+    transcript: "Marcus is an old friend.",
+    draft: buildDraft({ primaryName: "Marcus" }),
     source: "voice",
   });
 
@@ -1147,10 +1147,10 @@ test("should refuse an answer that does not go by the name it claims to settle",
   // answer now points at somebody this note never mentions.
   await expect(
     asAlice.mutation(api.notes.saveCapture, {
-      transcript: "Met Chiseon today.",
-      draft: buildDraft({ primaryName: "Chiseon" }),
+      transcript: "Met Priya today.",
+      draft: buildDraft({ primaryName: "Priya" }),
       source: "voice",
-      resolutions: [{ name: "Chiseon", profileId: other.profileId }],
+      resolutions: [{ name: "Priya", profileId: other.profileId }],
     }),
   ).rejects.toBeInstanceOf(ConvexError);
 });
@@ -1163,8 +1163,8 @@ test("should still create somebody new without asking, when nobody answers to th
 
   // Only a name two people answer to is a question. One match, or none, is not.
   const saved = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Met Sujin for the first time today.",
-    draft: buildDraft({ primaryName: "Sujin" }),
+    transcript: "Met Dana for the first time today.",
+    draft: buildDraft({ primaryName: "Dana" }),
     source: "voice",
   });
 

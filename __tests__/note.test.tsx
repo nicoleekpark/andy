@@ -65,7 +65,7 @@ function mockQueries(note: ReturnType<typeof savedNote> | null) {
       : {
           profile: {
             _id: "contact-1",
-            name: "Jiseon",
+            name: "Emma",
             entityType: "person",
             tags: [],
             autoCreated: false,
@@ -90,7 +90,7 @@ function savedNote(overrides: Record<string, unknown> = {}) {
       createdAt: new Date("2026-08-31").getTime(),
       ...overrides,
     },
-    profileName: "Jiseon",
+    profileName: "Emma",
   };
 }
 
@@ -163,7 +163,7 @@ describe("note screen", () => {
     });
 
     // 하신데 → 하신대. One syllable, and it is the one that turns the sentence
-    // back into something Jiseon reported rather than something she did.
+    // back into something Emma reported rather than something she did.
     await act(async () => {
       fireEvent.changeText(
         screen.getByLabelText("Note text"),

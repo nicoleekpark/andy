@@ -43,14 +43,14 @@ test("should round-trip mentionedEntityIds as an array of profile ids when a not
       userId,
       noteId,
       profileId: mentionedA,
-      name: "Minho",
+      name: "Marcus",
       quote: "Bob",
     });
     await ctx.db.insert("noteMentions", {
       userId,
       noteId,
       profileId: mentionedB,
-      name: "Minho",
+      name: "Marcus",
       quote: "his dog Rex",
     });
 

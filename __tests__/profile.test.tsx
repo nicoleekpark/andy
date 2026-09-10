@@ -17,7 +17,7 @@ import { renderRouter } from "expo-router/testing-library";
 function buildProfile(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     _id: "profile-1",
-    name: "Jisoo",
+    name: "Nina",
     entityType: "person",
     tags: [],
     autoCreated: false,
@@ -100,13 +100,13 @@ describe("profile screen", () => {
           text: "First note text.",
         },
       ]),
-      profile: buildProfile({ name: "Jisoo" }),
+      profile: buildProfile({ name: "Nina" }),
     });
 
     const result = renderRouter("src/app", { initialUrl: "/profile/contact-1" });
     await result;
 
-    expect(screen.getByText("Jisoo")).toBeTruthy();
+    expect(screen.getByText("Nina")).toBeTruthy();
 
     const noteTexts = screen.getAllByText(/note text\./);
     expect(noteTexts.map((node) => node.props.children)).toEqual([
@@ -152,7 +152,7 @@ describe("profile screen", () => {
         {
           _id: "note-1",
           createdAt: 1787933613833,
-          text: "Saw Jiseon today at Minho's housewarming",
+          text: "Saw Emma today at Marcus's housewarming",
           keyFacts: ["Is a branding designer."],
         },
       ]),
@@ -162,17 +162,17 @@ describe("profile screen", () => {
     await result;
 
     expect(screen.getByText("Is a branding designer.")).toBeTruthy();
-    expect(screen.queryByText(/Minho's housewarming/)).toBeNull();
+    expect(screen.queryByText(/Marcus's housewarming/)).toBeNull();
 
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: /show what you said/i }));
     });
-    expect(screen.getByText(/Minho's housewarming/)).toBeTruthy();
+    expect(screen.getByText(/Marcus's housewarming/)).toBeTruthy();
 
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: /hide what you said/i }));
     });
-    expect(screen.queryByText(/Minho's housewarming/)).toBeNull();
+    expect(screen.queryByText(/Marcus's housewarming/)).toBeNull();
   });
 
   test("should name the note's body after the door it came through, not always \"what you said\"", async () => {
@@ -192,7 +192,7 @@ describe("profile screen", () => {
           _id: "note-voice",
           createdAt: Date.now(),
           source: "voice",
-          text: "saw Jisoo today",
+          text: "saw Nina today",
           keyFacts: ["Is a branding designer."],
         },
       ]),
@@ -222,9 +222,9 @@ describe("profile screen", () => {
         {
           _id: "note-1",
           createdAt: Date.now(),
-          text: "Met Jisoo at Minho's housewarming.",
+          text: "Met Nina at Marcus's housewarming.",
           mentions: [
-            { profileId: "profile-minho", name: "Minho", quote: "at Minho's housewarming" },
+            { profileId: "profile-minho", name: "Marcus", quote: "at Marcus's housewarming" },
           ],
         },
       ]),
@@ -234,7 +234,7 @@ describe("profile screen", () => {
     await result;
 
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Open Minho" }));
+      fireEvent.press(screen.getByRole("button", { name: "Open Marcus" }));
     });
 
     expect(result.getPathname()).toBe("/profile/profile-minho");
@@ -246,9 +246,9 @@ describe("profile screen", () => {
         {
           noteId: "note-elsewhere",
           createdAt: Date.now(),
-          quote: "at Minho's housewarming",
+          quote: "at Marcus's housewarming",
           aboutProfileId: "profile-jisoo",
-          aboutName: "Jisoo",
+          aboutName: "Nina",
         },
       ]),
     );
@@ -259,7 +259,7 @@ describe("profile screen", () => {
     expect(screen.getByText("Mentioned in")).toBeTruthy();
 
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Open Jisoo" }));
+      fireEvent.press(screen.getByRole("button", { name: "Open Nina" }));
     });
 
     expect(result.getPathname()).toBe("/profile/profile-jisoo");
@@ -310,13 +310,13 @@ test("should keep a deleted person's name in the note but stop it opening anythi
       {
         _id: "note-1",
         createdAt: 1787933613833,
-        text: "Met Jiseon at Minho's housewarming.",
+        text: "Met Emma at Marcus's housewarming.",
         keyFacts: ["Met at a housewarming."],
         mentions: [
           {
             profileId: "gone-1",
-            name: "Minho",
-            quote: "at Minho's housewarming",
+            name: "Marcus",
+            quote: "at Marcus's housewarming",
             exists: false,
           },
         ],
@@ -329,23 +329,23 @@ test("should keep a deleted person's name in the note but stop it opening anythi
 
   // The name stays: removing it would rewrite what this note recorded, which
   // is not something deleting somebody else should be able to do.
-  expect(screen.getByText(/Minho/)).toBeTruthy();
+  expect(screen.getByText(/Marcus/)).toBeTruthy();
   // But it leads nowhere, and a button that opens a missing profile promises
   // something the app cannot do.
-  expect(screen.queryByRole("button", { name: "Open Minho" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Open Marcus" })).toBeNull();
 });
 
 test("should show the other names a person answers to", async () => {
   (useQuery as jest.Mock).mockReturnValue({
     ...withNotes([]),
-    profile: { ...buildProfile(), aliases: ["Jiseon unni", "Jiseon"] },
+    profile: { ...buildProfile(), aliases: ["Em", "Emma"] },
   });
 
   const result = renderRouter("src/app", { initialUrl: "/profile/contact-1" });
   await result;
 
   // Otherwise the only way to know Andy will recognise them is to try.
-  expect(screen.getByText("also Jiseon unni, Jiseon")).toBeTruthy();
+  expect(screen.getByText("also Em, Emma")).toBeTruthy();
 });
 
 test("should say how many mentions were left out when the list is truncated, and stay quiet when it is not", async () => {
@@ -354,9 +354,9 @@ test("should say how many mentions were left out when the list is truncated, and
   const entry = {
     noteId: "note-a",
     createdAt: 1787933613833,
-    quote: "at Minho's housewarming",
+    quote: "at Marcus's housewarming",
     aboutProfileId: "profile-other",
-    aboutName: "Jiseon",
+    aboutName: "Emma",
   };
 
   (useQuery as jest.Mock).mockReturnValue(withNotes([], [entry], 12));
