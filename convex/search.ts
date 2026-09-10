@@ -4,6 +4,7 @@ import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { action, internalQuery } from "./_generated/server";
 import { embedQuery } from "./embeddings";
+import { MAX_ANSWER_NOTES, MAX_QUESTION_CHARS } from "./answerPrompt";
 import { getAuthenticatedUser } from "./users";
 
 /**
@@ -55,7 +56,10 @@ const SEARCH_LIMIT = 12;
  */
 const MIN_SCORE = 0.15;
 
-const MAX_QUERY_CHARS = 500;
+// The question's length ceiling is owned by `answerPrompt.ts`: the same string
+// is the thing being embedded and the thing being answered, and two ceilings
+// would let one path accept what the other refuses.
+
 
 const resultValidator = v.object({
   noteId: v.id("notes"),
@@ -76,6 +80,11 @@ const resultValidator = v.object({
     entityType: v.union(v.literal("person"), v.literal("animal")),
     relationshipContext: v.optional(v.string()),
   }),
+  // Whether the written answer above actually drew on this note. Not decoration:
+  // `PROJECT_SCOPE.md` asks the answer to "show the notes it used", and a list
+  // of everything retrieved would show the notes it *might* have used, which is
+  // a different and weaker claim.
+  used: v.boolean(),
   // Who else came up in it. This is what makes a mention-only person findable:
   // "the software developer I met at Amy's birthday" matches Amy's note, and
   // the developer is standing right here in its mentions.
@@ -198,6 +207,9 @@ export const hydrate = internalQuery({
       results.push({
         noteId: note._id,
         score: hit.score,
+        // Filled in by the action once the answer says so. Hydration has no
+        // opinion about it and no way to form one.
+        used: false,
         text: note.text,
         keyFacts: note.keyFacts,
         createdAt: note.createdAt,
@@ -229,19 +241,26 @@ export const recall = action({
   args: { query: v.string() },
   returns: v.object({
     query: v.string(),
+    // Empty string when nothing was retrieved at all — there is nothing to
+    // write an answer over, and paying Claude to say so would be spending money
+    // to reach a conclusion already in hand.
+    answer: v.string(),
     results: v.array(resultValidator),
   }),
   // Annotated, not inferred. This handler reaches its own module through
   // `internal`, whose type is `typeof search` — so inferring this type needs
   // this type. TypeScript reports that as everything nearby going `any`.
-  handler: async (ctx, args): Promise<{ query: string; results: Result[] }> => {
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{ query: string; answer: string; results: Result[] }> => {
     const query = args.query.trim();
     if (query === "") {
       throw new ConvexError("Ask Andy something first.");
     }
     // This is embedded, so its cost is a network call on somebody else's meter.
     // A question is a sentence; anything past this is a paste.
-    if (query.length > MAX_QUERY_CHARS) {
+    if (query.length > MAX_QUESTION_CHARS) {
       throw new ConvexError("That's a long question. Try a shorter one.");
     }
 
@@ -281,6 +300,43 @@ export const recall = action({
       hits: relevant,
     });
 
-    return { query, results };
+    if (results.length === 0) {
+      return { query, answer: "", results };
+    }
+
+    // The model is shown exactly the notes the screen will show, indexed by
+    // position, so a citation always points at something the reader can tap.
+    // Recall is the Must-have; the written answer is what sits on top of it. So
+    // a Claude outage must not take the search down with it — the caller's own
+    // notes were already found, and handing back nothing because a third party
+    // is rate-limiting us would fail the important half for the sake of the
+    // optional one. The empty answer is the signal: the screen shows results
+    // with no answer block above them.
+    let answer: { answer: string; usedNotes: number[] };
+    try {
+      answer = await ctx.runAction(internal.answer.write, {
+        question: query,
+        notes: results.slice(0, MAX_ANSWER_NOTES).map((result, index) => ({
+          index,
+          aboutName: result.profile.name,
+          createdAt: new Date(result.createdAt).toISOString().slice(0, 10),
+          keyFacts: result.keyFacts,
+          text: result.text,
+        })),
+      });
+    } catch (error) {
+      console.error("Ask Andy could not write an answer:", error);
+      return { query, answer: "", results };
+    }
+
+    const used = new Set(answer.usedNotes);
+    return {
+      query,
+      answer: answer.answer,
+      results: results.map((result, index) => ({
+        ...result,
+        used: used.has(index),
+      })),
+    };
   },
 });

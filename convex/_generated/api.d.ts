@@ -8,6 +8,9 @@
  * @module
  */
 
+import type * as answer from "../answer.js";
+import type * as answerPrompt from "../answerPrompt.js";
+import type * as claude from "../claude.js";
 import type * as cleanup from "../cleanup.js";
 import type * as embeddingModel from "../embeddingModel.js";
 import type * as embeddings from "../embeddings.js";
@@ -26,6 +29,9 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  answer: typeof answer;
+  answerPrompt: typeof answerPrompt;
+  claude: typeof claude;
   cleanup: typeof cleanup;
   embeddingModel: typeof embeddingModel;
   embeddings: typeof embeddings;
