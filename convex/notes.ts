@@ -1,4 +1,5 @@
 import { ConvexError, v } from "convex/values";
+import { internal } from "./_generated/api";
 import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { removeOrphanedAutoCreated } from "./cleanup";
@@ -361,6 +362,16 @@ export const saveCapture = mutation({
       });
     }
 
+    // Search is a consequence of saving, not a step in it. Scheduled rather
+    // than awaited because embedding is a network call to OpenAI and a mutation
+    // cannot make one — and because a note the user just confirmed must be
+    // saved whether or not a third party is reachable this second. If the embed
+    // fails the note is simply not findable yet; `embeddings:backfillEmbeddings`
+    // is what repairs that.
+    await ctx.scheduler.runAfter(0, internal.embeddings.embedNotes, {
+      noteIds: [noteId],
+    });
+
     return { profileId, noteId, createdProfile, createdMentionCount };
   },
 });
@@ -485,10 +496,21 @@ export const updateNote = mutation({
       // an empty array would claim extraction ran and found nothing, which is a
       // different thing from a note that never had facts.
       keyFacts: keyFacts.length > 0 ? keyFacts : undefined,
-      // `embedding` is deliberately left alone rather than cleared. Day 4 owns
-      // that pipeline; clearing it here would silently drop this note out of
-      // search, and writing one is not this mutation's job. Recorded so the
-      // pipeline can decide what a stale vector should mean.
+      // `embedding` is still left alone here, and now that the pipeline exists
+      // that is a decision rather than a deferral. Clearing it would drop the
+      // note out of search until a network call succeeded; leaving it means the
+      // note stays findable, ranked by what it used to say, for the second or
+      // so until the job below replaces it. The reader never sees the stale
+      // text — results are hydrated live — so only the ranking is dated.
+    });
+
+    // Recomputed immediately rather than lazily at search time: the note's
+    // facts are what the user just corrected, and a correction that does not
+    // reach search is the same class of bug as one that does not reach the
+    // screen. `writeEmbedding` drops its result if a newer edit has already
+    // landed, so two fast edits cannot leave the older vector on top.
+    await ctx.scheduler.runAfter(0, internal.embeddings.embedNotes, {
+      noteIds: [noteId],
     });
 
     return null;
