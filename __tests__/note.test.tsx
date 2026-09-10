@@ -162,12 +162,15 @@ describe("note screen", () => {
       router.push("/note/note-1");
     });
 
-    // 하신데 → 하신대. One syllable, and it is the one that turns the sentence
-    // back into something Emma reported rather than something she did.
+    // "time" → "year": one word, and the one that makes the sentence say what
+    // was actually meant. The measured case was Korean — 하신데 heard as 하신대,
+    // one syllable turning reported speech into a plain clause — and the shape
+    // is what matters: a correction small enough that a test comparing the two
+    // strings loosely would miss it.
     await act(async () => {
       fireEvent.changeText(
         screen.getByLabelText("Note text"),
-        "His mother has cancer and is having a hard time",
+        "His mother has cancer and is having a hard year",
       );
     });
     await act(async () => {
@@ -176,7 +179,7 @@ describe("note screen", () => {
 
     await waitFor(() => expect(updateNote).toHaveBeenCalledTimes(1));
     const [args] = updateNote.mock.calls[0] ?? [];
-    expect(args?.text).toBe("His mother has cancer and is having a hard time");
+    expect(args?.text).toBe("His mother has cancer and is having a hard year");
     expect(args?.keyFacts).toEqual([
       "His mother has cancer",
       "Is having a hard time because of his mother",

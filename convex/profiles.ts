@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { removeOrphanedAutoCreated } from "./cleanup";
+import { MAX_NAME_CHARS } from "./extractionPrompt";
 import { cleanAliases, matchKey, mergeTags, namesOf } from "./naming";
 import schema from "./schema";
 import { getAuthenticatedUser } from "./users";
@@ -254,8 +255,6 @@ export const recent = query({
 });
 
 
-/** A name has to fit on a screen and in a person's head. */
-const MAX_NAME_CHARS = 120;
 /** Enough to describe anyone; past this it is a filing system, not a label. */
 const MAX_TAGS = 24;
 const MAX_TAG_CHARS = 60;

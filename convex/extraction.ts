@@ -11,6 +11,7 @@ import {
   EXTRACTION_SCHEMA,
   MAX_IMAGE_CHARS,
   MAX_TOKENS,
+  MAX_NAME_CHARS,
   MAX_TRANSCRIPT_CHARS,
   SYSTEM_PROMPT,
   buildUserMessage,
@@ -223,6 +224,17 @@ export const fromTranscript = action({
     if (text.length > MAX_TRANSCRIPT_CHARS) {
       throw new ConvexError(
         "That note is longer than Andy can take in one go. Try splitting it into two.",
+      );
+    }
+
+    // The same reasoning as the transcript ceiling above, for the same reason:
+    // this is a client-supplied string that goes straight to a paid API. The
+    // screen only ever sends a profile name, but the action is reachable
+    // without it. A name that does not fit on a profile screen does not need
+    // to fit here either.
+    if ((args.aboutName ?? "").length > MAX_NAME_CHARS) {
+      throw new ConvexError(
+        "Andy couldn't tell who that note was about. Try recording it again.",
       );
     }
 

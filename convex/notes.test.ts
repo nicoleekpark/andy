@@ -753,12 +753,12 @@ test("should save a corrected fact and transcript over the ones extraction wrote
 
   await asAlice.mutation(api.notes.updateNote, {
     noteId,
-    text: "His mother has cancer and is having a hard time",
+    text: "His mother has cancer and is having a hard year",
     keyFacts: ["His mother has cancer", "His mother is having a hard time"],
   });
 
   const result = await asAlice.query(api.notes.byId, { noteId });
-  expect(result?.note.text).toBe("His mother has cancer and is having a hard time");
+  expect(result?.note.text).toBe("His mother has cancer and is having a hard year");
   expect(result?.note.keyFacts).toEqual([
     "His mother has cancer",
     "His mother is having a hard time",
