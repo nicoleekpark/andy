@@ -186,10 +186,13 @@ Researched directly rather than assumed:
 ```
 Tap record (or type it) → speak → see extracted draft (name, tags, key facts) →
 confirm/edit → save
-   (name matches one person → append, and the screen says whose;
+   (name matches one person → append, and the screen says whose — with
+    "Different person?" beside it, because that is the moment a second
+    person by an existing name would be created;
     matches nobody → create, and the screen says so before it happens;
     matches several → the screen asks which, and each candidate can be
-    opened and read before choosing)
+    opened and read before choosing;
+    any of those pickers can answer "someone new" instead)
 ```
 
 The three outcomes are named on screen because two of them used to be silent

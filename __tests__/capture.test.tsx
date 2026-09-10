@@ -896,6 +896,320 @@ describe("capture screen review step", () => {
     ).toHaveLength(1);
   });
 
+  test("should let one match be refused, so a second person by that name can exist", async () => {
+    (useAction as jest.Mock).mockReturnValue(
+      jest.fn(async () => makeDraft({ name: "Priya" })),
+    );
+    const saveCapture = jest.fn(
+      async (_args: {
+        transcript: string;
+        draft: Draft;
+        source: string;
+        resolutions: { name: string; profileId: string | null }[];
+      }) => ({
+        profileId: "profile-new",
+        noteId: "note-1",
+        createdProfile: true,
+        createdMentionCount: 0,
+      }),
+    );
+    mockSaveCapture(saveCapture);
+    scopeTo("Priya", [
+      {
+        name: "Priya",
+        candidates: [
+          {
+            profileId: "profile-1",
+            name: "Priya",
+            relationshipContext: "client",
+            entityType: "person",
+            noteCount: 3,
+            lastNoteAt: new Date("2026-09-01T12:00:00").getTime(),
+          },
+        ],
+      },
+    ]);
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+    await reachReview(handlers, "Met Priya at the conference.");
+
+    // One match used to be the end of it — joined silently, with no way to say
+    // this is a different Priya. Saving must still be possible without
+    // answering, because usually it *is* the right person.
+    expect(
+      screen.getByText("Adding to Priya · client · 3 notes · last 2026-09-01"),
+    ).toBeTruthy();
+    expect(screen.getByLabelText("Save note")).not.toBeDisabled();
+
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Not this Priya?" }));
+    });
+    await act(async () => {
+      fireEvent.press(
+        screen.getByRole("button", { name: "New person called Priya" }),
+      );
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+    });
+
+    await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
+    expect(saveCapture.mock.calls[0]?.[0].resolutions).toEqual([
+      { name: "Priya", profileId: null },
+    ]);
+  });
+
+  test("should keep the single match when the picker is opened and left alone", async () => {
+    (useAction as jest.Mock).mockReturnValue(
+      jest.fn(async () => makeDraft({ name: "Priya" })),
+    );
+    const saveCapture = jest.fn(
+      async (_args: {
+        transcript: string;
+        draft: Draft;
+        source: string;
+        resolutions: { name: string; profileId: string | null }[];
+      }) => ({
+        profileId: "profile-1",
+        noteId: "note-1",
+        createdProfile: false,
+        createdMentionCount: 0,
+      }),
+    );
+    mockSaveCapture(saveCapture);
+    scopeTo("Priya", [
+      {
+        name: "Priya",
+        candidates: [
+          {
+            profileId: "profile-1",
+            name: "Priya",
+            relationshipContext: "client",
+            entityType: "person",
+            noteCount: 3,
+            lastNoteAt: new Date("2026-09-01T12:00:00").getTime(),
+          },
+        ],
+      },
+    ]);
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+    await reachReview(handlers, "Met Priya at the conference.");
+
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Not this Priya?" }));
+    });
+    // Opening the picker out of curiosity must not become an obligation: the
+    // line already said what saving does, and looking does not unsay it.
+    expect(screen.getByLabelText("Save note")).not.toBeDisabled();
+
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+    });
+    await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
+    expect(saveCapture.mock.calls[0]?.[0].resolutions).toEqual([]);
+  });
+
+  test("should offer a new person alongside the candidates when a name is shared", async () => {
+    (useAction as jest.Mock).mockReturnValue(
+      jest.fn(async () => makeDraft({ name: "지선" })),
+    );
+    const saveCapture = jest.fn(
+      async (_args: {
+        transcript: string;
+        draft: Draft;
+        source: string;
+        resolutions: { name: string; profileId: string | null }[];
+      }) => ({
+        profileId: "profile-new",
+        noteId: "note-1",
+        createdProfile: true,
+        createdMentionCount: 0,
+      }),
+    );
+    mockSaveCapture(saveCapture);
+    scopeTo("지선", [
+      {
+        name: "지선",
+        candidates: [
+          {
+            profileId: "profile-a",
+            name: "지선",
+            relationshipContext: "client",
+            entityType: "person",
+            noteCount: 4,
+            lastNoteAt: new Date("2026-08-01T12:00:00").getTime(),
+          },
+          {
+            profileId: "profile-b",
+            name: "지선",
+            relationshipContext: "이웃",
+            entityType: "person",
+            noteCount: 1,
+            lastNoteAt: new Date("2026-08-30T12:00:00").getTime(),
+          },
+        ],
+      },
+    ]);
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+    await reachReview(handlers, "지선을 오늘 만났다.");
+
+    // Two people by a name means a third is possible, and the picker has to
+    // say so — otherwise it can only ever file the note on somebody already
+    // kept, which is the case it exists to handle.
+    await act(async () => {
+      fireEvent.press(
+        screen.getByRole("button", { name: "New person called 지선" }),
+      );
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+    });
+
+    await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
+    expect(saveCapture.mock.calls[0]?.[0].resolutions).toEqual([
+      { name: "지선", profileId: null },
+    ]);
+  });
+
+  test("should let a mentioned person be refused too, not only the subject", async () => {
+    const draft = makeDraft({ name: "지선" });
+    draft.mentions[0] = {
+      name: "민호",
+      entityType: "person",
+      quote: "민호네 집들이에서",
+    };
+    (useAction as jest.Mock).mockReturnValue(jest.fn(async () => draft));
+    const saveCapture = jest.fn(
+      async (_args: {
+        transcript: string;
+        draft: Draft;
+        source: string;
+        resolutions: { name: string; profileId: string | null }[];
+      }) => ({
+        profileId: "profile-1",
+        noteId: "note-1",
+        createdProfile: false,
+        createdMentionCount: 1,
+      }),
+    );
+    mockSaveCapture(saveCapture);
+    scopeTo("지선", [
+      { name: "지선", candidates: [] },
+      {
+        name: "민호",
+        candidates: [
+          {
+            profileId: "minho-1",
+            name: "민호",
+            relationshipContext: "friend",
+            entityType: "person",
+            noteCount: 2,
+            lastNoteAt: new Date("2026-08-20T12:00:00").getTime(),
+          },
+        ],
+      },
+    ]);
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+    await reachReview(handlers, "지선을 민호네 집들이에서 만났다.");
+
+    // The mention gets the same escape as the subject. A note can name a
+    // different 민호 than the one already kept, and joining them silently is
+    // the same mistake wherever it happens.
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Not this 민호?" }));
+    });
+    await act(async () => {
+      fireEvent.press(
+        screen.getByRole("button", { name: "New person called 민호" }),
+      );
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+    });
+
+    await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
+    expect(saveCapture.mock.calls[0]?.[0].resolutions).toEqual([
+      { name: "민호", profileId: null },
+    ]);
+  });
+
+  test("should drop an answer once its name is edited, even by capitalisation alone", async () => {
+    (useAction as jest.Mock).mockReturnValue(
+      jest.fn(async () => makeDraft({ name: "priya" })),
+    );
+    const saveCapture = jest.fn(
+      async (_args: {
+        transcript: string;
+        draft: Draft;
+        source: string;
+        resolutions: { name: string; profileId: string | null }[];
+      }) => ({
+        profileId: "profile-1",
+        noteId: "note-1",
+        createdProfile: false,
+        createdMentionCount: 0,
+      }),
+    );
+    mockSaveCapture(saveCapture);
+    scopeTo("priya", [
+      {
+        name: "priya",
+        candidates: [
+          {
+            profileId: "profile-1",
+            name: "Priya",
+            relationshipContext: "client",
+            entityType: "person",
+            noteCount: 3,
+            lastNoteAt: new Date("2026-09-01T12:00:00").getTime(),
+          },
+        ],
+      },
+    ]);
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+    await reachReview(handlers, "Met priya at the conference.");
+
+    // Answer "someone new" for the name as first heard.
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Not this Priya?" }));
+    });
+    await act(async () => {
+      fireEvent.press(
+        screen.getByRole("button", { name: "New person called priya" }),
+      );
+    });
+
+    // Then fix the capitalisation, which is an ordinary correction and not a
+    // change of mind. The screen goes back to showing a plain "Adding to" line
+    // — no picker, nothing expanded — so saving must do what that line says.
+    await act(async () => {
+      fireEvent.changeText(screen.getByLabelText("Name"), "Priya");
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+    });
+
+    await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
+    // The server folds case when it matches names, so an answer keyed to
+    // "priya" would still be found by "Priya" and would create a duplicate —
+    // the exact failure this feature exists to prevent, inverted.
+    expect(saveCapture.mock.calls[0]?.[0].resolutions).toEqual([]);
+  });
+
   test("should let a candidate be opened and come back to the draft untouched", async () => {
     (useAction as jest.Mock).mockReturnValue(
       jest.fn(async () => makeDraft({ name: "지선" })),

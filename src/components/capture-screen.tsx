@@ -113,6 +113,7 @@ function describe(candidate: {
  */
 function Fate({
   candidates,
+  onDisagree,
 }: {
   candidates:
     | {
@@ -124,17 +125,47 @@ function Fate({
         lastNoteAt: number | null;
       }[]
     | undefined;
+  /**
+   * Opens the picker for this name. Absent while the picker is already open,
+   * which is what stops the screen offering to open what is in front of you.
+   */
+  onDisagree?: () => void;
 }) {
   if (candidates === undefined || candidates.length > 1) {
     return null;
   }
   const only = candidates[0];
+  if (only === undefined) {
+    return (
+      <Text style={styles.quiet}>New person — nobody by this name yet.</Text>
+    );
+  }
   return (
-    <Text style={styles.quiet}>
-      {only === undefined
-        ? "New person — nobody by this name yet."
-        : `Adding to ${only.name} · ${describe(only)}`}
-    </Text>
+    <View style={styles.fateRow}>
+      <Text style={[styles.quiet, styles.fateText]}>
+        Adding to {only.name} · {describe(only)}
+      </Text>
+      {/*
+        The line used to be the end of it: one match joined silently, and the
+        Priya just met could not be said to be a different Priya from the one
+        already kept. Two matches got a question; one match — the moment a
+        second person by that name would be born — got none.
+
+        A tap rather than a picker on every note. Most of the time it is the
+        right person, and a form in front of every save is how people stop
+        reading forms.
+      */}
+      {onDisagree === undefined ? null : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Not this ${only.name}?`}
+          onPress={onDisagree}
+          hitSlop={8}
+        >
+          <Text style={styles.disagree}>Different person?</Text>
+        </Pressable>
+      )}
+    </View>
   );
 }
 
@@ -180,7 +211,24 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
    * answered: the person who was in the room is standing in front of the
    * screen. `saveCapture` refuses to guess if this is skipped.
    */
-  const [resolutions, setResolutions] = useState<Record<string, string>>({});
+  const [resolutions, setResolutions] = useState<
+    Record<string, string | null>
+  >({});
+  /**
+   * Names whose picker the user has opened by hand.
+   *
+   * A name matching several people always shows one — it has to be answered.
+   * A name matching exactly one shows a line instead, and this is how that line
+   * turns into a choice: the common case stays a sentence, and "actually, a
+   * different person" is one tap away rather than absent.
+   */
+  const [expanded, setExpanded] = useState<string[]>([]);
+
+  /** Open the picker for a name, if it is not already open. */
+  const openPicker = useCallback((name: string) => {
+    const trimmed = name.trim();
+    setExpanded((open) => (open.includes(trimmed) ? open : [...open, trimmed]));
+  }, []);
 
   const extract = useAction(api.extraction.fromTranscript);
   const readCard = useAction(api.extraction.fromBusinessCard);
@@ -203,12 +251,17 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
    */
   const [extracted, setExtracted] = useState<Draft | null>(null);
 
-  const namesInDraft =
-    draft === null
-      ? []
-      : [draft.primary.name, ...draft.mentions.map((m) => m.name)]
-          .map((name) => name.trim())
-          .filter((name) => name !== "");
+  // Memoised because `save` depends on it: a fresh array every render would
+  // rebuild the callback constantly for no reason.
+  const namesInDraft = useMemo(
+    () =>
+      draft === null
+        ? []
+        : [draft.primary.name, ...draft.mentions.map((m) => m.name)]
+            .map((name) => name.trim())
+            .filter((name) => name !== ""),
+    [draft],
+  );
   const asked = useQuery(
     api.profiles.resolveNames,
     draft === null ? "skip" : { names: namesInDraft },
@@ -250,7 +303,30 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
       return byKey.get(matchKey(trimmed));
     };
   }, [resolved, asked]);
-  /** Every question answered, so saving cannot land on a coin toss. */
+  /**
+   * The names currently showing a picker: every ambiguous one, plus any the
+   * user opened with "Different person?".
+   *
+   * A name matching nobody is never here — there is nothing to choose between,
+   * and `<Fate>` already says a new person is about to be created.
+   */
+  const asking = useMemo(
+    () =>
+      resolved.filter(
+        (one) =>
+          one.candidates.length > 1 ||
+          (one.candidates.length === 1 && expanded.includes(one.name)),
+      ),
+    [resolved, expanded],
+  );
+
+  /**
+   * Every question that *must* be answered has been.
+   *
+   * Only the ambiguous ones are required. A picker the user opened themselves
+   * can be left alone — closing it or ignoring it means the single match still
+   * stands, which is what the line said before they tapped.
+   */
   const allAnswered = ambiguous.every(
     (question) => resolutions[question.name] !== undefined,
   );
@@ -607,15 +683,21 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
         transcript,
         draft,
         source,
-        // Only the answers still being asked for. A stale one — the name was
-        // edited after it was chosen — would name somebody this note no longer
-        // mentions, and the mutation rejects those rather than ignoring them.
-        resolutions: ambiguous.flatMap((question) => {
-          const profileId = resolutions[question.name];
-          return profileId === undefined
-            ? []
-            : [{ name: question.name, profileId }];
-        }),
+        // Answers for names the draft still contains — `null` included, since
+        // "none of them" is a decision and not silence.
+        //
+        // The filter is the part that matters. `resolutions` is keyed by name
+        // and nothing removes an entry when that name is edited away, so
+        // sending the whole object would carry an answer for a person this note
+        // no longer mentions. The mutation would accept it: the profile is
+        // still the caller's and still goes by that name, so its checks pass
+        // and it is `resolve()`'s answer the moment that text reappears
+        // anywhere in the draft. Silently right-looking, and wrong.
+        resolutions: namesInDraft.flatMap((name) =>
+          name in resolutions
+            ? [{ name, profileId: resolutions[name] ?? null }]
+            : [],
+        ),
       });
 
       // Never `push`: the capture is finished, and backing into a draft that
@@ -648,7 +730,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
       );
       setPhase("review");
     }
-  }, [draft, transcript, source, saveCapture, profileId, ambiguous, resolutions]);
+  }, [draft, transcript, source, saveCapture, profileId, resolutions, namesInDraft]);
 
   /** Edit one field of the draft's primary person. */
   const editPrimary = useCallback((patch: Partial<Draft["primary"]>) => {
@@ -724,7 +806,14 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
               afterwards. One line, and a wrong name is obvious while the field
               to fix it is still under the cursor.
             */}
-            <Fate candidates={fateOf(draft.primary.name)} />
+            <Fate
+              candidates={fateOf(draft.primary.name)}
+              onDisagree={
+                expanded.includes(draft.primary.name.trim())
+                  ? undefined
+                  : () => openPicker(draft.primary.name)
+              }
+            />
           </Field>
 
           <Field label="Who or what">
@@ -976,7 +1065,14 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
                     line about a row that is never written.
                   */}
                   {matchKey(mention.name) === matchKey(draft.primary.name) ? null : (
-                    <Fate candidates={fateOf(mention.name)} />
+                    <Fate
+                      candidates={fateOf(mention.name)}
+                      onDisagree={
+                        expanded.includes(mention.name.trim())
+                          ? undefined
+                          : () => openPicker(mention.name)
+                      }
+                    />
                   )}
                 </View>
               ))}
@@ -1029,88 +1125,131 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
           </Field>
 
           {/*
-            One question per name that more than one person answers to.
-            Above the save button rather than beside the name it is about: it
-            is not a correction to the draft, it is the thing standing between
-            this note and being saved, and it belongs where that is obvious.
-          */}
-          {ambiguous.map((question) => (
-            <Field
-              key={question.name}
-              label={`Which ${question.name}?`}
-            >
-              <Text style={styles.quiet}>
-                You keep more than one. This note goes to whichever you pick.
-              </Text>
-              {question.candidates.map((candidate) => {
-                const picked = resolutions[question.name] === candidate.profileId;
-                return (
-                  <Pressable
-                    key={candidate.profileId}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${candidate.name}, ${describe(candidate)}`}
-                    accessibilityState={{ selected: picked }}
-                    onPress={() =>
-                      setResolutions((current) => ({
-                        ...current,
-                        [question.name]: candidate.profileId,
-                      }))
-                    }
-                    style={[styles.candidate, picked && styles.candidateOn]}
-                  >
-                    <View style={styles.candidateHead}>
-                      <Text
-                        style={[
-                          styles.candidateName,
-                          picked && styles.candidateNameOn,
-                        ]}
-                      >
-                        {candidate.name}
-                      </Text>
-                      {/*
-                        A separate target from the card, on purpose. One line of
-                        summary is not enough to tell two people of the same name
-                        apart — the thing that settles it is what is written on
-                        each of them — but a card that opened a profile when
-                        tapped would make choosing require a trip you did not
-                        want, and a card that chose when you meant to look would
-                        be worse. Selecting stays one tap; looking is its own.
+            The questions about who a name means, above the save button.
 
-                        The draft survives the trip: this screen stays mounted
-                        beneath the profile, so coming back finds every edit,
-                        the transcript and any other answer exactly as they were.
-                      */}
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel={`View ${candidate.name}, ${describe(candidate)}`}
-                        onPress={() => router.push(`/profile/${candidate.profileId}`)}
-                        hitSlop={12}
-                      >
+            A name several people answer to is always here — it has to be
+            settled. A name exactly one person answers to is here only once the
+            user tapped "Different person?" beside it, because the common case
+            is that it is the right person and a picker in front of every note
+            would be a form to fill in rather than a note to save.
+          */}
+          {asking.map((question) => {
+            const answered = resolutions[question.name];
+            const mustAnswer = question.candidates.length > 1;
+            return (
+              <Field key={question.name} label={`Which ${question.name}?`}>
+                <Text style={styles.quiet}>
+                  {mustAnswer
+                    ? "You keep more than one. This note goes to whichever you pick."
+                    : "This note goes to whoever you pick — or to somebody new."}
+                </Text>
+                {question.candidates.map((candidate) => {
+                  const picked = answered === candidate.profileId;
+                  return (
+                    <Pressable
+                      key={candidate.profileId}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${candidate.name}, ${describe(candidate)}`}
+                      accessibilityState={{ selected: picked }}
+                      onPress={() =>
+                        setResolutions((current) => ({
+                          ...current,
+                          [question.name]: candidate.profileId,
+                        }))
+                      }
+                      style={[styles.candidate, picked && styles.candidateOn]}
+                    >
+                      <View style={styles.candidateHead}>
                         <Text
                           style={[
-                            styles.candidateView,
+                            styles.candidateName,
                             picked && styles.candidateNameOn,
                           ]}
                         >
-                          View
+                          {candidate.name}
                         </Text>
-                      </Pressable>
-                    </View>
-                    {/* Identical names are not a choice. What separates them is
-                        how you know them and what is already recorded. */}
-                    <Text
-                      style={[
-                        styles.candidateMeta,
-                        picked && styles.candidateNameOn,
-                      ]}
-                    >
-                      {describe(candidate)}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </Field>
-          ))}
+                        {/*
+                          A separate target from the card, on purpose. One line
+                          of summary is not enough to tell two people of the
+                          same name apart — what settles it is what is written
+                          on each — but a card that opened a profile when tapped
+                          would make choosing require a trip you did not want,
+                          and a card that chose when you meant to look would be
+                          worse. Selecting stays one tap; looking is its own.
+
+                          The draft survives the trip: this screen stays mounted
+                          beneath the profile, so coming back finds every edit,
+                          the transcript and any other answer as they were.
+                        */}
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`View ${candidate.name}, ${describe(candidate)}`}
+                          onPress={() => router.push(`/profile/${candidate.profileId}`)}
+                          hitSlop={12}
+                        >
+                          <Text
+                            style={[
+                              styles.candidateView,
+                              picked && styles.candidateNameOn,
+                            ]}
+                          >
+                            View
+                          </Text>
+                        </Pressable>
+                      </View>
+                      {/* Identical names are not a choice. What separates them
+                          is how you know them and what is already recorded. */}
+                      <Text
+                        style={[
+                          styles.candidateMeta,
+                          picked && styles.candidateNameOn,
+                        ]}
+                      >
+                        {describe(candidate)}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+                {/*
+                  The escape. Without it the picker can only ever file a note on
+                  somebody already kept, and the case it exists for — this is a
+                  different person with the same name — has no answer.
+                */}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`New person called ${question.name}`}
+                  accessibilityState={{ selected: answered === null }}
+                  onPress={() =>
+                    setResolutions((current) => ({
+                      ...current,
+                      [question.name]: null,
+                    }))
+                  }
+                  style={[
+                    styles.candidate,
+                    answered === null && styles.candidateOn,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.candidateName,
+                      answered === null && styles.candidateNameOn,
+                    ]}
+                  >
+                    Someone new
+                  </Text>
+                  <Text
+                    style={[
+                      styles.candidateMeta,
+                      answered === null && styles.candidateNameOn,
+                    ]}
+                  >
+                    A different {question.name}, kept separately
+                  </Text>
+                </Pressable>
+              </Field>
+            );
+          })}
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -1447,6 +1586,14 @@ const styles = StyleSheet.create({
   mentionQuoteInput: { fontSize: 14, lineHeight: 21 },
   transcriptInput: { fontSize: 15, lineHeight: 22 },
   addLine: { color: colors.moss, fontSize: 13, paddingTop: 4 },
+  fateRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  fateText: { flex: 1 },
+  disagree: { color: colors.moss, fontSize: 13 },
   /** The note being typed, filling the space the transcript would. */
   typedNote: {
     color: colors.ink,
