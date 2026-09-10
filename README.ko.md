@@ -148,7 +148,8 @@ convex/             # schema.ts, functions (queries/mutations/actions), vector i
 
 | 명령어 | 언제 | 왜 |
 | --- | --- | --- |
-| `xcrun simctl openurl booted "andy:///search"` | 아직 링크가 없는 화면에 들어갈 때 | **슬래시 세 개.** `andy://search` 는 `search` 를 URL 호스트로 해석하므로, `andy://profile/abc` 같은 중첩 경로는 에러 없이 조용히 홈 화면에 머문다. |
+| `xcrun simctl openurl booted "andy:///search"` | 화면으로 바로 뛰어들 때, 또는 아직 링크가 없는 화면에 들어갈 때 | **슬래시 세 개.** `andy://search` 는 `search` 를 URL 호스트로 해석하므로, `andy://profile/abc` 같은 중첩 경로는 에러 없이 조용히 홈 화면에 머문다. |
+| `npx convex run search:recall '{"query":"…"}' --identity '{"tokenIdentifier":"…","subject":"…","issuer":"…"}'` | **로그인 상태로** 백엔드 함수를 터미널에서 돌릴 때 | Day 5에 찾은 가장 쓸모 있는 것. `--identity` 없이는 인증이 필요한 함수가 전부 `You're signed out.` 만 답하고, 그래서 백엔드를 앱 밖에서 시험할 방법이 없었다. `tokenIdentifier` 는 `npm run db` → Data → `users` 에서 복사. Ask Andy 를 실제 노트로 측정한 것도, "액션의 `ctx.runQuery` 로 인증이 전파된다"를 `convex-test` 가 아니라 **배포**에 대고 증명한 것도 이 명령이다 — 그 목은 이제 두 번이나 배포와 다르게 동작한 것으로 확인됐다. |
 | `xcrun simctl io booted screenshot out.png` | 화면이 실제로 어떻게 보이는지 남길 때 | 말로 설명하는 것보다 빠르다. |
 
 ### 릴리스
