@@ -255,6 +255,14 @@ confirm/edit → save
     any of those pickers can answer "someone new" instead)
 ```
 
+**Home has an Ask Andy button rather than a search bar** — changed on day 5,
+when recall was built, and worth recording because it reads as a downgrade and
+is not one. Every question costs a paid embedding call, so there is no
+search-as-you-type to be had here at any price. A field on the home screen that
+looked live and only acted on submit would promise something the architecture
+cannot do, and the honest version of that promise is a button that opens a
+screen built for asking one question at a time.
+
 The three outcomes are named on screen because two of them used to be silent
 and each failed in the opposite direction: a misheard name invented a person
 nobody had met, and a shared name merged two. Aliases stop the same question
@@ -279,7 +287,8 @@ tap nudge → opens capture flow pre-scoped to that profile
 **Screens (minimum for V1, Expo Router)**
 
 ```
-/ (home)               → recent profiles, search bar, record button
+/ (home)               → recent profiles, "Ask Andy" button, record button
+                         (a button, not a live search bar — see below)
 /profile/[id]          → timeline, tags, metrics (if animal), photo, follow-up email button
 /profile/[id]/capture  → voice/typed capture, pre-scoped to this profile
 /profile/[id]/edit     → name, aliases, kind, relationship, first met, tags; delete
