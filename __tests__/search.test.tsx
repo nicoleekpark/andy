@@ -43,6 +43,7 @@ function buildResult(overrides: Record<string, unknown> = {}) {
       relationshipContext: "networking",
     },
     mentions: [],
+    used: false,
     ...overrides,
   };
 }
@@ -152,7 +153,11 @@ describe("search screen", () => {
     expect(screen.queryByText(/Ask in your own words/)).toBeNull();
 
     await act(async () => {
-      release({ query: "who runs a climbing gym", results: [buildResult()] });
+      release({
+        answer: "",
+        query: "who runs a climbing gym",
+        results: [buildResult()],
+      });
     });
     expect(screen.queryByLabelText("Searching")).toBeNull();
     expect(screen.getByText("Marcus")).toBeTruthy();
@@ -160,6 +165,7 @@ describe("search screen", () => {
 
   test("should send the trimmed question and show the note that answered it", async () => {
     recall.mockResolvedValue({
+      answer: "",
       query: "who runs a climbing gym",
       results: [buildResult()],
     });
@@ -179,6 +185,7 @@ describe("search screen", () => {
     "should show the transcript when a note %s",
     async (_case, keyFacts) => {
       recall.mockResolvedValue({
+        answer: "",
         query: "anything",
         results: [buildResult({ keyFacts })],
       });
@@ -192,6 +199,7 @@ describe("search screen", () => {
 
   test("should show each confirmed fact on its own line rather than as one run-on", async () => {
     recall.mockResolvedValue({
+      answer: "",
       query: "priya",
       results: [
         buildResult({
@@ -214,6 +222,7 @@ describe("search screen", () => {
 
   test("should offer everyone who came up in a note, not only the person it is about", async () => {
     recall.mockResolvedValue({
+      answer: "",
       query: "the Meta developer",
       results: [
         buildResult({
@@ -248,6 +257,7 @@ describe("search screen", () => {
 
   test("should leave a deleted person's name on the note but open nothing when it is pressed", async () => {
     recall.mockResolvedValue({
+      answer: "",
       query: "the birthday",
       results: [
         buildResult({
@@ -282,7 +292,7 @@ describe("search screen", () => {
   });
 
   test("should open the person a result is about when their name is pressed", async () => {
-    recall.mockResolvedValue({ query: "marcus", results: [buildResult()] });
+    recall.mockResolvedValue({ answer: "", query: "marcus", results: [buildResult()] });
     const { router } = await renderSearch();
 
     await ask("marcus");
@@ -293,8 +303,107 @@ describe("search screen", () => {
     expect(router.getPathname()).toBe("/profile/profile-marcus");
   });
 
+  test("should put the written answer above the notes it was written from", async () => {
+    recall.mockResolvedValue({
+      query: "who runs a climbing gym",
+      answer: "Marcus runs a climbing gym in Oakland.",
+      results: [buildResult({ used: true })],
+    });
+    await renderSearch();
+
+    await ask("who runs a climbing gym");
+
+    expect(
+      screen.getByText("Marcus runs a climbing gym in Oakland."),
+    ).toBeTruthy();
+    // The sources are named, not implied. Day 2 measured extraction laundering
+    // a mistranscription into a confident false fact; an answer with no visible
+    // source is that same failure with the evidence removed.
+    expect(screen.getByText(/From the marked notes/)).toBeTruthy();
+    expect(screen.getByText(/used in the answer/)).toBeTruthy();
+
+    // Order, not just presence. Moving the block from `ListHeaderComponent` to
+    // `ListFooterComponent` rendered the answer below every result and this
+    // test — named "above" — stayed green, because it only asked whether the
+    // text existed.
+    const rendered = screen
+      .getAllByText(/\S/)
+      .map((node) => String(node.props.children));
+    expect(
+      rendered.indexOf("Marcus runs a climbing gym in Oakland."),
+    ).toBeLessThan(rendered.indexOf("Marcus"));
+  });
+
+  test("should not claim the notes below are marked when the answer used none of them", async () => {
+    recall.mockResolvedValue({
+      query: "anything",
+      answer: "You haven't written anything about that.",
+      results: [buildResult({ used: false })],
+    });
+    await renderSearch();
+
+    await ask("anything");
+
+    expect(
+      screen.getByText("You haven't written anything about that."),
+    ).toBeTruthy();
+    // `usedNotes: []` is a designed outcome, not an edge case, so this is the
+    // common shape rather than a rare one — and a label pointing at marks that
+    // are not there is the answer citing evidence it does not have.
+    expect(screen.queryByText(/From the marked notes/)).toBeNull();
+  });
+
+  test("should show a retrieved note the answer did not use, but not call it a source", async () => {
+    recall.mockResolvedValue({
+      query: "anything",
+      answer: "You haven't written anything about that.",
+      results: [buildResult({ used: false })],
+    });
+    await renderSearch();
+
+    await ask("anything");
+
+    // Shown, because "here is everything near your question" is honest and
+    // hiding it would let a wrong answer look like the only thing there was.
+    expect(screen.getByText("Marcus")).toBeTruthy();
+    // Not marked, because the answer did not rest on it.
+    expect(screen.queryByText(/used in the answer/)).toBeNull();
+  });
+
+  test("should show no answer block at all when the search found nothing to answer from", async () => {
+    recall.mockResolvedValue({ query: "the capital of France", answer: "", results: [] });
+    await renderSearch();
+
+    await ask("what is the capital of France");
+
+    // By id, not by the label inside it. Asserting only on the label passes for
+    // the wrong reason — with nothing retrieved nothing is cited either, so the
+    // label is absent whether or not the empty block renders around it.
+    expect(screen.queryByTestId("answer")).toBeNull();
+    expect(screen.getByText(/Nothing saved about that yet/)).toBeTruthy();
+  });
+
+  test("should show no answer block when the answer came back blank but notes were found", async () => {
+    // What a Claude outage looks like from here: recall succeeded, the answer
+    // did not, and the backend hands back the notes with an empty answer rather
+    // than failing the half that worked. Whitespace rather than "" because that
+    // is what a model returns when it returns nothing useful.
+    recall.mockResolvedValue({
+      query: "marcus",
+      answer: "   ",
+      results: [buildResult()],
+    });
+    await renderSearch();
+
+    await ask("marcus");
+
+    expect(screen.queryByTestId("answer")).toBeNull();
+    // The notes still arrive. Recall is the Must-have; the prose sits on top.
+    expect(screen.getByText("Marcus")).toBeTruthy();
+  });
+
   test("should say plainly that nothing is saved about it rather than showing an empty list", async () => {
-    recall.mockResolvedValue({ query: "the capital of France", results: [] });
+    recall.mockResolvedValue({ answer: "", query: "the capital of France", results: [] });
     await renderSearch();
 
     await ask("what is the capital of France");
@@ -356,7 +465,7 @@ describe("search screen", () => {
       expect(screen.getByText("Ask Andy something first.")).toBeTruthy(),
     );
 
-    recall.mockResolvedValueOnce({ query: "marcus", results: [buildResult()] });
+    recall.mockResolvedValueOnce({ answer: "", query: "marcus", results: [buildResult()] });
     await ask("marcus");
 
     await waitFor(() => expect(screen.getByText("Marcus")).toBeTruthy());
