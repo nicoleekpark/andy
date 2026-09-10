@@ -162,9 +162,15 @@ Priya already kept, and one match joined silently.
 
 ## Not built yet — do not file these
 
-Search (`/search` is a placeholder), the calendar briefing, notifications, the
-widget, the Siri shortcut, contacts sync, photo attachments, animal metrics,
-the follow-up email, vCard export, dark mode. See `PROJECT_SCOPE.md`.
+**Coming in V1, just not yet.** Ask Andy (`/search` is a placeholder), the
+calendar briefing and its notifications, business-card photo, photo
+attachments, the follow-up email draft, the app lock, dark mode.
+
+**Cut from V1 on day 4 — will not be built before launch, so a bug report
+against them is noise, not signal.** The home widget, the Siri shortcut,
+contacts sync, animal-metrics UI, tag filters, vCard export. The widget is
+already scheduled as the first thing after V1. See `PROJECT_SCOPE.md` →
+"The V1 scope cut".
 
 `autoCreated` people — someone who only ever came up inside somebody else's
 note — are **deliberately absent from the home list**. That is not a bug.

@@ -1,16 +1,19 @@
 # Andy
 
-Voice-note a person → LLM structures it into a searchable profile → recall it later via natural language, a Siri Shortcut, or a home-screen widget.
+Voice-note a person → LLM structures it into a searchable profile → ask for it back in plain language, and get briefed before the meeting.
 
-See [`PROJECT_SCOPE.md`](./PROJECT_SCOPE.md) for the full feature scope, architecture, and 7-day build plan. See [`CLAUDE.md`](./CLAUDE.md) for how Claude Code should work in this repo.
+See [`PROJECT_SCOPE.md`](./PROJECT_SCOPE.md) for the full feature scope, architecture, and build plan — including **the V1 scope cut made on day 4**, which is what removed the Siri Shortcut and the home widget from this line. Both are first in the V1.1 queue. See [`CLAUDE.md`](./CLAUDE.md) for how Claude Code should work in this repo.
 
 ## Stack
 
 - Expo (React Native) + TypeScript
 - Convex (database, backend functions, realtime, vector search, file storage)
 - Clerk (auth — Apple Sign-In for V1)
-- Claude API (extraction + RAG chatbot, called server-side only from Convex actions)
-- expo-contacts, expo-audio (recording), expo-speech-recognition (transcription), expo-speech (TTS for Siri responses), expo-local-authentication (passcode/biometric app lock)
+- Claude API (extraction, vision for business cards, and the answers over retrieved notes — called server-side only from Convex actions, never from the client)
+- OpenAI `text-embedding-3-large` at 1024 dimensions (note embeddings, also server-side only)
+- expo-audio (recording), expo-speech-recognition (transcription), expo-image-picker (business card + photo attach), expo-calendar (briefing), expo-notifications, expo-local-authentication (passcode/biometric app lock)
+
+_`expo-contacts` and `expo-speech` are not V1 dependencies — contacts sync and the Siri Shortcut were cut on day 4._
 
 ## Tech Stack Decisions (why, and what else we considered)
 
