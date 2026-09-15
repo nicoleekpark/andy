@@ -114,24 +114,59 @@ async function seedNote(
 // What gets embedded
 // ---------------------------------------------------------------------------
 
-test("should put the confirmed key facts ahead of the raw transcript, because those are the version the user endorsed", () => {
+test("should embed the facts and not the transcript, so a correction actually takes effect", () => {
+  // The bug this exists to stop, found by using the app: a note was corrected
+  // from "puppy" to "kitten" and searching "puppy" still found it, because the
+  // transcript still said puppy and the transcript was in the vector. The app
+  // was contradicting the user's own edit.
   const composed = embeddingTextFor({
-    text: "she is moving to seattle next month",
-    keyFacts: ["Moving to Seattle in October 2026"],
+    text: "park just got a puppy called biscuit",
+    keyFacts: ["Just got a kitten called Biscuit"],
+  });
+
+  expect(composed).toBe("Just got a kitten called Biscuit");
+  expect(composed).not.toContain("puppy");
+});
+
+test("should keep every fact, not just the first, since they are all things to remember", () => {
+  const composed = embeddingTextFor({
+    text: "she is moving to seattle next month for a robotics job",
+    keyFacts: [
+      "Moving to Seattle in October 2026",
+      "Starting a new job at a robotics startup",
+    ],
   });
 
   expect(composed).toBe(
-    "Moving to Seattle in October 2026\nshe is moving to seattle next month",
+    "Moving to Seattle in October 2026\nStarting a new job at a robotics startup",
   );
 });
 
-test("should embed a note that has no key facts at all, since a typed note never had an extraction step", () => {
+test("should fall back to the transcript when a note has no facts, so it cannot go invisible", () => {
+  // Extraction sometimes finds nothing, and `updateNote` lets every fact be
+  // blanked. Facts-only with no fallback would leave such a note unsearchable
+  // for ever, silently — a worse failure than an imprecise match.
   expect(embeddingTextFor({ text: "지선이 이사감" })).toBe("지선이 이사감");
+  expect(embeddingTextFor({ text: "지선이 이사감", keyFacts: [] })).toBe(
+    "지선이 이사감",
+  );
+  // Whitespace-only facts are no facts. `updateNote` trims them out on the way
+  // in, but the fallback must not depend on another function having done so.
+  expect(
+    embeddingTextFor({ text: "지선이 이사감", keyFacts: ["   ", ""] }),
+  ).toBe("지선이 이사감");
 });
 
 test("should cut a note down to the character budget rather than let the request be refused whole", () => {
   const composed = embeddingTextFor({ text: "가".repeat(MAX_EMBEDDING_CHARS * 2) });
   expect(composed).toHaveLength(MAX_EMBEDDING_CHARS);
+  // And the same ceiling when the length comes from facts rather than text.
+  expect(
+    embeddingTextFor({
+      text: "short",
+      keyFacts: ["나".repeat(MAX_EMBEDDING_CHARS * 2)],
+    }),
+  ).toHaveLength(MAX_EMBEDDING_CHARS);
 });
 
 // ---------------------------------------------------------------------------
@@ -369,9 +404,11 @@ test("should give a note saved through the capture path a vector without the use
   const stored = await t.run(async (ctx) => ctx.db.get("notes", noteId));
   expect(stored?.embedding).toEqual(vectorFor(5));
   const body = JSON.parse(fetchMock.mock.calls[0][1].body);
-  expect(body.input[0]).toBe(
-    "Moving to Seattle in October 2026\nPriya is moving to Seattle next month.",
-  );
+  expect(body.input[0]).toBe("Moving to Seattle in October 2026");
+  // The transcript is not sent. Asserting its absence, not just the facts'
+  // presence — the old version of this test checked only that the combined
+  // string matched, which would have passed for either contract.
+  expect(body.input[0]).not.toContain("Priya is moving to Seattle next month");
 });
 
 test("should re-embed a note after a correction, so a fixed fact reaches search and not only the screen", async () => {
@@ -507,4 +544,56 @@ test("should stop rather than loop forever on a note it can never embed", async 
   // the kind of thing a passing test hides.
   expect(result).toEqual({ embedded: 0, remaining: 1, passes: 1 });
   expect(fetchMock).not.toHaveBeenCalled();
+});
+
+// ---------------------------------------------------------------------------
+// Re-indexing — for the day `embeddingTextFor` itself changes
+// ---------------------------------------------------------------------------
+
+test("should recompute a vector that already exists, which the repair backfill will not", async () => {
+  const t = convexTest(schema, modules);
+  const { noteId } = await seedNote(t, { text: "Already embedded." });
+  const stale = vectorFor(1);
+  await t.run(async (ctx) => ctx.db.patch("notes", noteId, { embedding: stale }));
+
+  fetchMock.mockResolvedValueOnce(embeddingsResponse([vectorFor(2)]));
+  const result = await t.action(internal.embeddings.reindexAll, {});
+
+  expect(result.reindexed).toBe(1);
+  const stored = await t.run(async (ctx) => ctx.db.get("notes", noteId));
+  // The distinction that matters: `backfillEmbeddings` sees a note that has a
+  // vector and leaves it alone. After a change to what gets embedded, every
+  // vector is stale at once and every note has one, so the backfill finds
+  // nothing to do and search keeps answering from text we no longer send.
+  expect(stored?.embedding).toEqual(vectorFor(2));
+  expect(stored?.embedding).not.toEqual(stale);
+});
+
+test("should walk past the end of one page rather than re-index only the first batch", async () => {
+  const t = convexTest(schema, modules);
+  const { userId, profileId } = await seedNote(t, { text: "Note 0." });
+  await t.run(async (ctx) => {
+    for (let i = 1; i < 70; i += 1) {
+      await ctx.db.insert("notes", {
+        userId,
+        profileId,
+        text: `Note ${i}.`,
+        source: "voice" as const,
+        createdAt: Date.UTC(2026, 8, 10, 12),
+      });
+    }
+  });
+
+  fetchMock.mockImplementation(async (_url: string, init: { body: string }) => {
+    const inputs = JSON.parse(init.body).input as string[];
+    return embeddingsResponse(inputs.map((_, index) => vectorFor(index)));
+  });
+
+  const result = await t.action(internal.embeddings.reindexAll, {});
+
+  // 70 notes against a batch of 64 — a re-index that stopped after one page
+  // would report 64 and leave six notes answering from the old text, which is
+  // exactly the kind of partial success that looks like success.
+  expect(result.reindexed).toBe(70);
+  expect(result.pages).toBeGreaterThan(1);
 });

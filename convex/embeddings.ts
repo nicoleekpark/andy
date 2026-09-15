@@ -288,6 +288,37 @@ export const embedNotes = internalAction({
  * owns it. Being internal is what keeps that safe — there is no client route to
  * this, and nothing here returns note content.
  */
+/**
+ * Every note, a page at a time, for a re-index.
+ *
+ * Separate from `notesMissingEmbedding` because it answers a different question:
+ * that one finds notes that were never embedded, this one finds notes whose
+ * vector may be stale *as a whole class* — which is what happens the day
+ * `embeddingTextFor` changes and every stored vector is suddenly computed from
+ * text the app no longer sends.
+ *
+ * Paginated rather than collected: a re-index is the one operation that touches
+ * every row, so it is the one that must not assume the table is small.
+ */
+export const noteIdsPage = internalQuery({
+  args: { cursor: v.union(v.string(), v.null()), limit: v.number() },
+  returns: v.object({
+    noteIds: v.array(v.id("notes")),
+    cursor: v.union(v.string(), v.null()),
+    isDone: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const page = await ctx.db
+      .query("notes")
+      .paginate({ numItems: args.limit, cursor: args.cursor });
+    return {
+      noteIds: page.page.map((note) => note._id),
+      cursor: page.continueCursor,
+      isDone: page.isDone,
+    };
+  },
+});
+
 export const notesMissingEmbedding = internalQuery({
   args: { limit: v.number() },
   returns: v.array(v.id("notes")),
@@ -297,6 +328,67 @@ export const notesMissingEmbedding = internalQuery({
       .filter((q) => q.eq(q.field("embedding"), undefined))
       .take(args.limit);
     return notes.map((note) => note._id);
+  },
+});
+
+/**
+ * Recompute every note's vector, whether it has one or not.
+ *
+ * `backfillEmbeddings` deliberately skips notes that already have a vector, which
+ * is right for repair and wrong for the one case it cannot see: a change to
+ * `embeddingTextFor` itself. Then every stored vector is stale at once — each
+ * note has *a* vector, so the backfill finds nothing to do, and search quietly
+ * keeps answering from text the app no longer sends.
+ *
+ * Run it by hand after changing what gets embedded:
+ *
+ *     npx convex run embeddings:reindexAll '{}'
+ *
+ * Not scheduled and not automatic. It costs one OpenAI call per batch over the
+ * whole table, and the thing that triggers it is a deliberate edit to this
+ * repo — not a condition the app can detect at runtime.
+ */
+export const reindexAll = internalAction({
+  args: {},
+  returns: v.object({ reindexed: v.number(), pages: v.number() }),
+  handler: async (ctx): Promise<{ reindexed: number; pages: number }> => {
+    let reindexed = 0;
+    let pages = 0;
+    let cursor: string | null = null;
+
+    // Bounded for the same reason `backfillEmbeddings` is: an action that loops
+    // on a condition it does not control should not be able to loop for ever.
+    // At `EMBED_BATCH` a page, this covers 64,000 notes — far past anything this
+    // app will hold — and turns "paginate never said it was done" from a hang
+    // into a number that does not add up.
+    const MAX_PAGES = 1_000;
+    for (let page_no = 0; page_no < MAX_PAGES; page_no += 1) {
+      const page: {
+        noteIds: Id<"notes">[];
+        cursor: string | null;
+        isDone: boolean;
+      } = await ctx.runQuery(internal.embeddings.noteIdsPage, {
+        cursor,
+        limit: EMBED_BATCH,
+      });
+      pages += 1;
+
+      if (page.noteIds.length > 0) {
+        const result = await ctx.runAction(internal.embeddings.embedNotes, {
+          noteIds: page.noteIds,
+        });
+        reindexed += result.embedded;
+      }
+
+      if (page.isDone) break;
+      // A cursor that does not move means the next page is this page. The page
+      // cap already stops a hang, but it would stop it after a thousand paid
+      // OpenAI requests for the same 64 notes.
+      if (page.cursor === cursor) break;
+      cursor = page.cursor;
+    }
+
+    return { reindexed, pages };
   },
 });
 
