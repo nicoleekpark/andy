@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { EMBEDDING_DIMENSIONS } from "./embeddingModel";
 
 /**
  * Andy — core data model.
@@ -81,8 +82,8 @@ export default defineSchema({
     // read correctly next to the date it was recorded.
     // Optional because a manually typed note has no extraction step.
     keyFacts: v.optional(v.array(v.string())),
-    // Written by the Day 4 embedding pipeline; notes created before then, or by
-    // manual entry, simply have no vector yet.
+    // Written by the embedding pipeline; a note has no vector until that has
+    // run for it, so this stays optional and search simply cannot see it yet.
     embedding: v.optional(v.array(v.float64())),
     // Which front door this note came through. Additive: a new channel adds a
     // literal, existing rows keep whatever they already had.
@@ -104,7 +105,9 @@ export default defineSchema({
     ])
     .vectorIndex("by_embedding", {
       vectorField: "embedding",
-      dimensions: 1536,
+      // Never a literal — `embeddingModel.ts` owns this number, because the
+      // request body that produces the vectors has to name the same one.
+      dimensions: EMBEDDING_DIMENSIONS,
       filterFields: ["userId"],
     }),
 

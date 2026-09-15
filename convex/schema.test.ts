@@ -1,6 +1,9 @@
 /// <reference types="vite/client" />
+import { readFileSync } from "node:fs";
+
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
+import { EMBEDDING_DIMENSIONS, EMBEDDING_MODEL } from "./embeddingModel";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -304,5 +307,76 @@ test("should return the matching user for a given tokenIdentifier via by_token",
       .unique();
 
     expect(found?._id).toBe(targetUserId);
+  });
+});
+
+/**
+ * The vector index is the one part of this schema that cannot be changed
+ * cheaply later.
+ *
+ * `dimensions` is fixed when the index is deployed and every stored vector has
+ * to be exactly that long, so the day this number changes is the day every note
+ * has to be re-embedded. These tests exist to make that day loud.
+ */
+test("should declare the notes vector index from the shared constant, never a literal of its own", () => {
+  // This reads the declaration as text on purpose, and the reason is worth
+  // stating rather than working around. Convex exposes no supported accessor
+  // for a table's vector indexes — `" indexes"()` covers db indexes only and
+  // is marked experimental, and the `export()` this first reached for is not in
+  // the public types at all. Meanwhile the in-memory test database does not
+  // enforce vector length: with `dimensions` hardcoded to 1536, a 1024-long
+  // vector still inserted and read back fine here. Only the deployment checks,
+  // and by then a mismatch shows up as a search that returns nothing.
+  //
+  // So the honest test is on the one thing this repo controls: that the number
+  // is not written twice.
+  const source = readFileSync(new URL("./schema.ts", import.meta.url), "utf8");
+  const vectorIndex = source.slice(source.indexOf('.vectorIndex("by_embedding"'));
+  const declaration = vectorIndex.slice(0, vectorIndex.indexOf("})"));
+
+  expect(declaration).toContain("dimensions: EMBEDDING_DIMENSIONS");
+  expect(declaration).not.toMatch(/dimensions:\s*\d/);
+  // First line of defence, not the only one — the hydration step re-checks
+  // ownership (CLAUDE.md, join sites). But a filter field has to exist at
+  // deploy time, so if it is missing here it cannot be added at query time.
+  expect(declaration).toMatch(/filterFields:\s*\["userId"\]/);
+});
+
+test("should pin the embedding model and dimension, so changing either is a deliberate act", () => {
+  // Not a restatement of the constant for its own sake. Re-embedding every note
+  // is the cost of editing this line, and a test going red is the only thing
+  // standing between a one-character edit and that cost.
+  expect(EMBEDDING_DIMENSIONS).toBe(1024);
+  expect(EMBEDDING_MODEL).toBe("text-embedding-3-large");
+});
+
+test("should store and read back a vector of exactly the declared length", async () => {
+  const t = convexTest(schema, modules);
+  await t.run(async (ctx) => {
+    const userId = await ctx.db.insert("users", { tokenIdentifier: "user_1" });
+    const profileId = await ctx.db.insert("profiles", {
+      userId,
+      name: "Priya",
+      entityType: "person",
+      tags: [],
+      autoCreated: false,
+    });
+
+    const embedding = Array.from(
+      { length: EMBEDDING_DIMENSIONS },
+      (_, i) => i / EMBEDDING_DIMENSIONS,
+    );
+    const noteId = await ctx.db.insert("notes", {
+      userId,
+      profileId,
+      text: "Priya is moving to Seattle next month.",
+      source: "voice",
+      createdAt: Date.UTC(2026, 8, 10, 12),
+      embedding,
+    });
+
+    const stored = await ctx.db.get(noteId);
+    expect(stored?.embedding).toHaveLength(EMBEDDING_DIMENSIONS);
+    expect(stored?.embedding?.[1]).toBeCloseTo(1 / EMBEDDING_DIMENSIONS);
   });
 });
