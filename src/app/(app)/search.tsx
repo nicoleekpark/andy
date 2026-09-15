@@ -42,10 +42,18 @@ export default function SearchScreen() {
 
   const [question, setQuestion] = useState("");
   const [results, setResults] = useState<Results | null>(null);
+  const [answer, setAnswer] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const ready = question.trim() !== "" && !busy;
+  // Whether anything below is actually marked. The answer's source line claims
+  // there are marks, and `usedNotes: []` is a designed outcome rather than an
+  // edge case — the prompt tells the model to cite nothing when it drew on
+  // nothing, and the score floor is deliberately low enough that near-misses
+  // reach it. So "retrieved something, cited none" is a common shape, and the
+  // label must not point at marks that are not there.
+  const cited = results?.some((result) => result.used) ?? false;
 
   async function ask() {
     // Submit only. An embedding is a paid call on somebody else's meter, so a
@@ -55,9 +63,14 @@ export default function SearchScreen() {
 
     setBusy(true);
     setError(null);
+    // Not load-bearing today — `busy` swaps the whole list out, so no stale
+    // answer is on screen while the next one is in flight. It costs nothing and
+    // stops that from being the only thing standing in the way.
+    setAnswer("");
     try {
-      const answer = await recall({ query: question.trim() });
-      setResults(answer.results);
+      const response = await recall({ query: question.trim() });
+      setAnswer(response.answer);
+      setResults(response.results);
     } catch (thrown) {
       // The server's own words when it wrote them for a person to read; a plain
       // line otherwise. Never the raw error — it can carry the question back.
@@ -67,6 +80,7 @@ export default function SearchScreen() {
           : "Andy couldn't reach that just now. Try again.",
       );
       setResults(null);
+      setAnswer("");
     } finally {
       setBusy(false);
     }
@@ -133,6 +147,25 @@ export default function SearchScreen() {
             keyExtractor={(item) => item.noteId}
             contentContainerStyle={styles.list}
             keyboardShouldPersistTaps="handled"
+            ListHeaderComponent={
+              answer.trim() === "" ? null : (
+                <View style={styles.answer} testID="answer">
+                  <Text style={styles.answerText}>{answer}</Text>
+                  {/*
+                    Only when something is actually marked. Named rather than
+                    implied, because an answer written over notes is only as good
+                    as the notes — day 2 measured extraction laundering a
+                    mistranscription into a confident false fact, so what the
+                    answer rests on has to be reachable rather than summarised.
+                    Which is exactly why claiming marks that are not there would
+                    be worse than saying nothing.
+                  */}
+                  {cited && (
+                    <Text style={styles.label}>From the marked notes below</Text>
+                  )}
+                </View>
+              )
+            }
             ListEmptyComponent={
               <View style={styles.centred}>
                 <Text style={styles.quiet}>
@@ -164,6 +197,15 @@ function ResultCard({ result }: { result: Results[number] }) {
       </Pressable>
       <Text style={styles.cardMeta}>
         {[
+          // First, not last. Read at the end of the line at 12px it was the
+          // least prominent text on the card, doing the job the answer's label
+          // calls "marked". At the front the marks line up down the left edge
+          // and the list can be scanned for them.
+          //
+          // The unmarked notes are still shown: "here is everything near your
+          // question" is honest, and hiding them would let a wrong answer look
+          // like the only thing there was.
+          result.used ? "used in the answer" : null,
           result.profile.relationshipContext,
           new Date(result.createdAt).toLocaleDateString("en-CA"),
         ]
@@ -189,7 +231,7 @@ function ResultCard({ result }: { result: Results[number] }) {
       {result.mentions.length > 0 && (
         <View style={styles.mentions}>
           {/* Same words as the profile screen. One concept, one name. */}
-          <Text style={styles.mentionsLabel}>Also came up</Text>
+          <Text style={styles.label}>Also came up</Text>
           <View style={styles.mentionRow}>
             {/*
               One guard, not two — the element type itself. A `Pressable` with
@@ -258,6 +300,21 @@ const styles = StyleSheet.create({
 
   error: { color: colors.alert, fontSize: 14, lineHeight: 20 },
 
+  // Plain, like everything else on this screen. `STYLE.md` keeps `brass` for the
+  // Briefing card and names search results as a place that stays disciplined —
+  // an answer in the signature colour would spend the one risk twice.
+  // The most important text on the screen, so it gets weight from size and
+  // space rather than colour: `STYLE.md` keeps `brass` for the Briefing card and
+  // names search results as a screen that stays plain. At 17px under a hairline
+  // it read as "card zero" — smaller than the profile names beneath it.
+  answer: {
+    gap: 8,
+    paddingBottom: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
+  },
+  answerText: { color: colors.ink, fontSize: 19, lineHeight: 28 },
+
   list: { paddingBottom: 8, flexGrow: 1 },
   // A hairline instead of a gap: two notes about the same person head two cards
   // with the same name, and with only whitespace between them they read as one
@@ -280,8 +337,9 @@ const styles = StyleSheet.create({
   mentions: { gap: 4, marginTop: 3 },
   // A section header, so `fonts.display` — `STYLE.md` puts utility on dates,
   // tags and counts, not on headings. Matches `sectionLabel` on the profile
-  // screen rather than restating it differently.
-  mentionsLabel: {
+  // screen rather than restating it differently. One definition, both uses:
+  // written twice in one StyleSheet they were byte-identical.
+  label: {
     color: colors.ink,
     fontSize: 11,
     opacity: 0.45,

@@ -11,17 +11,53 @@ const modules = import.meta.glob("./**/*.ts");
 const ALICE = { subject: "alice", name: "Alice", email: "alice@example.com" };
 const BOB = { subject: "bob", name: "Bob", email: "bob@example.com" };
 
-const { fetchMock } = vi.hoisted(() => ({ fetchMock: vi.fn() }));
+const { fetchMock, createMessage } = vi.hoisted(() => ({
+  fetchMock: vi.fn(),
+  createMessage: vi.fn(),
+}));
+
+/**
+ * `recall` writes an answer over whatever it retrieves, so every test here that
+ * finds anything now goes through Claude too. Mocked at the SDK module, the
+ * same seam `extraction.test.ts` and `answer.test.ts` use.
+ *
+ * This file is about retrieval and ownership, so the answer is held constant
+ * and deliberately uninteresting — `answer.test.ts` is where its behaviour is
+ * asserted. What matters here is that these tests keep failing for retrieval
+ * reasons rather than starting to fail for answer ones.
+ */
+vi.mock("@anthropic-ai/sdk", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@anthropic-ai/sdk")>();
+  class MockAnthropic {
+    static AuthenticationError = actual.AuthenticationError;
+    static RateLimitError = actual.RateLimitError;
+    static APIConnectionError = actual.APIConnectionError;
+    messages = { create: createMessage };
+  }
+  return { ...actual, default: MockAnthropic };
+});
 
 beforeEach(() => {
   vi.stubEnv("OPENAI_API_KEY", "sk-proj-test-key");
+  vi.stubEnv("ANTHROPIC_API_KEY", "sk-ant-test-key");
   vi.stubGlobal("fetch", fetchMock);
+  createMessage.mockResolvedValue({
+    id: "msg_1",
+    type: "message",
+    role: "assistant",
+    model: "claude-haiku-4-5",
+    stop_reason: "end_turn",
+    stop_sequence: null,
+    content: [{ type: "text", text: JSON.stringify({ answer: "…", usedNotes: [] }) }],
+    usage: { input_tokens: 1, output_tokens: 1 },
+  });
 });
 
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
   fetchMock.mockReset();
+  createMessage.mockReset();
 });
 
 /**
