@@ -158,11 +158,28 @@ Priya already kept, and one match joined silently.
 | 11.4 | `xcrun simctl openurl booted "andy:///profile/zzz"` | Not-found line **centred**, not pinned to the top |
 | 11.5 | Sign out, sign in as another account | No trace of the first account's people, not even for a frame |
 
+## 12. Search indexing
+
+Every note is embedded by a scheduled job right after it is saved. The unit
+tests mock `fetch`, so they prove the wiring and never prove that OpenAI is
+reachable from the deployment or that a real note produces a real vector.
+That is what these rows are for. `npm run db` is required — a vector is
+invisible on every screen.
+
+| # | Do this | Expect |
+|---|---|---|
+| 12.1 | Record any note, then `npm run db` → Data → `notes` → the new row | An `embedding` field holding **1024** numbers, within a second or two of saving. Absent means the job failed — check the Convex logs |
+| 12.2 | Save a note with Wi-Fi off, then turn it back on | The note **saves anyway** and appears on the profile. It simply has no `embedding`. Saving must never wait on OpenAI |
+| 12.3 | After 12.2, run `npx convex run embeddings:backfillEmbeddings '{}'` | `remaining: 0`, and that note now has its 1024 numbers. This is the whole repair story — there is no automatic retry |
+| 12.4 | Open a saved note → `Edit` → change a fact → save. Re-read the row in `npm run db` | The `embedding` array is **different from before**. A correction that reaches the screen but not the vector would leave search answering with the old wording |
+| 12.5 | Edit the same note twice in quick succession | The final `embedding` matches the **final** text. Two jobs race; the loser is meant to drop its result |
+
 ---
 
 ## Not built yet — do not file these
 
-**Coming in V1, just not yet.** Ask Andy (`/search` is a placeholder), the
+**Coming in V1, just not yet.** Ask Andy (`/search` is still a placeholder —
+notes are now indexed, but nothing searches them yet), the
 calendar briefing and its notifications, business-card photo, photo
 attachments, the follow-up email draft, the app lock, dark mode.
 
