@@ -148,8 +148,9 @@ permission string, the bundle id. Never for JS changes.
 
 | Command | When | Why |
 | --- | --- | --- |
-| `xcrun simctl openurl booted "andy:///search"` | Reaching a screen with no link to it yet | **Three slashes.** `andy://search` treats `search` as the URL host, so nested paths like `andy://profile/abc` silently land on the home screen instead of erroring. |
+| `xcrun simctl openurl booted "andy:///search"` | Jumping straight to a screen, or reaching one with no link to it yet | **Three slashes.** `andy://search` treats `search` as the URL host, so nested paths like `andy://profile/abc` silently land on the home screen instead of erroring. |
 | `xcrun simctl io booted screenshot out.png` | Recording what a screen actually looks like | Faster than describing it. |
+| `npx convex run search:recall '{"query":"…"}' --identity '{"tokenIdentifier":"…","subject":"…","issuer":"…"}'` | Running a **signed-in** backend function from a terminal | The single most useful thing found on day 5. Without `--identity` every authenticated function just answers `You're signed out.`, which is why the whole backend used to be untestable outside the app. Copy `tokenIdentifier` from `npm run db` → Data → `users`. This is how Ask Andy was measured against real notes, and how "auth propagates from an action's `ctx.runQuery`" was proven against the deployment rather than taken from `convex-test`, which has now been caught disagreeing with the backend twice. |
 
 ### Release
 
