@@ -191,12 +191,28 @@ runnable from a terminal — the `tokenIdentifier` is in `npm run db` → `users
 | 13.3 | Ask about a person who only came up inside somebody else's note | The note about the *other* person comes back, with the one you asked about in its `mentions`. **Verified 2026-09-10** — "who was the business partner" → Priya's note, mentions `["Marcus"]` |
 | 13.4 | Ask something the app has no business answering ("what is the capital of France") | Empty `results`. Not a wrong answer, not a page of citations |
 
+## 14. Ask Andy on the device
+
+§13 exercises the backend from a terminal. These are the parts a runner cannot
+reach: a real screen, a real keyboard, and a real transcript at its real length.
+
+| # | Do this | Expect |
+|---|---|---|
+| 14.1 | Home → `Ask Andy` | The search screen. The field reads `Who are you thinking of?` **in full** — a truncated placeholder means the Ask button has taken too much of the row |
+| 14.2 | Type a question, press the keyboard's **return** key (not the Ask button) | It searches. `onSubmitEditing` is a separate path from the button and only one of them is unit-tested |
+| 14.3 | Type slowly and watch the Convex logs (`npm run db` → Logs) | **One** `search:recall` call, on submit. One per keystroke is the way this feature becomes expensive |
+| 14.4 | Ask something that matches a long voice note | The transcript is clipped at four lines. One long note must not push every other result off the screen |
+| 14.5 | Ask something matching a note that mentions a **deleted** person | Their name still shows, dimmed, and **nothing happens when tapped**. Turn on VoiceOver: it must not be announced as a button, dimmed or otherwise |
+| 14.6 | Ask something matching two notes about the *same* person | Two cards, separated by a hairline rule — not one run-on block with the name repeated |
+| 14.7 | Turn Wi-Fi off, ask anything | One error line, and **not** the "Ask in your own words" invitation underneath it. The screen must not apologise and then act as though nothing was asked |
+| 14.8 | Ask, then immediately watch the space below the field | A spinner while it runs, replaced by results. No flash of the invitation in between |
+
 ---
 
 ## Not built yet — do not file these
 
-**Coming in V1, just not yet.** Ask Andy (`/search` is still a placeholder —
-notes are now indexed, but nothing searches them yet), the
+**Coming in V1, just not yet.** Ask Andy's written answer over the notes it
+found (`/search` returns the notes themselves as of this slice), the
 calendar briefing and its notifications, business-card photo, photo
 attachments, the follow-up email draft, the app lock, dark mode.
 

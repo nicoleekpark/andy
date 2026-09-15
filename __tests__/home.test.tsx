@@ -125,4 +125,17 @@ describe("home screen", () => {
 
     expect(result.getPathname()).toBe("/settings");
   });
+
+  test("should offer a way into Ask Andy, since a screen nobody can reach is not shipped", async () => {
+    mockRecentQuery([]);
+
+    const router = renderRouter("src/app", { initialUrl: "/" });
+    await router;
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Ask Andy"));
+    });
+
+    expect(router.getPathname()).toBe("/search");
+  });
 });
