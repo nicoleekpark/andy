@@ -174,6 +174,23 @@ invisible on every screen.
 | 12.4 | Open a saved note → `Edit` → change a fact → save. Re-read the row in `npm run db` | The `embedding` array is **different from before**. A correction that reaches the screen but not the vector would leave search answering with the old wording |
 | 12.5 | Edit the same note twice in quick succession | The final `embedding` matches the **final** text. Two jobs race; the loser is meant to drop its result |
 
+## 13. Recall — against the deployment, not the mock
+
+`convex-test` has now been caught twice behaving differently from the real
+backend: it does not enforce vector length, and it sorts vector-search results
+in a way the backend does not document. So the search path needs a check that
+touches the deployment.
+
+`npx convex run` takes **`--identity`**, which means the signed-in path is
+runnable from a terminal — the `tokenIdentifier` is in `npm run db` → `users`.
+
+| # | Do this | Expect |
+|---|---|---|
+| 13.1 | `npx convex run search:recall '{"query":"who runs a climbing gym"}' --identity '{"tokenIdentifier":"<yours>","subject":"<yours>","issuer":"<your clerk domain>"}'` | Non-empty `results`, best match first, each carrying its `profile`. **Verified 2026-09-10** — top hit 0.652 |
+| 13.2 | Same, with a `tokenIdentifier` that is not yours | `Your account isn't set up yet.` — never someone else's notes. **Verified 2026-09-10** |
+| 13.3 | Ask about a person who only came up inside somebody else's note | The note about the *other* person comes back, with the one you asked about in its `mentions`. **Verified 2026-09-10** — "who was the business partner" → Priya's note, mentions `["Marcus"]` |
+| 13.4 | Ask something the app has no business answering ("what is the capital of France") | Empty `results`. Not a wrong answer, not a page of citations |
+
 ---
 
 ## Not built yet — do not file these

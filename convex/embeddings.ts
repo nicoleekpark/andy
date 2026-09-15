@@ -9,6 +9,7 @@ import {
 import {
   EMBEDDING_DIMENSIONS,
   EMBEDDING_MODEL,
+  MAX_EMBEDDING_CHARS,
   embeddingTextFor,
 } from "./embeddingModel";
 
@@ -86,6 +87,24 @@ async function failureKind(response: Response): Promise<string> {
     // A response that is not JSON at all — a gateway error page, usually.
     return "unparseable";
   }
+}
+
+/**
+ * Embed one search query, with the model and width the stored notes used.
+ *
+ * A plain function rather than a Convex one, so `search.ts` can call it
+ * directly — the pattern `users.ts` already sets by exporting
+ * `getAuthenticatedUser` beside its query and mutation.
+ *
+ * It matters that this is the *same* function the notes went through. A query
+ * embedded by a separately-written request — a different model, a different
+ * width, `dimensions` forgotten — lands somewhere else in the space entirely,
+ * and the failure is a search that returns plausible nonsense rather than an
+ * error.
+ */
+export async function embedQuery(text: string): Promise<number[]> {
+  const [vector] = await fetchEmbeddings([text.slice(0, MAX_EMBEDDING_CHARS)]);
+  return vector;
 }
 
 async function fetchEmbeddings(inputs: string[]): Promise<number[][]> {
