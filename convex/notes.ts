@@ -446,9 +446,16 @@ export const byId = query({
  * happened is a feature the schema is ready for but nothing asks for yet.
  */
 export const updateNote = mutation({
+  // No `text`. The transcript is the record of what was said, and a record you
+  // can rewrite is not one — so it is not an argument this mutation accepts.
+  //
+  // Removing the ability rather than policing it. A read-only field on the note
+  // screen would be a convention of that screen; this is the rule. It also
+  // closes the gap the facts-only search decision opened: if the transcript
+  // could still change while search no longer reads it, an edit would appear to
+  // do nothing, which is a worse kind of wrong than being refused.
   args: {
     noteId: v.string(),
-    text: v.string(),
     keyFacts: v.array(v.string()),
   },
   returns: v.null(),
@@ -466,19 +473,11 @@ export const updateNote = mutation({
       throw new ConvexError("Andy couldn't find that note.");
     }
 
-    const text = args.text.trim();
-    if (text === "") {
-      // Emptying a note is deleting it, and deleting should be asked for
-      // deliberately rather than reached by clearing a field.
-      throw new ConvexError(
-        "A note needs something in it. Delete it instead if it's not worth keeping.",
-      );
-    }
-    if (text.length > MAX_TRANSCRIPT_CHARS) {
-      throw new ConvexError(
-        "That note is longer than Andy can take in one go. Try splitting it into two.",
-      );
-    }
+    // The guards that used to stand here — refusing an emptied transcript and
+    // capping its length — went with the argument. Neither is reachable now:
+    // the text cannot be emptied or lengthened, and a note whose facts are all
+    // blanked still has its record, so clearing every field no longer empties a
+    // note by stealth.
 
     // A fact blanked out is a fact removed — the same rule the capture path
     // applies, repeated here because this is its own public entry point rather
@@ -491,7 +490,6 @@ export const updateNote = mutation({
     }
 
     await ctx.db.patch("notes", noteId, {
-      text,
       // Absent rather than an empty array, matching what `saveCapture` writes:
       // an empty array would claim extraction ran and found nothing, which is a
       // different thing from a note that never had facts.

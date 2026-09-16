@@ -109,8 +109,7 @@ describe("note screen", () => {
   test("should send the corrected fact and leave the others as they were", async () => {
     mockQueries(savedNote());
     const updateNote = jest.fn(
-      async (_args: { noteId: string; text: string; keyFacts: string[] }) =>
-        null,
+      async (_args: { noteId: string; keyFacts: string[] }) => null,
     );
     mockUpdateNote(updateNote);
 
@@ -143,16 +142,16 @@ describe("note screen", () => {
       "His mother has cancer",
       "His mother is having a hard time",
     ]);
-    expect(args?.text).toBe("His mother has cancer and is having a hard time");
+    // And no `text` at all — the record is not something this screen can send.
+    expect(args).not.toHaveProperty("text");
     // Back to the timeline, not stacked on top of it.
     await waitFor(() => expect(result.getPathname()).toBe("/profile/contact-1"));
   });
 
-  test("should send the corrected transcript without disturbing the facts", async () => {
+  test("should show the record but give no way to edit it", async () => {
     mockQueries(savedNote());
     const updateNote = jest.fn(
-      async (_args: { noteId: string; text: string; keyFacts: string[] }) =>
-        null,
+      async (_args: { noteId: string; keyFacts: string[] }) => null,
     );
     mockUpdateNote(updateNote);
 
@@ -162,35 +161,56 @@ describe("note screen", () => {
       router.push("/note/note-1");
     });
 
-    // "time" → "year": one word, and the one that makes the sentence say what
-    // was actually meant. The measured case was Korean — 하신데 heard as 하신대,
-    // one syllable turning reported speech into a plain clause — and the shape
-    // is what matters: a correction small enough that a test comparing the two
-    // strings loosely would miss it.
-    await act(async () => {
-      fireEvent.changeText(
-        screen.getByLabelText("Note text"),
-        "His mother has cancer and is having a hard year",
-      );
-    });
+    // Found by its content, not by a label. A `Text` with an
+    // `accessibilityLabel` announces the label *instead of* the content, which
+    // would leave the record the one thing on this screen VoiceOver cannot
+    // read — so there is deliberately no label to find it by.
+    const record = screen.getByTestId("note-record");
+    expect(record).toBeTruthy();
+    expect(
+      screen.getByText("His mother has cancer and is having a hard time"),
+    ).toBeTruthy();
+
+    // `queryByDisplayValue` matches a `TextInput`'s `value` and nothing else, so
+    // null here means the record is not a field at all.
+    //
+    // This replaced `expect(props.editable).toBeUndefined()`, which proved
+    // nothing: RN leaves `editable` undefined on an *editable* input
+    // (`TextInput.js` tests `editable !== false`), and `onChangeText` is
+    // undefined on any input that was not handed one. A bare
+    // `<TextInput value={...} multiline />` — a live field with a cursor and a
+    // keyboard, the exact regression — passed both of those assertions.
+    expect(
+      screen.queryByDisplayValue(
+        "His mother has cancer and is having a hard time",
+      ),
+    ).toBeNull();
+
+    // No `accessibilityLabel`: on a `Text` a label replaces the spoken content,
+    // which would leave the record the one thing here VoiceOver cannot read.
+    expect(record.props.accessibilityLabel).toBeUndefined();
+    // And still copyable — locking the field would otherwise have taken the
+    // app's only select-and-copy path for a voice note with it.
+    expect(record.props.selectable).toBe(true);
+
+    // And the copy says why, rather than leaving someone hunting for the cursor.
+    expect(
+      screen.getByText(/Kept as it was saved/),
+    ).toBeTruthy();
+
+    // Saving still works, and still sends only the facts.
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Save changes" }));
     });
-
     await waitFor(() => expect(updateNote).toHaveBeenCalledTimes(1));
-    const [args] = updateNote.mock.calls[0] ?? [];
-    expect(args?.text).toBe("His mother has cancer and is having a hard year");
-    expect(args?.keyFacts).toEqual([
-      "His mother has cancer",
-      "Is having a hard time because of his mother",
-    ]);
+    expect(updateNote.mock.calls[0]?.[0]).not.toHaveProperty("text");
   });
 
   test("should keep the user on the screen with the message when saving fails", async () => {
     (useQuery as jest.Mock).mockReturnValue(savedNote());
     mockUpdateNote(
       jest.fn(async () => {
-        throw new Error("A note needs something in it.");
+        throw new Error("Something went wrong upstream.");
       }),
     );
 
@@ -204,9 +224,9 @@ describe("note screen", () => {
     // Navigating away on a failed save would lose the correction the user just
     // typed, which is worse than the error it was reporting.
     await waitFor(() =>
-      expect(screen.getByText("A note needs something in it.")).toBeTruthy(),
+      expect(screen.getByText("Something went wrong upstream.")).toBeTruthy(),
     );
-    expect(screen.getByLabelText("Note text")).toBeTruthy();
+    expect(screen.getByTestId("note-record")).toBeTruthy();
   });
 
   test("should say so rather than show an empty gap when a note has no facts", async () => {
@@ -267,7 +287,7 @@ describe("note screen", () => {
 
     // A confirmation that deletes on either answer is not a confirmation.
     expect(remove).not.toHaveBeenCalled();
-    expect(screen.getByLabelText("Note text")).toBeTruthy();
+    expect(screen.getByTestId("note-record")).toBeTruthy();
   });
 
   test("should stay put and say why when deleting fails", async () => {
@@ -294,8 +314,7 @@ describe("note screen", () => {
   test("should let a fact be added to a saved note", async () => {
     mockQueries(savedNote({ keyFacts: undefined }));
     const updateNote = jest.fn(
-      async (_args: { noteId: string; text: string; keyFacts: string[] }) =>
-        null,
+      async (_args: { noteId: string; keyFacts: string[] }) => null,
     );
     mockNoteMutations({ update: updateNote });
 

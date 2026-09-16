@@ -437,7 +437,6 @@ test("should re-embed a note after a correction, so a fixed fact reaches search 
   fetchMock.mockResolvedValueOnce(embeddingsResponse([vectorFor(7)]));
   await asAlice.mutation(api.notes.updateNote, {
     noteId,
-    text: "Ran into Mr. Park at the gym.",
     keyFacts: ["Teaches high school chemistry"],
   });
   await drainScheduled(t);
