@@ -115,11 +115,23 @@ Priya already kept, and one match joined silently.
 |---|---|---|
 | 7.1 | Profile → note's `Edit` → change a fact → save | Timeline shows the change; **one back press reaches home** |
 | 7.2 | `Add a fact` on a saved note | New line saves |
-| 7.3 | Edit the transcript → `Read it again` | Asks first **only if** something above was edited; then re-reads |
+| 7.3 | Tap the record block ("What you said" / "What you wrote" / "What the card said") | **No cursor, no keyboard.** It is the record of what was saved and cannot be edited — `updateNote` does not take it as an argument at all |
+| 7.3a | **Long-press** the record | Select / Copy still appears. Locking the field must not take copying with it — this is the only place a voice note's words can be copied from |
+| 7.3b | Turn VoiceOver on and swipe to the record | It reads **the note's words**. If it says "Note text" and nothing else, an `accessibilityLabel` has come back and is replacing the content |
+| 7.3c | Blank out **every** fact on a note and save | Saves. The note keeps its record and stays findable — search falls back to it. It used to be refused as "emptying by stealth", which is no longer a thing that can happen |
 | 7.4 | Profile → `Edit` → change name, tags, kind | All of it saves together — editing one field must not blank the others |
 | 7.5 | `Delete this note` | Confirms; returns to the profile; a person who only appeared in that note is gone too |
 | 7.6 | Profile `Edit` → `Delete …` | Confirmation states the note count, what follows them out, and what stays |
 | 7.7 | After 7.6, open a note that had mentioned them | Name **still there**, in ink not moss, and **not tappable** |
+
+## 7a. Before the first save — the capture screen
+
+The transcript is editable **only** until the note is first saved. These rows
+live here rather than in §7 because that is the screen they happen on.
+
+| # | Do this | Expect |
+|---|---|---|
+| 7a.1 | On the review screen, edit the transcript → `Read it again` | Asks first **only if** something above was edited; then re-reads and rewrites the facts |
 
 ## 8. Typing instead of speaking
 

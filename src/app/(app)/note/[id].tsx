@@ -52,17 +52,14 @@ export default function NoteScreen() {
    * ever a fallback: once there are edits, they win, and until then the screen
    * shows whatever is currently stored.
    */
-  const [edits, setEdits] = useState<{
-    text: string;
-    keyFacts: string[];
-  } | null>(null);
+  const [edits, setEdits] = useState<{ keyFacts: string[] } | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const saved =
     result === undefined || result === null
       ? null
-      : { text: result.note.text, keyFacts: result.note.keyFacts ?? [] };
+      : { keyFacts: result.note.keyFacts ?? [] };
   const working = edits ?? saved;
 
   /**
@@ -71,7 +68,7 @@ export default function NoteScreen() {
    * a patch that only knew about that field would leave the others undefined
    * and quietly blank them on save.
    */
-  function edit(patch: Partial<{ text: string; keyFacts: string[] }>) {
+  function edit(patch: Partial<{ keyFacts: string[] }>) {
     if (working === null) {
       return;
     }
@@ -176,7 +173,7 @@ export default function NoteScreen() {
       >
         <Text style={styles.lead}>
           {new Date(result.note.createdAt).toLocaleDateString("en-CA")} · fix
-          anything Andy got wrong.
+          any fact Andy got wrong.
         </Text>
 
         <View style={styles.field}>
@@ -233,16 +230,44 @@ export default function NoteScreen() {
                 ? "What you wrote"
                 : "What you said"}
           </Text>
-          <TextInput
-            value={working?.text ?? ""}
-            onChangeText={(value) => edit({ text: value })}
-            style={[styles.input, styles.textInput]}
-            multiline
-            accessibilityLabel="Note text"
-          />
+          {/*
+            Read, not edited. A record you can rewrite is not a record — and the
+            facts above are what search and Ask Andy actually read, so a
+            correction made down here would look like it worked and change
+            nothing. `updateNote` does not take this field at all, so this is
+            the screen agreeing with the rule rather than being the rule.
+
+            Deliberately not a disabled `TextInput`: that still reads as a
+            control, and VoiceOver announces it as a dimmed text field somebody
+            ought to be able to type in.
+          */}
+          {/*
+            No `accessibilityLabel`. On a `Text` a label *replaces* the spoken
+            content rather than naming it, so "Note text" is all VoiceOver would
+            read — the note's own record becomes the one thing on this screen a
+            screen-reader user cannot hear. The `TextInput` this replaced
+            announced both label and value, so adding the label back was a
+            regression hiding inside a rewrite. `profile/[id]/index.tsx` renders
+            the same transcript as a bare `Text` and reads correctly.
+
+            `selectable` because this was the app's only select-and-copy path
+            for a voice note: the timeline renders it as plain text too, so
+            locking the field took copying with it. It costs one prop and does
+            not make the text look editable.
+          */}
+          <Text style={styles.record} testID="note-record" selectable>
+            {result.note.text}
+          </Text>
+          {/*
+            Source-neutral on purpose. "what was said" sat directly under a label
+            that reads "What you wrote" on a typed note and "What the card said"
+            on a business card, so it contradicted its own heading two times in
+            three. And it said what the block *is* without saying you cannot
+            edit it, which leaves someone who taps it and gets no keyboard still
+            wondering — `STYLE.md` asks for what happened and what to do.
+          */}
           <Text style={styles.hint}>
-            Correcting this does not re-read the facts above — those are yours
-            to edit.
+            Kept as it was saved. Corrections go in what you remember, above.
           </Text>
         </View>
 
@@ -300,7 +325,21 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.line,
     paddingVertical: 8,
   },
-  textInput: { fontSize: 15, lineHeight: 22 },
+  // The same treatment the timeline already gives a saved note's raw text
+  // (`profile/[id]/index.tsx`), not a third one invented here. The left
+  // hairline is this app's established mark for "the record, not the facts",
+  // and it reads as quotation rather than as a disabled field — which is
+  // exactly what dimmed text in a field-shaped box with no border looks like.
+  // It also means one note looks the same in both places it appears.
+  record: {
+    color: colors.ink,
+    fontSize: 14,
+    lineHeight: 21,
+    opacity: 0.7,
+    borderLeftWidth: StyleSheet.hairlineWidth,
+    borderLeftColor: colors.line,
+    paddingLeft: 10,
+  },
   hint: { color: colors.ink, fontSize: 12, opacity: 0.5, flex: 1 },
   factActions: {
     flexDirection: "row",

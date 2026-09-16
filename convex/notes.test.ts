@@ -734,7 +734,7 @@ test("should hide another user's note behind the same null as a note that does n
   ).toBeNull();
 });
 
-test("should save a corrected fact and transcript over the ones extraction wrote", async () => {
+test("should save a corrected fact over the one extraction wrote, and leave the record alone", async () => {
   const t = convexTest(schema, modules);
   await ensureUser(t, ALICE);
   const asAlice = t.withIdentity(ALICE);
@@ -753,16 +753,20 @@ test("should save a corrected fact and transcript over the ones extraction wrote
 
   await asAlice.mutation(api.notes.updateNote, {
     noteId,
-    text: "His mother has cancer and is having a hard year",
     keyFacts: ["His mother has cancer", "His mother is having a hard time"],
   });
 
   const result = await asAlice.query(api.notes.byId, { noteId });
-  expect(result?.note.text).toBe("His mother has cancer and is having a hard year");
   expect(result?.note.keyFacts).toEqual([
     "His mother has cancer",
     "His mother is having a hard time",
   ]);
+  // The record is untouched, and there is no argument through which it could
+  // have been touched. What was said stays what was said; the correction lives
+  // in the facts, which is what search and Ask Andy read.
+  expect(result?.note.text).toBe(
+    "His mother has cancer and is having a hard time",
+  );
 });
 
 test("should drop a fact that was blanked out, and store no facts at all rather than an empty list", async () => {
@@ -778,7 +782,6 @@ test("should drop a fact that was blanked out, and store no facts at all rather 
 
   await asAlice.mutation(api.notes.updateNote, {
     noteId,
-    text: "Emma is a branding designer.",
     keyFacts: ["   ", ""],
   });
 
@@ -795,43 +798,64 @@ test("should refuse to write another user's note", async () => {
   await ensureUser(t, ALICE);
   await ensureUser(t, BOB);
 
+  // Seeded with a fact on purpose. `keyFacts` is the only field this mutation
+  // can write now, so a note without one gives the assertion below nothing to
+  // be wrong about — it would read as cross-user isolation while checking an
+  // `undefined`.
   const { noteId } = await t.withIdentity(ALICE).mutation(api.notes.saveCapture, {
     transcript: "Emma is a branding designer.",
-    draft: buildDraft({ primaryName: "Emma" }),
+    draft: buildDraft({
+      primaryName: "Emma",
+      keyFacts: ["Branding designer"],
+    }),
     source: "voice",
   });
 
   await expect(
     t.withIdentity(BOB).mutation(api.notes.updateNote, {
       noteId,
-      text: "Bob was here.",
-      keyFacts: [],
+      keyFacts: ["Bob was here."],
     }),
   ).rejects.toBeInstanceOf(ConvexError);
 
   await t.run(async (ctx) => {
     const note = await ctx.db.get("notes", noteId);
+    // Asserted on the field the mutation can actually write. Checking `text`
+    // used to mean something here and now cannot fail — no argument reaches it —
+    // so a vacuous pass would look identical to a real one in the one test that
+    // covers cross-user isolation on this path.
+    expect(note?.keyFacts).toEqual(["Branding designer"]);
+    expect(note?.keyFacts).not.toContain("Bob was here.");
     expect(note?.text).toBe("Emma is a branding designer.");
   });
 });
 
-test("should refuse to empty a note rather than deleting it by stealth", async () => {
+test("should leave a note with its record when every fact is blanked out, rather than emptying it", async () => {
   const t = convexTest(schema, modules);
   await ensureUser(t, ALICE);
   const asAlice = t.withIdentity(ALICE);
 
   const { noteId } = await asAlice.mutation(api.notes.saveCapture, {
     transcript: "Emma is a branding designer.",
-    draft: buildDraft({ primaryName: "Emma" }),
+    draft: buildDraft({
+      primaryName: "Emma",
+      keyFacts: ["Branding designer"],
+    }),
     source: "voice",
   });
 
-  await expect(
-    asAlice.mutation(api.notes.updateNote, { noteId, text: "   ", keyFacts: [] }),
-  ).rejects.toBeInstanceOf(ConvexError);
+  // This used to be refused, because clearing every field could empty a note and
+  // emptying is deleting by stealth. It is allowed now and still cannot empty
+  // anything: the record is not an argument, so a note that loses all its facts
+  // keeps what was said. Search falls back to exactly that.
+  await asAlice.mutation(api.notes.updateNote, { noteId, keyFacts: [] });
+
+  const result = await asAlice.query(api.notes.byId, { noteId });
+  expect(result?.note.keyFacts).toBeUndefined();
+  expect(result?.note.text).toBe("Emma is a branding designer.");
 });
 
-test("should reject a transcript longer than the capture path would have accepted", async () => {
+test("should have no way at all to write a note's record, not merely refuse a bad one", async () => {
   const t = convexTest(schema, modules);
   await ensureUser(t, ALICE);
   const asAlice = t.withIdentity(ALICE);
@@ -842,16 +866,24 @@ test("should reject a transcript longer than the capture path would have accepte
     source: "voice",
   });
 
-  // The ceiling is repeated here rather than assumed: this is a second public
-  // door into the same rows, and a caller can reach it without ever going
-  // through capture.
+  // The length cap and the empty check that used to live here are gone with the
+  // argument they guarded. Removing the ability rather than policing it is the
+  // stronger version, and this asserts the removal: a caller that supplies
+  // `text` anyway is rejected by the validator, not quietly obeyed.
   await expect(
     asAlice.mutation(api.notes.updateNote, {
       noteId,
-      text: "a".repeat(MAX_TRANSCRIPT_CHARS + 1),
-      keyFacts: [],
+      keyFacts: ["Branding designer"],
+      // @ts-expect-error - `text` is deliberately not an argument any more
+      text: "a rewritten record",
     }),
-  ).rejects.toBeInstanceOf(ConvexError);
+    // Matched, not bare. A bare `rejects.toThrow()` would also pass if the
+    // mutation happened to fail for some unrelated reason, which is the kind of
+    // green that means nothing.
+  ).rejects.toThrow(/text/);
+
+  const result = await asAlice.query(api.notes.byId, { noteId });
+  expect(result?.note.text).toBe("Emma is a branding designer.");
 });
 
 test("should take a note's mention links with it, so nothing points at a note that is gone", async () => {
