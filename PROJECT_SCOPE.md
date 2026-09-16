@@ -92,7 +92,16 @@ Risk       : iOS cannot auto-surface caller profiles during a real cellular
 10. **True end-to-end encryption is not compatible with this
     architecture, on purpose — not an oversight.** Extraction requires
     Claude (server-side, in a Convex action) to read note content in
-    plaintext; a Day-One-style scheme where the server literally cannot
+    plaintext, and **as of day 5 that is no longer only at save time**:
+    Ask Andy sends the notes a question retrieved to Claude on every
+    question, and embeddings send every note to OpenAI once. So content
+    leaves the device on *read* as well as on write, and one Ask Andy
+    request bundles notes about **several different third parties** who
+    never consented to any of it. The privacy policy has to describe both
+    moments, not just the first — a policy that says "when you save a
+    note" while the app also sends on every question is the kind of gap
+    that becomes a problem at review.
+    The underlying trade-off is unchanged: a Day-One-style scheme where the server literally cannot
     decrypt the data would break the core extraction pipeline unless
     extraction moved to an on-device model (out of scope). V1 uses
     standard encryption in transit and at rest, not zero-knowledge E2E.
@@ -255,6 +264,14 @@ confirm/edit → save
     any of those pickers can answer "someone new" instead)
 ```
 
+**Home has an Ask Andy button rather than a search bar** — changed on day 5,
+when recall was built, and worth recording because it reads as a downgrade and
+is not one. Every question costs a paid embedding call, so there is no
+search-as-you-type to be had here at any price. A field on the home screen that
+looked live and only acted on submit would promise something the architecture
+cannot do, and the honest version of that promise is a button that opens a
+screen built for asking one question at a time.
+
 The three outcomes are named on screen because two of them used to be silent
 and each failed in the opposite direction: a misheard name invented a person
 nobody had met, and a shared name merged two. Aliases stop the same question
@@ -279,7 +296,8 @@ tap nudge → opens capture flow pre-scoped to that profile
 **Screens (minimum for V1, Expo Router)**
 
 ```
-/ (home)               → recent profiles, search bar, record button
+/ (home)               → recent profiles, "Ask Andy" button, record button
+                         (a button, not a live search bar — see below)
 /profile/[id]          → timeline, tags, metrics (if animal), photo, follow-up email button
 /profile/[id]/capture  → voice/typed capture, pre-scoped to this profile
 /profile/[id]/edit     → name, aliases, kind, relationship, first met, tags; delete

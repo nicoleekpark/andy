@@ -1,6 +1,5 @@
 "use node";
 
-import Anthropic from "@anthropic-ai/sdk";
 import { ConvexError, v } from "convex/values";
 import { action } from "./_generated/server";
 import type { ActionCtx } from "./_generated/server";
@@ -20,16 +19,8 @@ import {
   normalizeCardName,
 } from "./extractionPrompt";
 import type { CardDraft, Draft } from "./extractionPrompt";
+import { askClaude } from "./claude";
 
-// `process.env` is real here because this file runs in the Node runtime. It is
-// declared module-locally, exactly as auth.config.ts does, rather than reached
-// for globally: `/// <reference types="node" />` would pull @types/node into the
-// whole *program*, handing `Buffer` and `process` to every V8-runtime query in
-// this directory as well. (Note that Convex's own types already leak Node
-// globals in via node_modules/convex/dist/cjs-types/bundler/fs.d.ts, so tsc
-// cannot be relied on to catch Node APIs in a default-runtime file — this
-// declaration documents intent, it is not the thing enforcing it.)
-declare const process: { env: Record<string, string | undefined> };
 
 /**
  * Claude extraction — the one place a captured input becomes a structured draft.
@@ -59,120 +50,7 @@ declare const process: { env: Record<string, string | undefined> };
  * money on a paid API. Without the check, this action is a public endpoint that
  * anyone on the internet can bill to this deployment's Anthropic key.
  */
-/**
- * The one place a Claude call is made, its failures translated, and its JSON
- * parsed. Both doors into extraction — a spoken transcript and a photographed
- * business card — go through here, so neither can quietly grow a different
- * story for a rate limit or a refusal.
- *
- * Returns `unknown`: the caller's `returns` validator is what pins the shape.
- */
-async function askClaude(options: {
-  system: string;
-  schema: Record<string, unknown>;
-  content: Anthropic.ContentBlockParam[];
-  /** Named in log lines so a failure says which door it came through. */
-  label: string;
-}): Promise<unknown> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    // A configuration fault, not a user fault. Loud in the logs, vague to the
-    // client: the client can do nothing about it and shouldn't learn our
-    // deployment's shape from an error string.
-    console.error(
-      "ANTHROPIC_API_KEY is not set on this Convex deployment. " +
-        "Set it with: npx convex env set ANTHROPIC_API_KEY sk-ant-...",
-    );
-    throw new ConvexError(
-      "Andy can't reach Claude right now. This one's on us — try again shortly.",
-    );
-  }
 
-  const client = new Anthropic({ apiKey });
-
-  let response;
-  try {
-    response = await client.messages.create({
-      model: EXTRACTION_MODEL,
-      max_tokens: MAX_TOKENS,
-      system: options.system,
-      output_config: { format: { type: "json_schema", schema: options.schema } },
-      messages: [{ role: "user", content: options.content }],
-    });
-  } catch (error) {
-    // Typed SDK errors, most specific first. Each maps to something the user
-    // can act on — or to an honest "not your fault" when they can't.
-    if (error instanceof Anthropic.AuthenticationError) {
-      console.error("Anthropic rejected the API key:", error.message);
-      throw new ConvexError(
-        "Andy can't reach Claude right now. This one's on us — try again shortly.",
-      );
-    }
-    if (error instanceof Anthropic.RateLimitError) {
-      throw new ConvexError(
-        "Andy is thinking about too many things at once. Try again in a moment.",
-      );
-    }
-    if (error instanceof Anthropic.APIConnectionError) {
-      // This is Convex's outbound connection failing, not the caller's — they
-      // plainly have a working connection, or this action would not be
-      // running. Telling them to check their wifi would send them to fix
-      // something that isn't broken.
-      throw new ConvexError(
-        "Andy couldn't reach Claude right now. Try again in a moment.",
-      );
-    }
-    console.error(`${options.label} failed:`, error);
-    throw new ConvexError(
-      "Andy couldn't make sense of that one. Try again, or type it in instead.",
-    );
-  }
-
-  if (response.stop_reason === "refusal") {
-    // Safety classifiers declined. The response carries no usable content when
-    // that happens, and reading it as JSON would throw a confusing parse error
-    // instead of this.
-    throw new ConvexError(
-      "Andy couldn't process that one. Try again, or type it in instead.",
-    );
-  }
-
-  if (response.stop_reason === "max_tokens") {
-    console.error(
-      `${options.label} hit max_tokens (${MAX_TOKENS}) — output was truncated and is not valid JSON.`,
-    );
-    throw new ConvexError(
-      "That one was long and Andy lost the thread. Try splitting it into two.",
-    );
-  }
-
-  // `content` is a discriminated union; narrow before reading `.text`.
-  const textBlock = response.content.find((block) => block.type === "text");
-  if (textBlock === undefined) {
-    // Block *types* only. A card's content blocks would carry a third party's
-    // name, email and phone straight into the deployment logs, and the type
-    // list is what actually diagnoses this.
-    console.error(
-      `${options.label} returned no text block. Block types:`,
-      response.content.map((block) => block.type).join(", "),
-    );
-    throw new ConvexError(
-      "Andy couldn't make sense of that one. Try again, or type it in instead.",
-    );
-  }
-
-  try {
-    // Structured outputs guarantee the shape and the caller's `returns`
-    // validator re-checks it, so a drift between the two fails loudly at the
-    // Convex boundary rather than reaching the UI.
-    return JSON.parse(textBlock.text);
-  } catch (error) {
-    console.error(`${options.label} returned unparseable JSON:`, error);
-    throw new ConvexError(
-      "Andy couldn't make sense of that one. Try again, or type it in instead.",
-    );
-  }
-}
 
 /**
  * Every function here spends money, so none of them run for a stranger.
@@ -239,6 +117,8 @@ export const fromTranscript = action({
     }
 
     return (await askClaude({
+      model: EXTRACTION_MODEL,
+      maxTokens: MAX_TOKENS,
       system: SYSTEM_PROMPT,
       schema: EXTRACTION_SCHEMA,
       // Today's date and the transcript go in the message, not the system
@@ -285,6 +165,8 @@ export const fromBusinessCard = action({
     }
 
     const card = (await askClaude({
+      model: EXTRACTION_MODEL,
+      maxTokens: MAX_TOKENS,
       system: CARD_SYSTEM_PROMPT,
       schema: CARD_SCHEMA,
       content: [

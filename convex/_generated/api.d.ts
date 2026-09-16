@@ -8,13 +8,18 @@
  * @module
  */
 
+import type * as answer from "../answer.js";
+import type * as answerPrompt from "../answerPrompt.js";
+import type * as claude from "../claude.js";
 import type * as cleanup from "../cleanup.js";
 import type * as embeddingModel from "../embeddingModel.js";
+import type * as embeddings from "../embeddings.js";
 import type * as extraction from "../extraction.js";
 import type * as extractionPrompt from "../extractionPrompt.js";
 import type * as naming from "../naming.js";
 import type * as notes from "../notes.js";
 import type * as profiles from "../profiles.js";
+import type * as search from "../search.js";
 import type * as users from "../users.js";
 
 import type {
@@ -24,13 +29,18 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  answer: typeof answer;
+  answerPrompt: typeof answerPrompt;
+  claude: typeof claude;
   cleanup: typeof cleanup;
   embeddingModel: typeof embeddingModel;
+  embeddings: typeof embeddings;
   extraction: typeof extraction;
   extractionPrompt: typeof extractionPrompt;
   naming: typeof naming;
   notes: typeof notes;
   profiles: typeof profiles;
+  search: typeof search;
   users: typeof users;
 }>;
 

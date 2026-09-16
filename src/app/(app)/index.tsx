@@ -12,9 +12,11 @@ import { colors, fonts } from "@/constants/theme";
  * the record button out to capture, the gear out to settings (and the only
  * sign-out button in the app).
  *
- * No search box yet. PROJECT_SCOPE.md puts one here, but search itself is Day 4
- * — a box that finds nothing is worse than no box, and at this list length
- * scanning is faster anyway.
+ * The search entry point is a button rather than the live box PROJECT_SCOPE.md
+ * sketches, and that is a consequence of how recall works rather than a design
+ * preference: every question costs a paid embedding call, so there is no
+ * search-as-you-type to be had here. A field that looked live and only acted on
+ * submit would promise something it cannot do.
  */
 export default function HomeScreen() {
   const people = useQuery(api.profiles.recent);
@@ -77,14 +79,25 @@ export default function HomeScreen() {
           )}
         />
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Record"
-          onPress={() => router.push("/capture")}
-          style={styles.record}
-        >
-          <Text style={styles.recordLabel}>Record</Text>
-        </Pressable>
+        <View style={styles.actions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Ask Andy"
+            onPress={() => router.push("/search")}
+            style={styles.askAndy}
+          >
+            <Text style={styles.askAndyLabel}>Ask Andy</Text>
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Record"
+            onPress={() => router.push("/capture")}
+            style={styles.record}
+          >
+            <Text style={styles.recordLabel}>Record</Text>
+          </Pressable>
+        </View>
       </View>
     </>
   );
@@ -113,6 +126,16 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     textAlign: "center",
   },
+
+  actions: { gap: 10 },
+  askAndy: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.line,
+    borderRadius: 999,
+    paddingVertical: 15,
+    alignItems: "center",
+  },
+  askAndyLabel: { color: colors.ink, fontSize: 16 },
 
   record: {
     backgroundColor: colors.moss,
