@@ -1,4 +1,26 @@
 /**
+ * `restoreMocks: true` is set in package.json's jest block, and it is load
+ * bearing rather than tidiness.
+ *
+ * `jest.clearAllMocks()` — which several suites here call in `afterEach` —
+ * empties a mock's call records and leaves its *implementation* in place. So a
+ * `jest.spyOn(Alert, "alert").mockImplementation(...)` set by one test keeps
+ * answering dialogs for every test after it in the same file. Day 6 found a
+ * capture test that had been passing for exactly that reason: it never mocked an
+ * alert, and a spy from four tests earlier was pressing "Keep my facts" on its
+ * behalf. Run on its own it failed.
+ *
+ * Two files still spy on a global with no `afterEach` at all
+ * (`note.test.tsx`, `convex-session-identity.test.tsx`), and
+ * `profile-edit.test.tsx` spies on `Alert` from a helper. The config covers all
+ * of them, and covers the next one nobody remembers to write.
+ *
+ * Verified rather than assumed: a throwaway two-test probe where the second test
+ * asserts it did not inherit the first's spy fails without this setting and
+ * passes with it.
+ */
+
+/**
  * Runs once per test file, before that file's imports execute (Jest's
  * setupFilesAfterEnv timing). This is the earliest point at which we can
  * both set env vars that src/app/_layout.tsx reads at module scope, and
