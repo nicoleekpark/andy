@@ -339,6 +339,17 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
    */
   const [transcript, setTranscript] = useState("");
   /**
+   * The transcript as extraction last read it.
+   *
+   * Without it there is no way to know whether the words above the facts still
+   * match the words the facts were built from — `transcript` alone cannot say,
+   * because editing it overwrites the only copy. So the two disagree silently,
+   * and saving freezes that disagreement for good: after the save the record is
+   * read-only and only the facts can be corrected, which means the note keeps
+   * saying one thing and answering another for ever.
+   */
+  const [readTranscript, setReadTranscript] = useState("");
+  /**
    * Which front door this capture came through. The draft and the save path are
    * identical either way — this only decides what the note body is called on
    * screen and what `notes.source` records.
@@ -405,6 +416,14 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
         });
         setDraft(result);
         setExtracted(result);
+        // Only now, and not before the await. Set early, a re-read that *fails*
+        // returns to review with the old draft still on screen while the
+        // baseline claims those facts came from the corrected wording — so the
+        // question never fires again and the mismatch it exists to catch gets
+        // saved for good. One network hiccup reaches it, and the error banner
+        // sits right above the Save button, which makes pressing Save again the
+        // natural next move.
+        setReadTranscript(spoken);
         setPhase("review");
       } catch (e) {
         // The action's ConvexError messages are written for this screen, so
@@ -472,6 +491,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
         const result = await readCard({ imageBase64, mediaType: "image/jpeg" });
         setDraft(result.draft);
         setTranscript(result.cardText);
+        setReadTranscript(result.cardText);
         setSource("business_card");
         setPhase("review");
       } catch (e) {
@@ -596,6 +616,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
     setInterim("");
     setDraft(null);
     setTranscript("");
+    setReadTranscript("");
 
     ExpoSpeechRecognitionModule.start({
       lang: locale,
@@ -624,10 +645,25 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
     setInterim("");
     setDraft(null);
     setTranscript("");
+    setReadTranscript("");
     setSource("voice");
     setError(null);
     setPhase("idle");
   }, []);
+
+  /**
+   * Re-read with no question asked. Split out because the save-time prompt in
+   * `save` has already asked — raising `reread`'s own confirmation on top of it
+   * would be two dialogs in a row saying the same thing.
+   */
+  const rereadNow = useCallback(() => {
+    const spoken = transcript.trim();
+    if (spoken === "") {
+      return;
+    }
+    setResolutions({});
+    void runExtraction(spoken, true);
+  }, [transcript, runExtraction]);
 
   /**
    * Read the corrected transcript again.
@@ -648,10 +684,10 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
     if (spoken === "") {
       return;
     }
-    const run = () => {
-      setResolutions({});
-      void runExtraction(spoken, true);
-    };
+    // Built on `rereadNow` rather than repeating its two lines. Copied, the two
+    // have to be kept in step by hand, and the one that drifts is whichever is
+    // edited second.
+    const run = rereadNow;
 
     const touched =
       draft !== null &&
@@ -670,9 +706,17 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
         { text: "Read again", style: "destructive", onPress: run },
       ],
     );
-  }, [transcript, draft, extracted, runExtraction]);
+  }, [transcript, draft, extracted, rereadNow]);
 
-  const save = useCallback(async () => {
+  /**
+   * Whether the words on screen have moved on from the words the facts came out
+   * of. Trimmed on both sides — trailing whitespace from a keyboard is not an
+   * edit anyone meant to make, and asking about it would train people to
+   * dismiss the question without reading it.
+   */
+  const transcriptEdited = transcript.trim() !== readTranscript.trim();
+
+  const commit = useCallback(async () => {
     if (draft === null) {
       return;
     }
@@ -731,6 +775,53 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
       setPhase("review");
     }
   }, [draft, transcript, source, saveCapture, profileId, resolutions, namesInDraft]);
+
+  /**
+   * Save — but first, if the transcript and the facts have come apart, ask.
+   *
+   * This is the last moment the question can be asked at all. After the save the
+   * record is read-only (`notes.updateNote` does not take it), so a note saved
+   * with a corrected transcript and facts built from the old wording keeps that
+   * disagreement permanently — and since search and Ask Andy read the facts, the
+   * note would answer with wording its own record contradicts.
+   *
+   * Asked here rather than on every keystroke, and rather than by re-reading
+   * automatically: re-reading rewrites facts a person may have hand-corrected,
+   * which is the thing day 3 deliberately refused to do behind their back.
+   * There is no wrong answer to this question — only two the user has to pick
+   * between — which is why it is a question and not a refusal.
+   */
+  const save = useCallback(() => {
+    if (draft === null) {
+      return;
+    }
+    if (!transcriptEdited) {
+      void commit();
+      return;
+    }
+
+    Alert.alert(
+      // Branched by door, like the two labels on the review screen already are.
+      // A scanned card told somebody they changed what they *said* otherwise.
+      source === "business_card"
+        ? "You changed what the card says"
+        : source === "manual"
+          ? "You changed what you wrote"
+          : "You changed what you said",
+      // Both costs are named. Stating only what re-reading costs made the
+      // message quietly argue for the other button — and "Keep my facts" is the
+      // choice that is permanent, since after saving only the facts can change.
+      "The facts above still come from the old wording. Keep them and the record and the facts stay out of step for good. Reading it again rewrites them, including anything you edited.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Keep my facts", onPress: () => void commit() },
+        // Worded exactly like the link on the review screen and the button in
+        // its own confirmation. Three names for one action on one screen is
+        // three things to learn.
+        { text: "Read it again", style: "destructive", onPress: rereadNow },
+      ],
+    );
+  }, [draft, source, transcriptEdited, commit, rereadNow]);
 
   /** Edit one field of the draft's primary person. */
   const editPrimary = useCallback((patch: Partial<Draft["primary"]>) => {
