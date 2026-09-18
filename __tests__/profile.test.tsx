@@ -1,7 +1,10 @@
-import { act, fireEvent, screen } from "@testing-library/react-native";
-import { useQuery } from "convex/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { Linking } from "react-native";
+import { useAction, useQuery } from "convex/react";
+import { ConvexError } from "convex/values";
 import { getFunctionName } from "convex/server";
 import { renderRouter } from "expo-router/testing-library";
+import { api } from "@convex/_generated/api";
 
 /**
  * src/app/(app)/profile/[id]/index.tsx's three branches — loading, not-found,
@@ -368,4 +371,278 @@ test("should say how many mentions were left out when the list is truncated, and
   const complete = renderRouter("src/app", { initialUrl: "/profile/contact-1" });
   await complete;
   expect(screen.queryByText(/of 1$/)).toBeNull();
+});
+
+describe("follow-up email", () => {
+  /**
+   * `useAction` is pinned to `api.followUp.draft` by name rather than mocked
+   * wholesale. The generated `api` is a Proxy, so a blanket `mockReturnValue`
+   * would keep passing if the button were rewired to call something else.
+   */
+  function mockDraft(draft: jest.Mock) {
+    (useAction as jest.Mock).mockImplementation((reference: unknown) =>
+      getFunctionName(reference as never) === getFunctionName(api.followUp.draft)
+        ? draft
+        : jest.fn(async () => undefined),
+    );
+  }
+
+  afterEach(() => {
+    jest.clearAllMocks();
+    jest.restoreAllMocks();
+  });
+
+  async function reachProfile() {
+    (useQuery as jest.Mock).mockReturnValue(
+      withNotes([
+        {
+          _id: "note-1",
+          text: "Nina is moving to Berlin.",
+          keyFacts: ["Moving to Berlin"],
+          createdAt: new Date("2026-09-01T12:00:00").getTime(),
+          mentions: [],
+        },
+      ]),
+    );
+    const result = renderRouter("src/app", { initialUrl: "/profile/profile-1" });
+    await result;
+    return result;
+  }
+
+  test("should hand Mail the subject and body, and no recipient", async () => {
+    const draft = jest.fn(async () => ({
+      personName: "Nina",
+      subject: "How's the move going?",
+      body: "Hope Berlin is treating you well.",
+    }));
+    mockDraft(draft);
+    const open = jest.spyOn(Linking, "openURL").mockResolvedValue(true);
+    await reachProfile();
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Draft a follow-up"));
+    });
+
+    await waitFor(() => expect(open).toHaveBeenCalledTimes(1));
+    const url = open.mock.calls[0]?.[0] ?? "";
+    expect(url).toContain("mailto:?");
+    expect(url).toContain(encodeURIComponent("How's the move going?"));
+    expect(url).toContain(encodeURIComponent("Hope Berlin is treating you well."));
+    // No recipient, deliberately. This app does not read Contacts and V1 stores
+    // no address, so Mail's own autocomplete is the honest place for that — and
+    // an address invented here would be worse than an empty line.
+    expect(url.startsWith("mailto:?")).toBe(true);
+  });
+
+  test("should not let a drafted body add a header of its own to the mailto URL", async () => {
+    mockDraft(
+      jest.fn(async () => ({
+        personName: "Nina",
+        // The one that would actually matter. A note whose content steered the
+        // model into writing this would otherwise blind-copy a stranger on a
+        // message about somebody's private life — and the sender would see a
+        // normal-looking compose window.
+        subject: "Hi&bcc=attacker@example.com",
+        body: "Hope you are well.\n&bcc=attacker@example.com&cc=someone@example.com",
+      })),
+    );
+    const open = jest.spyOn(Linking, "openURL").mockResolvedValue(true);
+    await reachProfile();
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Draft a follow-up"));
+    });
+
+    await waitFor(() => expect(open).toHaveBeenCalledTimes(1));
+    const url = open.mock.calls[0]?.[0] ?? "";
+    // Exactly two parameters, both ours. `encodeURIComponent` turns the `&`
+    // into `%26`, so the text stays text — asserted rather than assumed,
+    // because this is the difference between a draft and a leak.
+    expect(url.split("&")).toHaveLength(2);
+    expect(url).not.toMatch(/&bcc=/);
+    expect(url).not.toMatch(/&cc=/);
+    expect(url).toContain("%26bcc%3D");
+  });
+
+  test("should send the id from the route and the device's date, not the server's", async () => {
+    const draft = jest.fn(
+      async (_args: { profileId: string; today: string }) => ({
+        personName: "Nina",
+        subject: "s",
+        body: "b",
+      }),
+    );
+    mockDraft(draft);
+    jest.spyOn(Linking, "openURL").mockResolvedValue(true);
+    await reachProfile();
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Draft a follow-up"));
+    });
+
+    await waitFor(() => expect(draft).toHaveBeenCalledTimes(1));
+    const [args] = draft.mock.calls[0] ?? [];
+    expect(args?.profileId).toBe("profile-1");
+    // A follow-up that says "September" to somebody for whom it is already
+    // October reads as inattentive, and the deployment has no idea what day it
+    // is where the user is.
+    // The actual date, not its shape. `toMatch(/^\d{4}-\d{2}-\d{2}$/)` passes
+    // on a hardcoded "2020-01-01", so it promised more than it checked.
+    expect(args?.today).toBe(new Date().toLocaleDateString("en-CA"));
+  });
+
+  test("should show the server's own words when there is nothing to follow up on", async () => {
+    mockDraft(
+      jest.fn(async () => {
+        throw new ConvexError(
+          "There's nothing written down about them yet — record a note first.",
+        );
+      }),
+    );
+    const open = jest.spyOn(Linking, "openURL").mockResolvedValue(true);
+    await reachProfile();
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Draft a follow-up"));
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText(/nothing written down/)).toBeTruthy(),
+    );
+    // And Mail is never opened on an empty draft.
+    expect(open).not.toHaveBeenCalled();
+  });
+
+  test("should not put a raw failure on screen when the error was not written for a person", async () => {
+    mockDraft(
+      jest.fn(async () => {
+        throw new Error("fetch failed: ECONNREFUSED 10.0.0.1");
+      }),
+    );
+    await reachProfile();
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Draft a follow-up"));
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText(/couldn't reach that just now/)).toBeTruthy(),
+    );
+    expect(screen.queryByText(/ECONNREFUSED/)).toBeNull();
+  });
+
+  test("should say so rather than do nothing when there is no mail app to open", async () => {
+    mockDraft(
+      jest.fn(async () => ({ personName: "Nina", subject: "s", body: "b" })),
+    );
+    // `openURL` rejecting, not `canOpenURL` returning false. On iOS that check
+    // returns false for any scheme missing from `LSApplicationQueriesSchemes`,
+    // and `app.json` has no `infoPlist` block — so asking first risked every
+    // tap reporting "no mail app" with the whole suite green.
+    jest
+      .spyOn(Linking, "openURL")
+      .mockRejectedValue(new Error("no handler for mailto:"));
+    await reachProfile();
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Draft a follow-up"));
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText(/no mail app set up/)).toBeTruthy(),
+    );
+    // And it says what to do, not only what happened.
+    expect(screen.getByText(/Set one up and tap again/)).toBeTruthy();
+  });
+
+  test("should still be one paid call when two touches land inside one commit window", async () => {
+    let release: (value: unknown) => void = () => {};
+    const draft = jest.fn(
+      () =>
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+    );
+    mockDraft(draft as unknown as jest.Mock);
+    jest.spyOn(Linking, "openURL").mockResolvedValue(true);
+    await reachProfile();
+
+    const button = screen.getByLabelText("Draft a follow-up");
+    await act(async () => {
+      // Not awaited between them. Both handlers run before React has committed
+      // `drafting`, so `disabled` has not taken effect yet — which is exactly
+      // the device race it cannot cover, and the only reason the ref latch
+      // exists. The other double-press test presses in two `act` blocks and so
+      // never reaches this state.
+      void fireEvent.press(button);
+      void fireEvent.press(button);
+    });
+
+    expect(draft).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      release({ personName: "Nina", subject: "s", body: "b" });
+    });
+  });
+
+  test("should not offer a follow-up on an animal", async () => {
+    mockDraft(jest.fn());
+    (useQuery as jest.Mock).mockReturnValue({
+      ...withNotes([
+        {
+          _id: "note-1",
+          text: "Mochi was 3.2kg today.",
+          keyFacts: ["Weighed 3.2kg"],
+          createdAt: new Date("2026-09-01T12:00:00").getTime(),
+          mentions: [],
+        },
+      ]),
+      profile: buildProfile({ name: "Mochi", entityType: "animal" }),
+    });
+    const result = renderRouter("src/app", { initialUrl: "/profile/profile-1" });
+    await result;
+
+    // An email to a foster cat would send its health notes on a trip they have
+    // no reason to take, addressed to the cat by name.
+    expect(screen.queryByLabelText("Draft a follow-up")).toBeNull();
+    // The rest of the screen is unchanged — this hides one control, not a
+    // whole class of profile.
+    expect(screen.getByLabelText("Add a note")).toBeTruthy();
+  });
+
+  test("should not draft twice while the first one is still being written", async () => {
+    let release: (value: unknown) => void = () => {};
+    const draft = jest.fn(
+      () =>
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+    );
+    mockDraft(draft as unknown as jest.Mock);
+    jest.spyOn(Linking, "openURL").mockResolvedValue(true);
+    await reachProfile();
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Draft a follow-up"));
+    });
+    // Both halves asserted. The label is how a person knows the tap landed; the
+    // `disabled` state is the thing actually stopping the second call, and a
+    // test that checked only the call count would pass with either the label or
+    // the guard removed.
+    expect(screen.getByText("Writing…")).toBeTruthy();
+    expect(
+      screen.getByLabelText("Draft a follow-up").props.accessibilityState
+        .disabled,
+    ).toBe(true);
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Draft a follow-up"));
+    });
+    // Each press is a paid Claude call. A double tap on a slow network must not
+    // become two of them.
+    expect(draft).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      release({ personName: "Nina", subject: "s", body: "b" });
+    });
+  });
 });

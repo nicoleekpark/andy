@@ -1,7 +1,8 @@
 import { Stack, router, useLocalSearchParams } from "expo-router";
-import { useCallback, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useQuery } from "convex/react";
+import { useCallback, useRef, useState } from "react";
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useAction, useQuery } from "convex/react";
+import { ConvexError } from "convex/values";
 import { api } from "@convex/_generated/api";
 import type { Doc } from "@convex/_generated/dataModel";
 import { colors, fonts } from "@/constants/theme";
@@ -61,6 +62,81 @@ export default function ProfileScreen() {
    * checking. Collapsed rather than absent.
    */
   const [openTranscripts, setOpenTranscripts] = useState<string[]>([]);
+
+  const draftEmail = useAction(api.followUp.draft);
+  const [drafting, setDrafting] = useState(false);
+  /**
+   * A latch, not a second copy of `drafting`.
+   *
+   * `disabled` on the button is the affordance and is what a test can see, but
+   * it only takes effect after React commits the state — and on a device two
+   * native touches can land inside that window. This is a paid Claude call, so
+   * the extra two lines buy something real. They are not a doubled guard:
+   * `disabled` greys the button, this stops the call.
+   */
+  const inFlight = useRef(false);
+  const [error, setError] = useState<string | null>(null);
+
+  /**
+   * Write a follow-up and hand it to Mail.
+   *
+   * Everything a person sees here they see in Mail, not in a preview this app
+   * would have to build — which is `PROJECT_SCOPE.md`'s shape and also the
+   * better review step: it is the actual message, fully editable, and nothing
+   * is sent until Send is pressed.
+   */
+  const draftFollowUp = useCallback(async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setDrafting(true);
+    setError(null);
+    try {
+      const written = await draftEmail({
+        profileId: id,
+        // The device's date, not the server's. A follow-up that says "September"
+        // to somebody for whom it is already October reads as inattentive, and
+        // the deployment has no idea what day it is where the user is.
+        today: new Date().toLocaleDateString("en-CA"),
+      });
+
+      const mail = `mailto:?subject=${encodeURIComponent(
+        written.subject,
+      )}&body=${encodeURIComponent(written.body)}`;
+
+      try {
+        await Linking.openURL(mail);
+      } catch {
+        // Not `canOpenURL` first. On iOS that returns false for any scheme
+        // missing from `LSApplicationQueriesSchemes`, and `app.json` has no
+        // `infoPlist` block at all — so if `mailto` turned out not to be
+        // exempt, every tap would say "no mail app" and the whole feature
+        // would be dead with every test still green. `openURL` rejects on its
+        // own, which gets the same message from the thing that actually failed.
+        setError(
+          "Andy wrote the draft, but there's no mail app set up to open it in. Set one up and tap again.",
+        );
+      }
+    } catch (thrown) {
+      // Inline, not an alert. Every other error in this app is an inline line
+      // in `colors.alert`; every `Alert` in it is a confirmation or a choice,
+      // never a report. And the "they might be in Mail by now" argument does
+      // not hold — on both failure paths Mail never opened, so they are still
+      // looking at this screen, with the actions bar pinned outside the scroll
+      // view so the line is guaranteed to be visible.
+      //
+      // The server's own words when they were written for a person; "there's
+      // nothing written down about them yet" is the common one. Never the raw
+      // error.
+      setError(
+        thrown instanceof ConvexError
+          ? String(thrown.data)
+          : "Andy couldn't reach that just now. Try again.",
+      );
+    } finally {
+      inFlight.current = false;
+      setDrafting(false);
+    }
+  }, [draftEmail, id]);
   const toggleTranscript = useCallback((noteId: string) => {
     setOpenTranscripts((open) =>
       open.includes(noteId)
@@ -312,14 +388,55 @@ export default function ProfileScreen() {
           this is navigation, not yet a promise the note lands on this person.
         */}
         {result !== null && result !== undefined ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Add a note"
-            onPress={() => router.push(`/profile/${id}/capture`)}
-            style={styles.addNote}
-          >
-            <Text style={styles.addNoteLabel}>Add a note</Text>
-          </Pressable>
+          <View style={styles.actions}>
+            {error !== null ? (
+              <Text style={styles.actionError}>{error}</Text>
+            ) : null}
+            {/*
+              No preview screen between here and Mail, and that is the scope
+              document's shape rather than a shortcut: "generate a draft from
+              stored notes, hand off via `mailto:` deep link". Mail's own compose
+              window is the review step, and it is a better one than anything
+              this app would build — it is the actual thing that gets sent, fully
+              editable, and nothing leaves until Send is pressed.
+
+              The To line is left empty. This app does not read Contacts, and V1
+              stores no address, so Mail's own autocomplete is the honest place
+              for that.
+            */}
+            {/*
+              People only. "Draft a follow-up" on a foster cat would send that
+              animal's health notes into a Claude call and a compose window
+              addressed to the cat by name — not a leak, but a trip the data has
+              no reason to take, and a button that makes the app look like it is
+              not reading what it stores.
+            */}
+            {result.profile.entityType === "person" ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Draft a follow-up"
+              onPress={draftFollowUp}
+              // No explicit `accessibilityState`: `Pressable` derives it from
+              // this prop. Saying it twice meant the test read the copy and
+              // passed with the real one deleted.
+              disabled={drafting}
+              style={[styles.addNote, drafting && styles.disabled]}
+            >
+              <Text style={styles.addNoteLabel}>
+                {drafting ? "Writing…" : "Draft a follow-up"}
+              </Text>
+            </Pressable>
+            ) : null}
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Add a note"
+              onPress={() => router.push(`/profile/${id}/capture`)}
+              style={styles.addNote}
+            >
+              <Text style={styles.addNoteLabel}>Add a note</Text>
+            </Pressable>
+          </View>
         ) : null}
       </View>
     </>
@@ -371,6 +488,7 @@ const styles = StyleSheet.create({
   },
   fact: { color: colors.ink, fontSize: 16, lineHeight: 24 },
 
+  actions: { gap: 10, marginBottom: 24 },
   addNote: {
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.line,
@@ -378,8 +496,16 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: "center",
     marginHorizontal: 24,
-    marginBottom: 24,
     backgroundColor: colors.paper,
+  },
+  // Named like every other disabled state in this app rather than for the one
+  // button that first needed it.
+  disabled: { opacity: 0.5 },
+  actionError: {
+    color: colors.alert,
+    fontSize: 14,
+    lineHeight: 20,
+    marginHorizontal: 24,
   },
   addNoteLabel: { color: colors.ink, fontSize: 15 },
 
