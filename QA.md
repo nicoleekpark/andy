@@ -276,13 +276,34 @@ been tapped on a device** — the button renders, and no draft has reached Mail.
 | 16.8 | Turn Wi-Fi off, tap it | One error line, no Mail | ⬜ |
 | 16.9 | Draft, then read the message in Mail before sending | **Nothing is sent by this app.** Mail's compose window is the review step; check it says what you would actually send | ⬜ |
 
+## 17. Profile photo
+
+`photoStorageId` has been in the schema since day 1 with nothing writing it.
+The cascade that deletes the file when a person is deleted was built before the
+feature was — which is the only reason a stored file cannot outlive its profile.
+
+**Nothing here has been done on a device.** The control renders; no photo has
+been picked, uploaded, or displayed.
+
+| # | Do this | Expect |
+|---|---|---|
+| 17.1 | Open a person with no photo | An empty circle with `+`, above the name, at the size of a face — not a banner |
+| 17.2 | Tap it → allow photo access → pick an image | A square crop step, then the photo on the profile. `npm run db` → `profiles` → `photoStorageId` is set |
+| 17.3 | Tap it again → pick a different image | The new photo shows. **`npm run db` → Files: the old file is gone.** Replacing is the common case, so this is the leak that would happen every time |
+| 17.4 | Back out of the picker without choosing | Nothing happens, no error — and **no upload**, which is the part worth checking |
+| 17.5 | **Long-press** the photo → `Remove` | Confirms first, then the photo goes. **Files: the file is gone too** — clearing the field alone leaves bytes nobody can reach and everybody pays for |
+| 17.6 | Long-press the **empty** circle | Nothing. No offer to remove something that isn't there |
+| 17.7 | Deny photo access when asked | One line saying so, and the picker never opens |
+| 17.8 | Add a photo, then delete the whole person | Files: that file is gone. This cascade predates the feature |
+| 17.9 | Turn Wi-Fi off mid-upload | An error line, and the profile keeps whatever photo it had |
+
 ---
 
 ## Not built yet — do not file these
 
 **Coming in V1, just not yet.** The
-calendar briefing and its notifications, business-card photo, photo
-attachments, the app lock, dark mode.
+calendar briefing and its notifications, business-card photo, the app lock,
+dark mode.
 
 **Cut from V1 on day 4 — will not be built before launch, so a bug report
 against them is noise, not signal.** The home widget, the Siri shortcut,

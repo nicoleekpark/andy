@@ -55,6 +55,17 @@ export const withNotes = query({
     v.null(),
     v.object({
       profile: schema.doc("profiles"),
+      /**
+       * A URL for the profile photo, resolved here rather than on the client.
+       *
+       * `photoStorageId` is useless to a screen on its own — only the backend
+       * can turn one into something an `<Image>` can load. Null when there is
+       * no photo, and also when there is a storage id pointing at a file that
+       * is gone: a broken image is worse than none, and this is the one field
+       * whose target lives outside the tables where nothing enforces that it
+       * still exists.
+       */
+      photoUrl: v.union(v.string(), v.null()),
       /** This person's own notes, newest first, each with who came up in it. */
       notes: v.array(
         v.object({
@@ -187,6 +198,10 @@ export const withNotes = query({
 
     return {
       profile,
+      photoUrl:
+        profile.photoStorageId === undefined
+          ? null
+          : await ctx.storage.getUrl(profile.photoStorageId),
       notes: notes.map((note) => ({
         note,
         mentions: byNote.get(note._id) ?? [],
