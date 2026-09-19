@@ -1,11 +1,15 @@
 import { Stack, router, useLocalSearchParams } from "expo-router";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
 import { api } from "@convex/_generated/api";
+import {
+  countFactNotes,
+  followUpRefusal,
+} from "../../../../../convex/followUpScope";
 import type { Doc, Id } from "@convex/_generated/dataModel";
 import { colors, fonts } from "@/constants/theme";
 
@@ -64,6 +68,24 @@ export default function ProfileScreen() {
    * checking. Collapsed rather than absent.
    */
   const [openTranscripts, setOpenTranscripts] = useState<string[]>([]);
+
+  /**
+   * Why a follow-up cannot be drafted for this person, or `null` when it can.
+   *
+   * Decided from what the screen already has — `withNotes` collects every note
+   * rather than a page of them — so this costs no round trip, and by the same
+   * function the action uses, so the button and the refusal cannot drift apart.
+   */
+  const followUpBlock = useMemo(() => {
+    if (result === null || result === undefined) return null;
+    return followUpRefusal({
+      name: result.profile.name,
+      entityType: result.profile.entityType,
+      ownNoteCount: result.notes.length,
+      factNoteCount: countFactNotes(result.notes.map((entry) => entry.note)),
+      hasMentions: result.mentionedInTotal > 0,
+    });
+  }, [result]);
 
   const draftEmail = useAction(api.followUp.draft);
   const [drafting, setDrafting] = useState(false);
@@ -542,27 +564,40 @@ export default function ProfileScreen() {
               for that.
             */}
             {/*
-              People only. "Draft a follow-up" on a foster cat would send that
-              animal's health notes into a Claude call and a compose window
-              addressed to the cat by name — not a leak, but a trip the data has
-              no reason to take, and a button that makes the app look like it is
-              not reading what it stores.
+              Offered only where it can actually work, and the reason given
+              where it cannot.
+
+              Animals get neither the button nor a line: "record a note to draft
+              a follow-up" is not advice anyone wants about a foster cat.
+              Everyone else gets one or the other, because every way of failing
+              here is reachable by ordinary use — most of all the person Andy
+              invented from a mention, who has a note on screen and nothing this
+              feature may use.
             */}
             {result.profile.entityType === "person" ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Draft a follow-up"
-              onPress={draftFollowUp}
-              // No explicit `accessibilityState`: `Pressable` derives it from
-              // this prop. Saying it twice meant the test read the copy and
-              // passed with the real one deleted.
-              disabled={drafting}
-              style={[styles.addNote, drafting && styles.disabled]}
-            >
-              <Text style={styles.addNoteLabel}>
-                {drafting ? "Writing…" : "Draft a follow-up"}
-              </Text>
-            </Pressable>
+              followUpBlock === null ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Draft a follow-up"
+                  onPress={draftFollowUp}
+                  // No explicit `accessibilityState`: `Pressable` derives it
+                  // from this prop. Saying it twice meant the test read the
+                  // copy and passed with the real one deleted.
+                  disabled={drafting}
+                  style={[styles.addNote, drafting && styles.disabled]}
+                >
+                  <Text style={styles.addNoteLabel}>
+                    {drafting ? "Writing…" : "Draft a follow-up"}
+                  </Text>
+                </Pressable>
+              ) : (
+                // Not an error colour. Nothing has gone wrong — this is the
+                // app explaining what it would need, in the place the button
+                // would have been.
+                <Text testID="follow-up-unavailable" style={styles.actionNote}>
+                  {followUpBlock}
+                </Text>
+              )
             ) : null}
 
             <Pressable
@@ -651,6 +686,13 @@ const styles = StyleSheet.create({
   },
   photoImage: { width: "100%", height: "100%" },
   photoEmpty: { color: colors.ink, fontSize: 24, opacity: 0.35 },
+  actionNote: {
+    color: colors.ink,
+    fontSize: 14,
+    lineHeight: 20,
+    opacity: 0.6,
+    marginHorizontal: 24,
+  },
   actionError: {
     color: colors.alert,
     fontSize: 14,
