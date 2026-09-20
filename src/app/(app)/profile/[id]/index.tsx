@@ -11,6 +11,7 @@ import {
   followUpRefusal,
 } from "../../../../../convex/followUpScope";
 import { DraftSheet } from "../../../../components/draft-sheet";
+import { imageContentType } from "../../../../lib/media";
 import type { Draft } from "../../../../components/draft-sheet";
 import type { Doc, Id } from "@convex/_generated/dataModel";
 import { colors, fonts } from "@/constants/theme";
@@ -172,7 +173,11 @@ export default function ProfileScreen() {
       const uploadUrl = await generateUploadUrl();
       const response = await fetch(uploadUrl, {
         method: "POST",
-        headers: { "Content-Type": asset.mimeType ?? "image/jpeg" },
+        // Not `asset.mimeType` straight through. iOS hands back a uniform type
+        // identifier — `public.jpeg` — often enough, and that is not a legal
+        // header value: Convex answers `400 BadHeader` and the photo never
+        // uploads. See `imageContentType`.
+        headers: { "Content-Type": imageContentType(asset.mimeType, asset.uri) },
         body: await (await fetch(asset.uri)).blob(),
       });
       if (!response.ok) {

@@ -1,7 +1,10 @@
+jest.mock("../src/lib/native", () => ({ hasNativeModule: jest.fn(() => true) }));
+
 import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 import { AccessibilityInfo, Alert, Linking } from "react-native";
 import { useAction, useMutation, useQuery } from "convex/react";
 import * as Clipboard from "expo-clipboard";
+import { hasNativeModule } from "../src/lib/native";
 import * as ImagePicker from "expo-image-picker";
 import { ConvexError } from "convex/values";
 import { getFunctionName } from "convex/server";
@@ -399,6 +402,13 @@ describe("follow-up email", () => {
     jest.restoreAllMocks();
   });
 
+  beforeEach(() => {
+    // Every test here but one runs as if the app is built. `clearAllMocks` in
+    // the shared afterEach empties this mock's return value along with its
+    // call records, so it is set per test rather than once at the top.
+    (hasNativeModule as jest.Mock).mockReturnValue(true);
+  });
+
   async function reachProfile() {
     (useQuery as jest.Mock).mockReturnValue(
       withNotes([
@@ -592,9 +602,8 @@ describe("follow-up email", () => {
     // A whole person's profile, gone, because one button's module was a build
     // behind. Rebuilding fixes the symptom; this test is about the blast
     // radius, which has to be the button.
-    jest.spyOn(Clipboard, "setStringAsync").mockImplementation(() => {
-      throw new Error("Cannot find native module 'ExpoClipboard'");
-    });
+    (hasNativeModule as jest.Mock).mockReturnValue(false);
+    const set = jest.spyOn(Clipboard, "setStringAsync");
     await draftAndOpen(jest.fn(async () => NINA));
 
     // The screen and the draft are still here — this is the assertion that
@@ -610,6 +619,10 @@ describe("follow-up email", () => {
     // comes out as whatever was on the clipboard before.
     expect(screen.getByTestId("copy-failed")).toBeTruthy();
     expect(screen.queryByTestId("copied")).toBeNull();
+    // Asked before it was loaded, so nothing threw and nothing was reported.
+    // Catching the throw left Expo printing `Cannot find native module` with a
+    // full stack on every press — handled, and presented as a crash.
+    expect(set).not.toHaveBeenCalled();
 
     await act(async () => {
       fireEvent.changeText(screen.getByLabelText("Message"), "Different now.");
