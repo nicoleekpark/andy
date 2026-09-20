@@ -185,10 +185,25 @@ export default function ProfileScreen() {
       };
       await attachPhoto({ profileId: id, storageId });
     } catch (thrown) {
+      // The cause, in development only.
+      //
+      // "Andy couldn't save that photo. Try again." is the right thing to show
+      // a person and the wrong thing to show the person fixing it: the upload
+      // has four distinct ways to fail — reading the picked file, the POST,
+      // its status, and the JSON — and the message erases which one happened.
+      // This path had never run on a device before it was reported, and the
+      // first thing anybody asked was "yes, but what actually failed".
+      //
+      // `__DEV__` is false in a release build, so what ships is the sentence
+      // above and nothing else.
+      const detail =
+        __DEV__ && !(thrown instanceof ConvexError)
+          ? ` (${thrown instanceof Error ? thrown.message : String(thrown)})`
+          : "";
       setError(
         thrown instanceof ConvexError
           ? String(thrown.data)
-          : "Andy couldn't save that photo. Try again.",
+          : `Andy couldn't save that photo. Try again.${detail}`,
       );
     } finally {
       setPhotoBusy(false);

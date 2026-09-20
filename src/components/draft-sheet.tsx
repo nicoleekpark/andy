@@ -48,15 +48,39 @@ import { colors, fonts } from "../constants/theme";
  * is an ordinary state here rather than a broken machine — and the cost of it
  * must be one button, not a person's whole profile. In a shipped build the
  * module is always present and this never fails.
+ *
+ * Loaded once and remembered, including the failure. Catching the throw kept
+ * the app up but still printed a red `Cannot find native module` with a full
+ * stack on *every* press — a handled error, reported as though it were not,
+ * repeatedly. `requireOptionalNativeModule` would answer the question without
+ * throwing, but it returns `null` under jest whatever the binary holds, and
+ * mocking it means replacing the module jest-expo already mocks. Remembering
+ * the answer costs one line and makes the noise happen at most once.
  */
-async function putOnClipboard(text: string): Promise<boolean> {
+let clipboardModule: typeof import("expo-clipboard") | null | undefined;
+
+function loadClipboard(): typeof import("expo-clipboard") | null {
+  if (clipboardModule !== undefined) return clipboardModule;
+
+  let loaded: typeof import("expo-clipboard") | null;
   try {
     // `require`, not `await import`. Metro resolves both lazily, but only this
     // one hands back the very object a `import * as Clipboard` elsewhere is
     // holding — the promise form returns an interop wrapper, which is enough
     // to make a test's spy sit on a different function than the one called.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const clipboard = require("expo-clipboard") as typeof import("expo-clipboard");
+    loaded = require("expo-clipboard");
+  } catch {
+    loaded = null;
+  }
+  clipboardModule = loaded;
+  return loaded;
+}
+
+async function putOnClipboard(text: string): Promise<boolean> {
+  const clipboard = loadClipboard();
+  if (clipboard === null) return false;
+  try {
     await clipboard.setStringAsync(text);
     return true;
   } catch {
