@@ -10,6 +10,14 @@
  * written and not after; `promptBoundary.ts` and `embeddingModel.ts` are here
  * for the same reason.
  *
+ * **This file is imported by the app as well as by the backend**, which is new
+ * for this repo — `embeddingModel.ts` is imported by `schema.ts`, but nothing
+ * under `convex/` was reaching the screen before. It is safe because there is
+ * nothing here but pure functions over plain values: no `ctx`, no database, no
+ * environment, nothing Node-only, no secret. That is a condition rather than an
+ * observation. A file that stops meeting it stops being importable from the
+ * client, and the import is the thing that would have to move, not the rule.
+ *
  * The wording lives here rather than at either end because the interesting case
  * is one where a true sentence is hard to write. Andy invents a person the
  * moment a note mentions them, so 민호 can have a profile, a timeline with a

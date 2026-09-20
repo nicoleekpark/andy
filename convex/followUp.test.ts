@@ -338,6 +338,24 @@ test("should refuse another user's person behind the same message as one that do
   expect(createMessage).not.toHaveBeenCalled();
 });
 
+test("should hide a malformed id behind the same message as one that is not yours", async () => {
+  const t = convexTest(schema, modules);
+  await seed(t);
+
+  // `normalizeId` returns null for a string that is not an id of that table at
+  // all, and this has to land on the same sentence as a real id belonging to
+  // somebody else — otherwise the shape of the answer says which one it was.
+  // The equivalent is proven in `profiles.test.ts`; this file inherited the
+  // pattern without a witness of its own, which `security-reviewer` named.
+  await expect(
+    t.withIdentity(ALICE).action(api.followUp.draft, {
+      profileId: "not-an-id",
+      today: "2026-09-17",
+    }),
+  ).rejects.toThrow(/couldn't find that person/);
+  expect(createMessage).not.toHaveBeenCalled();
+});
+
 test("should refuse a signed-out caller before spending anything", async () => {
   const t = convexTest(schema, modules);
   const { amy } = await seed(t);
