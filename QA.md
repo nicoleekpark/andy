@@ -314,7 +314,8 @@ been picked, uploaded, or displayed.
 | # | Do this | Expect |
 |---|---|---|
 | 17.1 | Open a person with no photo | An empty circle with `+`, above the name, at the size of a face — not a banner |
-| 17.2 | Tap it → allow photo access → pick an image | A square crop step, then the photo on the profile. `npm run db` → `profiles` → `photoStorageId` is set. **This failed with `upload failed: 400`** until the picker's `public.jpeg` stopped going out as a `Content-Type` — worth re-checking on a device whose photos are HEIC as well as JPEG |
+| 17.2 | Tap it → allow photo access → pick an image | A square crop step, then the photo on the profile. `npm run db` → `profiles` → `photoStorageId` is set. **This failed twice with `upload failed: 400`** before the bytes stopped going through a JavaScript `Blob` — re-check on a device whose photos are HEIC as well as JPEG |
+| 17.2a | Whatever goes wrong here, read the whole message | In development it carries the server's own words (`BadHeader`, and so on). The status alone is what turned one bug into three rounds of guessing |
 | 17.3 | Tap it again → pick a different image | The new photo shows. **`npm run db` → Files: the old file is gone.** Replacing is the common case, so this is the leak that would happen every time |
 | 17.4 | Back out of the picker without choosing | Nothing happens, no error — and **no upload**, which is the part worth checking |
 | 17.5 | **Long-press** the photo → `Remove` | Confirms first, then the photo goes. **Files: the file is gone too** — clearing the field alone leaves bytes nobody can reach and everybody pays for |

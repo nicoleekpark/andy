@@ -11,6 +11,7 @@ import {
   followUpRefusal,
 } from "../../../../../convex/followUpScope";
 import { DraftSheet } from "../../../../components/draft-sheet";
+import * as FileSystem from "expo-file-system/legacy";
 import { imageContentType } from "../../../../lib/media";
 import type { Draft } from "../../../../components/draft-sheet";
 import type { Doc, Id } from "@convex/_generated/dataModel";
@@ -171,21 +172,46 @@ export default function ProfileScreen() {
     setPhotoBusy(true);
     try {
       const uploadUrl = await generateUploadUrl();
-      const response = await fetch(uploadUrl, {
-        method: "POST",
+
+      // Uploaded natively from the file, rather than read into a JavaScript
+      // `Blob` and posted with `fetch`.
+      //
+      // The blob version did not work and said `upload failed: 400`, twice,
+      // and the second time was after the `Content-Type` it sends had been
+      // fixed and verified against the deployment — so something between
+      // React Native and the request was still not what curl sends. React
+      // Native itself warns about the path:
+      //
+      //     Response.blob() is using React Native's Blob, which copies the
+      //     response into the native blob store and reads it back through
+      //     base64 encoding.
+      //
+      // A photo does not need to enter JavaScript at all. `uploadAsync` hands
+      // the file to the platform's own uploader with the headers given here
+      // and nothing in between — no blob store, no base64 round trip, and no
+      // second place for a header to be rewritten. `expo-file-system` is a
+      // dependency of `expo` itself, so this needs no new native module.
+      const response = await FileSystem.uploadAsync(uploadUrl, asset.uri, {
+        httpMethod: "POST",
+        uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
         // Not `asset.mimeType` straight through. iOS hands back a uniform type
         // identifier — `public.jpeg` — often enough, and that is not a legal
-        // header value: Convex answers `400 BadHeader` and the photo never
-        // uploads. See `imageContentType`.
-        headers: { "Content-Type": imageContentType(asset.mimeType, asset.uri) },
-        body: await (await fetch(asset.uri)).blob(),
+        // header value: Convex answers `400 BadHeader`. See `imageContentType`.
+        headers: {
+          "Content-Type": imageContentType(asset.mimeType, asset.uri),
+        },
       });
-      if (!response.ok) {
-        throw new Error(`upload failed: ${response.status}`);
+      if (response.status < 200 || response.status >= 300) {
+        // The body, not just the status. Convex says which check refused —
+        // `{"code":"BadHeader","message":"…"}` — and throwing only the number
+        // is what turned one bug into three rounds of guessing.
+        throw new Error(
+          `upload failed: ${response.status} ${response.body.slice(0, 200)}`,
+        );
       }
       // Convex hands back its own branded id; the upload endpoint is outside
       // the typed function surface, so this is the seam where it re-enters it.
-      const { storageId } = (await response.json()) as {
+      const { storageId } = JSON.parse(response.body) as {
         storageId: Id<"_storage">;
       };
       await attachPhoto({ profileId: id, storageId });

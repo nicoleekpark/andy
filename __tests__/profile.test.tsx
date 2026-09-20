@@ -1,10 +1,20 @@
 jest.mock("../src/lib/native", () => ({ hasNativeModule: jest.fn(() => true) }));
 
+// The legacy `expo-file-system` surface is not one jest-expo stubs, so the
+// module the screen imports has no `uploadAsync` to spy on. Mocked here rather
+// than worked around at the call site: uploading a photo is the one thing in
+// this file that must never touch the network for real.
+jest.mock("expo-file-system/legacy", () => ({
+  uploadAsync: jest.fn(),
+  FileSystemUploadType: { BINARY_CONTENT: 0, MULTIPART: 1 },
+}));
+
 import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 import { AccessibilityInfo, Alert, Linking } from "react-native";
 import { useAction, useMutation, useQuery } from "convex/react";
 import * as Clipboard from "expo-clipboard";
 import { hasNativeModule } from "../src/lib/native";
+import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
 import { ConvexError } from "convex/values";
 import { getFunctionName } from "convex/server";
@@ -1042,14 +1052,13 @@ describe("profile photo", () => {
       canceled: false,
       assets: [{ uri: "file:///picked.jpg", mimeType: "image/jpeg" }],
     });
-    const fetchMock = jest
-      .fn()
-      .mockResolvedValueOnce({ blob: async () => new Blob(["bytes"]) })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ storageId: "storage-1" }),
-      });
-    jest.spyOn(global, "fetch").mockImplementation(fetchMock);
+    const upload = (FileSystem.uploadAsync as jest.Mock).mockResolvedValue({
+        status: 200,
+        headers: {},
+        body: JSON.stringify({ storageId: "storage-1" }),
+      mimeType: null,
+    });
+    const netFetch = jest.spyOn(global, "fetch");
     await reachProfile(null);
 
     await act(async () => {
@@ -1062,6 +1071,77 @@ describe("profile photo", () => {
       profileId: "profile-1",
       storageId: "storage-1",
     });
+
+    // Uploaded from the file, not read into JavaScript first. The blob version
+    // answered `upload failed: 400` on a device twice — the second time with a
+    // Content-Type already fixed and verified with curl — so the bytes never
+    // enter JS now, and nothing else may put them on the network either.
+    expect(netFetch).not.toHaveBeenCalled();
+    const [url, uri, options] = upload.mock.calls[0] ?? [];
+    expect(url).toBe("https://upload/here");
+    expect(uri).toBe("file:///picked.jpg");
+    expect(options?.httpMethod).toBe("POST");
+    expect(options?.uploadType).toBe(
+      FileSystem.FileSystemUploadType.BINARY_CONTENT,
+    );
+    expect(options?.headers?.["Content-Type"]).toBe("image/jpeg");
+  });
+
+  test("should not pass the picker's uniform type identifier through as a header", async () => {
+    mockPhotoMutations({});
+    (ImagePicker.launchImageLibraryAsync as jest.Mock).mockResolvedValueOnce({
+      canceled: false,
+      // What iOS actually hands back, and the reason the first photo never
+      // uploaded: `public.jpeg` is a uniform type identifier, not a MIME type,
+      // and not a legal header value. Verified against the deployment —
+      // `image/jpeg` is 200, `public.jpeg` is
+      // `400 {"code":"BadHeader","message":"invalid HTTP header"}`.
+      assets: [{ uri: "file:///picked.jpeg", mimeType: "public.jpeg" }],
+    });
+    const upload = (FileSystem.uploadAsync as jest.Mock).mockResolvedValue({
+      status: 200,
+      headers: {},
+      body: JSON.stringify({ storageId: "storage-1" }),
+      mimeType: null,
+    });
+    await reachProfile(null);
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Add a photo"));
+    });
+
+    await waitFor(() => expect(upload).toHaveBeenCalledTimes(1));
+    const [, , options] = upload.mock.calls[0] ?? [];
+    expect(options?.headers?.["Content-Type"]).toBe("image/jpeg");
+  });
+
+  test("should say what the server refused, not only that it refused", async () => {
+    mockPhotoMutations({});
+    (ImagePicker.launchImageLibraryAsync as jest.Mock).mockResolvedValueOnce({
+      canceled: false,
+      assets: [{ uri: "file:///picked.jpg", mimeType: "image/jpeg" }],
+    });
+    (FileSystem.uploadAsync as jest.Mock).mockResolvedValue({
+      status: 400,
+      headers: {},
+      body: JSON.stringify({
+        code: "BadHeader",
+        message: "Bad header for content-type: invalid HTTP header",
+      }),
+      mimeType: null,
+    });
+    await reachProfile(null);
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Add a photo"));
+    });
+
+    // Throwing the status alone is what turned one bug into three rounds of
+    // guessing: Convex names the check that refused, in the body, and the
+    // message threw it away.
+    await waitFor(() =>
+      expect(screen.getByText(/BadHeader/)).toBeTruthy(),
+    );
   });
 
   test("should crop on the way in, since the screen shows a square and bytes are paid for", async () => {
