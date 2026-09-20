@@ -262,7 +262,10 @@ Drafts measured against the real notes from the CLI on 2026-09-17 and again on
 
 `Copy` needs a **new dev-client build** — `expo-clipboard` is a native module
 and is not in the binary currently installed. Everything else in this section
-works without one.
+works without one, and that is now true rather than assumed: the first version
+imported the module at the top of the sheet, which the profile screen imports,
+so a missing binary took the **whole profile screen** down with it. Copy now
+fails to a line in the sheet.
 
 **Rows 16.11–16.13 are the ones with no automated cover at all.** A `pageSheet`
 modal, a growing multi-line field and the keyboard is the combination no runner
@@ -297,6 +300,7 @@ watched happen.
 | 16.11 | In the sheet, tap into **Message** and keep typing past the bottom of the visible area | The caret stays above the keyboard **as it moves**, not just when the field is first tapped. `Copy` and `Write another` are reachable by scrolling, with no dead gap between the content and the keyboard | ⬜ |
 | 16.12 | With the keyboard up, tap `Copy message` **once** | It copies on the first tap. The keyboard dismissing must not eat the press | ⬜ |
 | 16.13 | Turn **VoiceOver** on, tap `Copy message` | It says "Message copied". The result of this button is invisible, so the confirmation is the only evidence it worked | ⬜ |
+| 16.14 | **On a build without `expo-clipboard`** (i.e. before rebuilding): open a profile, draft, tap `Copy message` | The profile and the draft are **fine**; only the copy fails, with a line saying so. This is the regression that cost a whole screen — worth re-checking whenever a native module is added | ⬜ |
 
 ## 17. Profile photo
 

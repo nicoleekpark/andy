@@ -579,6 +579,48 @@ describe("follow-up email", () => {
     expect(announce).toHaveBeenCalledWith("Message copied");
   });
 
+  test("should lose only the copy button when the clipboard module is not in the build", async () => {
+    // What actually happened on the device. `expo-clipboard` is native, so its
+    // JavaScript throws on evaluation when the binary does not carry it — and
+    // a static import at the top of the sheet made that throw during the
+    // profile screen's own module evaluation:
+    //
+    //     ERROR  Cannot find native module 'ExpoClipboard'
+    //     WARN   Route "./(app)/profile/[id]/index.tsx" is missing the
+    //            required default export.
+    //
+    // A whole person's profile, gone, because one button's module was a build
+    // behind. Rebuilding fixes the symptom; this test is about the blast
+    // radius, which has to be the button.
+    jest.spyOn(Clipboard, "setStringAsync").mockImplementation(() => {
+      throw new Error("Cannot find native module 'ExpoClipboard'");
+    });
+    await draftAndOpen(jest.fn(async () => NINA));
+
+    // The screen and the draft are still here — this is the assertion that
+    // would have failed before, because there was no screen to assert on.
+    expect(screen.getByDisplayValue("Hope Berlin is treating you well.")).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Copy the message"));
+    });
+
+    // And it says so rather than looking like it worked. A copy that silently
+    // did nothing is indistinguishable from one that worked, until the paste
+    // comes out as whatever was on the clipboard before.
+    expect(screen.getByTestId("copy-failed")).toBeTruthy();
+    expect(screen.queryByTestId("copied")).toBeNull();
+
+    await act(async () => {
+      fireEvent.changeText(screen.getByLabelText("Message"), "Different now.");
+    });
+
+    // Cleared by the edit, the same as the success line. Both describe what
+    // happened to text that has since moved, so both stop being true at the
+    // same moment.
+    expect(screen.queryByTestId("copy-failed")).toBeNull();
+  });
+
   test("should copy the subject with the message when that is what is wanted", async () => {
     const set = jest.spyOn(Clipboard, "setStringAsync").mockResolvedValue(true);
     await draftAndOpen(jest.fn(async () => NINA));
@@ -621,6 +663,17 @@ describe("follow-up email", () => {
     });
     expect(screen.getByTestId("copied")).toBeTruthy();
 
+    await act(async () => {
+      fireEvent.changeText(screen.getByLabelText("Subject"), "A new subject");
+    });
+
+    // The subject counts as the text moving too — `Copy both` puts it on the
+    // clipboard, so a line claiming it was copied goes stale when it changes.
+    expect(screen.queryByTestId("copied")).toBeNull();
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Copy the message"));
+    });
     await act(async () => {
       fireEvent.changeText(screen.getByLabelText("Message"), "Different now.");
     });
