@@ -1,6 +1,6 @@
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useAction, useMutation, useQuery } from "convex/react";
@@ -10,6 +10,8 @@ import {
   countFactNotes,
   followUpRefusal,
 } from "../../../../../convex/followUpScope";
+import { DraftSheet } from "../../../../components/draft-sheet";
+import type { Draft } from "../../../../components/draft-sheet";
 import type { Doc, Id } from "@convex/_generated/dataModel";
 import { colors, fonts } from "@/constants/theme";
 
@@ -87,7 +89,24 @@ export default function ProfileScreen() {
     });
   }, [result]);
 
-  const draftEmail = useAction(api.followUp.draft);
+  const requestDraft = useAction(api.followUp.draft);
+  /**
+   * The draft on screen and which attempt produced it, or `null` when the
+   * sheet is closed.
+   *
+   * Held here rather than on a route of its own: a draft is not addressable —
+   * it exists for as long as the sheet is open and is deliberately not saved,
+   * so a URL that could be returned to would be a URL that lied.
+   *
+   * One piece of state rather than two. The text and its attempt number have
+   * to move together — the sheet is remounted on the number, which is how a
+   * rewrite resets fields the user has typed in — and as two `useState`s that
+   * held only because both setters happened to sit next to each other. Putting
+   * them in one object is what makes it structural.
+   */
+  const [attempt, setAttempt] = useState<{ id: number; draft: Draft } | null>(
+    null,
+  );
   const [drafting, setDrafting] = useState(false);
   /**
    * A latch, not a second copy of `drafting`.
@@ -201,12 +220,10 @@ export default function ProfileScreen() {
   }, [removePhoto, id]);
 
   /**
-   * Write a follow-up and hand it to Mail.
+   * Write a follow-up and put it on screen.
    *
-   * Everything a person sees here they see in Mail, not in a preview this app
-   * would have to build — which is `PROJECT_SCOPE.md`'s shape and also the
-   * better review step: it is the actual message, fully editable, and nothing
-   * is sent until Send is pressed.
+   * Also the rewrite: `DraftSheet` calls this again for "Write another", which
+   * is why the sheet is keyed on an attempt counter rather than on the text.
    */
   const draftFollowUp = useCallback(async () => {
     if (inFlight.current) return;
@@ -214,7 +231,7 @@ export default function ProfileScreen() {
     setDrafting(true);
     setError(null);
     try {
-      const written = await draftEmail({
+      const written = await requestDraft({
         profileId: id,
         // The device's date, not the server's. A follow-up that says "September"
         // to somebody for whom it is already October reads as inattentive, and
@@ -222,30 +239,20 @@ export default function ProfileScreen() {
         today: new Date().toLocaleDateString("en-CA"),
       });
 
-      const mail = `mailto:?subject=${encodeURIComponent(
-        written.subject,
-      )}&body=${encodeURIComponent(written.body)}`;
-
-      try {
-        await Linking.openURL(mail);
-      } catch {
-        // Not `canOpenURL` first. On iOS that returns false for any scheme
-        // missing from `LSApplicationQueriesSchemes`, and `app.json` has no
-        // `infoPlist` block at all — so if `mailto` turned out not to be
-        // exempt, every tap would say "no mail app" and the whole feature
-        // would be dead with every test still green. `openURL` rejects on its
-        // own, which gets the same message from the thing that actually failed.
-        setError(
-          "Andy wrote the draft, but there's no mail app set up to open it in. Set one up and tap again.",
-        );
-      }
+      // Counted rather than compared. A rewrite can legitimately come back
+      // identical, and the sheet has to reset its fields either way — so the
+      // thing that changes is the attempt, not the text.
+      setAttempt((previous) => ({
+        id: (previous?.id ?? 0) + 1,
+        draft: written,
+      }));
     } catch (thrown) {
       // Inline, not an alert. Every other error in this app is an inline line
       // in `colors.alert`; every `Alert` in it is a confirmation or a choice,
-      // never a report. And the "they might be in Mail by now" argument does
-      // not hold — on both failure paths Mail never opened, so they are still
-      // looking at this screen, with the actions bar pinned outside the scroll
-      // view so the line is guaranteed to be visible.
+      // never a report. Nothing has navigated anywhere on either failure path,
+      // so they are still looking at this screen — with the actions bar pinned
+      // outside the scroll view, or the sheet open in front of it, so the line
+      // is visible in both.
       //
       // The server's own words when they were written for a person; "there's
       // nothing written down about them yet" is the common one. Never the raw
@@ -259,7 +266,7 @@ export default function ProfileScreen() {
       inFlight.current = false;
       setDrafting(false);
     }
-  }, [draftEmail, id]);
+  }, [requestDraft, id]);
   const toggleTranscript = useCallback((noteId: string) => {
     setOpenTranscripts((open) =>
       open.includes(noteId)
@@ -548,21 +555,9 @@ export default function ProfileScreen() {
         */}
         {result !== null && result !== undefined ? (
           <View style={styles.actions}>
-            {error !== null ? (
+            {error !== null && attempt === null ? (
               <Text style={styles.actionError}>{error}</Text>
             ) : null}
-            {/*
-              No preview screen between here and Mail, and that is the scope
-              document's shape rather than a shortcut: "generate a draft from
-              stored notes, hand off via `mailto:` deep link". Mail's own compose
-              window is the review step, and it is a better one than anything
-              this app would build — it is the actual thing that gets sent, fully
-              editable, and nothing leaves until Send is pressed.
-
-              The To line is left empty. This app does not read Contacts, and V1
-              stores no address, so Mail's own autocomplete is the honest place
-              for that.
-            */}
             {/*
               Offered only where it can actually work, and the reason given
               where it cannot.
@@ -611,6 +606,26 @@ export default function ProfileScreen() {
           </View>
         ) : null}
       </View>
+
+      {/*
+        Mounted only while there is a draft, and keyed on the attempt rather
+        than the text. A rewrite can come back word-for-word identical and the
+        fields still have to reset to it — remounting is the whole reset, so
+        nothing has to remember to clear.
+      */}
+      {attempt !== null ? (
+      <DraftSheet
+        key={attempt.id}
+        draft={attempt.draft}
+        onClose={() => {
+          setAttempt(null);
+          setError(null);
+        }}
+        onRewrite={draftFollowUp}
+        rewriting={drafting}
+        error={error}
+      />
+      ) : null}
     </>
   );
 }

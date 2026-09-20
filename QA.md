@@ -257,12 +257,22 @@ Everything here is read by **somebody who is not the user**. That makes it the
 one feature in this app whose output leaves the owner's screen, and the rows
 below are weighted accordingly.
 
-Drafts measured against the real notes on 2026-09-17 from the CLI. **Nothing has
-been tapped on a device** — the button renders, and no draft has reached Mail.
+Drafts measured against the real notes from the CLI on 2026-09-17 and again on
+2026-09-19. **Nothing has been tapped on a device.**
+
+`Copy` needs a **new dev-client build** — `expo-clipboard` is a native module
+and is not in the binary currently installed. Everything else in this section
+works without one.
+
+**Rows 16.11–16.13 are the ones with no automated cover at all.** A `pageSheet`
+modal, a growing multi-line field and the keyboard is the combination no runner
+here can see, and the reason `automaticallyAdjustKeyboardInsets` was chosen over
+a `KeyboardAvoidingView` is a claim about native behaviour that has not been
+watched happen.
 
 | # | Do this | Expect | |
 |---|---|---|---|
-| 16.1 | Open a person with notes → `Draft a follow-up` | Mail opens with a subject and 3–5 sentences. **The To line is empty** — this app does not read Contacts and V1 stores no address | ⬜ |
+| 16.1 | Open a person with notes → `Draft a follow-up` | A sheet slides up **inside Andy** with a subject and 3–5 sentences, both in editable fields. **No Mail, no share sheet, nothing opens** | ⬜ |
 | 16.2 | Open a person with **no** notes and no mentions | **No button at all** — a line where it would be: "There's nothing written down about {name} yet — record a note first." | ✅ CLI |
 | 16.2a | Open somebody **Andy invented from a mention** (tap a name inside another person's note) | **No button.** The line says they "only come up in notes about other people". This is the one that shipped wrong: their timeline shows a note, so "nothing is written down" read as a lie — and that note is somebody else's words about them, which must never be mailed to them | ✅ CLI, on 민호 |
 | 16.2b | Open a person whose notes have an **empty "What to remember"** | **No button.** The line names the facts as what is missing, not the note — pointing them at "record a note" would point at the thing they already did | ✅ CLI, on Emily Watson |
@@ -275,9 +285,18 @@ been tapped on a device** — the button renders, and no draft has reached Mail.
 | 16.5b | Draft for someone whose notes mention **their own family** (a parent's illness, a partner's job) | May ask after them — "how is your mother getting on?" — and must never restate the detail. This is the one exception to "no third parties", because the recipient raised it themselves. Measured on a note recording a cancer diagnosis: asked, named nothing | ✅ CLI |
 | 16.5c | Open a **foster animal's** profile | **No button, and no explanatory line either** — "record a note to draft a follow-up" is not advice anybody wants about a foster cat. The action refuses one too, since it is public and no screen guards it | ✅ CLI |
 | 16.6 | **Double-tap** `Draft a follow-up` | One call. The button greys to "Writing…" — each press is paid | ⬜ |
-| 16.7 | Tap it on a simulator with **no mail account** | "No mail app" rather than a tap that appears to do nothing | ⬜ |
-| 16.8 | Turn Wi-Fi off, tap it | One error line, no Mail | ⬜ |
-| 16.9 | Draft, then read the message in Mail before sending | **Nothing is sent by this app.** Mail's compose window is the review step; check it says what you would actually send | ⬜ |
+| 16.7 | In the sheet: `Copy message` → paste into Messages | The body only, no subject. A subject is an email's idea and a text message has nowhere to put it | ⬜ |
+| 16.8 | `Copy both` → paste anywhere | Subject, blank line, body | ⬜ |
+| 16.8a | **Edit the message, then `Copy message`** | What is **on screen now**, not what Claude first wrote. Pasting a correction you already made would be a silent wrong answer | ⬜ |
+| 16.8b | Copy, then type one character in the field | The "Message copied" line **goes away** — it stopped being true | ⬜ |
+| 16.8c | `Write another` **without editing** | A new draft, no question asked | ⬜ |
+| 16.8d | Edit, then `Write another` | Asks first — "Replace what you wrote?". Cancelling keeps your edit; confirming replaces it, **even if the new draft is word-for-word the old one** | ⬜ |
+| 16.8e | `Done`, then `Draft a follow-up` again | Your edits are **gone**. A draft is generated from notes, not saved as a document | ⬜ |
+| 16.9 | Turn Wi-Fi off, tap `Draft a follow-up` | One error line, no sheet | ⬜ |
+| 16.10 | Read the message before you send it **anywhere** | **Nothing is sent by Andy at all.** This is the review step, and it is the only one | ⬜ |
+| 16.11 | In the sheet, tap into **Message** and keep typing past the bottom of the visible area | The caret stays above the keyboard **as it moves**, not just when the field is first tapped. `Copy` and `Write another` are reachable by scrolling, with no dead gap between the content and the keyboard | ⬜ |
+| 16.12 | With the keyboard up, tap `Copy message` **once** | It copies on the first tap. The keyboard dismissing must not eat the press | ⬜ |
+| 16.13 | Turn **VoiceOver** on, tap `Copy message` | It says "Message copied". The result of this button is invisible, so the confirmation is the only evidence it worked | ⬜ |
 
 ## 17. Profile photo
 

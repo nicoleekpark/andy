@@ -28,11 +28,14 @@ export const MAX_EMAIL_NOTES = 6;
 /**
  * How long a body may be before it is cut.
  *
- * This is handed to Mail through a `mailto:` URL, and a URL that is too long is
- * not rejected — it is silently truncated somewhere between the app, the OS and
- * Mail, which would drop the end of a sentence with no sign that anything was
- * lost. The prompt asks for something far shorter than this; the cap is for the
- * day it does not listen.
+ * The original reason was a `mailto:` URL, which is not rejected when it grows
+ * too long — it is silently truncated somewhere between the app, the OS and
+ * Mail, dropping the end of a sentence with no sign anything was lost. The
+ * draft now stays in the app, so that reason is gone and the cap stays for a
+ * plainer one: this is rendered in a text field on a phone, and a model that
+ * ignores "three to five sentences" should not be able to hand somebody a wall
+ * of text to scroll. The prompt asks for far shorter than this; the cap is for
+ * the day it does not listen.
  */
 export const MAX_EMAIL_BODY_CHARS = 1_200;
 

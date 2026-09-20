@@ -67,7 +67,7 @@ Risk       : iOS cannot auto-surface caller profiles during a real cellular
    weeks and is outside your control, same failure mode as an
    unpredictable App Store review. Deferred to V1.1+ specifically so it
    never blocks this submission. Follow-up **email drafting** (using
-   your own already-stored notes, sent via a `mailto:` deep link) needs
+   your own already-stored notes, shown in the app to edit and copy) needs
    **no OAuth at all** and ships in V1.
 6. **Calendar (EventKit) is the actual answer to the "phone call" vision.**
    Unlike a phone number, a calendar event already has the person's name
@@ -148,7 +148,7 @@ Researched directly rather than assumed:
 - [ ] **Ask Andy — semantic recall across every note, answered in prose over its own sources.** One screen, not two. Retrieval runs over every _note_ (not just profile-primary fields), so "the Meta developer I met at X's birthday" surfaces a person who exists only as a mention inside somebody else's note. The same retrieval then feeds a Claude call that answers in a sentence **and shows the notes it used, tappable**. Absorbed the Should-Have "simple RAG chatbot" (day-04 scope cut): retrieval *is* that feature's expensive half, so what remains is one action and no second screen — and two boxes would make the user guess which one to ask. The citations are not polish: Day 2 measured extraction laundering a mistranscription into a confident false fact, and an answer with no visible source is that same failure with the evidence removed. See schema note below.
 - [x] Timeline per profile — chronological list of notes/interactions — day 3, newest first, with who came up in each note
 - [ ] **Calendar Briefing** — read calendar (EventKit — covers Apple + Google + CalDAV in one API, see Reality Checks), fuzzy-match attendee/title names to profiles, schedule a local pre-meeting notification (last notes digest) and a post-meeting nudge ("오늘 A랑 어땠어? 새로 기억할 것?")
-- [ ] **Follow-up email draft** — generate a draft from stored notes, hand off via `mailto:` deep link (no inbox read, no OAuth)
+- [ ] **Follow-up draft** — generate a draft from stored notes, shown in the app to edit, copy, and regenerate (a second paid call). No inbox read, no OAuth, nothing sent by Andy. Was `mailto:`; changed on day 6, because a follow-up gets sent by text or KakaoTalk as often as by email and `mailto:` is a dead end for both
 - [ ] Manual photo attachment per profile (expo-image-picker)
 - [ ] **Passcode/biometric app lock** (expo-local-authentication) — this app stores notes about other people without their consent; a lock screen is table stakes for trust, cheap to add
 - [ ] Realtime sync across the user's own devices
@@ -425,8 +425,8 @@ Calendar Briefing (parallel path)
    → nudge response → voice/text capture → same extraction pipeline above
 
 Follow-up Email (on demand)
-   Stored notes for a profile → Claude drafts follow-up → mailto: deep link
-   (no inbox access, no OAuth)
+   Stored notes for a profile → Claude drafts follow-up → editable sheet
+   → copy (no inbox access, no OAuth, nothing sent by Andy)
 ```
 
 ## Tech Stack
@@ -458,7 +458,7 @@ _Rewritten on day 4. The original table is preserved in `dev-reports/day-04.dev.
 | 6     | Calendar read (EventKit) + attendee/profile fuzzy matching                                                                                                                  |
 | 7     | Local notification scheduling (pre-meeting briefing, post-meeting nudge) + capture-from-nudge flow + the 64-pending guardrail                                               |
 | 8     | Business-card photo → profile (Claude vision, same extraction action) + manual photo attach — one permission, one picker, two features                                      |
-| 9     | Follow-up email draft (`mailto:`), **passcode/biometric lock**, bug bash                                                                                                    |
+| 9     | ~~Follow-up draft~~ _(done day 6 — in-app sheet, not `mailto:`)_, **passcode/biometric lock**, bug bash                                                                     |
 | 10    | Privacy strings, `app-store-reviewer` pass, polish                                                                                                                          |
 | 11–12 | Buffer — physical-device end-to-end test, `QA.md` full pass, EAS build, TestFlight, submit (buffer absorbs whatever slipped, don't skip it)                                 |
 
