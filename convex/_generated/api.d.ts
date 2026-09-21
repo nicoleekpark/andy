@@ -10,6 +10,8 @@
 
 import type * as answer from "../answer.js";
 import type * as answerPrompt from "../answerPrompt.js";
+import type * as calendar from "../calendar.js";
+import type * as calendarNames from "../calendarNames.js";
 import type * as claude from "../claude.js";
 import type * as cleanup from "../cleanup.js";
 import type * as email from "../email.js";
@@ -37,6 +39,8 @@ import type {
 declare const fullApi: ApiFromModules<{
   answer: typeof answer;
   answerPrompt: typeof answerPrompt;
+  calendar: typeof calendar;
+  calendarNames: typeof calendarNames;
   claude: typeof claude;
   cleanup: typeof cleanup;
   email: typeof email;
