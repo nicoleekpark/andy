@@ -1,6 +1,7 @@
 import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
-import { Linking } from "react-native";
-import { useAction, useQuery } from "convex/react";
+import { Alert, Linking } from "react-native";
+import { useAction, useMutation, useQuery } from "convex/react";
+import * as ImagePicker from "expo-image-picker";
 import { ConvexError } from "convex/values";
 import { getFunctionName } from "convex/server";
 import { renderRouter } from "expo-router/testing-library";
@@ -42,6 +43,11 @@ function withNotes(
 ) {
   return {
     profile: buildProfile(),
+    // Defaulted, because the real query always returns it. Left absent, the
+    // screen compares `undefined === null`, takes the has-a-photo branch, and
+    // renders an `<Image>` whose `uri` is undefined — with every test green,
+    // since nothing asserted which branch it took.
+    photoUrl: null,
     // A note entry may carry its own `mentions` (who came up inside it); split
     // it off so tests that don't care can keep passing bare note fields, the
     // way every existing call site here already does.
@@ -644,5 +650,220 @@ describe("follow-up email", () => {
     await act(async () => {
       release({ personName: "Nina", subject: "s", body: "b" });
     });
+  });
+});
+
+describe("profile photo", () => {
+  function mockPhotoMutations(fns: {
+    generateUploadUrl?: jest.Mock;
+    attach?: jest.Mock;
+    remove?: jest.Mock;
+  }) {
+    (useMutation as jest.Mock).mockImplementation((reference: unknown) => {
+      const name = getFunctionName(reference as never);
+      if (name === getFunctionName(api.photos.generateUploadUrl)) {
+        return fns.generateUploadUrl ?? jest.fn(async () => "https://upload");
+      }
+      if (name === getFunctionName(api.photos.attach)) {
+        return fns.attach ?? jest.fn(async () => null);
+      }
+      if (name === getFunctionName(api.photos.remove)) {
+        return fns.remove ?? jest.fn(async () => null);
+      }
+      return jest.fn(async () => undefined);
+    });
+  }
+
+  async function reachProfile(photoUrl: string | null = null) {
+    (useQuery as jest.Mock).mockReturnValue({
+      ...withNotes([
+        {
+          _id: "note-1",
+          text: "Nina is moving to Berlin.",
+          keyFacts: ["Moving to Berlin"],
+          createdAt: new Date("2026-09-01T12:00:00").getTime(),
+          mentions: [],
+        },
+      ]),
+      photoUrl,
+    });
+    const result = renderRouter("src/app", { initialUrl: "/profile/profile-1" });
+    await result;
+    return result;
+  }
+
+  afterEach(() => {
+    jest.clearAllMocks();
+    // Restore too, not only clear. `clearAllMocks` resets calls and leaves the
+    // implementation in place, so the `global.fetch` and `Alert` spies below
+    // would stay installed for every test after them — which is how a test in
+    // this repo once passed on a spy set up four tests earlier.
+    jest.restoreAllMocks();
+  });
+
+  test("should offer to add a photo when there is none, and to replace one when there is", async () => {
+    mockPhotoMutations({});
+    await reachProfile(null);
+    // The same control, saying which of the two it is. A separate "Add a photo"
+    // button would sit on every profile for something most will never have.
+    expect(screen.getByLabelText("Add a photo")).toBeTruthy();
+    expect(screen.queryByLabelText("Replace photo")).toBeNull();
+
+    await reachProfile("https://files/photo.jpg");
+    expect(screen.getByLabelText("Replace photo")).toBeTruthy();
+    expect(screen.getByLabelText("Photo of Nina")).toBeTruthy();
+  });
+
+  test("should not ask for the whole photo library to get one picked image", async () => {
+    mockPhotoMutations({});
+    const ask = ImagePicker.requestMediaLibraryPermissionsAsync as jest.Mock;
+    const launch = ImagePicker.launchImageLibraryAsync as jest.Mock;
+    launch.mockResolvedValueOnce({ canceled: true, assets: null });
+    await reachProfile(null);
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Add a photo"));
+    });
+
+    await waitFor(() => expect(launch).toHaveBeenCalledTimes(1));
+    // On iOS 14+ the picker runs out-of-process and needs no library access to
+    // return one image the user chose. Asking would buy read access to their
+    // entire library for nothing — and refusing on a "no" would deny a feature
+    // that works regardless. Day 2 logged the same call on the card path as
+    // unnecessary; this asserts a second instance was not added.
+    expect(ask).not.toHaveBeenCalled();
+  });
+
+  test("should say so rather than fail silently if the picker cannot be opened", async () => {
+    mockPhotoMutations({});
+    (ImagePicker.launchImageLibraryAsync as jest.Mock).mockRejectedValueOnce(
+      new Error("no access"),
+    );
+    await reachProfile(null);
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Add a photo"));
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText(/couldn't open your photos/)).toBeTruthy(),
+    );
+  });
+
+  test("should upload the picked file and put it on this person", async () => {
+    const generateUploadUrl = jest.fn(async () => "https://upload/here");
+    const attach = jest.fn(
+      async (_args: { profileId: string; storageId: string }) => null,
+    );
+    mockPhotoMutations({ generateUploadUrl, attach });
+    (ImagePicker.launchImageLibraryAsync as jest.Mock).mockResolvedValueOnce({
+      canceled: false,
+      assets: [{ uri: "file:///picked.jpg", mimeType: "image/jpeg" }],
+    });
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({ blob: async () => new Blob(["bytes"]) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ storageId: "storage-1" }),
+      });
+    jest.spyOn(global, "fetch").mockImplementation(fetchMock);
+    await reachProfile(null);
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Add a photo"));
+    });
+
+    await waitFor(() => expect(attach).toHaveBeenCalledTimes(1));
+    expect(generateUploadUrl).toHaveBeenCalledTimes(1);
+    expect(attach.mock.calls[0]?.[0]).toEqual({
+      profileId: "profile-1",
+      storageId: "storage-1",
+    });
+  });
+
+  test("should crop on the way in, since the screen shows a square and bytes are paid for", async () => {
+    mockPhotoMutations({});
+    const launch = ImagePicker.launchImageLibraryAsync as jest.Mock;
+    launch.mockResolvedValueOnce({ canceled: true, assets: null });
+    await reachProfile(null);
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Add a photo"));
+    });
+
+    await waitFor(() => expect(launch).toHaveBeenCalledTimes(1));
+    const [options] = launch.mock.calls[0] ?? [];
+    // Day 2 learned this on the business-card path: an uncropped 12MP frame is
+    // bytes the user stores and never sees.
+    expect(options?.allowsEditing).toBe(true);
+    expect(options?.aspect).toEqual([1, 1]);
+  });
+
+  test("should do nothing at all when the picker is cancelled", async () => {
+    const generateUploadUrl = jest.fn(async () => "https://upload");
+    mockPhotoMutations({ generateUploadUrl });
+    (ImagePicker.launchImageLibraryAsync as jest.Mock).mockResolvedValueOnce({
+      canceled: true,
+      assets: null,
+    });
+    await reachProfile(null);
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Add a photo"));
+    });
+
+    // Not even an upload URL: backing out of the picker must cost nothing.
+    expect(generateUploadUrl).not.toHaveBeenCalled();
+    expect(screen.queryByText(/couldn't save that photo/)).toBeNull();
+  });
+
+  test("should ask before removing a photo, and remove it when the answer is yes", async () => {
+    const remove = jest.fn(async (_args: { profileId: string }) => null);
+    mockPhotoMutations({ remove });
+    jest
+      .spyOn(Alert, "alert")
+      .mockImplementation((_title, _message, buttons) => {
+        buttons?.find((b) => b.text === "Remove")?.onPress?.();
+      });
+    await reachProfile("https://files/photo.jpg");
+
+    await act(async () => {
+      fireEvent(screen.getByLabelText("Replace photo"), "longPress");
+    });
+
+    await waitFor(() => expect(remove).toHaveBeenCalledTimes(1));
+    expect(remove.mock.calls[0]?.[0]).toEqual({ profileId: "profile-1" });
+  });
+
+  test("should remove nothing when the confirmation is dismissed", async () => {
+    const remove = jest.fn(async () => null);
+    mockPhotoMutations({ remove });
+    jest
+      .spyOn(Alert, "alert")
+      .mockImplementation((_title, _message, buttons) => {
+        buttons?.find((b) => b.text === "Cancel")?.onPress?.();
+      });
+    await reachProfile("https://files/photo.jpg");
+
+    await act(async () => {
+      fireEvent(screen.getByLabelText("Replace photo"), "longPress");
+    });
+
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  test("should not offer to remove a photo that is not there", async () => {
+    mockPhotoMutations({});
+    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    await reachProfile(null);
+
+    await act(async () => {
+      fireEvent(screen.getByLabelText("Add a photo"), "longPress");
+    });
+
+    // A long press on an empty circle should do nothing, not offer to delete
+    // something that does not exist.
+    expect(alert).not.toHaveBeenCalled();
   });
 });

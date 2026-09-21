@@ -1,10 +1,12 @@
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useCallback, useRef, useState } from "react";
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useAction, useQuery } from "convex/react";
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
 import { api } from "@convex/_generated/api";
-import type { Doc } from "@convex/_generated/dataModel";
+import type { Doc, Id } from "@convex/_generated/dataModel";
 import { colors, fonts } from "@/constants/theme";
 
 /**
@@ -76,6 +78,105 @@ export default function ProfileScreen() {
    */
   const inFlight = useRef(false);
   const [error, setError] = useState<string | null>(null);
+
+  const generateUploadUrl = useMutation(api.photos.generateUploadUrl);
+  const attachPhoto = useMutation(api.photos.attach);
+  const removePhoto = useMutation(api.photos.remove);
+  const [photoBusy, setPhotoBusy] = useState(false);
+
+  /**
+   * Pick a photo and put it on this person.
+   *
+   * Three steps and all three have to happen: ask for permission at the moment
+   * of use, upload the bytes to Convex storage, then tell the profile which
+   * file is now its own. Asked for here rather than on launch, per `CLAUDE.md`.
+   */
+  const choosePhoto = useCallback(async () => {
+    if (photoBusy) return;
+    setError(null);
+
+    // No permission request first, deliberately. On iOS 14+ the picker runs
+    // out-of-process through `PHPickerViewController` and needs no library
+    // access to hand back one image the user chose — so asking buys read access
+    // to somebody's entire photo library for nothing, and refusing on a "no"
+    // denies a feature that would have worked anyway. Day 2 (finding 26) logged
+    // the same call on the business-card path as unnecessary; this is the one
+    // place not to add a second instance of it.
+    //
+    // If it turns out the picker does need permission on some build, it fails
+    // here rather than silently — which is what the catch is for.
+    let picked;
+    try {
+      picked = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        // Cropped on the way in, the same trick the business-card path uses. A
+        // square is what the screen shows, and an uncropped 12MP frame is bytes
+        // the user pays to store and never sees.
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      });
+    } catch {
+      setError(
+        "Andy couldn't open your photos. You can grant access in Settings.",
+      );
+      return;
+    }
+    if (picked.canceled) return;
+    const asset = picked.assets[0];
+    if (asset === undefined) return;
+
+    setPhotoBusy(true);
+    try {
+      const uploadUrl = await generateUploadUrl();
+      const response = await fetch(uploadUrl, {
+        method: "POST",
+        headers: { "Content-Type": asset.mimeType ?? "image/jpeg" },
+        body: await (await fetch(asset.uri)).blob(),
+      });
+      if (!response.ok) {
+        throw new Error(`upload failed: ${response.status}`);
+      }
+      // Convex hands back its own branded id; the upload endpoint is outside
+      // the typed function surface, so this is the seam where it re-enters it.
+      const { storageId } = (await response.json()) as {
+        storageId: Id<"_storage">;
+      };
+      await attachPhoto({ profileId: id, storageId });
+    } catch (thrown) {
+      setError(
+        thrown instanceof ConvexError
+          ? String(thrown.data)
+          : "Andy couldn't save that photo. Try again.",
+      );
+    } finally {
+      setPhotoBusy(false);
+    }
+  }, [photoBusy, generateUploadUrl, attachPhoto, id]);
+
+  const confirmRemovePhoto = useCallback(() => {
+    Alert.alert(
+      "Remove this photo?",
+      "The photo is deleted. Their notes stay exactly as they are.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: () => {
+            void (async () => {
+              setError(null);
+              try {
+                await removePhoto({ profileId: id });
+              } catch {
+                setError("Andy couldn't remove that photo. Try again.");
+              }
+            })();
+          },
+        },
+      ],
+    );
+  }, [removePhoto, id]);
 
   /**
    * Write a follow-up and hand it to Mail.
@@ -184,6 +285,42 @@ export default function ProfileScreen() {
           </Text>
         ) : (
           <>
+            {/*
+              Above the name, at the size of a face rather than a hero image.
+              `STYLE.md`'s grounding is "marginalia in a well-loved address
+              book", and an address book shows a small photo beside a name — it
+              does not open with a banner.
+
+              Tappable either way: with a photo it offers to replace, without one
+              it is the only way to add. A separate "Add a photo" button would be
+              a control on every profile for something most will never have.
+            */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={
+                result.photoUrl === null ? "Add a photo" : "Replace photo"
+              }
+              onPress={choosePhoto}
+              onLongPress={
+                result.photoUrl === null ? undefined : confirmRemovePhoto
+              }
+              disabled={photoBusy}
+              style={[styles.photo, photoBusy && styles.disabled]}
+            >
+              {result.photoUrl === null ? (
+                <Text style={styles.photoEmpty}>
+                  {photoBusy ? "…" : "+"}
+                </Text>
+              ) : (
+                <Image
+                  source={{ uri: result.photoUrl }}
+                  style={styles.photoImage}
+                  contentFit="cover"
+                  accessibilityLabel={`Photo of ${result.profile.name}`}
+                />
+              )}
+            </Pressable>
+
             <Text style={styles.name}>{result.profile.name}</Text>
 
             {/* Under the name, because that is what they are: other ways of
@@ -501,6 +638,19 @@ const styles = StyleSheet.create({
   // Named like every other disabled state in this app rather than for the one
   // button that first needed it.
   disabled: { opacity: 0.5 },
+  photo: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.line,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    marginBottom: 12,
+  },
+  photoImage: { width: "100%", height: "100%" },
+  photoEmpty: { color: colors.ink, fontSize: 24, opacity: 0.35 },
   actionError: {
     color: colors.alert,
     fontSize: 14,
