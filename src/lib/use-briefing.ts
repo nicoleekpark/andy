@@ -39,7 +39,7 @@ export type BriefingState =
         title: string;
         startsAt: number;
         people: { profileId: string; name: string; noteCount: number }[];
-        ambiguous: { matchedAs: string; count: number }[];
+        ambiguous: { name: string; count: number }[];
       };
     };
 

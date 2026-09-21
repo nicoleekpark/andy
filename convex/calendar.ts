@@ -106,7 +106,17 @@ export const matchEvents = query({
        * something it does not.
        */
       ambiguous: v.array(
-        v.object({ matchedAs: v.string(), count: v.number() }),
+        v.object({
+          /**
+           * The name as one of those people is filed under, not the folded
+           * key it was matched by. `matchKey` lowercases for comparison and
+           * `CLAUDE.md` is explicit that names are always *stored* as the user
+           * wrote them — showing the key put "judy" on screen for somebody
+           * filed as "Judy".
+           */
+          name: v.string(),
+          count: v.number(),
+        }),
       ),
     }),
   ),
@@ -182,7 +192,14 @@ export const matchEvents = query({
       for (const hit of hits) {
         const matches = byName.get(hit.key) ?? [];
         if (matches.length > 1) {
-          ambiguous.push({ matchedAs: hit.key, count: matches.length });
+          // The first of them supplies the spelling. They all answer to this
+          // name, so any of them is right, and which one is shown cannot imply
+          // anything about which one you are meeting — that is the whole point
+          // of not choosing.
+          ambiguous.push({
+            name: matches[0]?.name ?? hit.key,
+            count: matches.length,
+          });
           continue;
         }
         const profile = matches[0];

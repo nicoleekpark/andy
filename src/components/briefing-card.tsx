@@ -26,7 +26,7 @@ export type Briefing = {
   startsAt: number;
   people: BriefingPerson[];
   /** Names the event uses that more than one person answers to. */
-  ambiguous: { matchedAs: string; count: number }[];
+  ambiguous: { name: string; count: number }[];
 };
 
 type Props =
@@ -144,8 +144,8 @@ export function BriefingCard(props: Props) {
             // Said rather than guessed. Two people answer to this name and the
             // app does not know which one you are meeting — picking the one
             // with more notes would be it pretending to know.
-            <Text key={name.matchedAs} style={styles.body}>
-              You keep {name.count} people called “{name.matchedAs}”, so Andy
+            <Text key={name.name} style={styles.body}>
+              You keep {name.count} people called “{name.name}”, so Andy
               can&apos;t tell which one this is.
             </Text>
           ))}
