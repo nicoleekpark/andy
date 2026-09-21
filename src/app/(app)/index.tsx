@@ -22,7 +22,7 @@ import { colors, fonts } from "@/constants/theme";
  */
 export default function HomeScreen() {
   const people = useQuery(api.profiles.recent);
-  const { briefing, ask } = useBriefing();
+  const { briefing, ask, alerts, askForAlerts } = useBriefing();
 
   return (
     <>
@@ -59,7 +59,12 @@ export default function HomeScreen() {
                 asking={briefing.asking}
               />
             ) : briefing.state === "ready" ? (
-              <BriefingCard state="ready" briefing={briefing.briefing} />
+              <BriefingCard
+                state="ready"
+                briefing={briefing.briefing}
+                alerts={alerts}
+                onEnableAlerts={() => void askForAlerts()}
+              />
             ) : (
               <BriefingCard state={briefing.state} />
             )

@@ -147,7 +147,7 @@ Researched directly rather than assumed:
 - [ ] **Business card photo → profile** — same Claude extraction action as voice, given an image input instead; extracts name/title/company directly from a photo (near-zero marginal cost, reuses the existing pipeline)
 - [ ] **Ask Andy — semantic recall across every note, answered in prose over its own sources.** One screen, not two. Retrieval runs over every _note_ (not just profile-primary fields), so "the Meta developer I met at X's birthday" surfaces a person who exists only as a mention inside somebody else's note. The same retrieval then feeds a Claude call that answers in a sentence **and shows the notes it used, tappable**. Absorbed the Should-Have "simple RAG chatbot" (day-04 scope cut): retrieval *is* that feature's expensive half, so what remains is one action and no second screen — and two boxes would make the user guess which one to ask. The citations are not polish: Day 2 measured extraction laundering a mistranscription into a confident false fact, and an answer with no visible source is that same failure with the evidence removed. See schema note below.
 - [x] Timeline per profile — chronological list of notes/interactions — day 3, newest first, with who came up in each note
-- [ ] **Calendar Briefing** — read calendar (EventKit — covers Apple + Google + CalDAV in one API, see Reality Checks), fuzzy-match attendee/title names to profiles, schedule a local pre-meeting notification (last notes digest) and a post-meeting nudge ("오늘 A랑 어땠어? 새로 기억할 것?")
+- [ ] **Calendar Briefing** — read calendar (EventKit — covers Apple + Google + CalDAV in one API, see Reality Checks), fuzzy-match attendee/title names to profiles, schedule a local pre-meeting notification (**the person's name and the meeting — never the notes**, see below) and a post-meeting nudge ("오늘 A랑 어땠어? 새로 기억할 것?")
 - [ ] **Follow-up draft** — generate a draft from stored notes, shown in the app to edit, copy, and regenerate (a second paid call). No inbox read, no OAuth, nothing sent by Andy. Was `mailto:`; changed on day 6, because a follow-up gets sent by text or KakaoTalk as often as by email and `mailto:` is a dead end for both
 - [ ] Manual photo attachment per profile (expo-image-picker)
 - [ ] **Passcode/biometric app lock** (expo-local-authentication) — this app stores notes about other people without their consent; a lock screen is table stakes for trust, cheap to add
@@ -289,8 +289,16 @@ Search bar → natural-language query → ranked results
 
 ```
 Calendar event matched to profile → pre-meeting local notification
-(last-notes digest) → meeting time passes → post-meeting nudge →
-tap nudge → opens capture flow pre-scoped to that profile
+(who you are meeting; the notes stay behind the tap) → meeting time
+passes → post-meeting nudge → tap nudge → opens capture flow
+pre-scoped to that profile
+
+The notification deliberately carries no digest. A lock screen is read by
+whoever is holding the phone, which is not always its owner, and this app's
+notes are things like a third party's health — "Judy's mother is in hospital"
+on a lock screen is the app leaking somebody's private business to a room.
+Decided on day 8, when the notification was built; the earlier wording here
+said "last-notes digest" and described a worse app.
 ```
 
 **Screens (minimum for V1, Expo Router)**
@@ -420,7 +428,7 @@ Calendar Briefing (parallel path)
    EventKit calendar read (covers Apple + Google + CalDAV, one API) →
    fuzzy-match attendee/title → profile
    → schedule 2 local notifications per matched upcoming meeting:
-       (a) pre-meeting: last-notes digest
+       (a) pre-meeting: who you are meeting (never the notes)
        (b) post-meeting: "anything new to remember?" nudge
    → nudge response → voice/text capture → same extraction pipeline above
 

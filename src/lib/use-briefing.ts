@@ -8,6 +8,13 @@ import {
   readUpcoming,
   type CalendarAccess,
 } from "./calendar";
+import {
+  askForNotifications,
+  briefable,
+  notificationAccess,
+  scheduleBriefings,
+  type NotificationAccess,
+} from "./notifications";
 
 /**
  * The next meeting today that is about somebody you keep notes on.
@@ -43,14 +50,41 @@ export type BriefingState =
       };
     };
 
+/**
+ * Whether the phone will actually say anything, and whether it can be asked.
+ *
+ * Separate from the calendar permission on purpose. Reading the calendar and
+ * being interrupted by it are two different things to agree to, and
+ * `CLAUDE.md` asks for each at the point of use — so the alert is offered from
+ * a card that is already showing a real meeting, where "remind me before this"
+ * means something, rather than bundled into the first prompt where it is one
+ * more thing to say yes to blindly.
+ */
+export type AlertState = "unavailable" | "off" | "blocked" | "on";
+
 export function useBriefing(): {
   briefing: BriefingState;
   ask: () => Promise<void>;
+  alerts: AlertState;
+  askForAlerts: () => Promise<void>;
 } {
   const convex = useConvex();
   const [state, setState] = useState<BriefingState>({ state: "loading" });
+  const [alerts, setAlerts] = useState<AlertState>("unavailable");
   /** A latch, not a second copy of state — each ask is a system prompt. */
   const asking = useRef(false);
+  const askingAlerts = useRef(false);
+  /**
+   * One refresh at a time.
+   *
+   * `run` fires on mount and on every foreground, and nothing stopped two of
+   * them overlapping — a quick app switch, pulling notification centre down,
+   * dismissing a permission sheet. Each one cancels this app's pending
+   * briefings and schedules the whole set again, so two interleaved leave
+   * **duplicate pairs** for the same meeting until the next foreground happens
+   * to tidy them. Two buzzes twenty minutes before one coffee.
+   */
+  const refreshing = useRef(false);
   /**
    * Whether this component is still on screen.
    *
@@ -87,6 +121,25 @@ export function useBriefing(): {
       if (events.length === 0) return { state: "empty" };
 
       const matched = await convex.query(api.calendar.matchEvents, { events });
+
+      // Scheduled from the same answer the card is drawn from, so what the
+      // phone will say and what the screen says cannot disagree. Silent on
+      // failure: a briefing that could not be scheduled is not a reason to
+      // take the card down, and the reason is almost always "notifications
+      // are off", which the card already offers to fix.
+      void scheduleBriefings(
+        briefable(
+          matched.map((event) => ({
+            eventId: event.eventId,
+            title: event.title,
+            startsAt: event.startsAt,
+            endsAt: event.endsAt,
+            attendeeNames: [],
+            people: event.people,
+          })),
+        ),
+        Date.now(),
+      ).catch(() => {});
 
       // The *next* one that is about somebody, not the next one at all. A
       // standup at 09:00 is not a briefing, and showing it would push the
@@ -130,8 +183,16 @@ export function useBriefing(): {
     // is the screen a person leaves fastest.
     mounted.current = true;
     const run = async () => {
-      const next = await refresh();
-      if (mounted.current) setState(next);
+      if (refreshing.current) return;
+      refreshing.current = true;
+      try {
+        const next = await refresh();
+        if (mounted.current) setState(next);
+        const permission = await notificationAccess();
+        if (mounted.current) setAlerts(alertStateOf(permission.state));
+      } finally {
+        refreshing.current = false;
+      }
     };
 
     void run();
@@ -148,6 +209,19 @@ export function useBriefing(): {
     };
   }, [refresh]);
 
+  const askForAlerts = useCallback(async () => {
+    if (askingAlerts.current) return;
+    askingAlerts.current = true;
+    try {
+      const permission = await askForNotifications();
+      if (mounted.current) setAlerts(alertStateOf(permission.state));
+    } catch {
+      if (mounted.current) setAlerts("unavailable");
+    } finally {
+      askingAlerts.current = false;
+    }
+  }, []);
+
   const ask = useCallback(async () => {
     if (asking.current) return;
     asking.current = true;
@@ -162,5 +236,14 @@ export function useBriefing(): {
     }
   }, [load]);
 
-  return { briefing: state, ask };
+  return { briefing: state, ask, alerts, askForAlerts };
+}
+
+function alertStateOf(state: NotificationAccess["state"]): AlertState {
+  // `undetermined` and `denied` are two different sentences on screen: one is
+  // a button that will work, the other is a button that iOS will never honour.
+  if (state === "granted") return "on";
+  if (state === "undetermined") return "off";
+  if (state === "denied") return "blocked";
+  return "unavailable";
 }

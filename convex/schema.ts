@@ -66,6 +66,13 @@ export default defineSchema({
     // question costs a scan of every profile in the deployment, which is why
     // the check that needs it was missing rather than slow.
     .index("by_photo", ["photoStorageId"])
+    /**
+     * **Unused.** Measured on day 7 against the deployment and found to be the
+     * wrong tool for looking a person up: it tokenises, so `oneill` does not
+     * match `O'Neill`, and `선희` does not match `지선희` — a script with no
+     * spaces has no mid-word prefix for it to find. One user's own people are
+     * few enough to fold and substring-match directly.
+     */
     .searchIndex("search_name", {
       searchField: "name",
       filterFields: ["userId"],
@@ -177,6 +184,18 @@ export default defineSchema({
     calendarEventId: v.string(), // EventKit event identifier
     meetingStart: v.number(),
     meetingEnd: v.number(),
+    /**
+     * **Unused, and deliberately so** — see `src/lib/notifications.ts`.
+     *
+     * Declared on day 1 and never written. A notification lives on one phone
+     * and this table does not: two devices on one account each schedule their
+     * own, so a row claiming to know which is pending would be wrong on at
+     * least one of them. The device's own `getAllScheduledNotificationsAsync`
+     * is always right about the phone it is asked on.
+     *
+     * Left in place rather than dropped, because removing a schema field is
+     * the five-step migration `CLAUDE.md` describes, not a deletion.
+     */
     briefingNotificationId: v.optional(v.string()),
     nudgeNotificationId: v.optional(v.string()),
   })
