@@ -94,6 +94,14 @@ export const attach = mutation({
     if (metadata === null) {
       throw new ConvexError("That photo didn't finish uploading. Try again.");
     }
+    if (metadata.size === 0) {
+      // A file with no bytes in it is not a photo. Reachable without anybody
+      // misbehaving: the upload endpoint accepts an empty body and answers
+      // `200` with a storage id, so a client that read the picked file wrongly
+      // gets a perfectly ordinary-looking success and a profile that renders a
+      // broken image for ever. Measured against the deployment.
+      throw new ConvexError("That photo didn't finish uploading. Try again.");
+    }
     if (metadata.size > MAX_PHOTO_BYTES) {
       // Refused and left where it is. A `ctx.storage.delete` here would read
       // like cleanup and do nothing: a mutation that throws rolls back its own

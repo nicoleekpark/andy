@@ -1,6 +1,20 @@
+jest.mock("../src/lib/native", () => ({ hasNativeModule: jest.fn(() => true) }));
+
+// The legacy `expo-file-system` surface is not one jest-expo stubs, so the
+// module the screen imports has no `uploadAsync` to spy on. Mocked here rather
+// than worked around at the call site: uploading a photo is the one thing in
+// this file that must never touch the network for real.
+jest.mock("expo-file-system/legacy", () => ({
+  uploadAsync: jest.fn(),
+  FileSystemUploadType: { BINARY_CONTENT: 0, MULTIPART: 1 },
+}));
+
 import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
-import { Alert, Linking } from "react-native";
+import { AccessibilityInfo, Alert, Linking } from "react-native";
 import { useAction, useMutation, useQuery } from "convex/react";
+import * as Clipboard from "expo-clipboard";
+import { hasNativeModule } from "../src/lib/native";
+import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
 import { ConvexError } from "convex/values";
 import { getFunctionName } from "convex/server";
@@ -398,6 +412,13 @@ describe("follow-up email", () => {
     jest.restoreAllMocks();
   });
 
+  beforeEach(() => {
+    // Every test here but one runs as if the app is built. `clearAllMocks` in
+    // the shared afterEach empties this mock's return value along with its
+    // call records, so it is set per test rather than once at the top.
+    (hasNativeModule as jest.Mock).mockReturnValue(true);
+  });
+
   async function reachProfile() {
     (useQuery as jest.Mock).mockReturnValue(
       withNotes([
@@ -517,59 +538,253 @@ describe("follow-up email", () => {
     expect(screen.queryByTestId("follow-up-unavailable")).toBeNull();
   });
 
-  test("should hand Mail the subject and body, and no recipient", async () => {
-    const draft = jest.fn(async () => ({
-      personName: "Nina",
-      subject: "How's the move going?",
-      body: "Hope Berlin is treating you well.",
-    }));
+  /** Draft, then press the button, and land in the sheet. */
+  async function draftAndOpen(draft: jest.Mock) {
     mockDraft(draft);
-    const open = jest.spyOn(Linking, "openURL").mockResolvedValue(true);
-    await reachProfile();
-
+    const opened = await reachProfile();
     await act(async () => {
       fireEvent.press(screen.getByLabelText("Draft a follow-up"));
     });
+    await waitFor(() => expect(screen.getByLabelText("Message")).toBeTruthy());
+    return opened;
+  }
 
-    await waitFor(() => expect(open).toHaveBeenCalledTimes(1));
-    const url = open.mock.calls[0]?.[0] ?? "";
-    expect(url).toContain("mailto:?");
-    expect(url).toContain(encodeURIComponent("How's the move going?"));
-    expect(url).toContain(encodeURIComponent("Hope Berlin is treating you well."));
-    // No recipient, deliberately. This app does not read Contacts and V1 stores
-    // no address, so Mail's own autocomplete is the honest place for that — and
-    // an address invented here would be worse than an empty line.
-    expect(url.startsWith("mailto:?")).toBe(true);
+  const NINA = {
+    personName: "Nina",
+    subject: "How's the move going?",
+    body: "Hope Berlin is treating you well.",
+  };
+
+  test("should show the draft in the app and open nothing, since it may not be an email at all", async () => {
+    const open = jest.spyOn(Linking, "openURL").mockResolvedValue(true);
+    await draftAndOpen(jest.fn(async () => NINA));
+
+    expect(screen.getByDisplayValue("How's the move going?")).toBeTruthy();
+    expect(screen.getByDisplayValue("Hope Berlin is treating you well.")).toBeTruthy();
+    // This used to hand the draft to Mail through a `mailto:` URL. A follow-up
+    // gets sent by text, or KakaoTalk, or pasted somewhere — `mailto:` was a
+    // dead end for all of those, and it took a `&bcc=` injection surface with
+    // it when it went.
+    expect(open).not.toHaveBeenCalled();
   });
 
-  test("should not let a drafted body add a header of its own to the mailto URL", async () => {
-    mockDraft(
-      jest.fn(async () => ({
-        personName: "Nina",
-        // The one that would actually matter. A note whose content steered the
-        // model into writing this would otherwise blind-copy a stranger on a
-        // message about somebody's private life — and the sender would see a
-        // normal-looking compose window.
-        subject: "Hi&bcc=attacker@example.com",
-        body: "Hope you are well.\n&bcc=attacker@example.com&cc=someone@example.com",
-      })),
-    );
-    const open = jest.spyOn(Linking, "openURL").mockResolvedValue(true);
-    await reachProfile();
+  test("should copy the message on its own, since a subject is an email's idea", async () => {
+    const set = jest.spyOn(Clipboard, "setStringAsync").mockResolvedValue(true);
+    await draftAndOpen(jest.fn(async () => NINA));
 
     await act(async () => {
-      fireEvent.press(screen.getByLabelText("Draft a follow-up"));
+      fireEvent.press(screen.getByLabelText("Copy the message"));
     });
 
-    await waitFor(() => expect(open).toHaveBeenCalledTimes(1));
-    const url = open.mock.calls[0]?.[0] ?? "";
-    // Exactly two parameters, both ours. `encodeURIComponent` turns the `&`
-    // into `%26`, so the text stays text — asserted rather than assumed,
-    // because this is the difference between a draft and a leak.
-    expect(url.split("&")).toHaveLength(2);
-    expect(url).not.toMatch(/&bcc=/);
-    expect(url).not.toMatch(/&cc=/);
-    expect(url).toContain("%26bcc%3D");
+    expect(set).toHaveBeenCalledWith("Hope Berlin is treating you well.");
+    expect(screen.getByTestId("copied")).toHaveTextContent("Message copied");
+  });
+
+  test("should say out loud that it copied, since the result is invisible", async () => {
+    jest.spyOn(Clipboard, "setStringAsync").mockResolvedValue(true);
+    const announce = jest
+      .spyOn(AccessibilityInfo, "announceForAccessibility")
+      .mockImplementation(() => {});
+    await draftAndOpen(jest.fn(async () => NINA));
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Copy the message"));
+    });
+
+    // `accessibilityLiveRegion` is Android-only in React Native, and on iOS a
+    // `Text` that changes elsewhere on screen is announced only if VoiceOver
+    // already happens to be focused on it. Without this, the one control whose
+    // whole result is invisible confirms nothing to the person least able to
+    // go and check the clipboard.
+    expect(announce).toHaveBeenCalledWith("Message copied");
+  });
+
+  test("should lose only the copy button when the clipboard module is not in the build", async () => {
+    // What actually happened on the device. `expo-clipboard` is native, so its
+    // JavaScript throws on evaluation when the binary does not carry it — and
+    // a static import at the top of the sheet made that throw during the
+    // profile screen's own module evaluation:
+    //
+    //     ERROR  Cannot find native module 'ExpoClipboard'
+    //     WARN   Route "./(app)/profile/[id]/index.tsx" is missing the
+    //            required default export.
+    //
+    // A whole person's profile, gone, because one button's module was a build
+    // behind. Rebuilding fixes the symptom; this test is about the blast
+    // radius, which has to be the button.
+    (hasNativeModule as jest.Mock).mockReturnValue(false);
+    const set = jest.spyOn(Clipboard, "setStringAsync");
+    await draftAndOpen(jest.fn(async () => NINA));
+
+    // The screen and the draft are still here — this is the assertion that
+    // would have failed before, because there was no screen to assert on.
+    expect(screen.getByDisplayValue("Hope Berlin is treating you well.")).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Copy the message"));
+    });
+
+    // And it says so rather than looking like it worked. A copy that silently
+    // did nothing is indistinguishable from one that worked, until the paste
+    // comes out as whatever was on the clipboard before.
+    expect(screen.getByTestId("copy-failed")).toBeTruthy();
+    expect(screen.queryByTestId("copied")).toBeNull();
+    // Asked before it was loaded, so nothing threw and nothing was reported.
+    // Catching the throw left Expo printing `Cannot find native module` with a
+    // full stack on every press — handled, and presented as a crash.
+    expect(set).not.toHaveBeenCalled();
+
+    await act(async () => {
+      fireEvent.changeText(screen.getByLabelText("Message"), "Different now.");
+    });
+
+    // Cleared by the edit, the same as the success line. Both describe what
+    // happened to text that has since moved, so both stop being true at the
+    // same moment.
+    expect(screen.queryByTestId("copy-failed")).toBeNull();
+  });
+
+  test("should copy the subject with the message when that is what is wanted", async () => {
+    const set = jest.spyOn(Clipboard, "setStringAsync").mockResolvedValue(true);
+    await draftAndOpen(jest.fn(async () => NINA));
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Copy the subject and message"));
+    });
+
+    expect(set).toHaveBeenCalledWith(
+      "How's the move going?\n\nHope Berlin is treating you well.",
+    );
+  });
+
+  test("should copy what is on screen now, not what Claude first wrote", async () => {
+    const set = jest.spyOn(Clipboard, "setStringAsync").mockResolvedValue(true);
+    await draftAndOpen(jest.fn(async () => NINA));
+
+    await act(async () => {
+      fireEvent.changeText(
+        screen.getByLabelText("Message"),
+        "Hope Jeju is treating you well.",
+      );
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Copy the message"));
+    });
+
+    // The whole reason the field is editable. Copying the original after an
+    // edit would be a silent wrong answer — the user would paste something
+    // they had already corrected.
+    expect(set).toHaveBeenCalledWith("Hope Jeju is treating you well.");
+  });
+
+  test("should stop saying it copied once the text has changed underneath", async () => {
+    jest.spyOn(Clipboard, "setStringAsync").mockResolvedValue(true);
+    await draftAndOpen(jest.fn(async () => NINA));
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Copy the message"));
+    });
+    expect(screen.getByTestId("copied")).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.changeText(screen.getByLabelText("Subject"), "A new subject");
+    });
+
+    // The subject counts as the text moving too — `Copy both` puts it on the
+    // clipboard, so a line claiming it was copied goes stale when it changes.
+    expect(screen.queryByTestId("copied")).toBeNull();
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Copy the message"));
+    });
+    await act(async () => {
+      fireEvent.changeText(screen.getByLabelText("Message"), "Different now.");
+    });
+
+    // Cleared by the edit rather than by a timer — a timer would make this the
+    // one thing on the screen a test has to wait for, and the line stops being
+    // true the moment the text moves.
+    expect(screen.queryByTestId("copied")).toBeNull();
+  });
+
+  test("should write another straight away when there is nothing of the user's to lose", async () => {
+    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const draft = jest.fn(async () => NINA);
+    await draftAndOpen(draft);
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Write another draft"));
+    });
+
+    await waitFor(() => expect(draft).toHaveBeenCalledTimes(2));
+    expect(alert).not.toHaveBeenCalled();
+  });
+
+  test("should ask before throwing away an edit for a new draft", async () => {
+    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const draft = jest.fn(async () => NINA);
+    await draftAndOpen(draft);
+
+    await act(async () => {
+      fireEvent.changeText(screen.getByLabelText("Message"), "My own wording.");
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Write another draft"));
+    });
+
+    // Asked only when there is something to lose — the same rule the capture
+    // screen follows when the transcript and the facts disagree.
+    expect(alert).toHaveBeenCalledTimes(1);
+    expect(draft).toHaveBeenCalledTimes(1);
+
+    const [, , buttons] = alert.mock.calls[0] ?? [];
+    const confirm = (buttons as { text: string; onPress?: () => void }[]).find(
+      (button) => button.text === "Write another",
+    );
+    await act(async () => {
+      confirm?.onPress?.();
+    });
+    await waitFor(() => expect(draft).toHaveBeenCalledTimes(2));
+  });
+
+  test("should replace the fields when a new draft lands, even an identical one", async () => {
+    jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const draft = jest.fn(async () => NINA);
+    await draftAndOpen(draft);
+
+    await act(async () => {
+      fireEvent.changeText(screen.getByLabelText("Message"), "My own wording.");
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Write another draft"));
+    });
+    const [, , buttons] = (Alert.alert as jest.Mock).mock.calls[0] ?? [];
+    await act(async () => {
+      (buttons as { text: string; onPress?: () => void }[])
+        .find((button) => button.text === "Write another")
+        ?.onPress?.();
+    });
+
+    // Claude can return word-for-word what it returned before, so comparing
+    // the text would leave the old edit sitting there after a rewrite the user
+    // paid for. The sheet is keyed on the attempt instead.
+    await waitFor(() =>
+      expect(screen.getByDisplayValue("Hope Berlin is treating you well.")).toBeTruthy(),
+    );
+    expect(screen.queryByDisplayValue("My own wording.")).toBeNull();
+  });
+
+  test("should discard the draft when it is closed, since nothing here is saved", async () => {
+    await draftAndOpen(jest.fn(async () => NINA));
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Close the draft"));
+    });
+
+    // A draft is generated from the notes rather than being a document of its
+    // own. Keeping it would create a second thing to hold in step with the
+    // notes it came from, and the notes are the record.
+    expect(screen.queryByLabelText("Message")).toBeNull();
   });
 
   test("should send the id from the route and the device's date, not the server's", async () => {
@@ -581,7 +796,6 @@ describe("follow-up email", () => {
       }),
     );
     mockDraft(draft);
-    jest.spyOn(Linking, "openURL").mockResolvedValue(true);
     await reachProfile();
 
     await act(async () => {
@@ -637,30 +851,6 @@ describe("follow-up email", () => {
       expect(screen.getByText(/couldn't reach that just now/)).toBeTruthy(),
     );
     expect(screen.queryByText(/ECONNREFUSED/)).toBeNull();
-  });
-
-  test("should say so rather than do nothing when there is no mail app to open", async () => {
-    mockDraft(
-      jest.fn(async () => ({ personName: "Nina", subject: "s", body: "b" })),
-    );
-    // `openURL` rejecting, not `canOpenURL` returning false. On iOS that check
-    // returns false for any scheme missing from `LSApplicationQueriesSchemes`,
-    // and `app.json` has no `infoPlist` block — so asking first risked every
-    // tap reporting "no mail app" with the whole suite green.
-    jest
-      .spyOn(Linking, "openURL")
-      .mockRejectedValue(new Error("no handler for mailto:"));
-    await reachProfile();
-
-    await act(async () => {
-      fireEvent.press(screen.getByLabelText("Draft a follow-up"));
-    });
-
-    await waitFor(() =>
-      expect(screen.getByText(/no mail app set up/)).toBeTruthy(),
-    );
-    // And it says what to do, not only what happened.
-    expect(screen.getByText(/Set one up and tap again/)).toBeTruthy();
   });
 
   test("should still be one paid call when two touches land inside one commit window", async () => {
@@ -862,14 +1052,13 @@ describe("profile photo", () => {
       canceled: false,
       assets: [{ uri: "file:///picked.jpg", mimeType: "image/jpeg" }],
     });
-    const fetchMock = jest
-      .fn()
-      .mockResolvedValueOnce({ blob: async () => new Blob(["bytes"]) })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ storageId: "storage-1" }),
-      });
-    jest.spyOn(global, "fetch").mockImplementation(fetchMock);
+    const upload = (FileSystem.uploadAsync as jest.Mock).mockResolvedValue({
+        status: 200,
+        headers: {},
+        body: JSON.stringify({ storageId: "storage-1" }),
+      mimeType: null,
+    });
+    const netFetch = jest.spyOn(global, "fetch");
     await reachProfile(null);
 
     await act(async () => {
@@ -882,6 +1071,77 @@ describe("profile photo", () => {
       profileId: "profile-1",
       storageId: "storage-1",
     });
+
+    // Uploaded from the file, not read into JavaScript first. The blob version
+    // answered `upload failed: 400` on a device twice — the second time with a
+    // Content-Type already fixed and verified with curl — so the bytes never
+    // enter JS now, and nothing else may put them on the network either.
+    expect(netFetch).not.toHaveBeenCalled();
+    const [url, uri, options] = upload.mock.calls[0] ?? [];
+    expect(url).toBe("https://upload/here");
+    expect(uri).toBe("file:///picked.jpg");
+    expect(options?.httpMethod).toBe("POST");
+    expect(options?.uploadType).toBe(
+      FileSystem.FileSystemUploadType.BINARY_CONTENT,
+    );
+    expect(options?.headers?.["Content-Type"]).toBe("image/jpeg");
+  });
+
+  test("should not pass the picker's uniform type identifier through as a header", async () => {
+    mockPhotoMutations({});
+    (ImagePicker.launchImageLibraryAsync as jest.Mock).mockResolvedValueOnce({
+      canceled: false,
+      // What iOS actually hands back, and the reason the first photo never
+      // uploaded: `public.jpeg` is a uniform type identifier, not a MIME type,
+      // and not a legal header value. Verified against the deployment —
+      // `image/jpeg` is 200, `public.jpeg` is
+      // `400 {"code":"BadHeader","message":"invalid HTTP header"}`.
+      assets: [{ uri: "file:///picked.jpeg", mimeType: "public.jpeg" }],
+    });
+    const upload = (FileSystem.uploadAsync as jest.Mock).mockResolvedValue({
+      status: 200,
+      headers: {},
+      body: JSON.stringify({ storageId: "storage-1" }),
+      mimeType: null,
+    });
+    await reachProfile(null);
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Add a photo"));
+    });
+
+    await waitFor(() => expect(upload).toHaveBeenCalledTimes(1));
+    const [, , options] = upload.mock.calls[0] ?? [];
+    expect(options?.headers?.["Content-Type"]).toBe("image/jpeg");
+  });
+
+  test("should say what the server refused, not only that it refused", async () => {
+    mockPhotoMutations({});
+    (ImagePicker.launchImageLibraryAsync as jest.Mock).mockResolvedValueOnce({
+      canceled: false,
+      assets: [{ uri: "file:///picked.jpg", mimeType: "image/jpeg" }],
+    });
+    (FileSystem.uploadAsync as jest.Mock).mockResolvedValue({
+      status: 400,
+      headers: {},
+      body: JSON.stringify({
+        code: "BadHeader",
+        message: "Bad header for content-type: invalid HTTP header",
+      }),
+      mimeType: null,
+    });
+    await reachProfile(null);
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Add a photo"));
+    });
+
+    // Throwing the status alone is what turned one bug into three rounds of
+    // guessing: Convex names the check that refused, in the body, and the
+    // message threw it away.
+    await waitFor(() =>
+      expect(screen.getByText(/BadHeader/)).toBeTruthy(),
+    );
   });
 
   test("should crop on the way in, since the screen shows a square and bytes are paid for", async () => {

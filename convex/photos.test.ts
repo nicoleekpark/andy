@@ -213,6 +213,28 @@ test("should let the same person re-attach the photo they already have", async (
   expect(await storedIds(t)).toEqual([storageId]);
 });
 
+test("should refuse a file with no bytes in it, which the upload endpoint calls a success", async () => {
+  const t = convexTest(schema, modules);
+  const { profileId } = await seed(t);
+  const empty = await storeFile(t, "");
+
+  // Not a hypothetical, and not misuse. Measured against the deployment: a
+  // POST to an upload URL with an empty body answers `200` and hands back a
+  // storage id, so a client that read the picked file wrongly gets a perfectly
+  // ordinary-looking success — and the profile renders a broken image for ever
+  // with nothing anywhere saying why.
+  await expect(
+    t
+      .withIdentity(ALICE)
+      .mutation(api.photos.attach, { profileId, storageId: empty }),
+  ).rejects.toThrow(/didn't finish uploading/);
+
+  const result = await t
+    .withIdentity(ALICE)
+    .query(api.profiles.withNotes, { profileId });
+  expect(result?.profile.photoStorageId).toBeUndefined();
+});
+
 test("should refuse and delete a file past the size cap, rather than keep paying for it", async () => {
   const t = convexTest(schema, modules);
   const { profileId } = await seed(t);

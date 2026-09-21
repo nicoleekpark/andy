@@ -11,10 +11,14 @@ import { getAuthenticatedUser } from "./users";
  * A follow-up email, drafted from what you already wrote down.
  *
  * `PROJECT_SCOPE.md` is specific about the shape: "generate a draft from stored
- * notes, hand off via `mailto:` deep link (no inbox read, no OAuth)". So there
- * is no mailbox here, no Google verification to wait on, and no recipient —
- * Mail opens with the subject and body filled in and the To line empty, because
- * this app does not read Contacts and V1 does not store an address.
+ * notes, hand off via `mailto:` deep link (no inbox read, no OAuth)". The
+ * no-mailbox, no-OAuth half of that still holds and is the point; the `mailto:`
+ * half was dropped, because it assumed the message was going to be an email. A
+ * follow-up gets sent by text, or KakaoTalk, or pasted into whatever the two
+ * people actually use. The draft is shown in the app and copied from there.
+ *
+ * So there is no mailbox here, no Google verification to wait on, and no
+ * recipient — this app does not read Contacts and V1 stores no address.
  *
  * That is a smaller feature than it sounds and a deliberately cheap one: the
  * expensive half of "email integration" is the OAuth scope review that
