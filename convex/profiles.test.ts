@@ -1259,3 +1259,92 @@ test("should tidy the names it is given and refuse to store one twice", async ()
     expect((await ctx.db.get("profiles", profileId))?.aliases).toEqual(["Em"]);
   });
 });
+
+
+// ---------------------------------------------------------------------------
+// A possessive that would otherwise invent somebody
+// ---------------------------------------------------------------------------
+
+test("should offer the person a possessive belongs to, rather than nobody", async () => {
+  const t = convexTest(schema, modules);
+  const userId = await t.withIdentity(ALICE).mutation(api.users.ensureUser, {});
+  const park = await t.run(async (ctx) =>
+    ctx.db.insert("profiles", {
+      userId,
+      name: "Park",
+      entityType: "person" as const,
+      tags: [],
+      autoCreated: false,
+    }),
+  );
+
+  // "I met at Park's housewarming party" reaches here as "Parks", because the
+  // recogniser does not reliably place apostrophes. It used to match nobody
+  // and be created as a second person one letter from a real one.
+  const [asked] = await t
+    .withIdentity(ALICE)
+    .query(api.profiles.resolveNames, { names: ["Parks"] });
+
+  expect(asked?.viaPossessive).toBe(true);
+  expect(asked?.candidates.map((c) => c.profileId)).toEqual([park]);
+});
+
+test("should do the same for a Korean possessive", async () => {
+  const t = convexTest(schema, modules);
+  const userId = await t.withIdentity(ALICE).mutation(api.users.ensureUser, {});
+  const minho = await t.run(async (ctx) =>
+    ctx.db.insert("profiles", {
+      userId,
+      name: "민호",
+      entityType: "person" as const,
+      tags: [],
+      autoCreated: false,
+    }),
+  );
+
+  // 민호네 집들이 — the same failure in the other language this app ships in.
+  const [asked] = await t
+    .withIdentity(ALICE)
+    .query(api.profiles.resolveNames, { names: ["민호네"] });
+
+  expect(asked?.viaPossessive).toBe(true);
+  expect(asked?.candidates.map((c) => c.profileId)).toEqual([minho]);
+});
+
+test("should not call an exact match a possessive", async () => {
+  const t = convexTest(schema, modules);
+  const userId = await t.withIdentity(ALICE).mutation(api.users.ensureUser, {});
+  await t.run(async (ctx) =>
+    ctx.db.insert("profiles", {
+      userId,
+      name: "Parks",
+      entityType: "person" as const,
+      tags: [],
+      autoCreated: false,
+    }),
+  );
+
+  const [asked] = await t
+    .withIdentity(ALICE)
+    .query(api.profiles.resolveNames, { names: ["Parks"] });
+
+  // Somebody actually called Parks answers to Parks. The flag is what makes
+  // the screen ask, and asking about a name that matched exactly would turn
+  // every ordinary save into a question.
+  expect(asked?.viaPossessive).toBe(false);
+  expect(asked?.candidates).toHaveLength(1);
+});
+
+test("should propose nothing when the possessive belongs to nobody either", async () => {
+  const t = convexTest(schema, modules);
+  await t.withIdentity(ALICE).mutation(api.users.ensureUser, {});
+
+  const [asked] = await t
+    .withIdentity(ALICE)
+    .query(api.profiles.resolveNames, { names: ["Parks"] });
+
+  // No Park, no question. A new person is still created, which is right —
+  // this only exists to stop it happening *silently beside an existing one*.
+  expect(asked?.viaPossessive).toBe(false);
+  expect(asked?.candidates).toEqual([]);
+});

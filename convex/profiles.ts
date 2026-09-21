@@ -4,6 +4,7 @@ import type { Id } from "./_generated/dataModel";
 import { removeOrphanedAutoCreated } from "./cleanup";
 import { MAX_NAME_CHARS } from "./extractionPrompt";
 import { cleanAliases, matchKey, mergeTags, namesOf } from "./naming";
+import { possessiveBases } from "./possessive";
 import schema from "./schema";
 import { getAuthenticatedUser } from "./users";
 
@@ -405,6 +406,8 @@ export const resolveNames = query({
   returns: v.array(
     v.object({
       name: v.string(),
+      /** These came from a possessive form of the name, not the name. */
+      viaPossessive: v.boolean(),
       candidates: v.array(
         v.object({
           profileId: v.id("profiles"),
@@ -459,10 +462,35 @@ export const resolveNames = query({
       }
       asked.add(key);
 
-      const matches = byName.get(key) ?? [];
+      let matches = byName.get(key) ?? [];
+
+      // Nobody answers to this name — but somebody may answer to the name it
+      // is a possessive *of*. "Park's housewarming party" reaches here as
+      // "Parks", matching nothing, and used to become a second person one
+      // letter from a real one without a word being said. The same note had
+      // already done it in Korean: 민호네 집들이.
+      //
+      // Offered as a candidate rather than merged, because Parks is a real
+      // surname and a Parks and a Park can both exist. The screen asks; this
+      // only makes there be something to ask about.
+      const viaPossessive = matches.length === 0;
+      if (viaPossessive) {
+        const bases = new Set<string>();
+        for (const base of possessiveBases(raw)) bases.add(matchKey(base));
+        matches = [...bases].flatMap((base) => byName.get(base) ?? []);
+      }
 
       out.push({
         name: raw.trim(),
+        /**
+         * Whether these came from the name itself or from the name it might
+         * be a possessive of.
+         *
+         * The screen needs it because a single *exact* match is used without
+         * asking — which is right, and would be wrong here: one candidate
+         * arrived at by guessing at grammar has to be confirmed.
+         */
+        viaPossessive: viaPossessive && matches.length > 0,
         candidates: matches.map((profile) => ({
           profileId: profile._id,
           name: profile.name,

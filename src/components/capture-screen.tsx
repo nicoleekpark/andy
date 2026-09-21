@@ -270,9 +270,23 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
   // render and rebuild `save` with it, which would make the callback's identity
   // change constantly for no reason.
   const resolved = useMemo(() => asked ?? [], [asked]);
-  /** Names two or more people answer to — the ones only the user can settle. */
+  /**
+   * The names only the user can settle, and saving waits for every one.
+   *
+   * Two or more people answering to a name is the original case. A name that
+   * matched **nothing itself** and only reached somebody through a possessive
+   * is the second, added after "I met at Park's housewarming party" quietly
+   * became a person called Parks: exactly one candidate, so the old rule used
+   * it without asking, and the old rule was right about exact matches and
+   * wrong about guessed grammar.
+   */
   const ambiguous = useMemo(
-    () => resolved.filter((one) => one.candidates.length > 1),
+    () =>
+      resolved.filter(
+        (one) =>
+          one.candidates.length > 1 ||
+          (one.viaPossessive && one.candidates.length > 0),
+      ),
     [resolved],
   );
   /**
@@ -315,6 +329,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
       resolved.filter(
         (one) =>
           one.candidates.length > 1 ||
+          (one.viaPossessive && one.candidates.length > 0) ||
           (one.candidates.length === 1 && expanded.includes(one.name)),
       ),
     [resolved, expanded],
@@ -1226,13 +1241,31 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
           */}
           {asking.map((question) => {
             const answered = resolutions[question.name];
-            const mustAnswer = question.candidates.length > 1;
+            const mustAnswer =
+              question.candidates.length > 1 ||
+              (question.viaPossessive && question.candidates.length > 0);
             return (
-              <Field key={question.name} label={`Which ${question.name}?`}>
+              <Field
+                key={question.name}
+                label={
+                  question.viaPossessive
+                    ? `Is “${question.name}” one of these?`
+                    : `Which ${question.name}?`
+                }
+              >
                 <Text style={styles.quiet}>
-                  {mustAnswer
-                    ? "You keep more than one. This note goes to whichever you pick."
-                    : "This note goes to whoever you pick — or to somebody new."}
+                  {/*
+                    Three different things to say, because they are three
+                    different situations. The possessive one is the only one
+                    where the *name itself* is in doubt — "Parks" may be
+                    Park's, or it may be a person called Parks, and only the
+                    speaker knows which.
+                  */}
+                  {question.viaPossessive
+                    ? "Andy heard a name that might belong to somebody you already keep. Pick them, or keep it as a new person."
+                    : mustAnswer
+                      ? "You keep more than one. This note goes to whichever you pick."
+                      : "This note goes to whoever you pick — or to somebody new."}
                 </Text>
                 {question.candidates.map((candidate) => {
                   const picked = answered === candidate.profileId;

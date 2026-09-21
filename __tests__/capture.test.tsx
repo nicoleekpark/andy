@@ -480,6 +480,90 @@ describe("capture screen review step", () => {
     expect(result.getPathname()).toBe("/");
   });
 
+  test("should ask before inventing somebody whose name is a possessive of one you keep", async () => {
+    (useAction as jest.Mock).mockReturnValue(
+      jest.fn(async () => makeDraft({ name: "Tom" })),
+    );
+    mockSaveCapture(jest.fn(async () => ({
+      profileId: "profile-1",
+      noteId: "note-1",
+      createdProfile: true,
+      createdMentionCount: 1,
+    })));
+    // "I met at Park's housewarming party". The recogniser does not reliably
+    // place apostrophes, extraction reads "Parks" as a name, and `matchKey` is
+    // exact — so a second person one letter from a real one used to be created
+    // with nothing said. Exactly one candidate, which the old rule used without
+    // asking: right about an exact match, wrong about guessed grammar.
+    scopeTo("Tom", [
+      {
+        name: "Parks",
+        viaPossessive: true,
+        candidates: [
+          {
+            profileId: "profile-park",
+            name: "Park",
+            relationshipContext: "physics teacher",
+            entityType: "person",
+            noteCount: 2,
+            lastNoteAt: new Date("2026-09-01T12:00:00").getTime(),
+          },
+        ],
+      },
+    ]);
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+    await reachReview(handlers, "Met Tom at parks housewarming party.");
+
+    // The name itself is what is in doubt, not which of several people it
+    // means — so the question says so rather than reusing "Which Parks?".
+    await waitFor(() =>
+      expect(screen.getByText(/might belong to somebody you already keep/))
+        .toBeTruthy(),
+    );
+  });
+
+  test("should not ask about a name that matched somebody exactly", async () => {
+    (useAction as jest.Mock).mockReturnValue(
+      jest.fn(async () => makeDraft({ name: "Emma" })),
+    );
+    mockSaveCapture(jest.fn(async () => ({
+      profileId: "profile-1",
+      noteId: "note-1",
+      createdProfile: false,
+      createdMentionCount: 0,
+    })));
+    scopeTo("Emma", [
+      {
+        name: "Emma",
+        viaPossessive: false,
+        candidates: [
+          {
+            profileId: "profile-1",
+            name: "Emma",
+            relationshipContext: "friend",
+            entityType: "person",
+            noteCount: 3,
+            lastNoteAt: new Date("2026-08-30T12:00:00").getTime(),
+          },
+        ],
+      },
+    ]);
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+    await reachReview(handlers, "Met Emma today.");
+
+    // Day 4 called turning a common path into a form a mistake. One exact
+    // match is not a question, and making it one would put a picker in front
+    // of every ordinary save.
+    expect(screen.queryByText(/might belong to somebody you already keep/)).toBeNull();
+    expect(screen.getByText(/Adding to Emma/)).toBeTruthy();
+  });
+
   test("should say a name matching nobody is about to invent somebody", async () => {
     (useAction as jest.Mock).mockReturnValue(
       jest.fn(async () => makeDraft({ name: "Jogging" })),
@@ -492,7 +576,7 @@ describe("capture screen review step", () => {
     })));
     // Recognition heard "Joe King" as "Jogging". Nobody answers to it, so saving
     // would create a person the user never met — silently, until now.
-    scopeTo("Jogging", [{ name: "Jogging", candidates: [] }]);
+    scopeTo("Jogging", [{ name: "Jogging", viaPossessive: false, candidates: [] }]);
     const handlers = captureListeners();
 
     const result = renderRouter("src/app", { initialUrl: "/capture" });
@@ -518,6 +602,7 @@ describe("capture screen review step", () => {
     scopeTo("Emma", [
       {
         name: "Emma",
+        viaPossessive: false,
         candidates: [
           {
             profileId: "profile-1",
@@ -849,6 +934,7 @@ describe("capture screen review step", () => {
     scopeTo("Emma", [
       {
         name: "Emma",
+        viaPossessive: false,
         candidates: [
           {
             profileId: "profile-1",
@@ -860,7 +946,7 @@ describe("capture screen review step", () => {
           },
         ],
       },
-      { name: "Marco", candidates: [] },
+      { name: "Marco", viaPossessive: false, candidates: [] },
     ]);
     const handlers = captureListeners();
 
@@ -892,7 +978,7 @@ describe("capture screen review step", () => {
       createdProfile: true,
       createdMentionCount: 0,
     })));
-    scopeTo("Emma", [{ name: "Emma", candidates: [] }]);
+    scopeTo("Emma", [{ name: "Emma", viaPossessive: false, candidates: [] }]);
     const handlers = captureListeners();
 
     const result = renderRouter("src/app", { initialUrl: "/capture" });
@@ -1044,6 +1130,7 @@ describe("capture screen review step", () => {
     scopeTo("Emma", [
       {
         name: "Emma",
+        viaPossessive: false,
         candidates: [
           {
             profileId: "profile-a",
@@ -1111,7 +1198,7 @@ describe("capture screen review step", () => {
     );
     mockSaveCapture(saveCapture);
     scopeTo("Emma", [
-      { name: "Emma", candidates: [] },
+      { name: "Emma", viaPossessive: false, candidates: [] },
       {
         name: "Marcus",
         candidates: [
@@ -1240,6 +1327,7 @@ describe("capture screen review step", () => {
     scopeTo("Emma", [
       {
         name: "Emma",
+        viaPossessive: false,
         candidates: [
           {
             profileId: "profile-a",

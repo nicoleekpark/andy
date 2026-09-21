@@ -4,6 +4,7 @@ import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { removeOrphanedAutoCreated } from "./cleanup";
 import { matchKey, mergeTags, namesOf } from "./naming";
+import { possessiveBases } from "./possessive";
 import schema from "./schema";
 import { getAuthenticatedUser } from "./users";
 import {
@@ -173,12 +174,28 @@ export const saveCapture = mutation({
       }
       const id = ctx.db.normalizeId("profiles", resolution.profileId);
       const picked = id === null ? null : await ctx.db.get("profiles", id);
+      // The name the screen offered this profile for, and **only** that.
+      //
+      // The resolution's own name always. The name it is a possessive of only
+      // when nobody answers to the name itself — which is the same condition
+      // `profiles.resolveNames` uses to decide whether to offer a possessive
+      // candidate at all. The two have to agree: a caller keeping both "Mark"
+      // and "Marks" is only ever offered Marks for "Marks", so accepting Mark
+      // here would accept a choice no screen made.
+      //
+      // `security-reviewer` found them disagreeing and reproduced it. Not
+      // reachable through the app — the screen only ever sends back an id
+      // `resolveNames` returned — but a guard whose reason is "the screen
+      // offered it" has to mean that.
+      const exactKey = matchKey(resolution.name);
+      const offeredFor = [exactKey];
+      if ((byName.get(exactKey) ?? []).length === 0) {
+        offeredFor.push(...possessiveBases(resolution.name).map(matchKey));
+      }
       if (
         picked === null ||
         picked.userId !== user._id ||
-        !namesOf(picked).some(
-          (known) => matchKey(known) === matchKey(resolution.name),
-        )
+        !namesOf(picked).some((known) => offeredFor.includes(matchKey(known)))
       ) {
         // Not "which of these did you mean" but "that is not one of these" —
         // a stale screen, or an id that was never on offer.
