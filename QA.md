@@ -344,11 +344,49 @@ been picked, uploaded, or displayed.
 
 ---
 
+## 18. Calendar briefing
+
+The first thing on the home screen, and the app's one signature element —
+`STYLE.md` spends its whole visual risk here. **Nothing below has been done on
+a device.** Everything about *which people a title names* is covered by unit
+tests and measured; everything about the calendar itself is not, because no
+runner here can read one.
+
+**Needs a build.** `expo-calendar` is a native module and is not in the binary
+currently installed.
+
+**Set up a calendar first.** The simulator ships with an empty Calendar app, so
+open it and add today's events by hand: one titled with somebody you keep notes
+about, one with nobody ("Standup"), one all-day. On a device, your real calendar
+is the better test and `PROJECT_SCOPE.md:471` asks for exactly that — "test with
+your actual messy real calendar, not synthetic data".
+
+| # | Do this | Expect | |
+|---|---|---|---|
+| 18.1 | Open the app for the first time after the build | A card at the top of home inviting you to let Andy read your calendar. **No system permission sheet** — `CLAUDE.md` requires asking at the point of use, and this is the point | ⬜ |
+| 18.2 | Tap `Read my calendar` → **Allow** | The card becomes the next meeting that is about somebody you keep notes on | ⬜ |
+| 18.3 | Look at the card | A **brass left-edge stripe** and a **dashed top border** — a torn note edge. This appears nowhere else in the app; if you see it elsewhere, that is the bug | ⬜ |
+| 18.4 | Tap the person's name on the card | Their profile opens | ⬜ |
+| 18.5 | Add an event named for somebody you keep notes on, then background and foreground the app | The card updates. A briefing an hour stale is about a meeting you have already had | ⬜ |
+| 18.6 | Put a "Standup" at the top of today, ahead of a meeting that names someone | The card shows **the meeting, not the standup**. A standup is not a briefing, and showing it pushes the useful one off the screen | ⬜ |
+| 18.7 | Clear the next twelve hours | "Nothing coming up" — an invitation, not an error. Says *coming up*, not *today*, because after about 9pm the window is mostly tomorrow | ⬜ |
+| 18.8 | Add an **all-day** event named for someone you keep notes on | It is **ignored**. A birthday sitting on today would put a briefing at the top of the screen all day about a meeting that is not happening | ⬜ |
+| 18.9 | Name an event with somebody you keep **two** people called (e.g. two Judys) | "Andy can't tell which one this is" — **never a guess.** One of them having more notes is not evidence about who you are meeting | ⬜ |
+| 18.10 | Name an event with a word that *contains* a name you keep — "Alignment review" when you keep an "Al" | Nobody is matched. This is how a briefing about a stranger reaches your phone | ⬜ |
+| 18.11 | **Korean**: title an event `지선이랑 점심`, and another `지선희와 점심`, keeping only 지선 | The first matches, the second does **not** — 지선희 is a different person | ⬜ |
+| 18.12 | Title an event `Judy랑 점심` | Matches Judy. A particle belongs to the sentence, not the name | ⬜ |
+| 18.13 | Name an event with someone you have **no** notes about but do keep a profile for | The card still shows them, saying "nothing written down yet". Knowing you have nothing is the reminder this app exists to give | ⬜ |
+| 18.14 | Deny calendar access, then reopen the app | The card says access is off and points at Settings — **and shows no button**, because iOS will not open the sheet a second time and a button that does nothing reads as a broken app | ⬜ |
+| 18.15 | Open the app on a build **without** `expo-calendar` (i.e. the current one) | **No card, and home works normally.** Day 6 lost a whole profile screen to a missing native module; this is the check that it cannot happen here | ⬜ |
+| 18.16 | Check the Convex logs (`npm run db` → Logs) after a briefing | One `calendar:matchEvents` per foreground, not one per event. Titles appear in the log as arguments — they are your own calendar reaching your own backend, and nothing stores them | ⬜ |
+
+---
+
 ## Not built yet — do not file these
 
-**Coming in V1, just not yet.** The
-calendar briefing and its notifications, business-card photo, the app lock,
-dark mode.
+**Coming in V1, just not yet.** The briefing's **notifications** (the
+pre-meeting alert and the post-meeting nudge — the card itself is §18),
+business-card photo, the app lock, dark mode.
 
 **Cut from V1 on day 4 — will not be built before launch, so a bug report
 against them is noise, not signal.** The home widget, the Siri shortcut,
