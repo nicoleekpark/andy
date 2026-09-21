@@ -126,6 +126,7 @@ describe("search screen", () => {
           entityType: "person",
           relationshipContext: "From the gym",
           noteCount: 6,
+          mentionCount: 0,
           lastNoteAt: 1,
         },
         {
@@ -134,6 +135,7 @@ describe("search screen", () => {
           matchedName: "Judy Park",
           entityType: "person",
           noteCount: 2,
+          mentionCount: 0,
           lastNoteAt: 1,
         },
       ],
@@ -160,6 +162,7 @@ describe("search screen", () => {
           matchedName: "Judy Park",
           entityType: "person",
           noteCount: 2,
+          mentionCount: 0,
           lastNoteAt: 1,
         },
       ],
@@ -190,6 +193,7 @@ describe("search screen", () => {
           matchedName: "Marc",
           entityType: "person",
           noteCount: 1,
+          mentionCount: 0,
           lastNoteAt: 1,
         },
       ],
@@ -247,6 +251,32 @@ describe("search screen", () => {
     );
     expect(asked.length).toBeGreaterThan(0);
     expect(asked.every(([, args]) => args === "skip")).toBe(true);
+  });
+
+  test("should say when somebody is only a mention, so a wrong one stands out", async () => {
+    mockPeople({
+      people: [
+        {
+          profileId: "p-ghost",
+          name: "Parks",
+          matchedName: "Parks",
+          entityType: "person",
+          noteCount: 0,
+          mentionCount: 1,
+          lastNoteAt: null,
+        },
+      ],
+      mentions: [],
+    });
+    await renderSearch();
+
+    await type("park");
+
+    // "Park's housewarming party" became a person called "Parks", and until
+    // this line the invented row looked exactly like a real one.
+    await waitFor(() =>
+      expect(screen.getByText(/only mentioned, in 1 note/)).toBeTruthy(),
+    );
   });
 
   test("should show no People section when nobody is called that", async () => {

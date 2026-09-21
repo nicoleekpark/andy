@@ -248,6 +248,42 @@ test("should show a single match as a list, not open it", async () => {
 // The other direction — where somebody comes up inside another person's note
 // ---------------------------------------------------------------------------
 
+test("should tell a person you have written about from one that is only a mention", async () => {
+  const t = convexTest(schema, modules);
+  const { userId, judyA, marcusNote } = await seed(t);
+  const invented = await t.run(async (ctx) => {
+    // Exactly how "Park's housewarming party" became a person called "Parks":
+    // Andy invents somebody the moment a note says a name, and nothing about
+    // the row it creates looks different from a real one.
+    const id = await ctx.db.insert("profiles", {
+      userId,
+      name: "Judyson",
+      entityType: "person" as const,
+      tags: [],
+      autoCreated: true,
+    });
+    await ctx.db.insert("noteMentions", {
+      userId,
+      noteId: marcusNote,
+      profileId: id,
+      name: "Judyson",
+      quote: "Judyson was there",
+    });
+    return id;
+  });
+
+  const found = await find(t, "judy");
+
+  const written = found.people.find((p) => p.profileId === judyA);
+  const ghost = found.people.find((p) => p.profileId === invented);
+  expect(written?.noteCount).toBe(1);
+  expect(written?.mentionCount).toBe(1);
+  // The one that matters: no notes of their own, and a count of the notes that
+  // merely said the name — which is what makes an invented person visible.
+  expect(ghost?.noteCount).toBe(0);
+  expect(ghost?.mentionCount).toBe(1);
+});
+
 test("should show where the name comes up in somebody else's note", async () => {
   const t = convexTest(schema, modules);
   const { marcus, judyA } = await seed(t);

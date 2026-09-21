@@ -38,6 +38,17 @@ export const search = query({
         entityType: v.union(v.literal("person"), v.literal("animal")),
         relationshipContext: v.optional(v.string()),
         noteCount: v.number(),
+        /**
+         * How many of somebody else's notes name them.
+         *
+         * Carried so a row can tell two very different people apart at a
+         * glance: somebody you have written about, and somebody who exists
+         * only because a note said their name. The second kind is where a
+         * mistake hides — "Park's housewarming" heard as a person called
+         * "Parks" — and until a row said so, the invented person looked
+         * exactly like the real one.
+         */
+        mentionCount: v.number(),
         lastNoteAt: v.union(v.number(), v.null()),
       }),
     ),
@@ -84,6 +95,20 @@ export const search = query({
       });
     }
 
+    // Read once, before the people are built, so each row can carry its own
+    // count. Also the list the mentions section is built from below.
+    const links = await ctx.db
+      .query("noteMentions")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+    const mentionCounts = new Map<string, number>();
+    for (const link of links) {
+      mentionCounts.set(
+        link.profileId,
+        (mentionCounts.get(link.profileId) ?? 0) + 1,
+      );
+    }
+
     const ranked = [];
     for (const profile of owned) {
       // `namesOf` is the rule — a profile answers to its name *and* its
@@ -104,6 +129,7 @@ export const search = query({
         entityType: profile.entityType,
         relationshipContext: profile.relationshipContext,
         noteCount: seen?.noteCount ?? 0,
+        mentionCount: mentionCounts.get(profile._id) ?? 0,
         lastNoteAt: seen?.lastNoteAt ?? null,
       });
     }
@@ -123,11 +149,6 @@ export const search = query({
     const matchedIds = new Set(people.map((person) => person.profileId));
     const byNote = new Map(notes.map((note) => [note._id as string, note]));
     const names = new Map(owned.map((p) => [p._id as string, p.name]));
-
-    const links = await ctx.db
-      .query("noteMentions")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
 
     const mentions = [];
     for (const link of links) {

@@ -439,6 +439,8 @@ this replaces could not answer `oneill` for `O'Neill`, or `선희` for `지선�
 | 20.12 | A name whose person you **deleted**, that a note still mentions | Still listed under Came up in, with the name the note recorded. Deleting somebody must not erase them from other people's notes | ⬜ |
 | 20.13 | `!!!` or spaces only | **Nothing.** A folded-empty query is a substring of every name | ⬜ |
 | 20.14 | A name nobody has | No People section at all — not an empty box | ⬜ |
+| 20.16 | Search a name that exists **only as a mention** (e.g. 어머니, 민호) | The row says **"only mentioned, in N notes"**, not "0 notes". Andy invents somebody the moment a note says a name, and this is the line that makes a wrongly-invented one visible — "Park's housewarming party" once became a person called "Parks" | ⬜ |
+| 20.17 | Compare that row to somebody you have written about | Theirs says "N notes". The two are different kinds of person and the list has to say which | ⬜ |
 | 20.15 | Type a name, then press **Ask** | Both: the people stay above, the written answer arrives below. The cheap half never waits for the paid one | ⬜ |
 
 ---

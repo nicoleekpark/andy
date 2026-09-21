@@ -179,7 +179,23 @@ export default function SearchScreen() {
                   {person.relationshipContext !== undefined
                     ? `${person.relationshipContext} · `
                     : ""}
-                  {person.noteCount === 1 ? "1 note" : `${person.noteCount} notes`}
+                  {/*
+                    A person with no notes of their own is a different thing
+                    from a person with none *yet*, and the row has to say
+                    which. Andy invents somebody the moment a note says their
+                    name, so this is also where a mistake shows — "Park's
+                    housewarming" heard as a person called "Parks" looked
+                    exactly like a real person until this line existed.
+                  */}
+                  {person.noteCount > 0
+                    ? person.noteCount === 1
+                      ? "1 note"
+                      : `${person.noteCount} notes`
+                    : person.mentionCount > 0
+                      ? person.mentionCount === 1
+                        ? "only mentioned, in 1 note"
+                        : `only mentioned, in ${person.mentionCount} notes`
+                      : "nothing written down yet"}
                 </Text>
               </Pressable>
             ))}
