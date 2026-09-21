@@ -260,13 +260,38 @@ edit making things worse, and both were only visible by measuring.
 | 15.9 | On the phone: ask anything that finds notes | The answer sits **above** the cards, with the cited ones marked. Tapping a cited card opens that person | ⬜ |
 | 15.10 | Ask a second question straight after a first | No flash of the previous answer above the new results | ⬜ |
 
+## 16. Follow-up email draft
+
+Everything here is read by **somebody who is not the user**. That makes it the
+one feature in this app whose output leaves the owner's screen, and the rows
+below are weighted accordingly.
+
+Drafts measured against the real notes on 2026-09-17 from the CLI. **Nothing has
+been tapped on a device** — the button renders, and no draft has reached Mail.
+
+| # | Do this | Expect | |
+|---|---|---|---|
+| 16.1 | Open a person with notes → `Draft a follow-up` | Mail opens with a subject and 3–5 sentences. **The To line is empty** — this app does not read Contacts and V1 stores no address | ⬜ |
+| 16.2 | Open a person with **no** notes → `Draft a follow-up` | "There's nothing written down about them yet — record a note first." **No Claude call** — check the Convex logs, this one costs money if it regresses | ✅ CLI |
+| 16.3 | Draft for someone whose notes mention a **third party** | The email says nothing about that person. Not because mentions aren't gathered — that guarantee was hollow, since a mention's quote is *by construction a substring of the note's own text* — but because **only the endorsed facts are sent**, and a third party is rarely one | ✅ CLI |
+| 16.3a | Draft for someone who has a note with **no facts at all** | That note contributes nothing. Its raw text is the unreviewed wording, and the unreviewed wording is what carries other people in it | ✅ CLI |
+| 16.4 | Draft for someone whose notes contain something **sensitive** (health, money, family difficulty) | It asks how something is going. It does **not** restate the detail back to them. Measured on a note recording a mother's cancer: the draft asked "how your mum's doing" and named nothing | ✅ CLI |
+| 16.5 | Draft for someone whose notes contain a **private judgement** ("seemed tired", "I think she's unhappy at work") | Never appears. Those are the sender's own words about someone, written for the sender's memory | ⬜ |
+| 16.5a | Read any draft carefully for **any hint that notes are kept** — "you mentioned on the 1st", "looking back at what you told me", a date | Never. This app's whole premise is notes kept without the subject's consent, so a draft that discloses the filing system is the worst thing it can produce. Measured 2026-09-17 on two real profiles | ✅ CLI |
+| 16.5b | Draft for someone whose notes mention **their own family** (a parent's illness, a partner's job) | May ask after them — "how is your mother getting on?" — and must never restate the detail. This is the one exception to "no third parties", because the recipient raised it themselves. Measured on a note recording a cancer diagnosis: asked, named nothing | ✅ CLI |
+| 16.5c | Open a **foster animal's** profile | **No `Draft a follow-up` button.** An email to a cat would send its health notes on a trip they have no reason to take | ⬜ |
+| 16.6 | **Double-tap** `Draft a follow-up` | One call. The button greys to "Writing…" — each press is paid | ⬜ |
+| 16.7 | Tap it on a simulator with **no mail account** | "No mail app" rather than a tap that appears to do nothing | ⬜ |
+| 16.8 | Turn Wi-Fi off, tap it | One error line, no Mail | ⬜ |
+| 16.9 | Draft, then read the message in Mail before sending | **Nothing is sent by this app.** Mail's compose window is the review step; check it says what you would actually send | ⬜ |
+
 ---
 
 ## Not built yet — do not file these
 
 **Coming in V1, just not yet.** The
 calendar briefing and its notifications, business-card photo, photo
-attachments, the follow-up email draft, the app lock, dark mode.
+attachments, the app lock, dark mode.
 
 **Cut from V1 on day 4 — will not be built before launch, so a bug report
 against them is noise, not signal.** The home widget, the Siri shortcut,
