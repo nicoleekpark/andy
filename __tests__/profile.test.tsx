@@ -415,6 +415,108 @@ describe("follow-up email", () => {
     return result;
   }
 
+  /** Render a profile whose query result is spelled out, not the default one. */
+  async function reachProfileWith(result: Record<string, unknown>) {
+    (useQuery as jest.Mock).mockReturnValue(result);
+    const rendered = renderRouter("src/app", {
+      initialUrl: "/profile/profile-1",
+    });
+    await rendered;
+    return rendered;
+  }
+
+  const WITH_FACTS = {
+    _id: "note-1",
+    text: "Nina is moving to Berlin.",
+    keyFacts: ["Moving to Berlin"],
+    createdAt: new Date("2026-09-01T12:00:00").getTime(),
+    mentions: [],
+  };
+
+  test("should not offer a draft for somebody who only comes up in other people's notes", async () => {
+    mockDraft(jest.fn());
+    // Reported from the device, and the reason this test exists in this shape.
+    // Andy invents a person the moment a note names them, so John has a profile
+    // and a timeline — made entirely of somebody else's note. Tapping said
+    // "there's nothing written down about them yet" in front of a visible note.
+    await reachProfileWith(
+      withNotes(
+        [],
+        [
+          {
+            noteId: "note-1",
+            createdAt: new Date("2026-09-01T12:00:00").getTime(),
+            quote: "John is going through a divorce",
+            aboutProfileId: "profile-2",
+            aboutName: "Amy",
+          },
+        ],
+      ),
+    );
+
+    expect(screen.queryByLabelText("Draft a follow-up")).toBeNull();
+    expect(screen.getByTestId("follow-up-unavailable")).toHaveTextContent(
+      /only comes up in notes about other people/,
+    );
+  });
+
+  test("should name the missing facts when the notes are there and carry none", async () => {
+    mockDraft(jest.fn());
+    await reachProfileWith(
+      withNotes([
+        {
+          _id: "note-1",
+          text: "Met Nina at the conference.",
+          createdAt: new Date("2026-09-01T12:00:00").getTime(),
+          mentions: [],
+        },
+      ]),
+    );
+
+    // Pointing them at "record a note" would point them at the one thing they
+    // have already done.
+    expect(screen.queryByLabelText("Draft a follow-up")).toBeNull();
+    expect(screen.getByTestId("follow-up-unavailable")).toHaveTextContent(
+      /What to remember/,
+    );
+  });
+
+  test("should treat a fact of nothing but spaces as no fact at all", async () => {
+    mockDraft(jest.fn());
+    // `updateNote` accepts a blank fact, and the server drops it. If the screen
+    // counted it the button would be offered and the action would refuse —
+    // which is the whole failure this change exists to remove, reintroduced at
+    // the other end.
+    await reachProfileWith(
+      withNotes([{ ...WITH_FACTS, keyFacts: ["   ", ""] }]),
+    );
+
+    expect(screen.queryByLabelText("Draft a follow-up")).toBeNull();
+  });
+
+  test("should say nothing at all on an animal, rather than advise recording a note about a cat", async () => {
+    mockDraft(jest.fn());
+    await reachProfileWith({
+      ...withNotes([]),
+      profile: buildProfile({ name: "Biscuit", entityType: "animal" }),
+    });
+
+    expect(screen.queryByLabelText("Draft a follow-up")).toBeNull();
+    // Neither the button nor the explanation — "record a note to draft a
+    // follow-up" is not advice anybody wants about a foster cat.
+    expect(screen.queryByTestId("follow-up-unavailable")).toBeNull();
+  });
+
+  test("should offer the draft where there is something to draft from", async () => {
+    mockDraft(jest.fn());
+    // The positive case, kept next to the refusals: a gate that never opens
+    // passes every test above.
+    await reachProfileWith(withNotes([WITH_FACTS]));
+
+    expect(screen.getByLabelText("Draft a follow-up")).toBeTruthy();
+    expect(screen.queryByTestId("follow-up-unavailable")).toBeNull();
+  });
+
   test("should hand Mail the subject and body, and no recipient", async () => {
     const draft = jest.fn(async () => ({
       personName: "Nina",

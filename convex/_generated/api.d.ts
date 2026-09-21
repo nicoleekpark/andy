@@ -19,6 +19,7 @@ import type * as embeddings from "../embeddings.js";
 import type * as extraction from "../extraction.js";
 import type * as extractionPrompt from "../extractionPrompt.js";
 import type * as followUp from "../followUp.js";
+import type * as followUpScope from "../followUpScope.js";
 import type * as naming from "../naming.js";
 import type * as notes from "../notes.js";
 import type * as photos from "../photos.js";
@@ -45,6 +46,7 @@ declare const fullApi: ApiFromModules<{
   extraction: typeof extraction;
   extractionPrompt: typeof extractionPrompt;
   followUp: typeof followUp;
+  followUpScope: typeof followUpScope;
   naming: typeof naming;
   notes: typeof notes;
   photos: typeof photos;

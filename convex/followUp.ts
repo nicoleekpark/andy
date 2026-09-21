@@ -4,6 +4,7 @@ import { action, internalQuery } from "./_generated/server";
 import { MAX_EMAIL_NOTES } from "./emailPrompt";
 import type { EmailDraft, EmailNote } from "./emailPrompt";
 import { rememberedFacts } from "./embeddingModel";
+import { countFactNotes, followUpRefusal } from "./followUpScope";
 import { getAuthenticatedUser } from "./users";
 
 /**
@@ -53,6 +54,11 @@ export const notesForFollowUp = internalQuery({
     v.null(),
     v.object({
       personName: v.string(),
+      entityType: v.union(v.literal("person"), v.literal("animal")),
+      /** Notes about them, before the factless ones are dropped. */
+      ownNoteCount: v.number(),
+      /** Whether anybody else's note names them. */
+      hasMentions: v.boolean(),
       notes: v.array(
         v.object({
           recordedOn: v.string(),
@@ -79,17 +85,31 @@ export const notesForFollowUp = internalQuery({
       .order("desc")
       .take(MAX_EMAIL_NOTES);
 
+    // Read separately from the notes above, and only far enough to answer
+    // "does anybody else's note name them". The distinction matters because a
+    // person Andy invented has a timeline on screen made entirely of these, and
+    // telling them nothing is written down while they are looking at a note is
+    // how this was reported.
+    const mentions = await ctx.db
+      .query("noteMentions")
+      .withIndex("by_user_and_profile", (q) =>
+        q.eq("userId", user._id).eq("profileId", profileId),
+      )
+      .take(1);
+
     return {
       personName: profile.name,
+      entityType: profile.entityType,
+      ownNoteCount: notes.length,
+      hasMentions: mentions.length > 0,
       notes: notes
         .map((note) => ({
           recordedOn: new Date(note.createdAt).toISOString().slice(0, 10),
           facts: rememberedFacts(note.keyFacts),
         }))
         // A note with nothing endorsed on it is dropped rather than falling
-        // back to its raw text. If that empties the set, the caller's existing
-        // "nothing written down about them yet" refusal is already the right
-        // thing to say.
+        // back to its raw text — its raw wording is the unreviewed kind, which
+        // is exactly what carries other people in it.
         .filter((note) => note.facts.length > 0),
     };
   },
@@ -115,6 +135,9 @@ export const draft = action({
   ): Promise<{ personName: string; subject: string; body: string }> => {
     const scope: {
       personName: string;
+      entityType: "person" | "animal";
+      ownNoteCount: number;
+      hasMentions: boolean;
       notes: EmailNote[];
     } | null = await ctx.runQuery(internal.followUp.notesForFollowUp, {
       profileId: args.profileId,
@@ -123,12 +146,25 @@ export const draft = action({
     if (scope === null) {
       throw new ConvexError("Andy couldn't find that person.");
     }
-    if (scope.notes.length === 0) {
-      // Nothing to follow up on, and no reason to pay Claude to discover that.
-      // The screen says so rather than opening an empty message.
-      throw new ConvexError(
-        "There's nothing written down about them yet — record a note first.",
-      );
+
+    // Decided by the same function the screen uses to decide whether to offer
+    // the button, so the two cannot drift into disagreeing about who can be
+    // written to. Reached anyway despite the screen's check: this action is
+    // public, and a screen rendered before the last note was deleted is a
+    // caller with a stale answer rather than a misbehaving one.
+    //
+    // Nothing to follow up on, and no reason to pay Claude to discover that.
+    const refusal = followUpRefusal({
+      name: scope.personName,
+      entityType: scope.entityType,
+      ownNoteCount: scope.ownNoteCount,
+      factNoteCount: countFactNotes(
+        scope.notes.map((note) => ({ keyFacts: note.facts })),
+      ),
+      hasMentions: scope.hasMentions,
+    });
+    if (refusal !== null) {
+      throw new ConvexError(refusal);
     }
 
     const written: EmailDraft = await ctx.runAction(internal.email.write, {

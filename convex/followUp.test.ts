@@ -214,16 +214,113 @@ test("should put the person's name inside the boundary, since a name is typed by
 // Refusals — each before anything is spent
 // ---------------------------------------------------------------------------
 
-test("should refuse a person with nothing written down, without paying Claude to discover it", async () => {
+test("should say a mentioned-only person is mentioned only, not that nothing is written down", async () => {
   const t = convexTest(schema, modules);
   const { john } = await seed(t);
 
+  // Reported from the device. John exists *because* Amy's note names him, so
+  // his profile renders with a note visible on it — and the refusal said
+  // "there's nothing written down about them yet". Both halves were true and
+  // the sentence was not: the note is Amy's, in Amy's words, and what she said
+  // about John's divorce must never be mailed to John.
   await expect(
     t.withIdentity(ALICE).action(api.followUp.draft, {
       profileId: john,
       today: "2026-09-17",
     }),
-  ).rejects.toThrow(/nothing written down/);
+  ).rejects.toThrow(/only comes up in notes about other people/);
+  expect(createMessage).not.toHaveBeenCalled();
+});
+
+test("should refuse a person nobody has written or said anything about", async () => {
+  const t = convexTest(schema, modules);
+  const { userId } = await seed(t);
+  const stranger = await t.run(async (ctx) =>
+    ctx.db.insert("profiles", {
+      userId,
+      name: "Priya",
+      entityType: "person",
+      tags: [],
+      autoCreated: false,
+    }),
+  );
+
+  // No notes and no mentions either — the only case where "nothing written
+  // down" is the whole truth.
+  await expect(
+    t.withIdentity(ALICE).action(api.followUp.draft, {
+      profileId: stranger,
+      today: "2026-09-17",
+    }),
+  ).rejects.toThrow(/nothing written down about Priya/);
+  expect(createMessage).not.toHaveBeenCalled();
+});
+
+test("should name the facts as what is missing when the notes exist but carry none", async () => {
+  const t = convexTest(schema, modules);
+  const { userId } = await seed(t);
+  const emily = await t.run(async (ctx) => {
+    const id = await ctx.db.insert("profiles", {
+      userId,
+      name: "Emily",
+      entityType: "person",
+      tags: [],
+      autoCreated: false,
+    });
+    await ctx.db.insert("notes", {
+      userId,
+      profileId: id,
+      text: "Met Emily at the conference.",
+      source: "voice" as const,
+      createdAt: Date.UTC(2026, 8, 3, 12),
+    });
+    return id;
+  });
+
+  // On the deployment this is a real profile, not a hypothetical: extraction
+  // found nothing, so a note sits on her timeline with an empty "What to
+  // remember". Telling her owner nothing is written down would point them at
+  // the one thing they have already done.
+  await expect(
+    t.withIdentity(ALICE).action(api.followUp.draft, {
+      profileId: emily,
+      today: "2026-09-17",
+    }),
+  ).rejects.toThrow(/What to remember/);
+  expect(createMessage).not.toHaveBeenCalled();
+});
+
+test("should refuse an animal even though no screen offers the button", async () => {
+  const t = convexTest(schema, modules);
+  const { userId } = await seed(t);
+  const biscuit = await t.run(async (ctx) => {
+    const id = await ctx.db.insert("profiles", {
+      userId,
+      name: "Biscuit",
+      entityType: "animal",
+      tags: [],
+      autoCreated: false,
+    });
+    await ctx.db.insert("notes", {
+      userId,
+      profileId: id,
+      text: "Biscuit is due her shots.",
+      keyFacts: ["Vaccinations due in October"],
+      source: "voice" as const,
+      createdAt: Date.UTC(2026, 8, 4, 12),
+    });
+    return id;
+  });
+
+  // The screen has never offered this, and the action is public regardless.
+  // A follow-up to a foster cat would send her health notes into a Claude call
+  // and a message addressed to her by name.
+  await expect(
+    t.withIdentity(ALICE).action(api.followUp.draft, {
+      profileId: biscuit,
+      today: "2026-09-17",
+    }),
+  ).rejects.toThrow(/only drafts follow-ups to people/);
   expect(createMessage).not.toHaveBeenCalled();
 });
 
@@ -235,6 +332,24 @@ test("should refuse another user's person behind the same message as one that do
   await expect(
     t.withIdentity(BOB).action(api.followUp.draft, {
       profileId: amy,
+      today: "2026-09-17",
+    }),
+  ).rejects.toThrow(/couldn't find that person/);
+  expect(createMessage).not.toHaveBeenCalled();
+});
+
+test("should hide a malformed id behind the same message as one that is not yours", async () => {
+  const t = convexTest(schema, modules);
+  await seed(t);
+
+  // `normalizeId` returns null for a string that is not an id of that table at
+  // all, and this has to land on the same sentence as a real id belonging to
+  // somebody else — otherwise the shape of the answer says which one it was.
+  // The equivalent is proven in `profiles.test.ts`; this file inherited the
+  // pattern without a witness of its own, which `security-reviewer` named.
+  await expect(
+    t.withIdentity(ALICE).action(api.followUp.draft, {
+      profileId: "not-an-id",
       today: "2026-09-17",
     }),
   ).rejects.toThrow(/couldn't find that person/);
