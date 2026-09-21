@@ -1,5 +1,5 @@
 import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
-import { useAction } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
 import { getFunctionName } from "convex/server";
 import { renderRouter } from "expo-router/testing-library";
@@ -25,6 +25,20 @@ function mockRecall() {
     getFunctionName(reference as never) === getFunctionName(api.search.recall)
       ? recall
       : jest.fn(async () => undefined),
+  );
+}
+
+/**
+ * `people.search` is a *query*, so unlike `recall` it answers as you type and
+ * costs nothing. Pinned by name for the same reason `recall` is: the generated
+ * `api` is a Proxy, so a blanket `mockReturnValue` would keep passing if the
+ * screen were rewired to call something else.
+ */
+function mockPeople(answer: unknown) {
+  (useQuery as jest.Mock).mockImplementation((reference: unknown) =>
+    getFunctionName(reference as never) === getFunctionName(api.people.search)
+      ? answer
+      : undefined,
   );
 }
 
@@ -87,12 +101,164 @@ async function ask(question: string) {
 describe("search screen", () => {
   beforeEach(() => {
     mockRecall();
+    // Nothing matched unless a test says so — the screen must not render a
+    // People section out of a default.
+    mockPeople({ people: [], mentions: [] });
   });
 
   afterEach(() => {
     jest.clearAllMocks();
     recall.mockReset();
   });
+
+
+  // -------------------------------------------------------------------------
+  // Finding a person by name — free, live, above the paid answer
+  // -------------------------------------------------------------------------
+
+  test("should list the people who answer to what is typed, without being asked", async () => {
+    mockPeople({
+      people: [
+        {
+          profileId: "p-a",
+          name: "Judy O'Neill",
+          matchedName: "Judy O'Neill",
+          entityType: "person",
+          relationshipContext: "From the gym",
+          noteCount: 6,
+          lastNoteAt: 1,
+        },
+        {
+          profileId: "p-b",
+          name: "Judy Park",
+          matchedName: "Judy Park",
+          entityType: "person",
+          noteCount: 2,
+          lastNoteAt: 1,
+        },
+      ],
+      mentions: [],
+    });
+    await renderSearch();
+
+    await type("judy");
+
+    // No Ask press. Matching a name costs nothing and is already right; the
+    // answer below costs an embedding and a Claude call.
+    await waitFor(() => expect(screen.getByTestId("people-results")).toBeTruthy());
+    expect(screen.getByText("Judy O'Neill")).toBeTruthy();
+    expect(screen.getByText("Judy Park")).toBeTruthy();
+    expect(recall).not.toHaveBeenCalled();
+  });
+
+  test("should open the person it was asked to open, rather than guessing", async () => {
+    mockPeople({
+      people: [
+        {
+          profileId: "p-b",
+          name: "Judy Park",
+          matchedName: "Judy Park",
+          entityType: "person",
+          noteCount: 2,
+          lastNoteAt: 1,
+        },
+      ],
+      mentions: [],
+    });
+    const { router } = await renderSearch();
+    await type("judy");
+    await waitFor(() => expect(screen.getByLabelText("Open Judy Park")).toBeTruthy());
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Open Judy Park"));
+    });
+
+    // Even one match is a list to tap. This app does not decide who you meant
+    // — the same rule the briefing card follows with two Judys.
+    // The id, not the route pattern — asserting the pattern would pass for
+    // whichever Judy the screen happened to pick, which is the thing under
+    // test.
+    expect(router.getPathname()).toBe("/profile/p-b");
+  });
+
+  test("should say which name matched when it is not the one they are filed under", async () => {
+    mockPeople({
+      people: [
+        {
+          profileId: "p-m",
+          name: "Marcus",
+          matchedName: "Marc",
+          entityType: "person",
+          noteCount: 1,
+          lastNoteAt: 1,
+        },
+      ],
+      mentions: [],
+    });
+    await renderSearch();
+
+    await type("marc");
+
+    // A row reading "Marcus" after typing "Marc" explains itself; one that
+    // does not makes you wonder why he is in the list.
+    await waitFor(() => expect(screen.getByText(/Marc ·/)).toBeTruthy());
+  });
+
+  test("should show where the name came up inside somebody else's note", async () => {
+    mockPeople({
+      people: [],
+      mentions: [
+        {
+          noteId: "note-9",
+          aboutProfileId: "p-marcus",
+          aboutName: "Marcus",
+          profileId: "p-judy",
+          name: "Judy",
+          quote: "Judy was there too",
+          createdAt: 1,
+        },
+      ],
+    });
+    const { router } = await renderSearch();
+    await type("judy");
+
+    // `CLAUDE.md` calls cross-profile mention search a Must-have, and a
+    // mention is where somebody hides who has no profile worth opening.
+    await waitFor(() => expect(screen.getByTestId("mention-results")).toBeTruthy());
+    expect(screen.getByText(/Judy was there too/)).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Open the note about Marcus"));
+    });
+    expect(router.getPathname()).toBe("/note/note-9");
+  });
+
+  test("should not ask the backend anything while the box is empty", async () => {
+    mockPeople({ people: [], mentions: [] });
+    await renderSearch();
+
+    // `"skip"`, not `{ query: "" }` — no subscription at all, rather than one
+    // that asks the backend to confirm nothing matches nothing. Every screen
+    // mount would otherwise open one.
+    const asked = (useQuery as jest.Mock).mock.calls.filter(
+      ([reference]) =>
+        getFunctionName(reference as never) ===
+        getFunctionName(api.people.search),
+    );
+    expect(asked.length).toBeGreaterThan(0);
+    expect(asked.every(([, args]) => args === "skip")).toBe(true);
+  });
+
+  test("should show no People section when nobody is called that", async () => {
+    mockPeople({ people: [], mentions: [] });
+    await renderSearch();
+
+    await type("nobodyhere");
+
+    expect(screen.queryByTestId("people-results")).toBeNull();
+    expect(screen.queryByTestId("mention-results")).toBeNull();
+  });
+
 
   test("should invite a question rather than apologise for having no results yet", async () => {
     await renderSearch();
