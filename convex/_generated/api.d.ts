@@ -19,6 +19,7 @@ import type * as extractionPrompt from "../extractionPrompt.js";
 import type * as naming from "../naming.js";
 import type * as notes from "../notes.js";
 import type * as profiles from "../profiles.js";
+import type * as promptBoundary from "../promptBoundary.js";
 import type * as search from "../search.js";
 import type * as users from "../users.js";
 
@@ -40,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   naming: typeof naming;
   notes: typeof notes;
   profiles: typeof profiles;
+  promptBoundary: typeof promptBoundary;
   search: typeof search;
   users: typeof users;
 }>;
