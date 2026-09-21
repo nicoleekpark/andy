@@ -132,6 +132,15 @@ live here rather than in §7 because that is the screen they happen on.
 | # | Do this | Expect |
 |---|---|---|
 | 7a.1 | On the review screen, edit the transcript → `Read it again` | Asks first **only if** something above was edited; then re-reads and rewrites the facts |
+| 7a.2 | Edit the transcript, **don't** press `Read it again`, press `Save note` | **"You changed what you said"** — three choices. This is the last moment it can be asked: after saving, the record is read-only and the facts are what search reads, so the note would answer with wording its own record contradicts, for ever |
+| 7a.3 | From 7a.2 choose `Keep my facts` | Saves. The record is the corrected words, the facts are the ones you reviewed |
+| 7a.4 | From 7a.2 choose `Re-read it` | Facts are rebuilt from the corrected words. **One dialog, not two** — `Read it again` has its own "you'll lose your edits" confirmation and it must not stack on top of this one |
+| 7a.5 | From 7a.2 choose `Cancel`, then press `Save note` again | Asks again. Cancelling is not an answer |
+| 7a.4a | Turn Wi-Fi off, do 7a.2, choose `Read it again` (it fails), then press `Save note` again | **Asks again.** The re-read failed, so the facts on screen are still the old ones. Setting the baseline before the call succeeded made this go quiet instead — and the error banner sits right above Save, so pressing it again is the natural next move |
+| 7a.6 | After 7a.4 completes, press `Save note` | Saves **without asking**. They agree again, and a question that reappears after being answered is one people learn to dismiss unread |
+| 7a.7 | Don't touch the transcript at all → `Save note` | **No question.** One tap, as before. Day 4's mistake was turning the common path into a form |
+| 7a.8 | Add only a trailing space to the transcript → `Save note` | **No question.** Nobody meant to make that edit |
+| 7a.9 | Scan a business card, edit `What the card says`, `Save note` | Title reads **"You changed what the card says"** — not "what you said". Same for a typed note: "what you wrote" |
 
 ## 8. Typing instead of speaking
 
