@@ -99,14 +99,16 @@ function mockActions({
 }
 
 /**
- * `Alert.alert` backs two things: the "Scan a business card" camera-vs-library
- * choice, and the confirmation before a re-read throws away edits. Spied rather than left to whatever jest-expo's RN preset supplies,
- * so a test can invoke the exact button it means to drive instead of hoping
- * one fires. Defaults to "Take a photo" since the two routes share the same
- * `scanCard` function and differ only in which permission/launch pair is
+ * `Alert.alert` backs three things now: the "Scan a business card"
+ * camera-vs-library choice, the confirmation before a re-read throws away
+ * edits, and the question at save time when the transcript and the facts have
+ * come apart. Spied rather than left to whatever jest-expo's RN preset
+ * supplies, so a test can invoke the exact button it means to drive instead of
+ * hoping one fires. Defaults to "Take a photo" since the card routes share the
+ * same `scanCard` function and differ only in which permission/launch pair is
  * called — see capture.tsx's `chooseCardSource`.
  */
-function mockCardAlert(buttonText = "Take a photo") {
+function mockAlert(buttonText = "Take a photo") {
   // Returns the spy so a test can assert the alert was *not* raised, which is
   // the whole of "nothing was edited, so nothing was asked".
   return jest
@@ -223,6 +225,13 @@ describe("capture screen review step", () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    // `clearAllMocks` empties call records but leaves a `jest.spyOn`
+    // implementation in place, so an `Alert.alert` spy set by one test kept
+    // answering dialogs in every test after it. That is how the transcript-edit
+    // test below passed for a while: it never mocked an alert, and a spy from
+    // four tests earlier was pressing "Keep my facts" on its behalf. Run alone
+    // it failed.
+    jest.restoreAllMocks();
   });
 
   test("should show the extracted name, key facts, and mentions for review", async () => {
@@ -564,7 +573,7 @@ describe("capture screen review step", () => {
       createdMentionCount: 0,
     })));
     scopeTo("Emma");
-    mockCardAlert("Read again");
+    mockAlert("Read again");
     const handlers = captureListeners();
 
     const result = renderRouter("src/app", { initialUrl: "/capture" });
@@ -597,7 +606,7 @@ describe("capture screen review step", () => {
     const extract = jest.fn(async () => heard);
     (useAction as jest.Mock).mockReturnValue(extract);
     scopeTo("Emma");
-    mockCardAlert("Cancel");
+    mockAlert("Cancel");
     const handlers = captureListeners();
 
     const result = renderRouter("src/app", { initialUrl: "/capture" });
@@ -621,7 +630,7 @@ describe("capture screen review step", () => {
     const extract = jest.fn(async () => makeDraft({ name: "Emma" }));
     (useAction as jest.Mock).mockReturnValue(extract);
     scopeTo("Emma");
-    const alert = mockCardAlert("Read again");
+    const alert = mockAlert("Read again");
     const handlers = captureListeners();
 
     const result = renderRouter("src/app", { initialUrl: "/capture" });
@@ -649,7 +658,7 @@ describe("capture screen review step", () => {
     });
     (useAction as jest.Mock).mockReturnValue(extract);
     scopeTo("Emma");
-    mockCardAlert("Read again");
+    mockAlert("Read again");
     const handlers = captureListeners();
 
     const result = renderRouter("src/app", { initialUrl: "/capture" });
@@ -1287,6 +1296,9 @@ describe("capture screen review step", () => {
         screen.getByLabelText("Emma, neighbour · 1 note · last 2026-08-30"),
       );
     });
+    // This test edits the transcript, so saving meets the question about it on
+    // the way out. Not what this test is about — it keeps its facts and goes.
+    mockAlert("Keep my facts");
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Save note" }));
     });
@@ -1540,10 +1552,229 @@ describe("capture screen review step", () => {
     expect(screen.getByLabelText("Mentioned quote 1")).toBeTruthy();
   });
 
-  test("should save the edited transcript without re-running extraction over the draft", async () => {
+  /**
+   * The last moment the question can be asked.
+   *
+   * After the save the record is read-only — `notes.updateNote` does not take
+   * it — so a note saved with a corrected transcript and facts built from the
+   * old wording keeps that disagreement for ever. And since search and Ask Andy
+   * read the facts, the note would answer with wording its own record
+   * contradicts.
+   */
+  async function reachReviewAndEditTranscript(
+    handlers: ReturnType<typeof captureListeners>,
+    heard: string,
+    corrected: string,
+  ) {
+    const result = renderRouter("src/app", {
+      initialUrl: "/profile/contact-1/capture",
+    });
+    await result;
+    await reachReview(handlers, heard);
+    await act(async () => {
+      fireEvent.changeText(screen.getByLabelText("What you said"), corrected);
+    });
+    return result;
+  }
+
+  test("should ask which version it should keep when the transcript no longer matches the facts", async () => {
     const draft = makeDraft();
     const extract = jest.fn(async () => draft);
     (useAction as jest.Mock).mockReturnValue(extract);
+    const saveCapture = jest.fn();
+    mockSaveCapture(saveCapture);
+    const handlers = captureListeners();
+    await reachReviewAndEditTranscript(handlers, "heard wrongly", "heard correctly");
+
+    // Nothing pressed: the alert is raised and no button answered.
+    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+    });
+
+    expect(alert).toHaveBeenCalledTimes(1);
+    expect(alert.mock.calls[0][0]).toMatch(/changed what you said/i);
+    // Both costs named, not one. Describing only what re-reading costs made the
+    // message quietly argue for the other button — and "Keep my facts" is the
+    // choice that cannot be undone, since after saving only the facts change.
+    const message = String(alert.mock.calls[0][1]);
+    expect(message).toMatch(/out of step/i);
+    expect(message).toMatch(/rewrites/i);
+    // And nothing was written while the question stood open.
+    expect(saveCapture).not.toHaveBeenCalled();
+    expect(extract).toHaveBeenCalledTimes(1);
+  });
+
+  test("should keep the facts as they are and save the corrected transcript when asked to", async () => {
+    const draft = makeDraft();
+    const extract = jest.fn(async () => draft);
+    (useAction as jest.Mock).mockReturnValue(extract);
+    const saveCapture = jest.fn(
+      async (_args: { transcript: string; draft: Draft; source: string }) => ({
+        profileId: "profile-1",
+        noteId: "note-1",
+        createdProfile: true,
+        createdMentionCount: 0,
+      }),
+    );
+    mockSaveCapture(saveCapture);
+    const handlers = captureListeners();
+    await reachReviewAndEditTranscript(handlers, "heard wrongly", "heard correctly");
+
+    mockAlert("Keep my facts");
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+    });
+
+    await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
+    expect(saveCapture.mock.calls[0][0].transcript).toBe("heard correctly");
+    // The facts a person reviewed are not silently re-derived — the same class
+    // of failure day 3 refused when it made re-reading explicit.
+    expect(extract).toHaveBeenCalledTimes(1);
+  });
+
+  test("should read the corrected transcript again when asked to, without a second dialog on top", async () => {
+    const draft = makeDraft();
+    const extract = jest.fn(async (_args: { text: string }) => draft);
+    (useAction as jest.Mock).mockReturnValue(extract);
+    const saveCapture = jest.fn();
+    mockSaveCapture(saveCapture);
+    const handlers = captureListeners();
+    await reachReviewAndEditTranscript(handlers, "heard wrongly", "heard correctly");
+
+    // A fact is edited too, and that is the whole point of this test rather
+    // than a detail of it. `reread` only raises its own "you will lose your
+    // edits" confirmation when the draft has been touched — so with an
+    // untouched draft, routing this button through `reread` instead of
+    // `rereadNow` would stack no second dialog and the test could not tell the
+    // two apart. It stayed green against exactly that mutation until this edit
+    // was added.
+    await act(async () => {
+      fireEvent.changeText(screen.getByLabelText("Fact 1"), "an edited fact");
+    });
+
+    const alert = mockAlert("Read it again");
+    alert.mockClear();
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+    });
+
+    await waitFor(() => expect(extract).toHaveBeenCalledTimes(2));
+    expect(extract.mock.calls[1]?.[0].text).toBe("heard correctly");
+    // Saving is not what was asked for — the draft is being rebuilt.
+    expect(saveCapture).not.toHaveBeenCalled();
+    // One dialog, not two. Both would say the same thing, and the second would
+    // arrive after the question it repeats has already been answered.
+    expect(alert).toHaveBeenCalledTimes(1);
+  });
+
+  test("should keep asking after a re-read that failed, since the facts on screen are still the old ones", async () => {
+    const draft = makeDraft();
+    const extract = jest
+      .fn(async (_args: { text: string }) => draft)
+      .mockResolvedValueOnce(draft)
+      .mockRejectedValueOnce(new Error("Andy couldn't reach Claude."));
+    (useAction as jest.Mock).mockReturnValue(extract);
+    const saveCapture = jest.fn();
+    mockSaveCapture(saveCapture);
+    const handlers = captureListeners();
+    await reachReviewAndEditTranscript(handlers, "heard wrongly", "heard correctly");
+
+    mockAlert("Read it again");
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+    });
+    await waitFor(() => expect(extract).toHaveBeenCalledTimes(2));
+
+    // The re-read failed, so the draft on screen is still the one built from
+    // "heard wrongly" — the two are as far apart as they were. Moving the
+    // baseline before the call succeeded made this go quiet instead, and the
+    // error banner sits directly above Save, so pressing Save again is the
+    // natural next move. It would have written the mismatch permanently.
+    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    alert.mockClear();
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+    });
+
+    expect(alert).toHaveBeenCalledTimes(1);
+    expect(saveCapture).not.toHaveBeenCalled();
+  });
+
+  test("should stop asking once the transcript and the facts agree again", async () => {
+    const draft = makeDraft();
+    const extract = jest.fn(async () => draft);
+    (useAction as jest.Mock).mockReturnValue(extract);
+    const saveCapture = jest.fn(
+      async (_args: { transcript: string; draft: Draft; source: string }) => ({
+        profileId: "profile-1",
+        noteId: "note-1",
+        createdProfile: true,
+        createdMentionCount: 0,
+      }),
+    );
+    mockSaveCapture(saveCapture);
+    const handlers = captureListeners();
+    await reachReviewAndEditTranscript(handlers, "heard wrongly", "heard correctly");
+
+    // Read it again, which rebuilds the facts from the corrected words.
+    mockAlert("Read it again");
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+    });
+    await waitFor(() => expect(extract).toHaveBeenCalledTimes(2));
+
+    // Now they agree, so saving must go straight through. A baseline that never
+    // reset would ask again here, and a question that keeps appearing after it
+    // has been answered is one people learn to dismiss without reading.
+    //
+    // `mockClear` first: `jest.spyOn` hands back the *same* mock when the method
+    // is already spied, so without it this counts the re-read's own dialog and
+    // fails against working code.
+    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    alert.mockClear();
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+    });
+
+    await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
+    expect(alert).not.toHaveBeenCalled();
+  });
+
+  test("should not ask when the only change is whitespace the keyboard added", async () => {
+    const draft = makeDraft();
+    (useAction as jest.Mock).mockReturnValue(jest.fn(async () => draft));
+    const saveCapture = jest.fn(
+      async (_args: { transcript: string; draft: Draft; source: string }) => ({
+        profileId: "profile-1",
+        noteId: "note-1",
+        createdProfile: true,
+        createdMentionCount: 0,
+      }),
+    );
+    mockSaveCapture(saveCapture);
+    const handlers = captureListeners();
+    await reachReviewAndEditTranscript(
+      handlers,
+      "heard correctly",
+      "  heard correctly  ",
+    );
+
+    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+    });
+
+    await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
+    // Nobody meant to make this edit, and a question raised about it teaches
+    // people to dismiss the dialog without reading — which costs the one time
+    // it matters.
+    expect(alert).not.toHaveBeenCalled();
+  });
+
+  test("should not ask when the transcript was never touched", async () => {
+    const draft = makeDraft();
+    (useAction as jest.Mock).mockReturnValue(jest.fn(async () => draft));
     const saveCapture = jest.fn(
       async (_args: { transcript: string; draft: Draft; source: string }) => ({
         profileId: "profile-1",
@@ -1559,24 +1790,17 @@ describe("capture screen review step", () => {
       initialUrl: "/profile/contact-1/capture",
     });
     await result;
-    await reachReview(handlers, "heard wrongly");
+    await reachReview(handlers, "heard correctly");
 
-    await act(async () => {
-      fireEvent.changeText(
-        screen.getByLabelText("What you said"),
-        "heard correctly",
-      );
-    });
+    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Save note" }));
     });
 
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
-    const [call] = saveCapture.mock.calls[0];
-    expect(call.transcript).toBe("heard correctly");
-    // Editing the note must not silently re-derive the facts the user just
-    // reviewed — that is the same class of failure as a duplicate `end`.
-    expect(extract).toHaveBeenCalledTimes(1);
+    // The common path stays one tap. A question on every save would be the
+    // day-4 mistake again: making the ordinary route into a form.
+    expect(alert).not.toHaveBeenCalled();
   });
 
   test("should let a wrongly-inferred first-met date be cleared before saving", async () => {
@@ -1633,6 +1857,13 @@ describe("capture screen business card door", () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    // `clearAllMocks` empties call records but leaves a `jest.spyOn`
+    // implementation in place, so an `Alert.alert` spy set by one test kept
+    // answering dialogs in every test after it. That is how the transcript-edit
+    // test below passed for a while: it never mocked an alert, and a spy from
+    // four tests earlier was pressing "Keep my facts" on its behalf. Run alone
+    // it failed.
+    jest.restoreAllMocks();
   });
 
   test("should reach the same review screen with the card's name and text, and save with source business_card", async () => {
@@ -1648,7 +1879,7 @@ describe("capture screen business card door", () => {
       }),
     );
     mockSaveCapture(saveCapture);
-    mockCardAlert("Take a photo");
+    mockAlert("Take a photo");
     (ImagePicker.requestCameraPermissionsAsync as jest.Mock).mockResolvedValueOnce({
       granted: true,
     });
@@ -1682,6 +1913,52 @@ describe("capture screen business card door", () => {
     expect(call.draft.primary.name).toBe("Sarah Chen");
   });
 
+  test("should name the door it came through when asking about a changed card", async () => {
+    const { draft, cardText } = makeCardDraft();
+    mockActions({ readCard: jest.fn(async () => ({ draft, cardText })) });
+    mockSaveCapture(jest.fn());
+    mockAlert("Take a photo");
+    (ImagePicker.requestCameraPermissionsAsync as jest.Mock).mockResolvedValueOnce({
+      granted: true,
+    });
+    (ImagePicker.launchCameraAsync as jest.Mock).mockResolvedValueOnce({
+      canceled: false,
+      assets: [{ base64: "fake-base64-jpeg-data" }],
+    });
+
+    const result = renderRouter("src/app", {
+      initialUrl: "/profile/contact-1/capture",
+    });
+    await result;
+    await act(async () => {
+      fireEvent.press(
+        screen.getByRole("button", { name: "Scan a business card" }),
+      );
+    });
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Save note" })).toBeTruthy(),
+    );
+
+    await act(async () => {
+      fireEvent.changeText(
+        screen.getByLabelText("What the card says"),
+        "corrected card text",
+      );
+    });
+
+    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    alert.mockClear();
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+    });
+
+    // The review screen already branches this label three ways. Telling
+    // somebody who scanned a card that they changed what they *said* is the
+    // kind of wrongness that reads as the app not knowing what you just did.
+    expect(alert).toHaveBeenCalledTimes(1);
+    expect(alert.mock.calls[0]?.[0]).toBe("You changed what the card says");
+  });
+
   test("should show no error and save nothing when the business card picker is cancelled", async () => {
     const readCard = jest.fn(async () => {
       throw new Error("should never be called for a cancelled pick");
@@ -1701,7 +1978,7 @@ describe("capture screen business card door", () => {
       }),
     );
     mockSaveCapture(saveCapture);
-    mockCardAlert("Take a photo");
+    mockAlert("Take a photo");
     (ImagePicker.requestCameraPermissionsAsync as jest.Mock).mockResolvedValueOnce({
       granted: true,
     });

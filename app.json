@@ -47,8 +47,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Andy reads a business card photo you pick — the name, title, company, and any contact details printed on it — and sends it to Andy's AI service to draft a new profile you can edit before saving.",
-          "cameraPermission": "Andy uses the camera to photograph a business card, then sends the photo to Andy's AI service to read the name, title, company, and any contact details printed on it into a profile draft you can edit before saving.",
+          "photosPermission": "Pick a business card and Andy sends that photo to Anthropic's Claude API, which reads the name, title, company and any contact details printed on it into a profile draft you edit before saving. Pick a profile photo and it is saved to your private Andy account and shown only on that person's profile — it is never sent to Anthropic or any other AI service.",
+          "cameraPermission": "Andy uses the camera to photograph a business card, then sends that photo to Anthropic's Claude API, which reads the name, title, company and any contact details printed on it into a profile draft you edit before saving.",
           "microphonePermission": "Andy records your voice note so you can capture what you just learned about someone. Recording only starts when you tap the record button."
         }
       ]

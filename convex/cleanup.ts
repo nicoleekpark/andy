@@ -55,6 +55,18 @@ export async function removeOrphanedAutoCreated(
       continue;
     }
 
+    // The photo goes with them. `profiles.remove` already did this; this path
+    // did not, and it is reachable through ordinary use: a mention link is
+    // tappable, nothing stops a photo being added to the person behind it, and
+    // deleting the note that invented them comes through here.
+    //
+    // Left out, the file survives with no row pointing at it and no route in
+    // the app to remove it — a photograph of a real person, retained
+    // indefinitely, that its subject and the user both have no way to delete.
+    // That is a different kind of failure from the storage bill.
+    if (profile.photoStorageId !== undefined) {
+      await ctx.storage.delete(profile.photoStorageId);
+    }
     await ctx.db.delete("profiles", profileId);
     removed += 1;
   }

@@ -1,7 +1,11 @@
-import { act, fireEvent, screen } from "@testing-library/react-native";
-import { useQuery } from "convex/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { Alert, Linking } from "react-native";
+import { useAction, useMutation, useQuery } from "convex/react";
+import * as ImagePicker from "expo-image-picker";
+import { ConvexError } from "convex/values";
 import { getFunctionName } from "convex/server";
 import { renderRouter } from "expo-router/testing-library";
+import { api } from "@convex/_generated/api";
 
 /**
  * src/app/(app)/profile/[id]/index.tsx's three branches — loading, not-found,
@@ -39,6 +43,11 @@ function withNotes(
 ) {
   return {
     profile: buildProfile(),
+    // Defaulted, because the real query always returns it. Left absent, the
+    // screen compares `undefined === null`, takes the has-a-photo branch, and
+    // renders an `<Image>` whose `uri` is undefined — with every test green,
+    // since nothing asserted which branch it took.
+    photoUrl: null,
     // A note entry may carry its own `mentions` (who came up inside it); split
     // it off so tests that don't care can keep passing bare note fields, the
     // way every existing call site here already does.
@@ -368,4 +377,493 @@ test("should say how many mentions were left out when the list is truncated, and
   const complete = renderRouter("src/app", { initialUrl: "/profile/contact-1" });
   await complete;
   expect(screen.queryByText(/of 1$/)).toBeNull();
+});
+
+describe("follow-up email", () => {
+  /**
+   * `useAction` is pinned to `api.followUp.draft` by name rather than mocked
+   * wholesale. The generated `api` is a Proxy, so a blanket `mockReturnValue`
+   * would keep passing if the button were rewired to call something else.
+   */
+  function mockDraft(draft: jest.Mock) {
+    (useAction as jest.Mock).mockImplementation((reference: unknown) =>
+      getFunctionName(reference as never) === getFunctionName(api.followUp.draft)
+        ? draft
+        : jest.fn(async () => undefined),
+    );
+  }
+
+  afterEach(() => {
+    jest.clearAllMocks();
+    jest.restoreAllMocks();
+  });
+
+  async function reachProfile() {
+    (useQuery as jest.Mock).mockReturnValue(
+      withNotes([
+        {
+          _id: "note-1",
+          text: "Nina is moving to Berlin.",
+          keyFacts: ["Moving to Berlin"],
+          createdAt: new Date("2026-09-01T12:00:00").getTime(),
+          mentions: [],
+        },
+      ]),
+    );
+    const result = renderRouter("src/app", { initialUrl: "/profile/profile-1" });
+    await result;
+    return result;
+  }
+
+  test("should hand Mail the subject and body, and no recipient", async () => {
+    const draft = jest.fn(async () => ({
+      personName: "Nina",
+      subject: "How's the move going?",
+      body: "Hope Berlin is treating you well.",
+    }));
+    mockDraft(draft);
+    const open = jest.spyOn(Linking, "openURL").mockResolvedValue(true);
+    await reachProfile();
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Draft a follow-up"));
+    });
+
+    await waitFor(() => expect(open).toHaveBeenCalledTimes(1));
+    const url = open.mock.calls[0]?.[0] ?? "";
+    expect(url).toContain("mailto:?");
+    expect(url).toContain(encodeURIComponent("How's the move going?"));
+    expect(url).toContain(encodeURIComponent("Hope Berlin is treating you well."));
+    // No recipient, deliberately. This app does not read Contacts and V1 stores
+    // no address, so Mail's own autocomplete is the honest place for that — and
+    // an address invented here would be worse than an empty line.
+    expect(url.startsWith("mailto:?")).toBe(true);
+  });
+
+  test("should not let a drafted body add a header of its own to the mailto URL", async () => {
+    mockDraft(
+      jest.fn(async () => ({
+        personName: "Nina",
+        // The one that would actually matter. A note whose content steered the
+        // model into writing this would otherwise blind-copy a stranger on a
+        // message about somebody's private life — and the sender would see a
+        // normal-looking compose window.
+        subject: "Hi&bcc=attacker@example.com",
+        body: "Hope you are well.\n&bcc=attacker@example.com&cc=someone@example.com",
+      })),
+    );
+    const open = jest.spyOn(Linking, "openURL").mockResolvedValue(true);
+    await reachProfile();
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Draft a follow-up"));
+    });
+
+    await waitFor(() => expect(open).toHaveBeenCalledTimes(1));
+    const url = open.mock.calls[0]?.[0] ?? "";
+    // Exactly two parameters, both ours. `encodeURIComponent` turns the `&`
+    // into `%26`, so the text stays text — asserted rather than assumed,
+    // because this is the difference between a draft and a leak.
+    expect(url.split("&")).toHaveLength(2);
+    expect(url).not.toMatch(/&bcc=/);
+    expect(url).not.toMatch(/&cc=/);
+    expect(url).toContain("%26bcc%3D");
+  });
+
+  test("should send the id from the route and the device's date, not the server's", async () => {
+    const draft = jest.fn(
+      async (_args: { profileId: string; today: string }) => ({
+        personName: "Nina",
+        subject: "s",
+        body: "b",
+      }),
+    );
+    mockDraft(draft);
+    jest.spyOn(Linking, "openURL").mockResolvedValue(true);
+    await reachProfile();
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Draft a follow-up"));
+    });
+
+    await waitFor(() => expect(draft).toHaveBeenCalledTimes(1));
+    const [args] = draft.mock.calls[0] ?? [];
+    expect(args?.profileId).toBe("profile-1");
+    // A follow-up that says "September" to somebody for whom it is already
+    // October reads as inattentive, and the deployment has no idea what day it
+    // is where the user is.
+    // The actual date, not its shape. `toMatch(/^\d{4}-\d{2}-\d{2}$/)` passes
+    // on a hardcoded "2020-01-01", so it promised more than it checked.
+    expect(args?.today).toBe(new Date().toLocaleDateString("en-CA"));
+  });
+
+  test("should show the server's own words when there is nothing to follow up on", async () => {
+    mockDraft(
+      jest.fn(async () => {
+        throw new ConvexError(
+          "There's nothing written down about them yet — record a note first.",
+        );
+      }),
+    );
+    const open = jest.spyOn(Linking, "openURL").mockResolvedValue(true);
+    await reachProfile();
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Draft a follow-up"));
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText(/nothing written down/)).toBeTruthy(),
+    );
+    // And Mail is never opened on an empty draft.
+    expect(open).not.toHaveBeenCalled();
+  });
+
+  test("should not put a raw failure on screen when the error was not written for a person", async () => {
+    mockDraft(
+      jest.fn(async () => {
+        throw new Error("fetch failed: ECONNREFUSED 10.0.0.1");
+      }),
+    );
+    await reachProfile();
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Draft a follow-up"));
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText(/couldn't reach that just now/)).toBeTruthy(),
+    );
+    expect(screen.queryByText(/ECONNREFUSED/)).toBeNull();
+  });
+
+  test("should say so rather than do nothing when there is no mail app to open", async () => {
+    mockDraft(
+      jest.fn(async () => ({ personName: "Nina", subject: "s", body: "b" })),
+    );
+    // `openURL` rejecting, not `canOpenURL` returning false. On iOS that check
+    // returns false for any scheme missing from `LSApplicationQueriesSchemes`,
+    // and `app.json` has no `infoPlist` block — so asking first risked every
+    // tap reporting "no mail app" with the whole suite green.
+    jest
+      .spyOn(Linking, "openURL")
+      .mockRejectedValue(new Error("no handler for mailto:"));
+    await reachProfile();
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Draft a follow-up"));
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText(/no mail app set up/)).toBeTruthy(),
+    );
+    // And it says what to do, not only what happened.
+    expect(screen.getByText(/Set one up and tap again/)).toBeTruthy();
+  });
+
+  test("should still be one paid call when two touches land inside one commit window", async () => {
+    let release: (value: unknown) => void = () => {};
+    const draft = jest.fn(
+      () =>
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+    );
+    mockDraft(draft as unknown as jest.Mock);
+    jest.spyOn(Linking, "openURL").mockResolvedValue(true);
+    await reachProfile();
+
+    const button = screen.getByLabelText("Draft a follow-up");
+    await act(async () => {
+      // Not awaited between them. Both handlers run before React has committed
+      // `drafting`, so `disabled` has not taken effect yet — which is exactly
+      // the device race it cannot cover, and the only reason the ref latch
+      // exists. The other double-press test presses in two `act` blocks and so
+      // never reaches this state.
+      void fireEvent.press(button);
+      void fireEvent.press(button);
+    });
+
+    expect(draft).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      release({ personName: "Nina", subject: "s", body: "b" });
+    });
+  });
+
+  test("should not offer a follow-up on an animal", async () => {
+    mockDraft(jest.fn());
+    (useQuery as jest.Mock).mockReturnValue({
+      ...withNotes([
+        {
+          _id: "note-1",
+          text: "Mochi was 3.2kg today.",
+          keyFacts: ["Weighed 3.2kg"],
+          createdAt: new Date("2026-09-01T12:00:00").getTime(),
+          mentions: [],
+        },
+      ]),
+      profile: buildProfile({ name: "Mochi", entityType: "animal" }),
+    });
+    const result = renderRouter("src/app", { initialUrl: "/profile/profile-1" });
+    await result;
+
+    // An email to a foster cat would send its health notes on a trip they have
+    // no reason to take, addressed to the cat by name.
+    expect(screen.queryByLabelText("Draft a follow-up")).toBeNull();
+    // The rest of the screen is unchanged — this hides one control, not a
+    // whole class of profile.
+    expect(screen.getByLabelText("Add a note")).toBeTruthy();
+  });
+
+  test("should not draft twice while the first one is still being written", async () => {
+    let release: (value: unknown) => void = () => {};
+    const draft = jest.fn(
+      () =>
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+    );
+    mockDraft(draft as unknown as jest.Mock);
+    jest.spyOn(Linking, "openURL").mockResolvedValue(true);
+    await reachProfile();
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Draft a follow-up"));
+    });
+    // Both halves asserted. The label is how a person knows the tap landed; the
+    // `disabled` state is the thing actually stopping the second call, and a
+    // test that checked only the call count would pass with either the label or
+    // the guard removed.
+    expect(screen.getByText("Writing…")).toBeTruthy();
+    expect(
+      screen.getByLabelText("Draft a follow-up").props.accessibilityState
+        .disabled,
+    ).toBe(true);
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Draft a follow-up"));
+    });
+    // Each press is a paid Claude call. A double tap on a slow network must not
+    // become two of them.
+    expect(draft).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      release({ personName: "Nina", subject: "s", body: "b" });
+    });
+  });
+});
+
+describe("profile photo", () => {
+  function mockPhotoMutations(fns: {
+    generateUploadUrl?: jest.Mock;
+    attach?: jest.Mock;
+    remove?: jest.Mock;
+  }) {
+    (useMutation as jest.Mock).mockImplementation((reference: unknown) => {
+      const name = getFunctionName(reference as never);
+      if (name === getFunctionName(api.photos.generateUploadUrl)) {
+        return fns.generateUploadUrl ?? jest.fn(async () => "https://upload");
+      }
+      if (name === getFunctionName(api.photos.attach)) {
+        return fns.attach ?? jest.fn(async () => null);
+      }
+      if (name === getFunctionName(api.photos.remove)) {
+        return fns.remove ?? jest.fn(async () => null);
+      }
+      return jest.fn(async () => undefined);
+    });
+  }
+
+  async function reachProfile(photoUrl: string | null = null) {
+    (useQuery as jest.Mock).mockReturnValue({
+      ...withNotes([
+        {
+          _id: "note-1",
+          text: "Nina is moving to Berlin.",
+          keyFacts: ["Moving to Berlin"],
+          createdAt: new Date("2026-09-01T12:00:00").getTime(),
+          mentions: [],
+        },
+      ]),
+      photoUrl,
+    });
+    const result = renderRouter("src/app", { initialUrl: "/profile/profile-1" });
+    await result;
+    return result;
+  }
+
+  afterEach(() => {
+    jest.clearAllMocks();
+    // Restore too, not only clear. `clearAllMocks` resets calls and leaves the
+    // implementation in place, so the `global.fetch` and `Alert` spies below
+    // would stay installed for every test after them — which is how a test in
+    // this repo once passed on a spy set up four tests earlier.
+    jest.restoreAllMocks();
+  });
+
+  test("should offer to add a photo when there is none, and to replace one when there is", async () => {
+    mockPhotoMutations({});
+    await reachProfile(null);
+    // The same control, saying which of the two it is. A separate "Add a photo"
+    // button would sit on every profile for something most will never have.
+    expect(screen.getByLabelText("Add a photo")).toBeTruthy();
+    expect(screen.queryByLabelText("Replace photo")).toBeNull();
+
+    await reachProfile("https://files/photo.jpg");
+    expect(screen.getByLabelText("Replace photo")).toBeTruthy();
+    expect(screen.getByLabelText("Photo of Nina")).toBeTruthy();
+  });
+
+  test("should not ask for the whole photo library to get one picked image", async () => {
+    mockPhotoMutations({});
+    const ask = ImagePicker.requestMediaLibraryPermissionsAsync as jest.Mock;
+    const launch = ImagePicker.launchImageLibraryAsync as jest.Mock;
+    launch.mockResolvedValueOnce({ canceled: true, assets: null });
+    await reachProfile(null);
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Add a photo"));
+    });
+
+    await waitFor(() => expect(launch).toHaveBeenCalledTimes(1));
+    // On iOS 14+ the picker runs out-of-process and needs no library access to
+    // return one image the user chose. Asking would buy read access to their
+    // entire library for nothing — and refusing on a "no" would deny a feature
+    // that works regardless. Day 2 logged the same call on the card path as
+    // unnecessary; this asserts a second instance was not added.
+    expect(ask).not.toHaveBeenCalled();
+  });
+
+  test("should say so rather than fail silently if the picker cannot be opened", async () => {
+    mockPhotoMutations({});
+    (ImagePicker.launchImageLibraryAsync as jest.Mock).mockRejectedValueOnce(
+      new Error("no access"),
+    );
+    await reachProfile(null);
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Add a photo"));
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText(/couldn't open your photos/)).toBeTruthy(),
+    );
+  });
+
+  test("should upload the picked file and put it on this person", async () => {
+    const generateUploadUrl = jest.fn(async () => "https://upload/here");
+    const attach = jest.fn(
+      async (_args: { profileId: string; storageId: string }) => null,
+    );
+    mockPhotoMutations({ generateUploadUrl, attach });
+    (ImagePicker.launchImageLibraryAsync as jest.Mock).mockResolvedValueOnce({
+      canceled: false,
+      assets: [{ uri: "file:///picked.jpg", mimeType: "image/jpeg" }],
+    });
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({ blob: async () => new Blob(["bytes"]) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ storageId: "storage-1" }),
+      });
+    jest.spyOn(global, "fetch").mockImplementation(fetchMock);
+    await reachProfile(null);
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Add a photo"));
+    });
+
+    await waitFor(() => expect(attach).toHaveBeenCalledTimes(1));
+    expect(generateUploadUrl).toHaveBeenCalledTimes(1);
+    expect(attach.mock.calls[0]?.[0]).toEqual({
+      profileId: "profile-1",
+      storageId: "storage-1",
+    });
+  });
+
+  test("should crop on the way in, since the screen shows a square and bytes are paid for", async () => {
+    mockPhotoMutations({});
+    const launch = ImagePicker.launchImageLibraryAsync as jest.Mock;
+    launch.mockResolvedValueOnce({ canceled: true, assets: null });
+    await reachProfile(null);
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Add a photo"));
+    });
+
+    await waitFor(() => expect(launch).toHaveBeenCalledTimes(1));
+    const [options] = launch.mock.calls[0] ?? [];
+    // Day 2 learned this on the business-card path: an uncropped 12MP frame is
+    // bytes the user stores and never sees.
+    expect(options?.allowsEditing).toBe(true);
+    expect(options?.aspect).toEqual([1, 1]);
+  });
+
+  test("should do nothing at all when the picker is cancelled", async () => {
+    const generateUploadUrl = jest.fn(async () => "https://upload");
+    mockPhotoMutations({ generateUploadUrl });
+    (ImagePicker.launchImageLibraryAsync as jest.Mock).mockResolvedValueOnce({
+      canceled: true,
+      assets: null,
+    });
+    await reachProfile(null);
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Add a photo"));
+    });
+
+    // Not even an upload URL: backing out of the picker must cost nothing.
+    expect(generateUploadUrl).not.toHaveBeenCalled();
+    expect(screen.queryByText(/couldn't save that photo/)).toBeNull();
+  });
+
+  test("should ask before removing a photo, and remove it when the answer is yes", async () => {
+    const remove = jest.fn(async (_args: { profileId: string }) => null);
+    mockPhotoMutations({ remove });
+    jest
+      .spyOn(Alert, "alert")
+      .mockImplementation((_title, _message, buttons) => {
+        buttons?.find((b) => b.text === "Remove")?.onPress?.();
+      });
+    await reachProfile("https://files/photo.jpg");
+
+    await act(async () => {
+      fireEvent(screen.getByLabelText("Replace photo"), "longPress");
+    });
+
+    await waitFor(() => expect(remove).toHaveBeenCalledTimes(1));
+    expect(remove.mock.calls[0]?.[0]).toEqual({ profileId: "profile-1" });
+  });
+
+  test("should remove nothing when the confirmation is dismissed", async () => {
+    const remove = jest.fn(async () => null);
+    mockPhotoMutations({ remove });
+    jest
+      .spyOn(Alert, "alert")
+      .mockImplementation((_title, _message, buttons) => {
+        buttons?.find((b) => b.text === "Cancel")?.onPress?.();
+      });
+    await reachProfile("https://files/photo.jpg");
+
+    await act(async () => {
+      fireEvent(screen.getByLabelText("Replace photo"), "longPress");
+    });
+
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  test("should not offer to remove a photo that is not there", async () => {
+    mockPhotoMutations({});
+    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    await reachProfile(null);
+
+    await act(async () => {
+      fireEvent(screen.getByLabelText("Add a photo"), "longPress");
+    });
+
+    // A long press on an empty circle should do nothing, not offer to delete
+    // something that does not exist.
+    expect(alert).not.toHaveBeenCalled();
+  });
 });

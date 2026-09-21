@@ -61,6 +61,11 @@ export default defineSchema({
     autoCreated: v.boolean(),
   })
     .index("by_user", ["userId"])
+    // Not for a screen — nothing lists people by photo. It exists so `attach`
+    // can ask "is this file already somebody's?" in one read. Without it that
+    // question costs a scan of every profile in the deployment, which is why
+    // the check that needs it was missing rather than slow.
+    .index("by_photo", ["photoStorageId"])
     .searchIndex("search_name", {
       searchField: "name",
       filterFields: ["userId"],
