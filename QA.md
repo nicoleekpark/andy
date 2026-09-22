@@ -151,6 +151,9 @@ live here rather than in §7 because that is the screen they happen on.
 | 7a.17 | In those choices, tap `View` on a candidate | Their profile opens. **Coming back finds the draft exactly as it was** — every edit, the transcript, any other answer | ⬜ |
 | 7a.18 | Tap the candidate card itself (not `View`) | It is selected, and the line above stops saying "Adding to …". Choosing is one tap; looking is its own | ⬜ |
 | 7a.19 | Choose `Someone new` and save | A **second** person by that name. Two people may share a name, and this is how you say so | ⬜ |
+| 7a.20 | Record "Priya and I went to MET to see Prisley's show", keeping nobody called Prisley | If a person is created for the show, they are filed as **`Prisley`** — never `Prisley's`. An apostrophe-possessive is grammar, and no question can fix it because there is nobody to ask about | ⬜ |
+| 7a.21 | Same, but you **do** keep a Prisley | The possessive question instead (7a.10). The two rules divide there: a base that matches somebody is asked about, a base that matches nobody is just the name | ⬜ |
+| 7a.22 | A note naming **`Parks`** while keeping nobody called Park | Filed as **`Parks`**, unchanged. Parks is a surname and only you know — stripping it here would answer the question instead of asking it | ⬜ |
 
 ## 8. Typing instead of speaking
 
