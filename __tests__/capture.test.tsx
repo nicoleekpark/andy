@@ -489,6 +489,180 @@ describe("capture screen review step", () => {
     expect(result.getPathname()).toBe("/");
   });
 
+  test("should confirm the subject even when exactly one person answers to the name", async () => {
+    (useAction as jest.Mock).mockReturnValue(
+      jest.fn(async () => makeDraft({ name: "Prisley" }, [])),
+    );
+    const saveCapture = jest.fn(
+      async (_args: {
+        transcript: string;
+        draft: Draft;
+        source: string;
+        resolutions: { name: string; profileId: string | null }[];
+      }) => ({
+        profileId: "profile-1",
+        noteId: "note-1",
+        createdProfile: false,
+        createdMentionCount: 0,
+      }),
+    );
+    mockSaveCapture(saveCapture);
+    scopeTo("Prisley", [
+      {
+        name: "Prisley",
+        viaPossessive: false,
+        candidates: [
+          {
+            profileId: "profile-old",
+            name: "Prisley",
+            relationshipContext: "from the gallery",
+            entityType: "person",
+            noteCount: 1,
+            lastNoteAt: new Date("2026-03-04T12:00:00").getTime(),
+          },
+        ],
+      },
+    ]);
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+    await reachReview(handlers, "Prisley's show at the MET was good.");
+
+    // One person answering to a name is not the same as this being them. A
+    // Prisley kept in March is easy to forget, and filing a note about a
+    // different Prisley onto her does not create a wrong person — it writes
+    // into a real one, and nothing afterwards says so.
+    await waitFor(() => expect(screen.getByText("This Prisley?")).toBeTruthy());
+    expect(screen.getByLabelText("Save note")).toBeDisabled();
+    // The line and the question are alternatives. "Adding to Prisley" above
+    // "This Prisley?" states a thing and then asks whether that thing is true.
+    expect(screen.queryByText(/Adding to Prisley/)).toBeNull();
+    // The body, not only the heading. It read "or somebody new" — the wording
+    // for a question you may ignore — under a heading that blocks saving,
+    // because the picker re-derived "is this required" from the candidate
+    // count and could not know about the new third reason.
+    expect(
+      screen.getByText("You already keep somebody by this name. Is this them?"),
+    ).toBeTruthy();
+
+    // Both answers are here: it is her, or it is somebody new.
+    expect(
+      screen.getByLabelText(
+        "Prisley, from the gallery · 1 note · last 2026-03-04",
+      ),
+    ).toBeTruthy();
+    await act(async () => {
+      fireEvent.press(
+        screen.getByLabelText("New person called Prisley"),
+      );
+    });
+    expect(screen.getByLabelText("Save note")).not.toBeDisabled();
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Save note"));
+    });
+    await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
+    expect(saveCapture.mock.calls[0]?.[0].resolutions).toEqual([
+      { name: "Prisley", profileId: null },
+    ]);
+  });
+
+  test("should ask nothing about a subject the route already decided", async () => {
+    (useAction as jest.Mock).mockReturnValue(
+      jest.fn(async () => makeDraft({ name: "Nina" }, [])),
+    );
+    mockSaveCapture(jest.fn(async () => ({
+      profileId: "contact-1",
+      noteId: "note-1",
+      createdProfile: false,
+      createdMentionCount: 0,
+    })));
+    scopeTo("Nina", [
+      {
+        name: "Nina",
+        viaPossessive: false,
+        candidates: [
+          {
+            profileId: "contact-1",
+            name: "Nina",
+            relationshipContext: "client",
+            entityType: "person",
+            noteCount: 3,
+            lastNoteAt: new Date("2026-08-30T12:00:00").getTime(),
+          },
+        ],
+      },
+    ]);
+    const handlers = captureListeners();
+
+    // Recorded on Nina's own page. Choosing where to record *is* the answer,
+    // and day 4's rule — a form in front of every save is how people stop
+    // reading forms — is kept true by this exemption: the ordinary "add to
+    // somebody I know" path asks nothing at all.
+    const result = renderRouter("src/app", {
+      initialUrl: "/profile/contact-1/capture",
+    });
+    await result;
+    await reachReview(handlers, "Nina liked the new brief.");
+
+    expect(screen.queryByText("This Nina?")).toBeNull();
+    expect(screen.getByText(/Adding to Nina/)).toBeTruthy();
+    expect(screen.getByLabelText("Save note")).not.toBeDisabled();
+  });
+
+  test("should ask nothing on a person's own page even when somebody shares their name", async () => {
+    (useAction as jest.Mock).mockReturnValue(
+      jest.fn(async () => makeDraft({ name: "Priya" }, [])),
+    );
+    mockSaveCapture(jest.fn(async () => ({
+      profileId: "contact-1",
+      noteId: "note-1",
+      createdProfile: false,
+      createdMentionCount: 0,
+    })));
+    scopeTo("Priya", [
+      {
+        name: "Priya",
+        viaPossessive: false,
+        candidates: [
+          {
+            profileId: "contact-1",
+            name: "Priya",
+            relationshipContext: "client",
+            entityType: "person",
+            noteCount: 3,
+            lastNoteAt: new Date("2026-09-01T12:00:00").getTime(),
+          },
+          {
+            profileId: "profile-other",
+            name: "Priya",
+            relationshipContext: "from the gym",
+            entityType: "person",
+            noteCount: 1,
+            lastNoteAt: new Date("2026-05-01T12:00:00").getTime(),
+          },
+        ],
+      },
+    ]);
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", {
+      initialUrl: "/profile/contact-1/capture",
+    });
+    await result;
+    await reachReview(handlers, "Priya liked the new brief.");
+
+    // Two people answer to Priya, and it still asks nothing: the route named
+    // one profile, so walking to her page *was* the answer. Only the
+    // subject-specific branch checked this at first, so a declared subject
+    // with a shared name was still interrogated — a forced question in front
+    // of somebody who already knows the answer, which is how a wrong tap
+    // happens.
+    expect(screen.queryByText("Which Priya?")).toBeNull();
+    expect(screen.getByLabelText("Save note")).not.toBeDisabled();
+  });
+
   test("should open the picker beside the name it is about, not at the bottom of the form", async () => {
     (useAction as jest.Mock).mockReturnValue(
       jest.fn(async () => makeDraft({ name: "Nina" })),
@@ -521,18 +695,13 @@ describe("capture screen review step", () => {
     await result;
     await reachReview(handlers, "Met Nina today.");
 
-    await act(async () => {
-      fireEvent.press(screen.getByLabelText("Not this Nina?"));
-    });
-
-    // The picker used to render in one block above `Save note`, so pressing
-    // "Different person?" opened something off the bottom of a long form —
-    // indistinguishable from pressing nothing. Position is the fix, so
-    // position is what this asserts: the choices sit inside the same Name
-    // field as the input, before "Who or what" begins.
+    // The picker used to render in one block above `Save note`, several
+    // screens down — so opening it was indistinguishable from pressing
+    // nothing. Position is the fix, so position is what this asserts: the
+    // choices sit inside the same Name field as the input.
     const nameField = within(screen.getByTestId("field-Name"));
     expect(nameField.getByLabelText("New person called Nina")).toBeTruthy();
-    expect(nameField.getByText("Which Nina?")).toBeTruthy();
+    expect(nameField.getByText("This Nina?")).toBeTruthy();
   });
 
   test("should still show a question that has no field to sit beside", async () => {
@@ -666,11 +835,14 @@ describe("capture screen review step", () => {
     await result;
     await reachReview(handlers, "Met Emma today.");
 
-    // Day 4 called turning a common path into a form a mistake. One exact
-    // match is not a question, and making it one would put a picker in front
-    // of every ordinary save.
-    expect(screen.queryByText(/might belong to somebody you already keep/)).toBeNull();
-    expect(screen.getByText(/Adding to Emma/)).toBeTruthy();
+    // An exact match is confirmed, not interrogated about its spelling. The
+    // possessive wording says the *name itself* is in doubt, which is a
+    // different and much stranger thing to be asked about somebody whose name
+    // matched exactly.
+    expect(
+      screen.queryByText(/might belong to somebody you already keep/),
+    ).toBeNull();
+    expect(screen.getByText("This Emma?")).toBeTruthy();
   });
 
   test("should say a name matching nobody is about to invent somebody", async () => {
@@ -731,9 +903,12 @@ describe("capture screen review step", () => {
     await reachReview(handlers, "Met Emma today.");
 
     // Naming them, and what is already recorded, so landing on the wrong
-    // person by a near-miss is as visible as inventing one.
+    // person by a near-miss is as visible as inventing one. That used to be a
+    // line saying "Adding to Emma · …"; it is now the candidate inside the
+    // question, carrying the same detail for the same reason.
+    expect(screen.getByText("This Emma?")).toBeTruthy();
     expect(
-      screen.getByText("Adding to Emma · friend · 3 notes · last 2026-08-30"),
+      screen.getByLabelText("Emma, friend · 3 notes · last 2026-08-30"),
     ).toBeTruthy();
   });
 
@@ -1066,7 +1241,7 @@ describe("capture screen review step", () => {
     // Both lines, and they say different things: the subject is somebody the
     // user keeps, the mention is not.
     expect(
-      screen.getByText("Adding to Emma · friend · 3 notes · last 2026-08-30"),
+      screen.getByLabelText("Emma, friend · 3 notes · last 2026-08-30"),
     ).toBeTruthy();
     expect(screen.getByText("New person — nobody by this name yet.")).toBeTruthy();
   });
@@ -1139,17 +1314,16 @@ describe("capture screen review step", () => {
     await result;
     await reachReview(handlers, "Met Priya at the conference.");
 
-    // One match used to be the end of it — joined silently, with no way to say
-    // this is a different Priya. Saving must still be possible without
-    // answering, because usually it *is* the right person.
-    expect(
-      screen.getByText("Adding to Priya · client · 3 notes · last 2026-09-01"),
-    ).toBeTruthy();
-    expect(screen.getByLabelText("Save note")).not.toBeDisabled();
+    // One match used to be the end of it — joined silently. Then it became a
+    // line with an escape hatch. Now it is a question, because one person
+    // answering to a name is not the same as this being them: a Priya kept
+    // months ago is easy to forget, and filing this note onto her does not
+    // create a wrong person, it corrupts a real one.
+    await waitFor(() =>
+      expect(screen.getByText("This Priya?")).toBeTruthy(),
+    );
+    expect(screen.getByLabelText("Save note")).toBeDisabled();
 
-    await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Not this Priya?" }));
-    });
     await act(async () => {
       fireEvent.press(
         screen.getByRole("button", { name: "New person called Priya" }),
@@ -1165,7 +1339,7 @@ describe("capture screen review step", () => {
     ]);
   });
 
-  test("should keep the single match when the picker is opened and left alone", async () => {
+  test("should keep a mention's single match when the picker is opened and left alone", async () => {
     (useAction as jest.Mock).mockReturnValue(
       jest.fn(async () => makeDraft({ name: "Priya" })),
     );
@@ -1183,9 +1357,15 @@ describe("capture screen review step", () => {
       }),
     );
     mockSaveCapture(saveCapture);
+    // Priya is the subject and is answered by the question below. Marcus is a
+    // mention, and mentions keep the older treatment: a line saying what
+    // saving does, with an escape hatch. A misheard mention invents somebody
+    // who stays off the home list and goes when the note does; a misheard
+    // subject writes into a real person's record.
     scopeTo("Priya", [
       {
         name: "Priya",
+        viaPossessive: false,
         candidates: [
           {
             profileId: "profile-1",
@@ -1197,6 +1377,20 @@ describe("capture screen review step", () => {
           },
         ],
       },
+      {
+        name: "Marcus",
+        viaPossessive: false,
+        candidates: [
+          {
+            profileId: "profile-marcus",
+            name: "Marcus",
+            relationshipContext: "climbing gym",
+            entityType: "person",
+            noteCount: 2,
+            lastNoteAt: new Date("2026-09-02T12:00:00").getTime(),
+          },
+        ],
+      },
     ]);
     const handlers = captureListeners();
 
@@ -1205,18 +1399,28 @@ describe("capture screen review step", () => {
     await reachReview(handlers, "Met Priya at the conference.");
 
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Not this Priya?" }));
+      fireEvent.press(screen.getByRole("button", { name: "Not this Marcus?" }));
     });
-    // Opening the picker out of curiosity must not become an obligation: the
-    // line already said what saving does, and looking does not unsay it.
+    await act(async () => {
+      fireEvent.press(
+        screen.getByRole("button", { name: "Priya, client · 3 notes · last 2026-09-01" }),
+      );
+    });
+
+    // Opening the mention's picker out of curiosity must not become an
+    // obligation: the line already said what saving does, and looking does not
+    // unsay it. Only the subject is required.
     expect(screen.getByLabelText("Save note")).not.toBeDisabled();
 
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Save note" }));
     });
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
-    expect(saveCapture.mock.calls[0]?.[0].resolutions).toEqual([]);
+    expect(saveCapture.mock.calls[0]?.[0].resolutions).toEqual([
+      { name: "Priya", profileId: "profile-1" },
+    ]);
   });
+
 
   test("should offer a new person alongside the candidates when a name is shared", async () => {
     (useAction as jest.Mock).mockReturnValue(
@@ -1390,29 +1594,36 @@ describe("capture screen review step", () => {
 
     // Answer "someone new" for the name as first heard.
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Not this Priya?" }));
-    });
-    await act(async () => {
       fireEvent.press(
         screen.getByRole("button", { name: "New person called priya" }),
       );
     });
 
     // Then fix the capitalisation, which is an ordinary correction and not a
-    // change of mind. The screen goes back to showing a plain "Adding to" line
-    // — no picker, nothing expanded — so saving must do what that line says.
+    // change of mind. The question is now about "Priya", and the answer given
+    // for "priya" must not carry over.
     await act(async () => {
       fireEvent.changeText(screen.getByLabelText("Name"), "Priya");
+    });
+    await act(async () => {
+      fireEvent.press(
+        screen.getByRole("button", {
+          name: "Priya, client · 3 notes · last 2026-09-01",
+        }),
+      );
     });
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Save note" }));
     });
 
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
-    // The server folds case when it matches names, so an answer keyed to
-    // "priya" would still be found by "Priya" and would create a duplicate —
-    // the exact failure this feature exists to prevent, inverted.
-    expect(saveCapture.mock.calls[0]?.[0].resolutions).toEqual([]);
+    // One answer, under the corrected name, and it is the one just given —
+    // not the stale `someone new` from before the capitalisation was fixed.
+    // "priya" and "Priya" are the same name, so the question is the same
+    // question and the latest answer to it is the one that counts.
+    expect(saveCapture.mock.calls[0]?.[0].resolutions).toEqual([
+      { name: "Priya", profileId: "profile-1" },
+    ]);
   });
 
   test("should let a candidate be opened and come back to the draft untouched", async () => {

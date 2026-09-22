@@ -154,6 +154,12 @@ live here rather than in §7 because that is the screen they happen on.
 | 7a.20 | Record "Priya and I went to MET to see Prisley's show", keeping nobody called Prisley | If a person is created for the show, they are filed as **`Prisley`** — never `Prisley's`. An apostrophe-possessive is grammar, and no question can fix it because there is nobody to ask about | ⬜ |
 | 7a.21 | Same, but you **do** keep a Prisley | The possessive question instead (7a.10). The two rules divide there: a base that matches somebody is asked about, a base that matches nobody is just the name | ⬜ |
 | 7a.22 | A note naming **`Parks`** while keeping nobody called Park | Filed as **`Parks`**, unchanged. Parks is a surname and only you know — stripping it here would answer the question instead of asking it | ⬜ |
+| 7a.23 | From **home**, record about somebody you already keep — one person by that name | **"This Priya?"**, and **Save is blocked** until you answer. One person answering to a name is not the same as this being them: somebody kept months ago is easy to forget, and a note about a *different* Priya does not create a wrong person — it writes into a real one | ⬜ |
+| 7a.24 | From **that person's own page**, record about them | **No question**, just "Adding to Priya · …". Choosing where to record is the answer, and this is the path that keeps every ordinary save from becoming a form | ⬜ |
+| 7a.25 | In 7a.23, choose `Someone new` and save | A **second** person by that name, kept separately | ⬜ |
+| 7a.26 | From home, record about somebody you keep **none** of | No question — nothing to confuse them with. The line still says a new person is about to be created | ⬜ |
+| 7a.27 | A **mention** matching exactly one person | Still a line with `Different person?`, not a blocking question. A misheard mention invents somebody who stays off the home list and goes when the note does; a misheard subject writes into a real record | ⬜ |
+| 7a.28 | In 7a.23, correct the name's **capitalisation** after answering | The question stays, still answered — `priya` and `Priya` are the same name. It used to lose both the picker and the answer, leaving Save blocked by a question that was nowhere on screen | ⬜ |
 
 ## 8. Typing instead of speaking
 
