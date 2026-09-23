@@ -1535,6 +1535,184 @@ test("should refuse the possessive base when somebody answers to the name itself
   ).rejects.toThrow(/couldn't tell who that note was about/);
 });
 
+test("should offer every 'Maisie' a shorter spoken name could mean, reported live", async () => {
+  const t = convexTest(schema, modules);
+  const userId = await ensureUser(t, ALICE);
+  const [maisie, maisieH, maisiePark] = await t.run(async (ctx) => {
+    const ids = [];
+    for (const name of ["Maisie", "Maisie H", "Maisie Park"]) {
+      ids.push(
+        await ctx.db.insert("profiles", {
+          userId,
+          name,
+          entityType: "person" as const,
+          tags: [],
+          autoCreated: false,
+        }),
+      );
+    }
+    return ids;
+  });
+
+  // Exactly the report: three Maisies kept, one spoken word, and the old rule
+  // resolved only against a profile literally named "Maisie" — the other two
+  // were never even offered.
+  const [asked] = await t
+    .withIdentity(ALICE)
+    .query(api.profiles.resolveNames, { names: ["Maisie"] });
+
+  expect(asked?.candidates.map((c) => c.profileId)).toEqual([
+    maisie,
+    maisieH,
+    maisiePark,
+  ]);
+});
+
+test("should ask which Maisie a saved note is about, rather than silently choosing", async () => {
+  const t = convexTest(schema, modules);
+  const userId = await ensureUser(t, ALICE);
+  const maisiePark = await t.run(async (ctx) => {
+    await ctx.db.insert("profiles", {
+      userId,
+      name: "Maisie",
+      entityType: "person" as const,
+      tags: [],
+      autoCreated: false,
+    });
+    return ctx.db.insert("profiles", {
+      userId,
+      name: "Maisie Park",
+      entityType: "person" as const,
+      tags: [],
+      autoCreated: false,
+    });
+  });
+
+  // Without an answer, saving must refuse rather than land on whichever
+  // Maisie the query happened to read first — the coin toss this whole
+  // mechanism exists to prevent.
+  await expect(
+    t.withIdentity(ALICE).mutation(api.notes.saveCapture, {
+      transcript: "Met Maisie for lunch.",
+      draft: buildDraft({ primaryName: "Maisie", mentions: [] }),
+      source: "voice",
+    }),
+  ).rejects.toThrow(/more than one Maisie/);
+
+  // And the picked one is filed correctly once an answer is given.
+  const saved = await t.withIdentity(ALICE).mutation(api.notes.saveCapture, {
+    transcript: "Met Maisie for lunch.",
+    draft: buildDraft({ primaryName: "Maisie", mentions: [] }),
+    source: "voice",
+    resolutions: [{ name: "Maisie", profileId: maisiePark }],
+  });
+  expect(saved.profileId).toBe(maisiePark);
+  expect(saved.createdProfile).toBe(false);
+});
+
+test("should not let 'Marc' reach 'Marcus' — a fragment is not an overlap", async () => {
+  const t = convexTest(schema, modules);
+  const userId = await ensureUser(t, ALICE);
+  await t.run(async (ctx) =>
+    ctx.db.insert("profiles", {
+      userId,
+      name: "Marcus",
+      entityType: "person" as const,
+      tags: [],
+      autoCreated: false,
+    }),
+  );
+
+  // Day 7's protection, carried over: a fragment cut from the middle of a
+  // name must not match the whole name, or "Al" would match "Alignment
+  // review" all over again, here for spoken names instead of calendar titles.
+  const saved = await t.withIdentity(ALICE).mutation(api.notes.saveCapture, {
+    transcript: "Met Marc today.",
+    draft: buildDraft({ primaryName: "Marc", mentions: [] }),
+    source: "voice",
+  });
+  expect(saved.createdProfile).toBe(true);
+
+  const people = await t.run(async (ctx) =>
+    ctx.db
+      .query("profiles")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect(),
+  );
+  expect(people.map((p) => p.name).sort()).toEqual(["Marc", "Marcus"]);
+});
+
+test("should not let two Korean names that merely share a prefix syllable overlap", async () => {
+  const t = convexTest(schema, modules);
+  const userId = await ensureUser(t, ALICE);
+  await t.run(async (ctx) =>
+    ctx.db.insert("profiles", {
+      userId,
+      name: "지선희",
+      entityType: "person" as const,
+      tags: [],
+      autoCreated: false,
+    }),
+  );
+
+  // The exact collision this project refuses to allow, unchanged by this
+  // slice: 지선 and 지선희 are two people, and broadening spoken-name
+  // matching for spaced Western names must not narrow that protection.
+  const saved = await t.withIdentity(ALICE).mutation(api.notes.saveCapture, {
+    transcript: "지선 만났어.",
+    draft: buildDraft({ primaryName: "지선", mentions: [] }),
+    source: "voice",
+  });
+  expect(saved.createdProfile).toBe(true);
+
+  const people = await t.run(async (ctx) =>
+    ctx.db
+      .query("profiles")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect(),
+  );
+  expect(people.map((p) => p.name).sort()).toEqual(["지선", "지선희"]);
+});
+
+test("should let a mention find the fuller name of the subject just created in this note", async () => {
+  const t = convexTest(schema, modules);
+  const userId = await ensureUser(t, ALICE);
+
+  // "Maisie Park" is brand new in this very note. A mention later in the same
+  // note refers to her as "Maisie", with no answer supplied for it — a
+  // mention needs one only when it is genuinely ambiguous. If the newly
+  // created profile were not visible to the lookup, "Maisie" would match
+  // nobody and the mention would silently become its own new stub — the
+  // duplicate this whole mechanism exists to prevent, just one note later
+  // than usual.
+  const saved = await t.withIdentity(ALICE).mutation(api.notes.saveCapture, {
+    transcript: "Met Maisie Park today. Maisie seemed happy.",
+    draft: buildDraft({
+      primaryName: "Maisie Park",
+      mentions: [{ name: "Maisie", quote: "Maisie seemed happy" }],
+    }),
+    source: "voice",
+  });
+
+  // No new person for the mention — it found her.
+  expect(saved.createdMentionCount).toBe(0);
+  const people = await t.run(async (ctx) =>
+    ctx.db
+      .query("profiles")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect(),
+  );
+  expect(people.map((p) => p.name)).toEqual(["Maisie Park"]);
+
+  const links = await t.run(async (ctx) =>
+    ctx.db
+      .query("noteMentions")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect(),
+  );
+  expect(links[0]?.profileId).toBe(saved.profileId);
+});
+
 test("should refuse a profile that is neither the name nor what it possesses", async () => {
   const t = convexTest(schema, modules);
   const userId = await ensureUser(t, ALICE);
