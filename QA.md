@@ -141,6 +141,12 @@ live here rather than in §7 because that is the screen they happen on.
 | 7a.7 | Don't touch the transcript at all → `Save note` | **No question.** One tap, as before. Day 4's mistake was turning the common path into a form |
 | 7a.8 | Add only a trailing space to the transcript → `Save note` | **No question.** Nobody meant to make that edit |
 | 7a.9 | Scan a business card, edit `What the card says`, `Save note` | Title reads **"You changed what the card says"** — not "what you said". Same for a typed note: "what you wrote" |
+| 7a.10 | Keep a person called **Park**. Record "I met Tom at Park's housewarming party" | The review screen **asks**: *"Is "Parks" one of these?"* — the recogniser drops apostrophes, extraction reads `Parks` as a name, and it matches nobody. Picking Park files the mention against Park; declining creates a person called Parks | ⬜ |
+| 7a.11 | Same in Korean: keep **민호**, record "민호네 집들이에서 만났어" | The same question for `민호네`. 네 does the job `'s` does | ⬜ |
+| 7a.12 | Keep somebody actually called **Parks**, record a note naming Parks | **No question.** An exact match is not in doubt, and asking would put a picker in front of every ordinary save | ⬜ |
+| 7a.13 | Reach 7a.10 and press `Save note` without answering | **Blocked** until answered. The name itself is in doubt, so it is not a question you can ignore | ⬜ |
+| 7a.14 | Record a note naming **Marcus** while keeping nobody called Marcu | No question — a proposed base nobody answers to costs nothing and is never shown | ⬜ |
+| 7a.15 | After 7a.10, check `npm run db` → `profiles` | **No new "Parks" row** if you picked Park. This is the whole point: a second person one letter from a real one used to appear with nothing said | ⬜ |
 
 ## 8. Typing instead of speaking
 

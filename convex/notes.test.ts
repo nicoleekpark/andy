@@ -1336,3 +1336,154 @@ test("should bound how many answers one call may carry", async () => {
     }),
   ).rejects.toBeInstanceOf(ConvexError);
 });
+
+
+// ---------------------------------------------------------------------------
+// A possessive the user confirmed, and one nobody offered
+// ---------------------------------------------------------------------------
+
+test("should file a confirmed possessive against the person it belongs to", async () => {
+  const t = convexTest(schema, modules);
+  const userId = await ensureUser(t, ALICE);
+  const park = await t.run(async (ctx) =>
+    ctx.db.insert("profiles", {
+      userId,
+      name: "Park",
+      entityType: "person" as const,
+      tags: [],
+      autoCreated: false,
+    }),
+  );
+
+  // "I met at Park's housewarming party" — the recogniser writes "parks", and
+  // the screen asked whether that is the Park already kept. Saying yes has to
+  // work: `namesOf(Park)` does not contain "Parks", so the guard that stops a
+  // client picking an unrelated profile would otherwise refuse the one answer
+  // the screen offered.
+  await t.withIdentity(ALICE).mutation(api.notes.saveCapture, {
+    transcript: "Met Tom at parks housewarming party.",
+    draft: buildDraft({
+      primaryName: "Tom",
+      mentions: [{ name: "Parks", quote: "at parks housewarming party" }],
+    }),
+    source: "voice",
+    resolutions: [{ name: "Parks", profileId: park }],
+  });
+
+  const people = await t.run(async (ctx) =>
+    ctx.db
+      .query("profiles")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect(),
+  );
+  // No second person one letter from a real one.
+  expect(people.map((p) => p.name).sort()).toEqual(["Park", "Tom"]);
+  const links = await t.run(async (ctx) =>
+    ctx.db
+      .query("noteMentions")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect(),
+  );
+  expect(links[0]?.profileId).toBe(park);
+});
+
+test("should still invent the person when the possessive is said to be somebody new", async () => {
+  const t = convexTest(schema, modules);
+  const userId = await ensureUser(t, ALICE);
+  await t.run(async (ctx) =>
+    ctx.db.insert("profiles", {
+      userId,
+      name: "Park",
+      entityType: "person" as const,
+      tags: [],
+      autoCreated: false,
+    }),
+  );
+
+  await t.withIdentity(ALICE).mutation(api.notes.saveCapture, {
+    transcript: "Met Tom with Parks.",
+    draft: buildDraft({
+      primaryName: "Tom",
+      mentions: [{ name: "Parks", quote: "with Parks" }],
+    }),
+    source: "voice",
+    resolutions: [{ name: "Parks", profileId: null }],
+  });
+
+  // Parks is a real surname. Asking exists so both answers are available —
+  // refusing to create one would be the same mistake in the other direction.
+  const people = await t.run(async (ctx) =>
+    ctx.db
+      .query("profiles")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect(),
+  );
+  expect(people.map((p) => p.name).sort()).toEqual(["Park", "Parks", "Tom"]);
+});
+
+test("should refuse the possessive base when somebody answers to the name itself", async () => {
+  const t = convexTest(schema, modules);
+  const userId = await ensureUser(t, ALICE);
+  const { mark } = await t.run(async (ctx) => {
+    const mark = await ctx.db.insert("profiles", {
+      userId,
+      name: "Mark",
+      entityType: "person" as const,
+      tags: [],
+      autoCreated: false,
+    });
+    // Somebody actually called Marks, as well as a Mark.
+    await ctx.db.insert("profiles", {
+      userId,
+      name: "Marks",
+      entityType: "person" as const,
+      tags: [],
+      autoCreated: false,
+    });
+    return { mark };
+  });
+
+  // `resolveNames` offers only Marks for "Marks", because the name matches
+  // somebody exactly and the possessive branch never runs. So accepting Mark
+  // here would be accepting a choice no screen ever made — found by
+  // `security-reviewer`, who reproduced the two functions disagreeing.
+  await expect(
+    t.withIdentity(ALICE).mutation(api.notes.saveCapture, {
+      transcript: "Met Tom with Marks.",
+      draft: buildDraft({
+        primaryName: "Tom",
+        mentions: [{ name: "Marks", quote: "with Marks" }],
+      }),
+      source: "voice",
+      resolutions: [{ name: "Marks", profileId: mark }],
+    }),
+  ).rejects.toThrow(/couldn't tell who that note was about/);
+});
+
+test("should refuse a profile that is neither the name nor what it possesses", async () => {
+  const t = convexTest(schema, modules);
+  const userId = await ensureUser(t, ALICE);
+  const unrelated = await t.run(async (ctx) =>
+    ctx.db.insert("profiles", {
+      userId,
+      name: "Marcus",
+      entityType: "person" as const,
+      tags: [],
+      autoCreated: false,
+    }),
+  );
+
+  // Widening the guard to allow a possessive must not widen it to allow
+  // anything: "Parks" reaches Park, and reaches nobody else.
+  await expect(
+    t.withIdentity(ALICE).mutation(api.notes.saveCapture, {
+      transcript: "Met Tom with Parks.",
+      draft: buildDraft({
+        primaryName: "Tom",
+        mentions: [{ name: "Parks", quote: "with Parks" }],
+      }),
+      source: "voice",
+      resolutions: [{ name: "Parks", profileId: unrelated }],
+    }),
+  ).rejects.toThrow(/couldn't tell who that note was about/);
+});

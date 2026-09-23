@@ -27,6 +27,7 @@ import type * as notes from "../notes.js";
 import type * as people from "../people.js";
 import type * as peopleSearch from "../peopleSearch.js";
 import type * as photos from "../photos.js";
+import type * as possessive from "../possessive.js";
 import type * as profiles from "../profiles.js";
 import type * as promptBoundary from "../promptBoundary.js";
 import type * as search from "../search.js";
@@ -58,6 +59,7 @@ declare const fullApi: ApiFromModules<{
   people: typeof people;
   peopleSearch: typeof peopleSearch;
   photos: typeof photos;
+  possessive: typeof possessive;
   profiles: typeof profiles;
   promptBoundary: typeof promptBoundary;
   search: typeof search;
