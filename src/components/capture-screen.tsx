@@ -1029,6 +1029,16 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
         // became required that left the screen satisfied and the mutation
         // hearing nothing. A genuinely different name still folds differently
         // and is still dropped, which is what this filter is for.
+        //
+        // A declared subject supplies its own answer here, even though the
+        // screen never asked about it. `resolve()` on the server has no notion
+        // of "the route already said" — it only sees names, and a name shared
+        // with somebody else is ambiguous to it whether or not this screen
+        // considered the question closed. Reported live: recording on Priya's
+        // own page, with a second Priya elsewhere, saved fine right up until
+        // this line existed — then it reached the server as silence and threw
+        // "you keep more than one Priya", from a screen that had just promised
+        // no question would be asked.
         resolutions: (() => {
           const byKey = new Map(
             Object.entries(resolutions).map(([name, id]) => [
@@ -1036,6 +1046,9 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
               id,
             ]),
           );
+          if (subjectDeclared && scoped) {
+            byKey.set(matchKey(aboutName ?? ""), scoped.profile._id);
+          }
           return namesInDraft.flatMap((name) =>
             byKey.has(matchKey(name))
               ? [{ name, profileId: byKey.get(matchKey(name)) ?? null }]
@@ -1082,6 +1095,9 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
     profileId,
     resolutions,
     namesInDraft,
+    subjectDeclared,
+    scoped,
+    aboutName,
   ]);
 
   /**

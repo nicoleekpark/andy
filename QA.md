@@ -160,6 +160,7 @@ live here rather than in §7 because that is the screen they happen on.
 | 7a.26 | From home, record about somebody you keep **none** of | No question — nothing to confuse them with. The line still says a new person is about to be created | ⬜ |
 | 7a.27 | A **mention** matching exactly one person | Still a line with `Different person?`, not a blocking question. A misheard mention invents somebody who stays off the home list and goes when the note does; a misheard subject writes into a real record | ⬜ |
 | 7a.28 | In 7a.23, correct the name's **capitalisation** after answering | The question stays, still answered — `priya` and `Priya` are the same name. It used to lose both the picker and the answer, leaving Save blocked by a question that was nowhere on screen | ⬜ |
+| 7a.29 | Keep **two** people with the exact same name (e.g. two Priyas). From **one of their own pages**, record and save | **Saves — no question, no error.** Reported live: this threw `"You keep more than one Priya"` from the server, on a screen that had just promised no question would be asked. The route's own profile is now sent as the answer without being asked | ⬜ |
 
 ## 8. Typing instead of speaking
 

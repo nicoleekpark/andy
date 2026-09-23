@@ -663,6 +663,77 @@ describe("capture screen review step", () => {
     expect(screen.getByLabelText("Save note")).not.toBeDisabled();
   });
 
+  test("should send its own resolution for a declared subject who shares a name, so saving does not throw", async () => {
+    (useAction as jest.Mock).mockReturnValue(
+      jest.fn(async () => makeDraft({ name: "Priya" }, [])),
+    );
+    const saveCapture = jest.fn(
+      async (_args: {
+        transcript: string;
+        draft: Draft;
+        source: string;
+        resolutions: { name: string; profileId: string | null }[];
+      }) => ({
+        profileId: "contact-1",
+        noteId: "note-1",
+        createdProfile: false,
+        createdMentionCount: 0,
+      }),
+    );
+    mockSaveCapture(saveCapture);
+    // Reported live: two Priyas exist, this one recorded from her own page.
+    // The screen correctly asked nothing — that is `subjectDeclared` — but
+    // `saveCapture` sent no resolution for "Priya" either, because nothing
+    // told it the declared subject needed one. The server has no notion of
+    // "the route already said" — it only sees a name two profiles answer to
+    // and throws. A promise of no question, followed by a thrown error, is
+    // worse than the question would have been.
+    scopeTo("Priya", [
+      {
+        name: "Priya",
+        viaPossessive: false,
+        candidates: [
+          {
+            profileId: "contact-1",
+            name: "Priya",
+            relationshipContext: "client",
+            entityType: "person",
+            noteCount: 3,
+            lastNoteAt: new Date("2026-09-01T12:00:00").getTime(),
+          },
+          {
+            profileId: "profile-other",
+            name: "Priya",
+            relationshipContext: "from the gym",
+            entityType: "person",
+            noteCount: 1,
+            lastNoteAt: new Date("2026-05-01T12:00:00").getTime(),
+          },
+        ],
+      },
+    ]);
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", {
+      initialUrl: "/profile/contact-1/capture",
+    });
+    await result;
+    await reachReview(handlers, "Priya seemed happy about the new job.");
+
+    expect(screen.queryByText("Which Priya?")).toBeNull();
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Save note"));
+    });
+
+    await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
+    // The route's own profile, sent without being asked — the answer the user
+    // gave by walking to this page in the first place.
+    expect(saveCapture.mock.calls[0]?.[0].resolutions).toEqual([
+      { name: "Priya", profileId: "contact-1" },
+    ]);
+  });
+
   test("should open the picker beside the name it is about, not at the bottom of the form", async () => {
     (useAction as jest.Mock).mockReturnValue(
       jest.fn(async () => makeDraft({ name: "Nina" })),
