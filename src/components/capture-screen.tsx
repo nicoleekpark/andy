@@ -68,12 +68,7 @@ import { colors } from "@/constants/theme";
 const DEFAULT_LOCALE = "en-US";
 
 type Phase =
-  | "idle"
-  | "starting"
-  | "listening"
-  | "extracting"
-  | "review"
-  | "saving";
+  "idle" | "starting" | "listening" | "extracting" | "review" | "saving";
 
 /**
  * What separates two people who share a name: how you know them, how much is
@@ -123,6 +118,7 @@ function describe(candidate: {
  */
 function NamePicker({
   question,
+  required,
   answered,
   onPick,
 }: {
@@ -138,55 +134,69 @@ function NamePicker({
       lastNoteAt: number | null;
     }[];
   };
+  /**
+   * Whether this has to be answered before the note can be saved.
+   *
+   * Passed in rather than worked out here. It used to be re-derived from the
+   * candidate count, which was true until "one candidate, subject, inferred"
+   * became a required question too — after which the heading asked "This
+   * Priya?" and the body underneath said "or somebody new", the wording for a
+   * question you may ignore. Only the caller knows, because only the caller
+   * has `mustSettle`.
+   */
+  required: boolean;
   answered: string | null | undefined;
   onPick: (name: string, profileId: string | null) => void;
 }) {
-  const mustAnswer =
-    question.candidates.length > 1 ||
-    (question.viaPossessive && question.candidates.length > 0);
   return (
-        <Field
-            label={
-            question.viaPossessive
-              ? `Is “${question.name}” one of these?`
-              : `Which ${question.name}?`
-          }
-        >
-          <Text style={styles.quiet}>
-            {/*
+    <Field
+      label={
+        question.viaPossessive
+          ? `Is “${question.name}” one of these?`
+          : question.candidates.length > 1
+            ? `Which ${question.name}?`
+            : `This ${question.name}?`
+      }
+    >
+      <Text style={styles.quiet}>
+        {/*
               Three different things to say, because they are three
               different situations. The possessive one is the only one
               where the *name itself* is in doubt — "Parks" may be
               Park's, or it may be a person called Parks, and only the
               speaker knows which.
             */}
-            {question.viaPossessive
-              ? "Andy heard a name that might belong to somebody you already keep. Pick them, or keep it as a new person."
-              : mustAnswer
-                ? "You keep more than one. This note goes to whichever you pick."
-                : "This note goes to whoever you pick — or to somebody new."}
-          </Text>
-          {question.candidates.map((candidate) => {
-            const picked = answered === candidate.profileId;
-            return (
-              <Pressable
-                key={candidate.profileId}
-                accessibilityRole="button"
-                accessibilityLabel={`${candidate.name}, ${describe(candidate)}`}
-                accessibilityState={{ selected: picked }}
-                onPress={() => onPick(question.name, candidate.profileId)}
-                style={[styles.candidate, picked && styles.candidateOn]}
+        {question.viaPossessive
+          ? "Andy heard a name that might belong to somebody you already keep. Pick them, or keep it as a new person."
+          : question.candidates.length > 1
+            ? "You keep more than one. This note goes to whichever you pick."
+            : required
+              ? // One person answers to this name, which is not the same
+                // as this being them. Somebody kept months ago is easy to
+                // forget, and a note about a different person of that name
+                // does not create a wrong person — it writes into a real
+                // one, quietly.
+                "You already keep somebody by this name. Is this them?"
+              : "This note goes to whoever you pick — or to somebody new."}
+      </Text>
+      {question.candidates.map((candidate) => {
+        const picked = answered === candidate.profileId;
+        return (
+          <Pressable
+            key={candidate.profileId}
+            accessibilityRole="button"
+            accessibilityLabel={`${candidate.name}, ${describe(candidate)}`}
+            accessibilityState={{ selected: picked }}
+            onPress={() => onPick(question.name, candidate.profileId)}
+            style={[styles.candidate, picked && styles.candidateOn]}
+          >
+            <View style={styles.candidateHead}>
+              <Text
+                style={[styles.candidateName, picked && styles.candidateNameOn]}
               >
-                <View style={styles.candidateHead}>
-                  <Text
-                    style={[
-                      styles.candidateName,
-                      picked && styles.candidateNameOn,
-                    ]}
-                  >
-                    {candidate.name}
-                  </Text>
-                  {/*
+                {candidate.name}
+              </Text>
+              {/*
                     A separate target from the card, on purpose. One line
                     of summary is not enough to tell two people of the
                     same name apart — what settles it is what is written
@@ -199,68 +209,62 @@ function NamePicker({
                     beneath the profile, so coming back finds every edit,
                     the transcript and any other answer as they were.
                   */}
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`View ${candidate.name}, ${describe(candidate)}`}
-                    onPress={() => router.push(`/profile/${candidate.profileId}`)}
-                    hitSlop={12}
-                  >
-                    <Text
-                      style={[
-                        styles.candidateView,
-                        picked && styles.candidateNameOn,
-                      ]}
-                    >
-                      View
-                    </Text>
-                  </Pressable>
-                </View>
-                {/* Identical names are not a choice. What separates them
-                    is how you know them and what is already recorded. */}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`View ${candidate.name}, ${describe(candidate)}`}
+                onPress={() => router.push(`/profile/${candidate.profileId}`)}
+                hitSlop={12}
+              >
                 <Text
                   style={[
-                    styles.candidateMeta,
+                    styles.candidateView,
                     picked && styles.candidateNameOn,
                   ]}
                 >
-                  {describe(candidate)}
+                  View
                 </Text>
               </Pressable>
-            );
-          })}
-          {/*
+            </View>
+            {/* Identical names are not a choice. What separates them
+                    is how you know them and what is already recorded. */}
+            <Text
+              style={[styles.candidateMeta, picked && styles.candidateNameOn]}
+            >
+              {describe(candidate)}
+            </Text>
+          </Pressable>
+        );
+      })}
+      {/*
             The escape. Without it the picker can only ever file a note on
             somebody already kept, and the case it exists for — this is a
             different person with the same name — has no answer.
           */}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`New person called ${question.name}`}
-            accessibilityState={{ selected: answered === null }}
-            onPress={() => onPick(question.name, null)}
-            style={[
-              styles.candidate,
-              answered === null && styles.candidateOn,
-            ]}
-          >
-            <Text
-              style={[
-                styles.candidateName,
-                answered === null && styles.candidateNameOn,
-              ]}
-            >
-              Someone new
-            </Text>
-            <Text
-              style={[
-                styles.candidateMeta,
-                answered === null && styles.candidateNameOn,
-              ]}
-            >
-              A different {question.name}, kept separately
-            </Text>
-          </Pressable>
-        </Field>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`New person called ${question.name}`}
+        accessibilityState={{ selected: answered === null }}
+        onPress={() => onPick(question.name, null)}
+        style={[styles.candidate, answered === null && styles.candidateOn]}
+      >
+        <Text
+          style={[
+            styles.candidateName,
+            answered === null && styles.candidateNameOn,
+          ]}
+        >
+          Someone new
+        </Text>
+        <Text
+          style={[
+            styles.candidateMeta,
+            answered === null && styles.candidateNameOn,
+          ]}
+        >
+          A different {question.name}, kept separately
+        </Text>
+      </Pressable>
+    </Field>
   );
 }
 
@@ -348,8 +352,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
   // Guarded on `profileId` rather than trusting `scoped` to be undefined when
   // the query is skipped: the subject must come from the route, so the route is
   // what decides whether there is one.
-  const aboutName =
-    profileId === undefined ? undefined : scoped?.profile.name;
+  const aboutName = profileId === undefined ? undefined : scoped?.profile.name;
   /** The route named a profile the user does not have, or does not own. */
   const scopeMissing = profileId !== undefined && scoped === null;
   /** Still resolving. Recording now would extract without the subject. */
@@ -364,9 +367,9 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
    * answered: the person who was in the room is standing in front of the
    * screen. `saveCapture` refuses to guess if this is skipped.
    */
-  const [resolutions, setResolutions] = useState<
-    Record<string, string | null>
-  >({});
+  const [resolutions, setResolutions] = useState<Record<string, string | null>>(
+    {},
+  );
   /**
    * Names whose picker the user has opened by hand.
    *
@@ -438,14 +441,84 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
    * it without asking, and the old rule was right about exact matches and
    * wrong about guessed grammar.
    */
+  /**
+   * Was the subject decided *before* speaking, or worked out from the words?
+   *
+   * Recording on somebody's page declares it — that is what `aboutName` is —
+   * and a declared subject needs no confirming, because the user already
+   * answered the question by choosing where to record. Editing the name
+   * afterwards un-declares it: it is then a name like any other.
+   */
+  const subjectDeclared =
+    aboutName !== undefined &&
+    draft !== null &&
+    matchKey(aboutName) === matchKey(draft.primary.name);
+
+  /**
+   * The names that must be settled before this note can be saved.
+   *
+   * Three reasons a name lands here, and the third is the one added last:
+   *
+   *  - **several people answer to it.** A spoken name is not an answer.
+   *  - **it only reached somebody through a possessive.** "Parks" may be
+   *    Park's, or a person called Parks.
+   *  - **it is the subject, it was not declared, and somebody already answers
+   *    to it.** Even when exactly one person does — which is the case this
+   *    codebase used to treat as settled, and the developer was right that it
+   *    is not. You may not remember you already keep a Prisley; filing a note
+   *    about a *different* Prisley onto the old one does not create a wrong
+   *    person, it corrupts a real one, and nothing afterwards says so.
+   *
+   * Day 4's rule still holds — a form in front of every save is how people
+   * stop reading forms — and the exemption above is what keeps it true. The
+   * ordinary "add to somebody I know" path is recording from their page, and
+   * that path asks nothing.
+   *
+   * **That last sentence is an assumption, not a measurement.** `code-reviewer`
+   * was right to say so: the shortcuts that would make a profile page the fast
+   * way in — the widget, the Siri shortcut — are cut from V1, so capture from
+   * home may be just as common, and then this is a question on most notes.
+   * The thing to watch for is people answering it without reading it. Recorded
+   * here rather than in a report, because this is where somebody would come
+   * looking after deciding it asks too often.
+   */
+  const mustSettle = useMemo(() => {
+    const names = new Set<string>();
+    for (const one of resolved) {
+      // A declared subject is settled whatever else answers to the name. The
+      // route named one profile, so "which Priya?" has already been answered
+      // by walking to hers — and asking anyway is how a forced question in
+      // front of somebody who knows the answer gets a wrong tap.
+      if (subjectDeclared && matchKey(one.name) === matchKey(aboutName ?? "")) {
+        continue;
+      }
+      if (
+        one.candidates.length > 1 ||
+        (one.viaPossessive && one.candidates.length > 0)
+      ) {
+        names.add(one.name);
+      }
+    }
+
+    const subject = draft?.primary.name.trim() ?? "";
+    if (subject !== "" && !subjectDeclared) {
+      const forSubject = resolved.find(
+        (one) => matchKey(one.name) === matchKey(subject),
+      );
+      // Nobody answering to it is not a question: `Fate` already says a new
+      // person is about to be created, and there is nothing to confuse them
+      // with.
+      if (forSubject !== undefined && forSubject.candidates.length > 0) {
+        names.add(forSubject.name);
+      }
+    }
+
+    return names;
+  }, [resolved, draft, subjectDeclared, aboutName]);
+
   const ambiguous = useMemo(
-    () =>
-      resolved.filter(
-        (one) =>
-          one.candidates.length > 1 ||
-          (one.viaPossessive && one.candidates.length > 0),
-      ),
-    [resolved],
+    () => resolved.filter((one) => mustSettle.has(one.name)),
+    [resolved, mustSettle],
   );
   /**
    * What saving does with each name: adds to somebody, or invents them.
@@ -485,12 +558,9 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
   const asking = useMemo(
     () =>
       resolved.filter(
-        (one) =>
-          one.candidates.length > 1 ||
-          (one.viaPossessive && one.candidates.length > 0) ||
-          (one.candidates.length === 1 && expanded.includes(one.name)),
+        (one) => mustSettle.has(one.name) || expanded.includes(one.name),
       ),
-    [resolved, expanded],
+    [resolved, expanded, mustSettle],
   );
 
   /**
@@ -500,7 +570,13 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
    * about rather than collected into one block at the bottom of the form.
    */
   const questionFor = useCallback(
-    (name: string) => asking.find((one) => one.name === name.trim()),
+    (name: string) =>
+      // Folded, like every other name lookup on this screen. Comparing raw
+      // strings made the picker vanish the moment a name's capitalisation was
+      // corrected — the question still existed, keyed to the name as first
+      // heard, and nothing rendered it. Saving was then blocked by a question
+      // that was nowhere on screen.
+      asking.find((one) => matchKey(one.name) === matchKey(name)),
     [asking],
   );
 
@@ -515,12 +591,16 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
    * `Save note`, where the block used to live for everything.
    */
   const orphaned = useMemo(() => {
+    // Folded, for the same reason `questionFor` is: a question keyed to the
+    // name as first heard and a field showing it corrected are the same name.
+    // Comparing raw strings rendered the picker twice — once beside the field
+    // and once down here as an orphan.
     const onScreen = new Set(
       [draft?.primary.name ?? "", ...(draft?.mentions ?? []).map((m) => m.name)]
-        .map((name) => name.trim())
+        .map(matchKey)
         .filter((name) => name !== ""),
     );
-    return asking.filter((one) => !onScreen.has(one.name));
+    return asking.filter((one) => !onScreen.has(matchKey(one.name)));
   }, [asking, draft]);
 
   /**
@@ -725,7 +805,8 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
   useSpeechRecognitionEvent("result", (event) => {
     const best = event.results[0]?.transcript ?? "";
     if (event.isFinal) {
-      finalRef.current = `${finalRef.current}${finalRef.current ? " " : ""}${best}`.trim();
+      finalRef.current =
+        `${finalRef.current}${finalRef.current ? " " : ""}${best}`.trim();
       setFinalText(finalRef.current);
       setInterim("");
     } else {
@@ -940,11 +1021,40 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
         // still the caller's and still goes by that name, so its checks pass
         // and it is `resolve()`'s answer the moment that text reappears
         // anywhere in the draft. Silently right-looking, and wrong.
-        resolutions: namesInDraft.flatMap((name) =>
-          name in resolutions
-            ? [{ name, profileId: resolutions[name] ?? null }]
-            : [],
-        ),
+        //
+        // Matched on the folded name, because the answer is keyed to the name
+        // as *asked about* and the draft carries the name as it now *reads* —
+        // correcting "priya" to "Priya" is the same name and the answer still
+        // applies. Comparing raw strings dropped it, and once the question
+        // became required that left the screen satisfied and the mutation
+        // hearing nothing. A genuinely different name still folds differently
+        // and is still dropped, which is what this filter is for.
+        //
+        // A declared subject supplies its own answer here, even though the
+        // screen never asked about it. `resolve()` on the server has no notion
+        // of "the route already said" — it only sees names, and a name shared
+        // with somebody else is ambiguous to it whether or not this screen
+        // considered the question closed. Reported live: recording on Priya's
+        // own page, with a second Priya elsewhere, saved fine right up until
+        // this line existed — then it reached the server as silence and threw
+        // "you keep more than one Priya", from a screen that had just promised
+        // no question would be asked.
+        resolutions: (() => {
+          const byKey = new Map(
+            Object.entries(resolutions).map(([name, id]) => [
+              matchKey(name),
+              id,
+            ]),
+          );
+          if (subjectDeclared && scoped) {
+            byKey.set(matchKey(aboutName ?? ""), scoped.profile._id);
+          }
+          return namesInDraft.flatMap((name) =>
+            byKey.has(matchKey(name))
+              ? [{ name, profileId: byKey.get(matchKey(name)) ?? null }]
+              : [],
+          );
+        })(),
       });
 
       // Never `push`: the capture is finished, and backing into a draft that
@@ -977,7 +1087,18 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
       );
       setPhase("review");
     }
-  }, [draft, transcript, source, saveCapture, profileId, resolutions, namesInDraft]);
+  }, [
+    draft,
+    transcript,
+    source,
+    saveCapture,
+    profileId,
+    resolutions,
+    namesInDraft,
+    subjectDeclared,
+    scoped,
+    aboutName,
+  ]);
 
   /**
    * Save — but first, if the transcript and the facts have come apart, ask.
@@ -1100,19 +1221,27 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
               afterwards. One line, and a wrong name is obvious while the field
               to fix it is still under the cursor.
             */}
-            <Fate
-              candidates={fateOf(draft.primary.name)}
-              onDisagree={
-                expanded.includes(draft.primary.name.trim())
-                  ? undefined
-                  : () => openPicker(draft.primary.name)
-              }
-            />
+            {/*
+              The line and the question are alternatives, never both. "Adding
+              to Nina" above "This Nina?" says a thing and then asks whether
+              that thing is true.
+            */}
+            {questionFor(draft.primary.name) !== undefined ? null : (
+              <Fate
+                candidates={fateOf(draft.primary.name)}
+                onDisagree={
+                  expanded.includes(draft.primary.name.trim())
+                    ? undefined
+                    : () => openPicker(draft.primary.name)
+                }
+              />
+            )}
             {(() => {
               const question = questionFor(draft.primary.name);
               return question === undefined ? null : (
                 <NamePicker
                   question={question}
+                  required={mustSettle.has(question.name)}
                   answered={resolutions[question.name]}
                   onPick={pick}
                 />
@@ -1175,7 +1304,9 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
             <Pressable
               accessibilityRole="checkbox"
               accessibilityLabel="This was the first time we met"
-              accessibilityState={{ checked: draft.primary.firstMetDate !== null }}
+              accessibilityState={{
+                checked: draft.primary.firstMetDate !== null,
+              }}
               onPress={() => {
                 if (draft.primary.firstMetDate !== null) {
                   lastFirstMetRef.current = draft.primary.firstMetDate;
@@ -1322,7 +1453,9 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
                       onPress={() =>
                         setDraft({
                           ...draft,
-                          mentions: draft.mentions.filter((_, i) => i !== index),
+                          mentions: draft.mentions.filter(
+                            (_, i) => i !== index,
+                          ),
                         })
                       }
                       style={styles.remove}
@@ -1368,21 +1501,25 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
                     drops those, so promising anything about them would be a
                     line about a row that is never written.
                   */}
-                  {matchKey(mention.name) === matchKey(draft.primary.name) ? null : (
+                  {matchKey(mention.name) ===
+                  matchKey(draft.primary.name) ? null : (
                     <>
-                      <Fate
-                        candidates={fateOf(mention.name)}
-                        onDisagree={
-                          expanded.includes(mention.name.trim())
-                            ? undefined
-                            : () => openPicker(mention.name)
-                        }
-                      />
+                      {questionFor(mention.name) !== undefined ? null : (
+                        <Fate
+                          candidates={fateOf(mention.name)}
+                          onDisagree={
+                            expanded.includes(mention.name.trim())
+                              ? undefined
+                              : () => openPicker(mention.name)
+                          }
+                        />
+                      )}
                       {(() => {
                         const question = questionFor(mention.name);
                         return question === undefined ? null : (
                           <NamePicker
                             question={question}
+                            required={mustSettle.has(question.name)}
                             answered={resolutions[question.name]}
                             onPick={pick}
                           />
@@ -1444,6 +1581,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
             <NamePicker
               key={question.name}
               question={question}
+              required={mustSettle.has(question.name)}
               answered={resolutions[question.name]}
               onPick={pick}
             />
@@ -1607,7 +1745,9 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
           // hoping the name arrives before the user stops talking would fail
           // exactly when the network is slow, and fail silently — the note
           // would be extracted as if it had come from home.
-          disabled={phase === "starting" || busy || scopeLoading || scopeMissing}
+          disabled={
+            phase === "starting" || busy || scopeLoading || scopeMissing
+          }
           style={[
             styles.primaryButton,
             listening && styles.recording,
@@ -1657,7 +1797,9 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
         */}
         {__DEV__ ? (
           <View style={styles.dev}>
-            <Text style={styles.devText}>{capability ?? "not started yet"}</Text>
+            <Text style={styles.devText}>
+              {capability ?? "not started yet"}
+            </Text>
             <Text style={styles.devText}>
               scoped to: {profileId ?? "nobody yet"}
             </Text>

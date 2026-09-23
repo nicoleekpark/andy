@@ -255,13 +255,28 @@ A hard external date, or Ask Andy and the Briefing both landing early enough tha
 ```
 Tap record (or type it) → speak → see extracted draft (name, tags, key facts) →
 confirm/edit → save
-   (name matches one person → append, and the screen says whose — with
-    "Different person?" beside it, because that is the moment a second
-    person by an existing name would be created;
-    matches nobody → create, and the screen says so before it happens;
-    matches several → the screen asks which, and each candidate can be
-    opened and read before choosing;
-    any of those pickers can answer "someone new" instead)
+
+   The subject was **declared** — recorded on that person's own page, so the
+   route already named them:
+       nothing is asked. Walking to her page was the answer, and it is a tap
+       rather than a word, so nothing was lost on the way.
+
+   The subject was **inferred** from what was said:
+       matches anybody at all → the screen asks, and saving waits for it.
+       One person answering to a name is not the same as this being them —
+       somebody kept months ago is easy to forget, and a note about a
+       different person of that name does not create a wrong person, it
+       writes into a real one. "This Priya?" for one, "Which Priya?" for
+       several, each candidate openable before choosing;
+       matches nobody → create, and the screen says so before it happens.
+
+   A **mention** (anyone else the note names):
+       matches one → append, and the screen says whose, with "Different
+       person?" beside it. Not blocking: a misheard mention invents somebody
+       who stays off the home list and goes when the note does;
+       matches several, or only through a possessive → asked, like a subject.
+
+   Any of those pickers can answer "someone new" instead.
 ```
 
 **Home has an Ask Andy button rather than a search bar** — changed on day 5,
