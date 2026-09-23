@@ -2,6 +2,8 @@ import { Stack, router } from "expo-router";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
+import { BriefingCard } from "@/components/briefing-card";
+import { useBriefing } from "@/lib/use-briefing";
 import { colors, fonts } from "@/constants/theme";
 
 /**
@@ -20,6 +22,7 @@ import { colors, fonts } from "@/constants/theme";
  */
 export default function HomeScreen() {
   const people = useQuery(api.profiles.recent);
+  const { briefing, ask } = useBriefing();
 
   return (
     <>
@@ -43,6 +46,24 @@ export default function HomeScreen() {
           data={people ?? []}
           keyExtractor={(item) => item.profile._id}
           contentContainerStyle={styles.list}
+          /*
+            Above the list rather than beside it. The briefing is about the next
+            twenty minutes and the list is about everybody — putting the two in
+            the same scroll, in that order, is the whole hierarchy.
+          */
+          ListHeaderComponent={
+            briefing.state === "loading" ? null : briefing.state === "ask" ? (
+              <BriefingCard
+                state="ask"
+                onAsk={() => void ask()}
+                asking={briefing.asking}
+              />
+            ) : briefing.state === "ready" ? (
+              <BriefingCard state="ready" briefing={briefing.briefing} />
+            ) : (
+              <BriefingCard state={briefing.state} />
+            )
+          }
           ListEmptyComponent={
             // Centred in the space the list would have filled. `list` already
             // grows to that space, so the wrapper only has to say where in it.

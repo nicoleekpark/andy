@@ -52,6 +52,13 @@ forever — an entire screen lost to a typeface is the worse failure.
 
 The **Briefing card** (pre-meeting digest / post-meeting nudge) is the single place that looks different from everything else — and it survived the day-4 scope cut precisely because it is the app's signature, not despite it: a `brass` left-edge accent stripe, a soft dashed top border (evokes a torn note edge), quiet icon. Every other screen — profile list, search results, settings — stays plain and disciplined. Don't spread this treatment elsewhere or it stops being a signature.
 
+**The quiet icon is deliberately not built.** Day 7 shipped the card with the
+stripe, the torn edge and a `brass` timestamp and stopped there: this project
+has no icon set at all, so adding one is choosing a dependency and a whole
+visual vocabulary, which is a larger decision than the slice that needed it.
+The three elements above carry the signal on their own. Revisit when an icon
+set is chosen for some other reason — not by inventing one here.
+
 ## One Structural Idea
 
 The per-profile **timeline** is genuinely sequential data (notes in time order), so a connected vertical thread between entries is justified — not decoration, actual information. Don't add numbered markers (01/02/03) anywhere else; nothing else in this app is a sequence.
