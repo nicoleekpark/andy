@@ -3,7 +3,7 @@ import { internal } from "./_generated/api";
 import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { removeOrphanedAutoCreated } from "./cleanup";
-import { matchKey, mergeTags, namesOf } from "./naming";
+import { candidatesForSpokenName, matchKey, mergeTags } from "./naming";
 import { nameToFileUnder, possessiveBases } from "./possessive";
 import schema from "./schema";
 import { getAuthenticatedUser } from "./users";
@@ -145,22 +145,22 @@ export const saveCapture = mutation({
     // One scan of the caller's own profiles, reused for the primary and every
     // mention. `by_user` is the only way in, so nothing outside this user's
     // data is ever in scope to be matched against.
-    const owned = await ctx.db
+    // Mutable: a profile created partway through this call — the subject, or
+    // an earlier mention — has to be visible to whatever is resolved next, the
+    // same way it always was for an exact repeat of its own name.
+    const owned: Doc<"profiles">[] = await ctx.db
       .query("profiles")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect();
 
-    // Every match, not the first. A name that two people answer to is not an
-    // answer, and picking whichever row was written first files the note on a
-    // coin toss — the failure this whole path exists to avoid.
-    const byName = new Map<string, Doc<"profiles">[]>();
-    for (const profile of owned) {
-      // Filed under every name they answer to, so "지선 언니" reaches the same
-      // person as "지선" instead of inventing a second one.
-      for (const key of new Set(namesOf(profile).map(matchKey))) {
-        byName.set(key, [...(byName.get(key) ?? []), profile]);
-      }
-    }
+    // Every match, not the first, and every one a spoken name could mean —
+    // exactly, or the way "Maisie" means "Maisie Park". A name two people
+    // answer to is not an answer, and picking whichever row was written first
+    // files the note on a coin toss, which is the failure this path exists to
+    // avoid. See `candidatesForSpokenName` in `naming.ts` for the relation and
+    // why it still keeps 지선 away from 지선희.
+    const byName = (spokenName: string): Doc<"profiles">[] =>
+      candidatesForSpokenName(owned, spokenName);
 
     /**
      * The caller's answer for a name: a profile of theirs that goes by it, or
@@ -187,15 +187,23 @@ export const saveCapture = mutation({
       // reachable through the app — the screen only ever sends back an id
       // `resolveNames` returned — but a guard whose reason is "the screen
       // offered it" has to mean that.
-      const exactKey = matchKey(resolution.name);
-      const offeredFor = [exactKey];
-      if ((byName.get(exactKey) ?? []).length === 0) {
-        offeredFor.push(...possessiveBases(resolution.name).map(matchKey));
-      }
+      const offered = byName(resolution.name);
+      // The possessive fallback only when the name itself reached nobody —
+      // the same condition `profiles.resolveNames` uses to decide whether to
+      // offer one, so the two cannot drift into disagreeing about what a
+      // screen was allowed to send back. They did once; `security-reviewer`
+      // found it.
+      const alsoOffered =
+        offered.length > 0
+          ? []
+          : possessiveBases(resolution.name).flatMap((base) => byName(base));
+      const wasOffered = (profile: Doc<"profiles">) =>
+        offered.some((one) => one._id === profile._id) ||
+        alsoOffered.some((one) => one._id === profile._id);
       if (
         picked === null ||
         picked.userId !== user._id ||
-        !namesOf(picked).some((known) => offeredFor.includes(matchKey(known)))
+        !wasOffered(picked)
       ) {
         // Not "which of these did you mean" but "that is not one of these" —
         // a stale screen, or an id that was never on offer.
@@ -226,7 +234,7 @@ export const saveCapture = mutation({
         return chosen.get(key) ?? null;
       }
 
-      const matches = byName.get(key) ?? [];
+      const matches = byName(name);
       if (matches.length <= 1) {
         return matches[0] ?? null;
       }
@@ -259,6 +267,13 @@ export const saveCapture = mutation({
         autoCreated: false,
       });
       createdProfile = true;
+      // Visible to whatever this note resolves next — a mention naming the
+      // short form of the person just created as the subject, in this same
+      // note, the same reason a mention's own stub is pushed below.
+      const created = await ctx.db.get("profiles", profileId);
+      if (created !== null) {
+        owned.push(created);
+      }
     } else {
       profileId = existing._id;
 
@@ -353,10 +368,12 @@ export const saveCapture = mutation({
       createdMentionCount += 1;
 
       // So a second mention of the same new person in this same note resolves
-      // to the row just created instead of inserting them twice.
+      // to the row just created instead of inserting them twice, and so an
+      // overlapping later mention — "Maisie" after "Maisie Park" — finds them
+      // too.
       const inserted = await ctx.db.get("profiles", stubId);
       if (inserted !== null) {
-        byName.set(key, [...(byName.get(key) ?? []), inserted]);
+        owned.push(inserted);
       }
     }
 

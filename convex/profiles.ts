@@ -3,7 +3,7 @@ import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { removeOrphanedAutoCreated } from "./cleanup";
 import { MAX_NAME_CHARS } from "./extractionPrompt";
-import { cleanAliases, matchKey, mergeTags, namesOf } from "./naming";
+import { candidatesForSpokenName, cleanAliases, matchKey, mergeTags } from "./naming";
 import { possessiveBases } from "./possessive";
 import schema from "./schema";
 import { getAuthenticatedUser } from "./users";
@@ -428,15 +428,14 @@ export const resolveNames = query({
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect();
 
-    const byName = new Map<string, typeof owned>();
-    for (const profile of owned) {
-      // Every name they answer to, matching how `saveCapture` resolves one.
-      // A screen that asked about a different set of names than the mutation
-      // acts on would ask the wrong questions and miss the right ones.
-      for (const key of new Set(namesOf(profile).map(matchKey))) {
-        byName.set(key, [...(byName.get(key) ?? []), profile]);
-      }
-    }
+    // Exact matches and overlap matches both, from one shared function —
+    // matching how `saveCapture` resolves a name, since a screen that asked
+    // about a different set of names than the mutation acts on would ask the
+    // wrong questions and miss the right ones. See `candidatesForSpokenName`
+    // for why "Maisie" now reaches "Maisie H" and "Maisie Park" as well as a
+    // profile literally named "Maisie".
+    const byName = (key: string): typeof owned =>
+      candidatesForSpokenName(owned, key);
 
     // Read once and counted here rather than per candidate: the same trade as
     // `recent`, and revisited by pagination when a person has thousands.
@@ -462,7 +461,7 @@ export const resolveNames = query({
       }
       asked.add(key);
 
-      let matches = byName.get(key) ?? [];
+      let matches = byName(raw);
 
       // Nobody answers to this name — but somebody may answer to the name it
       // is a possessive *of*. "Park's housewarming party" reaches here as
@@ -475,9 +474,14 @@ export const resolveNames = query({
       // only makes there be something to ask about.
       const viaPossessive = matches.length === 0;
       if (viaPossessive) {
-        const bases = new Set<string>();
-        for (const base of possessiveBases(raw)) bases.add(matchKey(base));
-        matches = [...bases].flatMap((base) => byName.get(base) ?? []);
+        const seenIds = new Set<string>();
+        matches = possessiveBases(raw).flatMap((base) =>
+          byName(base).filter((profile) => {
+            if (seenIds.has(profile._id)) return false;
+            seenIds.add(profile._id);
+            return true;
+          }),
+        );
       }
 
       out.push({

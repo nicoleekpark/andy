@@ -1265,6 +1265,53 @@ test("should tidy the names it is given and refuse to store one twice", async ()
 // A possessive that would otherwise invent somebody
 // ---------------------------------------------------------------------------
 
+test("should offer the Nicole a shorter spoken name could mean", async () => {
+  const t = convexTest(schema, modules);
+  const userId = await t.withIdentity(ALICE).mutation(api.users.ensureUser, {});
+  const nicolePark = await t.run(async (ctx) =>
+    ctx.db.insert("profiles", {
+      userId,
+      name: "Nicole Park",
+      entityType: "person" as const,
+      tags: [],
+      autoCreated: false,
+    }),
+  );
+
+  // The developer's own example, standing in for every full name a person is
+  // more often addressed by the first word of.
+  const [asked] = await t
+    .withIdentity(ALICE)
+    .query(api.profiles.resolveNames, { names: ["Nicole"] });
+
+  expect(asked?.candidates.map((c) => c.profileId)).toEqual([nicolePark]);
+});
+
+test("should still fall through to the possessive base when the overlap finds nobody", async () => {
+  const t = convexTest(schema, modules);
+  const userId = await t.withIdentity(ALICE).mutation(api.users.ensureUser, {});
+  const parkHill = await t.run(async (ctx) =>
+    ctx.db.insert("profiles", {
+      userId,
+      name: "Park Hill",
+      entityType: "person" as const,
+      tags: [],
+      autoCreated: false,
+    }),
+  );
+
+  // "Park's" strips to "Park", which overlaps "Park Hill" the same way
+  // "Maisie" overlaps "Maisie Park" — the possessive fallback now reaches
+  // through the same relation as an ordinary spoken name, not only an exact
+  // one.
+  const [asked] = await t
+    .withIdentity(ALICE)
+    .query(api.profiles.resolveNames, { names: ["Park's"] });
+
+  expect(asked?.viaPossessive).toBe(true);
+  expect(asked?.candidates.map((c) => c.profileId)).toEqual([parkHill]);
+});
+
 test("should offer the person a possessive belongs to, rather than nobody", async () => {
   const t = convexTest(schema, modules);
   const userId = await t.withIdentity(ALICE).mutation(api.users.ensureUser, {});
