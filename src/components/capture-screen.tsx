@@ -169,7 +169,12 @@ function NamePicker({
         {question.viaPossessive
           ? "Andy heard a name that might belong to somebody you already keep. Pick them, or keep it as a new person."
           : question.candidates.length > 1
-            ? "You keep more than one. This note goes to whichever you pick."
+            ? // "This note goes to whichever you pick" only made sense while
+              // this copy was subject-only. A mention doesn't decide where
+              // the note is filed — it decides who the name links to — and
+              // this line is shared by both since the mention case stopped
+              // joining silently.
+              "You keep more than one. Whichever you pick is who this name links to."
             : required
               ? // One person answers to this name, which is not the same
                 // as this being them. Somebody kept months ago is easy to
@@ -457,30 +462,30 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
   /**
    * The names that must be settled before this note can be saved.
    *
-   * Three reasons a name lands here, and the third is the one added last:
+   * One rule now, applied the same way to the subject and to every mention:
+   * **anybody already answers to this name, and the subject wasn't declared
+   * by walking to their page — settle it before saving.** Even when exactly
+   * one person answers. That used to be the exception for mentions — a single
+   * match joined silently, subject or not — until the developer pointed out
+   * the asymmetry was wrong the same way the old subject rule was wrong: a
+   * name that only *overlaps* (Maisie / Maisie H / Maisie Park) can match one
+   * profile today and a different one next time, silently, and a mention that
+   * is wrong does not create a harmless extra person — it writes into a real
+   * one's notes.
    *
-   *  - **several people answer to it.** A spoken name is not an answer.
-   *  - **it only reached somebody through a possessive.** "Parks" may be
-   *    Park's, or a person called Parks.
-   *  - **it is the subject, it was not declared, and somebody already answers
-   *    to it.** Even when exactly one person does — which is the case this
-   *    codebase used to treat as settled, and the developer was right that it
-   *    is not. You may not remember you already keep a Prisley; filing a note
-   *    about a *different* Prisley onto the old one does not create a wrong
-   *    person, it corrupts a real one, and nothing afterwards says so.
+   * A possessive-only match ("Parks" reaching "Park") is the same case with
+   * an extra step: the name itself is unresolved, not just which profile it
+   * means, so it settles here too.
+   *
+   * The one exemption left: a declared subject. Recording on somebody's page
+   * already answered "which one" by the act of walking there, and asking
+   * again is how a forced question in front of somebody who knows the answer
+   * gets a wrong tap.
    *
    * Day 4's rule still holds — a form in front of every save is how people
    * stop reading forms — and the exemption above is what keeps it true. The
    * ordinary "add to somebody I know" path is recording from their page, and
    * that path asks nothing.
-   *
-   * **That last sentence is an assumption, not a measurement.** `code-reviewer`
-   * was right to say so: the shortcuts that would make a profile page the fast
-   * way in — the widget, the Siri shortcut — are cut from V1, so capture from
-   * home may be just as common, and then this is a question on most notes.
-   * The thing to watch for is people answering it without reading it. Recorded
-   * here rather than in a report, because this is where somebody would come
-   * looking after deciding it asks too often.
    */
   const mustSettle = useMemo(() => {
     const names = new Set<string>();
@@ -492,29 +497,12 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
       if (subjectDeclared && matchKey(one.name) === matchKey(aboutName ?? "")) {
         continue;
       }
-      if (
-        one.candidates.length > 1 ||
-        (one.viaPossessive && one.candidates.length > 0)
-      ) {
+      if (one.candidates.length > 0) {
         names.add(one.name);
       }
     }
-
-    const subject = draft?.primary.name.trim() ?? "";
-    if (subject !== "" && !subjectDeclared) {
-      const forSubject = resolved.find(
-        (one) => matchKey(one.name) === matchKey(subject),
-      );
-      // Nobody answering to it is not a question: `Fate` already says a new
-      // person is about to be created, and there is nothing to confuse them
-      // with.
-      if (forSubject !== undefined && forSubject.candidates.length > 0) {
-        names.add(forSubject.name);
-      }
-    }
-
     return names;
-  }, [resolved, draft, subjectDeclared, aboutName]);
+  }, [resolved, subjectDeclared, aboutName]);
 
   const ambiguous = useMemo(
     () => resolved.filter((one) => mustSettle.has(one.name)),
