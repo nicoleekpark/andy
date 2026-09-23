@@ -24,6 +24,8 @@ import type * as followUp from "../followUp.js";
 import type * as followUpScope from "../followUpScope.js";
 import type * as naming from "../naming.js";
 import type * as notes from "../notes.js";
+import type * as people from "../people.js";
+import type * as peopleSearch from "../peopleSearch.js";
 import type * as photos from "../photos.js";
 import type * as profiles from "../profiles.js";
 import type * as promptBoundary from "../promptBoundary.js";
@@ -53,6 +55,8 @@ declare const fullApi: ApiFromModules<{
   followUpScope: typeof followUpScope;
   naming: typeof naming;
   notes: typeof notes;
+  people: typeof people;
+  peopleSearch: typeof peopleSearch;
   photos: typeof photos;
   profiles: typeof profiles;
   promptBoundary: typeof promptBoundary;

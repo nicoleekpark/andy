@@ -411,6 +411,40 @@ Rows 19.6–19.8 are the ones that do not need waiting.
 
 ---
 
+## 20. Finding a person by name
+
+Typing a name matches the people you keep **immediately and for free** — it is a
+query over your own rows, not a paid call. The Ask button is still the paid
+half; both live in one box, in cost order, because day 4 decided "one screen,
+not two … two boxes would make the user guess which one to ask".
+
+Measured against the deployment on day 7: the `search_name` full-text index
+this replaces could not answer `oneill` for `O'Neill`, or `선희` for `지선희`.
+
+**No build needed.** Everything here is JavaScript and backend.
+
+| # | Type this | Expect | |
+|---|---|---|---|
+| 20.1 | A name you keep, e.g. `judy` | A **People** section appears as you type. **No Ask press, no spinner, no cost** | ⬜ |
+| 20.2 | Tap a row | Their profile opens | ⬜ |
+| 20.3 | A name only **one** person has | Still a list to tap, not a jump. "There is only one Judy" is itself worth seeing — and this app does not decide who you meant | ⬜ |
+| 20.4 | A name **two** people have | Both, best match first, and equal matches in alphabetical order. Each row shows their relationship and note count so you can tell them apart | ⬜ |
+| 20.5 | `ONEILL`, `oneill`, `o'neill`, `judy o`, `neill` for a `Judy O'Neill` | **All five find her.** Case, spacing and punctuation are ignored | ⬜ |
+| 20.6 | `judy o` when you keep a `Judy Park` too | **Only O'Neill.** More typed is fewer results, not more | ⬜ |
+| 20.7 | `선희` when you keep `지선희` | Found. A script with no spaces has no mid-word prefix for a tokeniser — this is the case that disqualified the index | ⬜ |
+| 20.8 | `지선` when you keep both `지선` and `지선희` | **Both**, 지선 first. Deliberately the opposite of the briefing card, which must never match 지선희 for 지선 — **there the app picks alone; here you are reading a list** | ⬜ |
+| 20.9 | Several Korean names, e.g. `지원` matching 가지원/나지원/하지원 | 가나다 order, not code-point order | ⬜ |
+| 20.10 | A nickname you saved as an **alias** | Found, and the row shows the alias beside the filed name, so you can see why they matched | ⬜ |
+| 20.11 | A name that comes up **inside somebody else's note** | A **Came up in** section under People, with the verbatim quote. Tapping opens that note | ⬜ |
+| 20.12 | A name whose person you **deleted**, that a note still mentions | Still listed under Came up in, with the name the note recorded. Deleting somebody must not erase them from other people's notes | ⬜ |
+| 20.13 | `!!!` or spaces only | **Nothing.** A folded-empty query is a substring of every name | ⬜ |
+| 20.14 | A name nobody has | No People section at all — not an empty box | ⬜ |
+| 20.16 | Search a name that exists **only as a mention** (e.g. 어머니, 민호) | The row says **"only mentioned, in N notes"**, not "0 notes". Andy invents somebody the moment a note says a name, and this is the line that makes a wrongly-invented one visible — "Park's housewarming party" once became a person called "Parks" | ⬜ |
+| 20.17 | Compare that row to somebody you have written about | Theirs says "N notes". The two are different kinds of person and the list has to say which | ⬜ |
+| 20.15 | Type a name, then press **Ask** | Both: the people stay above, the written answer arrives below. The cheap half never waits for the paid one | ⬜ |
+
+---
+
 ## Not built yet — do not file these
 
 **Coming in V1, just not yet.** Business-card photo, the app lock, dark mode.

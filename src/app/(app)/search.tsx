@@ -1,5 +1,5 @@
 import { Stack, router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -9,7 +9,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useAction } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { ConvexError } from "convex/values";
 import { api } from "@convex/_generated/api";
@@ -31,9 +31,26 @@ import { colors, fonts } from "@/constants/theme";
  * who exists solely inside another person's note is reachable at all, and the
  * reason `PROJECT_SCOPE.md` calls cross-profile mention search a Must-have.
  *
+ * **One box, two kinds of answer, in cost order.** Typing a name matches the
+ * people you keep immediately and for free — that is `people.search`, a
+ * reactive query over your own rows. Asking a question in words costs an
+ * embedding and a Claude call, so it stays behind the button. Day 4 decided
+ * "one screen, not two … two boxes would make the user guess which one to
+ * ask", and this is what honouring that looks like once the cheap half exists:
+ * the people appear as you type, above an answer you have to ask for.
+ *
  * No `brass` here. `STYLE.md` reserves the signature colour for the Briefing
  * card and names search results specifically as a screen that stays plain.
  */
+
+/**
+ * How long a pause counts as "stopped typing".
+ *
+ * `useQuery` resubscribes on every argument change, so without this "judy" is
+ * four subscriptions. Short enough that the list feels live, long enough that
+ * a word is one query rather than one per letter.
+ */
+const TYPING_SETTLES_MS = 180;
 
 type Results = FunctionReturnType<typeof api.search.recall>["results"];
 
@@ -41,10 +58,24 @@ export default function SearchScreen() {
   const recall = useAction(api.search.recall);
 
   const [question, setQuestion] = useState("");
+  const [settled, setSettled] = useState("");
   const [results, setResults] = useState<Results | null>(null);
   const [answer, setAnswer] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setSettled(question), TYPING_SETTLES_MS);
+    return () => clearTimeout(timer);
+  }, [question]);
+
+  // `"skip"` rather than an empty query: no subscription at all while the box
+  // is empty, instead of one that asks the backend to confirm nothing matches
+  // nothing.
+  const byName = useQuery(
+    api.people.search,
+    settled.trim() === "" ? "skip" : { query: settled.trim() },
+  );
 
   const ready = question.trim() !== "" && !busy;
   // Whether anything below is actually marked. The answer's source line claims
@@ -118,6 +149,78 @@ export default function SearchScreen() {
         </View>
 
         {error !== null && <Text style={styles.error}>{error}</Text>}
+
+        {/*
+          Above the asked-for answer, always. These cost nothing and are
+          already right; the answer below costs a call and arrives later.
+        */}
+        {byName !== undefined && byName.people.length > 0 ? (
+          <View testID="people-results">
+            <Text style={styles.sectionLabel}>People</Text>
+            {byName.people.map((person) => (
+              <Pressable
+                key={person.profileId}
+                accessibilityRole="button"
+                accessibilityLabel={`Open ${person.name}`}
+                onPress={() => router.push(`/profile/${person.profileId}`)}
+                style={styles.personRow}
+              >
+                <Text style={styles.personName}>{person.name}</Text>
+                <Text style={styles.personMeta}>
+                  {/*
+                    The name that matched, when it is not the one they are
+                    filed under. A row reading "Marcus" after typing "Marc"
+                    explains itself; one that does not makes you wonder why he
+                    is in the list.
+                  */}
+                  {person.matchedName !== person.name
+                    ? `${person.matchedName} · `
+                    : ""}
+                  {person.relationshipContext !== undefined
+                    ? `${person.relationshipContext} · `
+                    : ""}
+                  {/*
+                    A person with no notes of their own is a different thing
+                    from a person with none *yet*, and the row has to say
+                    which. Andy invents somebody the moment a note says their
+                    name, so this is also where a mistake shows — "Park's
+                    housewarming" heard as a person called "Parks" looked
+                    exactly like a real person until this line existed.
+                  */}
+                  {person.noteCount > 0
+                    ? person.noteCount === 1
+                      ? "1 note"
+                      : `${person.noteCount} notes`
+                    : person.mentionCount > 0
+                      ? person.mentionCount === 1
+                        ? "only mentioned, in 1 note"
+                        : `only mentioned, in ${person.mentionCount} notes`
+                      : "nothing written down yet"}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+
+        {byName !== undefined && byName.mentions.length > 0 ? (
+          <View testID="mention-results">
+            <Text style={styles.sectionLabel}>Came up in</Text>
+            {byName.mentions.map((mention) => (
+              <Pressable
+                key={`${mention.noteId}-${mention.name}`}
+                accessibilityRole="button"
+                accessibilityLabel={`Open the note about ${mention.aboutName}`}
+                onPress={() => router.push(`/note/${mention.noteId}`)}
+                style={styles.personRow}
+              >
+                <Text style={styles.personName}>{mention.aboutName}</Text>
+                <Text style={styles.personMeta}>
+                  &ldquo;{mention.quote}&rdquo;
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
 
         {busy ? (
           <View style={styles.centred}>
@@ -276,6 +379,29 @@ function ResultCard({ result }: { result: Results[number] }) {
 }
 
 const styles = StyleSheet.create({
+  sectionLabel: {
+    color: colors.ink,
+    fontFamily: fonts.display,
+    fontSize: 12,
+    opacity: 0.55,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    marginTop: 18,
+    marginBottom: 4,
+    marginHorizontal: 24,
+  },
+  personRow: {
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    gap: 2,
+  },
+  personName: { color: colors.moss, fontSize: 16 },
+  personMeta: {
+    color: colors.ink,
+    fontFamily: fonts.utility,
+    fontSize: 12,
+    opacity: 0.55,
+  },
   container: { flex: 1, backgroundColor: colors.paper, padding: 24, gap: 16 },
 
   askRow: { flexDirection: "row", gap: 10, alignItems: "center" },
