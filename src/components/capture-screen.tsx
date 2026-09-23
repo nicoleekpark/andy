@@ -111,6 +111,159 @@ function describe(candidate: {
  * people answer to the name — that is a question, and it gets a picker rather
  * than a statement.
  */
+/**
+ * The picker for one name: who this note goes to, or somebody new.
+ *
+ * Rendered directly beneath the name it is about. It used to live in one
+ * block above `Save note`, which meant "Different person?" opened something
+ * off the bottom of a long form — pressing it looked like pressing nothing,
+ * and the possessive question, which *must* be answered before saving, was
+ * hidden in the same place with the save button greyed out and no visible
+ * reason. A question about a name belongs beside the name.
+ */
+function NamePicker({
+  question,
+  answered,
+  onPick,
+}: {
+  question: {
+    name: string;
+    viaPossessive: boolean;
+    candidates: {
+      profileId: string;
+      name: string;
+      relationshipContext?: string;
+      entityType: "person" | "animal";
+      noteCount: number;
+      lastNoteAt: number | null;
+    }[];
+  };
+  answered: string | null | undefined;
+  onPick: (name: string, profileId: string | null) => void;
+}) {
+  const mustAnswer =
+    question.candidates.length > 1 ||
+    (question.viaPossessive && question.candidates.length > 0);
+  return (
+        <Field
+            label={
+            question.viaPossessive
+              ? `Is “${question.name}” one of these?`
+              : `Which ${question.name}?`
+          }
+        >
+          <Text style={styles.quiet}>
+            {/*
+              Three different things to say, because they are three
+              different situations. The possessive one is the only one
+              where the *name itself* is in doubt — "Parks" may be
+              Park's, or it may be a person called Parks, and only the
+              speaker knows which.
+            */}
+            {question.viaPossessive
+              ? "Andy heard a name that might belong to somebody you already keep. Pick them, or keep it as a new person."
+              : mustAnswer
+                ? "You keep more than one. This note goes to whichever you pick."
+                : "This note goes to whoever you pick — or to somebody new."}
+          </Text>
+          {question.candidates.map((candidate) => {
+            const picked = answered === candidate.profileId;
+            return (
+              <Pressable
+                key={candidate.profileId}
+                accessibilityRole="button"
+                accessibilityLabel={`${candidate.name}, ${describe(candidate)}`}
+                accessibilityState={{ selected: picked }}
+                onPress={() => onPick(question.name, candidate.profileId)}
+                style={[styles.candidate, picked && styles.candidateOn]}
+              >
+                <View style={styles.candidateHead}>
+                  <Text
+                    style={[
+                      styles.candidateName,
+                      picked && styles.candidateNameOn,
+                    ]}
+                  >
+                    {candidate.name}
+                  </Text>
+                  {/*
+                    A separate target from the card, on purpose. One line
+                    of summary is not enough to tell two people of the
+                    same name apart — what settles it is what is written
+                    on each — but a card that opened a profile when tapped
+                    would make choosing require a trip you did not want,
+                    and a card that chose when you meant to look would be
+                    worse. Selecting stays one tap; looking is its own.
+
+                    The draft survives the trip: this screen stays mounted
+                    beneath the profile, so coming back finds every edit,
+                    the transcript and any other answer as they were.
+                  */}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`View ${candidate.name}, ${describe(candidate)}`}
+                    onPress={() => router.push(`/profile/${candidate.profileId}`)}
+                    hitSlop={12}
+                  >
+                    <Text
+                      style={[
+                        styles.candidateView,
+                        picked && styles.candidateNameOn,
+                      ]}
+                    >
+                      View
+                    </Text>
+                  </Pressable>
+                </View>
+                {/* Identical names are not a choice. What separates them
+                    is how you know them and what is already recorded. */}
+                <Text
+                  style={[
+                    styles.candidateMeta,
+                    picked && styles.candidateNameOn,
+                  ]}
+                >
+                  {describe(candidate)}
+                </Text>
+              </Pressable>
+            );
+          })}
+          {/*
+            The escape. Without it the picker can only ever file a note on
+            somebody already kept, and the case it exists for — this is a
+            different person with the same name — has no answer.
+          */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`New person called ${question.name}`}
+            accessibilityState={{ selected: answered === null }}
+            onPress={() => onPick(question.name, null)}
+            style={[
+              styles.candidate,
+              answered === null && styles.candidateOn,
+            ]}
+          >
+            <Text
+              style={[
+                styles.candidateName,
+                answered === null && styles.candidateNameOn,
+              ]}
+            >
+              Someone new
+            </Text>
+            <Text
+              style={[
+                styles.candidateMeta,
+                answered === null && styles.candidateNameOn,
+              ]}
+            >
+              A different {question.name}, kept separately
+            </Text>
+          </Pressable>
+        </Field>
+  );
+}
+
 function Fate({
   candidates,
   onDisagree,
@@ -224,6 +377,11 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
    */
   const [expanded, setExpanded] = useState<string[]>([]);
 
+  /** Record an answer for one name. */
+  const pick = useCallback((name: string, profileId: string | null) => {
+    setResolutions((current) => ({ ...current, [name]: profileId }));
+  }, []);
+
   /** Open the picker for a name, if it is not already open. */
   const openPicker = useCallback((name: string) => {
     const trimmed = name.trim();
@@ -334,6 +492,36 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
       ),
     [resolved, expanded],
   );
+
+  /**
+   * The open question for a name, if there is one.
+   *
+   * Looked up per name so the picker can be rendered beside the field it is
+   * about rather than collected into one block at the bottom of the form.
+   */
+  const questionFor = useCallback(
+    (name: string) => asking.find((one) => one.name === name.trim()),
+    [asking],
+  );
+
+  /**
+   * Questions with no field to sit beside.
+   *
+   * Should always be empty: every name asked about comes from the draft, and
+   * every name in the draft has a field. "Should" is what this codebase
+   * distrusts — and the cost of being wrong is specific and bad. A question
+   * that must be answered, rendered nowhere, is a save button that is greyed
+   * out for no reason the screen gives. So anything left over is shown above
+   * `Save note`, where the block used to live for everything.
+   */
+  const orphaned = useMemo(() => {
+    const onScreen = new Set(
+      [draft?.primary.name ?? "", ...(draft?.mentions ?? []).map((m) => m.name)]
+        .map((name) => name.trim())
+        .filter((name) => name !== ""),
+    );
+    return asking.filter((one) => !onScreen.has(one.name));
+  }, [asking, draft]);
 
   /**
    * Every question that *must* be answered has been.
@@ -920,6 +1108,16 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
                   : () => openPicker(draft.primary.name)
               }
             />
+            {(() => {
+              const question = questionFor(draft.primary.name);
+              return question === undefined ? null : (
+                <NamePicker
+                  question={question}
+                  answered={resolutions[question.name]}
+                  onPick={pick}
+                />
+              );
+            })()}
           </Field>
 
           <Field label="Who or what">
@@ -1171,14 +1369,26 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
                     line about a row that is never written.
                   */}
                   {matchKey(mention.name) === matchKey(draft.primary.name) ? null : (
-                    <Fate
-                      candidates={fateOf(mention.name)}
-                      onDisagree={
-                        expanded.includes(mention.name.trim())
-                          ? undefined
-                          : () => openPicker(mention.name)
-                      }
-                    />
+                    <>
+                      <Fate
+                        candidates={fateOf(mention.name)}
+                        onDisagree={
+                          expanded.includes(mention.name.trim())
+                            ? undefined
+                            : () => openPicker(mention.name)
+                        }
+                      />
+                      {(() => {
+                        const question = questionFor(mention.name);
+                        return question === undefined ? null : (
+                          <NamePicker
+                            question={question}
+                            answered={resolutions[question.name]}
+                            onPick={pick}
+                          />
+                        );
+                      })()}
+                    </>
                   )}
                 </View>
               ))}
@@ -1230,150 +1440,14 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
             </Pressable>
           </Field>
 
-          {/*
-            The questions about who a name means, above the save button.
-
-            A name several people answer to is always here — it has to be
-            settled. A name exactly one person answers to is here only once the
-            user tapped "Different person?" beside it, because the common case
-            is that it is the right person and a picker in front of every note
-            would be a form to fill in rather than a note to save.
-          */}
-          {asking.map((question) => {
-            const answered = resolutions[question.name];
-            const mustAnswer =
-              question.candidates.length > 1 ||
-              (question.viaPossessive && question.candidates.length > 0);
-            return (
-              <Field
-                key={question.name}
-                label={
-                  question.viaPossessive
-                    ? `Is “${question.name}” one of these?`
-                    : `Which ${question.name}?`
-                }
-              >
-                <Text style={styles.quiet}>
-                  {/*
-                    Three different things to say, because they are three
-                    different situations. The possessive one is the only one
-                    where the *name itself* is in doubt — "Parks" may be
-                    Park's, or it may be a person called Parks, and only the
-                    speaker knows which.
-                  */}
-                  {question.viaPossessive
-                    ? "Andy heard a name that might belong to somebody you already keep. Pick them, or keep it as a new person."
-                    : mustAnswer
-                      ? "You keep more than one. This note goes to whichever you pick."
-                      : "This note goes to whoever you pick — or to somebody new."}
-                </Text>
-                {question.candidates.map((candidate) => {
-                  const picked = answered === candidate.profileId;
-                  return (
-                    <Pressable
-                      key={candidate.profileId}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${candidate.name}, ${describe(candidate)}`}
-                      accessibilityState={{ selected: picked }}
-                      onPress={() =>
-                        setResolutions((current) => ({
-                          ...current,
-                          [question.name]: candidate.profileId,
-                        }))
-                      }
-                      style={[styles.candidate, picked && styles.candidateOn]}
-                    >
-                      <View style={styles.candidateHead}>
-                        <Text
-                          style={[
-                            styles.candidateName,
-                            picked && styles.candidateNameOn,
-                          ]}
-                        >
-                          {candidate.name}
-                        </Text>
-                        {/*
-                          A separate target from the card, on purpose. One line
-                          of summary is not enough to tell two people of the
-                          same name apart — what settles it is what is written
-                          on each — but a card that opened a profile when tapped
-                          would make choosing require a trip you did not want,
-                          and a card that chose when you meant to look would be
-                          worse. Selecting stays one tap; looking is its own.
-
-                          The draft survives the trip: this screen stays mounted
-                          beneath the profile, so coming back finds every edit,
-                          the transcript and any other answer as they were.
-                        */}
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityLabel={`View ${candidate.name}, ${describe(candidate)}`}
-                          onPress={() => router.push(`/profile/${candidate.profileId}`)}
-                          hitSlop={12}
-                        >
-                          <Text
-                            style={[
-                              styles.candidateView,
-                              picked && styles.candidateNameOn,
-                            ]}
-                          >
-                            View
-                          </Text>
-                        </Pressable>
-                      </View>
-                      {/* Identical names are not a choice. What separates them
-                          is how you know them and what is already recorded. */}
-                      <Text
-                        style={[
-                          styles.candidateMeta,
-                          picked && styles.candidateNameOn,
-                        ]}
-                      >
-                        {describe(candidate)}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-                {/*
-                  The escape. Without it the picker can only ever file a note on
-                  somebody already kept, and the case it exists for — this is a
-                  different person with the same name — has no answer.
-                */}
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`New person called ${question.name}`}
-                  accessibilityState={{ selected: answered === null }}
-                  onPress={() =>
-                    setResolutions((current) => ({
-                      ...current,
-                      [question.name]: null,
-                    }))
-                  }
-                  style={[
-                    styles.candidate,
-                    answered === null && styles.candidateOn,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.candidateName,
-                      answered === null && styles.candidateNameOn,
-                    ]}
-                  >
-                    Someone new
-                  </Text>
-                  <Text
-                    style={[
-                      styles.candidateMeta,
-                      answered === null && styles.candidateNameOn,
-                    ]}
-                  >
-                    A different {question.name}, kept separately
-                  </Text>
-                </Pressable>
-              </Field>
-            );
-          })}
+          {orphaned.map((question) => (
+            <NamePicker
+              key={question.name}
+              question={question}
+              answered={resolutions[question.name]}
+              onPick={pick}
+            />
+          ))}
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -1620,7 +1694,9 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <View style={styles.field}>
+    // Identified by its label so a test can assert *where* something renders,
+    // not only that it rendered. The picker's whole fix was position.
+    <View testID={`field-${label}`} style={styles.field}>
       <Text style={styles.fieldLabel}>{label}</Text>
       {children}
     </View>

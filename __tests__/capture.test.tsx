@@ -1,4 +1,10 @@
-import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react-native";
 import { Alert } from "react-native";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { getFunctionName } from "convex/server";
@@ -138,7 +144,10 @@ function makeCardDraft(): { draft: Draft; cardText: string } {
   };
 }
 
-function makeDraft(overrides: Partial<Draft["primary"]> = {}): Draft {
+function makeDraft(
+  overrides: Partial<Draft["primary"]> = {},
+  mentions?: Draft["mentions"],
+): Draft {
   return {
     primary: {
       name: "Nina",
@@ -149,7 +158,7 @@ function makeDraft(overrides: Partial<Draft["primary"]> = {}): Draft {
       keyFacts: ["brandon house design specialist"],
       ...overrides,
     },
-    mentions: [
+    mentions: mentions ?? [
       {
         name: "Marcus",
         entityType: "person",
@@ -480,9 +489,109 @@ describe("capture screen review step", () => {
     expect(result.getPathname()).toBe("/");
   });
 
+  test("should open the picker beside the name it is about, not at the bottom of the form", async () => {
+    (useAction as jest.Mock).mockReturnValue(
+      jest.fn(async () => makeDraft({ name: "Nina" })),
+    );
+    mockSaveCapture(jest.fn(async () => ({
+      profileId: "profile-1",
+      noteId: "note-1",
+      createdProfile: false,
+      createdMentionCount: 1,
+    })));
+    scopeTo("Nina", [
+      {
+        name: "Nina",
+        viaPossessive: false,
+        candidates: [
+          {
+            profileId: "profile-1",
+            name: "Nina",
+            relationshipContext: "client",
+            entityType: "person",
+            noteCount: 3,
+            lastNoteAt: new Date("2026-08-30T12:00:00").getTime(),
+          },
+        ],
+      },
+    ]);
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+    await reachReview(handlers, "Met Nina today.");
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Not this Nina?"));
+    });
+
+    // The picker used to render in one block above `Save note`, so pressing
+    // "Different person?" opened something off the bottom of a long form —
+    // indistinguishable from pressing nothing. Position is the fix, so
+    // position is what this asserts: the choices sit inside the same Name
+    // field as the input, before "Who or what" begins.
+    const nameField = within(screen.getByTestId("field-Name"));
+    expect(nameField.getByLabelText("New person called Nina")).toBeTruthy();
+    expect(nameField.getByText("Which Nina?")).toBeTruthy();
+  });
+
+  test("should still show a question that has no field to sit beside", async () => {
+    (useAction as jest.Mock).mockReturnValue(
+      jest.fn(async () => makeDraft({ name: "Nina" })),
+    );
+    mockSaveCapture(jest.fn(async () => ({
+      profileId: "profile-1",
+      noteId: "note-1",
+      createdProfile: false,
+      createdMentionCount: 1,
+    })));
+    // A question about a name the draft does not contain. It should not
+    // happen — every name asked about comes from the draft — and the cost of
+    // being wrong is a save button greyed out for no reason the screen gives,
+    // because a must-answer question rendered nowhere still blocks saving.
+    scopeTo("Nina", [
+      {
+        name: "Ghost",
+        viaPossessive: false,
+        candidates: [
+          {
+            profileId: "profile-2",
+            name: "Ghost",
+            entityType: "person",
+            noteCount: 1,
+            lastNoteAt: null,
+          },
+          {
+            profileId: "profile-3",
+            name: "Ghost",
+            entityType: "person",
+            noteCount: 2,
+            lastNoteAt: null,
+          },
+        ],
+      },
+    ]);
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+    await reachReview(handlers, "Met Nina today.");
+
+    // Shown where the whole block used to live, above Save.
+    await waitFor(() => expect(screen.getByText("Which Ghost?")).toBeTruthy());
+  });
+
   test("should ask before inventing somebody whose name is a possessive of one you keep", async () => {
     (useAction as jest.Mock).mockReturnValue(
-      jest.fn(async () => makeDraft({ name: "Tom" })),
+      jest.fn(async () =>
+        makeDraft({ name: "Tom" }, [
+          {
+            name: "Parks",
+            entityType: "person",
+            quote: "at parks housewarming party",
+          },
+        ]),
+      ),
     );
     mockSaveCapture(jest.fn(async () => ({
       profileId: "profile-1",

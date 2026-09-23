@@ -147,6 +147,10 @@ live here rather than in §7 because that is the screen they happen on.
 | 7a.13 | Reach 7a.10 and press `Save note` without answering | **Blocked** until answered. The name itself is in doubt, so it is not a question you can ignore | ⬜ |
 | 7a.14 | Record a note naming **Marcus** while keeping nobody called Marcu | No question — a proposed base nobody answers to costs nothing and is never shown | ⬜ |
 | 7a.15 | After 7a.10, check `npm run db` → `profiles` | **No new "Parks" row** if you picked Park. This is the whole point: a second person one letter from a real one used to appear with nothing said | ⬜ |
+| 7a.16 | With a name showing "Adding to …", tap **`Different person?`** | The choices open **right under that name**, without scrolling. They used to open in one block above `Save note`, so pressing this looked like pressing nothing | ⬜ |
+| 7a.17 | In those choices, tap `View` on a candidate | Their profile opens. **Coming back finds the draft exactly as it was** — every edit, the transcript, any other answer | ⬜ |
+| 7a.18 | Tap the candidate card itself (not `View`) | It is selected, and the line above stops saying "Adding to …". Choosing is one tap; looking is its own | ⬜ |
+| 7a.19 | Choose `Someone new` and save | A **second** person by that name. Two people may share a name, and this is how you say so | ⬜ |
 
 ## 8. Typing instead of speaking
 
