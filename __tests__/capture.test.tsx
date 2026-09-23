@@ -1309,12 +1309,17 @@ describe("capture screen review step", () => {
     await result;
     await reachReview(handlers, "Met Emma at Marco's housewarming.");
 
-    // Both lines, and they say different things: the subject is somebody the
-    // user keeps, the mention is not.
+    // Two different things happen to two different names. Emma has one
+    // candidate, so saving requires confirming her — a required `NamePicker`,
+    // not a silent line, per this slice's rule that a single candidate is
+    // never settled on its own. Marco has none, so there is nothing to
+    // confirm: a line saying he'll be invented, and saving needs no answer
+    // for him.
     expect(
       screen.getByLabelText("Emma, friend · 3 notes · last 2026-08-30"),
     ).toBeTruthy();
     expect(screen.getByText("New person — nobody by this name yet.")).toBeTruthy();
+    expect(screen.getByLabelText("Save note")).toBeDisabled();
   });
 
   test("should say nothing about a mention that repeats the subject", async () => {
@@ -1410,7 +1415,7 @@ describe("capture screen review step", () => {
     ]);
   });
 
-  test("should keep a mention's single match when the picker is opened and left alone", async () => {
+  test("should require confirming a mention's single match too, not only the subject's", async () => {
     (useAction as jest.Mock).mockReturnValue(
       jest.fn(async () => makeDraft({ name: "Priya" })),
     );
@@ -1428,11 +1433,11 @@ describe("capture screen review step", () => {
       }),
     );
     mockSaveCapture(saveCapture);
-    // Priya is the subject and is answered by the question below. Marcus is a
-    // mention, and mentions keep the older treatment: a line saying what
-    // saving does, with an escape hatch. A misheard mention invents somebody
-    // who stays off the home list and goes when the note does; a misheard
-    // subject writes into a real person's record.
+    // Priya is the subject; Marcus is a mention. Both have exactly one match,
+    // and both are now required — a single overlap match can quietly be the
+    // wrong person (Maisie / Maisie H / Maisie Park), and a mention filed
+    // against the wrong real profile is not a cheaper mistake than the
+    // subject being wrong, it is the same mistake in a different field.
     scopeTo("Priya", [
       {
         name: "Priya",
@@ -1469,18 +1474,25 @@ describe("capture screen review step", () => {
     await result;
     await reachReview(handlers, "Met Priya at the conference.");
 
-    await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Not this Marcus?" }));
-    });
+    await waitFor(() => expect(screen.getByText("This Priya?")).toBeTruthy());
+    expect(screen.getByText("This Marcus?")).toBeTruthy();
+    expect(screen.getByLabelText("Save note")).toBeDisabled();
+
     await act(async () => {
       fireEvent.press(
         screen.getByRole("button", { name: "Priya, client · 3 notes · last 2026-09-01" }),
       );
     });
+    // Priya answered, Marcus not yet — still refused.
+    expect(screen.getByLabelText("Save note")).toBeDisabled();
 
-    // Opening the mention's picker out of curiosity must not become an
-    // obligation: the line already said what saving does, and looking does not
-    // unsay it. Only the subject is required.
+    await act(async () => {
+      fireEvent.press(
+        screen.getByRole("button", {
+          name: "Marcus, climbing gym · 2 notes · last 2026-09-02",
+        }),
+      );
+    });
     expect(screen.getByLabelText("Save note")).not.toBeDisabled();
 
     await act(async () => {
@@ -1489,6 +1501,7 @@ describe("capture screen review step", () => {
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
     expect(saveCapture.mock.calls[0]?.[0].resolutions).toEqual([
       { name: "Priya", profileId: "profile-1" },
+      { name: "Marcus", profileId: "profile-marcus" },
     ]);
   });
 
@@ -1603,12 +1616,12 @@ describe("capture screen review step", () => {
     await result;
     await reachReview(handlers, "Met Emma at Marcus's housewarming.");
 
-    // The mention gets the same escape as the subject. A note can name a
-    // different Marcus than the one already kept, and joining them silently is
-    // the same mistake wherever it happens.
-    await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Not this Marcus?" }));
-    });
+    // The mention gets the same question as the subject, and the same escape
+    // out of it. A note can name a different Marcus than the one already
+    // kept, and joining them silently is the same mistake wherever it
+    // happens — so the picker is already open, not something to go find.
+    await waitFor(() => expect(screen.getByText("This Marcus?")).toBeTruthy());
+    expect(screen.getByLabelText("Save note")).toBeDisabled();
     await act(async () => {
       fireEvent.press(
         screen.getByRole("button", { name: "New person called Marcus" }),
