@@ -172,7 +172,39 @@ test("should refuse to pick between two people who answer to the same name", asy
   // one. A briefing about the wrong Judy reads as the app knowing something it
   // does not.
   expect(matched?.people).toEqual([]);
-  expect(matched?.ambiguous).toEqual([{ matchedAs: "judy", count: 2 }]);
+  // The spelling they are filed under, not the folded key `matchKey` compares
+  // by. `CLAUDE.md`: names are matched case-insensitively and always *stored*
+  // as the user wrote them — the first version put "judy" on the card for
+  // somebody filed as "Judy".
+  expect(matched?.ambiguous).toEqual([{ name: "Judy", count: 2 }]);
+});
+
+test("should report the name as it is filed, whatever the calendar shouted", async () => {
+  const t = convexTest(schema, modules);
+  const { userId } = await seed(t);
+  await t.run(async (ctx) => {
+    for (const relationshipContext of ["From the gym", "From work"]) {
+      await ctx.db.insert("profiles", {
+        userId,
+        name: "Judy",
+        entityType: "person" as const,
+        relationshipContext,
+        tags: [],
+        autoCreated: false,
+      });
+    }
+  });
+
+  const [matched] = await t
+    .withIdentity(ALICE)
+    .query(api.calendar.matchEvents, {
+      events: [event({ title: "LUNCH WITH JUDY" })],
+    });
+
+  // Neither the calendar's shouting nor the comparison key. Calendars are full
+  // of titles in capitals, and a card reading "you keep 2 people called JUDY"
+  // is the calendar's voice, not the app's.
+  expect(matched?.ambiguous).toEqual([{ name: "Judy", count: 2 }]);
 });
 
 test("should find nobody in a meeting that is not about a person", async () => {

@@ -247,12 +247,17 @@ test("should say it cannot tell which person rather than pick one", async () => 
       startsAt: AT,
       endsAt: AT,
       people: [],
-      ambiguous: [{ matchedAs: "judy", count: 2 }],
+      ambiguous: [{ name: "Judy", count: 2 }],
     },
   ]);
   await render(<Harness />);
 
-  await waitFor(() => expect(screen.getByText(/can.t tell which one/)).toBeTruthy());
+  await waitFor(() =>
+    expect(screen.getByText(/can.t tell which one/)).toBeTruthy(),
+  );
+  // Filed as "Judy", so the card says Judy — not the lowercase key the
+  // matching compares by.
+  expect(screen.getByText(/“Judy”/)).toBeTruthy();
 });
 
 test("should skip the meetings that are about nobody and show the one that is not", async () => {
