@@ -1421,6 +1421,81 @@ test("should still invent the person when the possessive is said to be somebody 
   expect(people.map((p) => p.name).sort()).toEqual(["Park", "Parks", "Tom"]);
 });
 
+test("should file a mentioned possessive under the name, not the grammar", async () => {
+  const t = convexTest(schema, modules);
+  const userId = await ensureUser(t, ALICE);
+
+  // "Priya and I went to MET to see Prisley's show". Nobody called Prisley is
+  // kept, so the possessive question never fires — there is nothing to ask —
+  // and a person called "Prisley's" used to be created instead.
+  await t.withIdentity(ALICE).mutation(api.notes.saveCapture, {
+    transcript: "Priya and I went to MET to see Prisley's show.",
+    draft: buildDraft({
+      primaryName: "Priya",
+      mentions: [{ name: "Prisley's", quote: "Prisley's show" }],
+    }),
+    source: "voice",
+  });
+
+  const people = await t.run(async (ctx) =>
+    ctx.db
+      .query("profiles")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect(),
+  );
+  expect(people.map((p) => p.name).sort()).toEqual(["Prisley", "Priya"]);
+
+  // And the link records the filed name too, so a deleted profile leaves the
+  // note reading the way the rest of the app read it.
+  const links = await t.run(async (ctx) =>
+    ctx.db
+      .query("noteMentions")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect(),
+  );
+  expect(links[0]?.name).toBe("Prisley");
+});
+
+test("should file a possessive subject under the name too", async () => {
+  const t = convexTest(schema, modules);
+  const userId = await ensureUser(t, ALICE);
+
+  await t.withIdentity(ALICE).mutation(api.notes.saveCapture, {
+    transcript: "Judy's dog is called Biscuit.",
+    draft: buildDraft({ primaryName: "Judy's", mentions: [] }),
+    source: "voice",
+  });
+
+  const people = await t.run(async (ctx) =>
+    ctx.db
+      .query("profiles")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect(),
+  );
+  expect(people.map((p) => p.name)).toEqual(["Judy"]);
+});
+
+test("should still file a bare trailing s exactly as it was said", async () => {
+  const t = convexTest(schema, modules);
+  const userId = await ensureUser(t, ALICE);
+
+  await t.withIdentity(ALICE).mutation(api.notes.saveCapture, {
+    transcript: "Met Parks today.",
+    draft: buildDraft({ primaryName: "Parks", mentions: [] }),
+    source: "voice",
+  });
+
+  // Parks is a surname and only the speaker knows. That case gets the
+  // question; stripping it here would be answering it for them.
+  const people = await t.run(async (ctx) =>
+    ctx.db
+      .query("profiles")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect(),
+  );
+  expect(people.map((p) => p.name)).toEqual(["Parks"]);
+});
+
 test("should refuse the possessive base when somebody answers to the name itself", async () => {
   const t = convexTest(schema, modules);
   const userId = await ensureUser(t, ALICE);

@@ -64,3 +64,38 @@ export function possessiveBases(name: string): string[] {
 
   return bases;
 }
+
+/**
+ * The name to file somebody under when a possessive is all we were given.
+ *
+ * `Parks` might be a person — Parks is a surname, and only the speaker knows.
+ * `Prisley's` is not: an apostrophe-possessive is grammar, never a name, and
+ * nobody has ever been filed under one on purpose. So the written form is
+ * stripped and the bare-`s` form is left exactly as it is.
+ *
+ * This is the half the possessive *question* cannot cover. That question only
+ * appears when the base matches somebody already kept — "is Parks your Park?"
+ * — and "Priya and I went to MET to see Prisley's show" names nobody the user
+ * keeps, so there is nothing to ask and a person called `Prisley's` was
+ * created instead. Asking "is Prisley's somebody new?" would be a question
+ * with one answer.
+ */
+export function nameToFileUnder(name: string): string {
+  const trimmed = name.trim();
+
+  // `Prisley's` is Prisley. `Jones'` is Jones, not Jone — a plural possessive
+  // keeps its s, and taking two characters off both is how "Jones" became
+  // "Jone" the first time this was written.
+  for (const [suffix, cut] of [
+    ["'s", 2],
+    ["\u2019s", 2],
+    ["'", 1],
+    ["\u2019", 1],
+  ] as const) {
+    if (!trimmed.endsWith(suffix)) continue;
+    const base = trimmed.slice(0, trimmed.length - cut).trim();
+    if (base.length >= 2) return base;
+  }
+
+  return trimmed;
+}

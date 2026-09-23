@@ -4,7 +4,7 @@ import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { removeOrphanedAutoCreated } from "./cleanup";
 import { matchKey, mergeTags, namesOf } from "./naming";
-import { possessiveBases } from "./possessive";
+import { nameToFileUnder, possessiveBases } from "./possessive";
 import schema from "./schema";
 import { getAuthenticatedUser } from "./users";
 import {
@@ -244,7 +244,11 @@ export const saveCapture = mutation({
     if (existing === null) {
       profileId = await ctx.db.insert("profiles", {
         userId: user._id,
-        name: primaryName,
+        // Filed under the name, not the grammar. `nameToFileUnder` only ever
+        // changes a written possessive — "Prisley's" is Prisley — because an
+        // apostrophe-possessive is never somebody's name. A bare trailing s is
+        // left alone: Parks is a surname, and that case gets a question.
+        name: nameToFileUnder(primaryName),
         entityType: primary.entityType,
         // `null` is extraction's "the note didn't say"; the table spells that
         // as an absent field. Converting here keeps the two conventions from
@@ -334,14 +338,18 @@ export const saveCapture = mutation({
       // speaker knows this person was never shown on the review screen, so
       // storing it would put an unconfirmed claim on their profile — and the
       // link's quote already records how they came up, in the note's own words.
+      // The same rule as the subject above. This is the commoner half of it:
+      // "see Prisley's show" reaches here as a mention, and a person called
+      // "Prisley's" is how it used to be stored.
+      const filedAs = nameToFileUnder(name);
       const stubId = await ctx.db.insert("profiles", {
         userId: user._id,
-        name,
+        name: filedAs,
         entityType: mention.entityType,
         tags: [],
         autoCreated: true,
       });
-      links.push({ profileId: stubId, name, quote });
+      links.push({ profileId: stubId, name: filedAs, quote });
       createdMentionCount += 1;
 
       // So a second mention of the same new person in this same note resolves

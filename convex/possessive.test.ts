@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { possessiveBases } from "./possessive";
+import { nameToFileUnder, possessiveBases } from "./possessive";
 
 test("should find the name inside an English possessive", () => {
   // The real failure: the recogniser dropped the apostrophe and extraction
@@ -41,4 +41,36 @@ test("should ignore case when spotting the suffix", () => {
   // And keeps the spelling it was given — the base is looked up by `matchKey`
   // later, and what is shown to a person should be what they said.
   expect(possessiveBases("PARKS")[0]).toBe("PARK");
+});
+
+// ---------------------------------------------------------------------------
+// The name a new person is actually filed under
+// ---------------------------------------------------------------------------
+
+test("should never file somebody under a written possessive", () => {
+  // "Priya and I went to MET to see Prisley's show" names nobody the user
+  // keeps, so the possessive *question* never fires — and a person called
+  // "Prisley's" was created instead. An apostrophe-possessive is grammar.
+  expect(nameToFileUnder("Prisley's")).toBe("Prisley");
+  expect(nameToFileUnder("Prisley’s")).toBe("Prisley");
+  expect(nameToFileUnder("Judy's")).toBe("Judy");
+  expect(nameToFileUnder("Jones'")).toBe("Jones");
+});
+
+test("should leave a bare trailing s alone", () => {
+  // Parks is a surname and only the speaker knows whether this is one. That
+  // case gets the question instead; stripping it here would answer it.
+  expect(nameToFileUnder("Parks")).toBe("Parks");
+  expect(nameToFileUnder("Marcus")).toBe("Marcus");
+});
+
+test("should leave an ordinary name alone", () => {
+  expect(nameToFileUnder("Priya")).toBe("Priya");
+  expect(nameToFileUnder("지선")).toBe("지선");
+  expect(nameToFileUnder("  Judy  ")).toBe("Judy");
+});
+
+test("should not reduce a name to nothing", () => {
+  expect(nameToFileUnder("A's")).toBe("A's");
+  expect(nameToFileUnder("'s")).toBe("'s");
 });
