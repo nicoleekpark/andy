@@ -382,11 +382,40 @@ your actual messy real calendar, not synthetic data".
 
 ---
 
+## 19. Briefing alert and nudge
+
+Local notifications, scheduled on the phone from the same matched answer §18's
+card is drawn from — so what the phone says and what the screen says cannot
+disagree. **Nothing here has been done on a device.**
+
+**Needs a build.** `expo-notifications` is a native module.
+
+**The hard part of testing this is waiting.** A briefing fires 20 minutes before
+a meeting and a nudge 15 minutes after it ends, so the quickest honest test is
+to put an event in the calendar starting ~22 minutes from now and leave the app.
+Rows 19.6–19.8 are the ones that do not need waiting.
+
+| # | Do this | Expect | |
+|---|---|---|---|
+| 19.1 | With the briefing card showing a real meeting, tap `Remind me 20 minutes before ›` | The system notification sheet. **Only then** — nothing asked on launch, and it is not stacked on the calendar prompt | ⬜ |
+| 19.2 | Allow, then put an event ~22 minutes out naming somebody you keep notes on. Background the app | A notification ~20 minutes before it starts | ⬜ |
+| 19.3 | **Read the lock screen carefully** | The person's name and the meeting title. **No notes, no facts, nothing you wrote down.** A lock screen is read by whoever is holding the phone, and that is not always you | ⬜ |
+| 19.4 | Wait until 15 minutes after the meeting ends | *"How was Marcus?"* — tap to add what you want to remember | ⬜ |
+| 19.5 | Tap the nudge | Opens the app. **It does not yet open that person's capture screen** — the id is carried on the notification and nothing reads it. Deliberate slice boundary, not a bug | ⬜ |
+| 19.6 | Deny notifications, then look at the card | A line saying alerts are off and to turn them on in Settings › Andy — **and no button**, because iOS will not show the sheet again | ⬜ |
+| 19.7 | Put ~25 matched meetings in the calendar, foreground the app | **At most 20 get a pair** (40 notifications). iOS keeps 64 pending per app and drops the oldest **silently** past that — a briefing that simply never arrives | ⬜ |
+| 19.8 | Delete a meeting from the calendar, foreground the app | Its briefing and nudge are gone. The whole set is rebuilt from the calendar each time, so a deleted meeting cannot leave a notification behind | ⬜ |
+| 19.9 | Put a meeting that **already started** in the calendar, foreground the app | **No buzz on launch.** iOS fires a past date trigger immediately, so an unguarded version alerts about a meeting that began an hour ago | ⬜ |
+| 19.10 | A meeting named for nobody you keep ("Standup") | **No notification at all.** "You have a meeting" is what the calendar app already does | ⬜ |
+| 19.11 | Schedule something from another app (a reminder, a timer), then foreground Andy | **It survives.** Andy cancels only its own — every notification it schedules is marked, and `cancelAllScheduledNotificationsAsync` is deliberately not used | ⬜ |
+
+---
+
 ## Not built yet — do not file these
 
-**Coming in V1, just not yet.** The briefing's **notifications** (the
-pre-meeting alert and the post-meeting nudge — the card itself is §18),
-business-card photo, the app lock, dark mode.
+**Coming in V1, just not yet.** Business-card photo, the app lock, dark mode.
+Also **tapping the nudge does not yet open that person's capture screen** — the
+notification carries who it is about and nothing reads it yet (§19.5).
 
 **Cut from V1 on day 4 — will not be built before launch, so a bug report
 against them is noise, not signal.** The home widget, the Siri shortcut,

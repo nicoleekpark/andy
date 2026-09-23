@@ -37,7 +37,19 @@ type Props =
   /** Asked and refused, and iOS will not ask again. */
   | { state: "denied" }
   | { state: "empty" }
-  | { state: "ready"; briefing: Briefing };
+  | {
+      state: "ready";
+      briefing: Briefing;
+      /**
+       * Whether the phone will say anything twenty minutes before this.
+       *
+       * Offered here rather than at the first prompt, and that is the point:
+       * "remind me before this" means something in front of a real meeting and
+       * nothing in a stack of permission sheets on first launch.
+       */
+      alerts: "unavailable" | "off" | "blocked" | "on";
+      onEnableAlerts: () => void;
+    };
 
 /** 09:30, in the device's own idea of what that looks like. */
 function atTime(startsAt: number): string {
@@ -140,6 +152,29 @@ export function BriefingCard(props: Props) {
             </Pressable>
           ))}
 
+          {props.alerts === "off" ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Remind me before meetings"
+              onPress={props.onEnableAlerts}
+              style={styles.quiet}
+            >
+              <Text style={styles.quietLabel}>
+                Remind me 20 minutes before ›
+              </Text>
+            </Pressable>
+          ) : null}
+
+          {props.alerts === "blocked" ? (
+            // No button, for the same reason the denied calendar state has
+            // none: iOS will not show the sheet again, so one here would do
+            // nothing at all when pressed.
+            <Text style={styles.quietLabel}>
+              Notifications are off, so Andy can&apos;t remind you before this.
+              Turn them on in Settings › Andy.
+            </Text>
+          ) : null}
+
           {props.briefing.ambiguous.map((name) => (
             // Said rather than guessed. Two people answer to this name and the
             // app does not know which one you are meeting — picking the one
@@ -215,6 +250,13 @@ const styles = StyleSheet.create({
   },
   personName: { color: colors.moss, fontSize: 16 },
   personMeta: { color: colors.ink, fontFamily: fonts.utility, fontSize: 12, opacity: 0.55 },
+  quiet: { marginTop: 14, alignSelf: "flex-start" },
+  quietLabel: {
+    color: colors.moss,
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 12,
+  },
   action: {
     marginTop: 14,
     alignSelf: "flex-start",

@@ -11,8 +11,19 @@ jest.mock("expo-calendar", () => ({
   listEvents: jest.fn(async () => []),
 }));
 
+jest.mock("expo-notifications", () => ({
+  getPermissionsAsync: jest.fn(),
+  requestPermissionsAsync: jest.fn(),
+  getAllScheduledNotificationsAsync: jest.fn(async () => []),
+  cancelScheduledNotificationAsync: jest.fn(async () => undefined),
+  scheduleNotificationAsync: jest.fn(async () => "id"),
+  SchedulableTriggerInputTypes: { DATE: "date" },
+}));
+
 import * as Calendar from "expo-calendar";
+import * as Notifications from "expo-notifications";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { AppState } from "react-native";
 import { useConvex } from "convex/react";
 import { BriefingCard } from "../src/components/briefing-card";
 import { hasNativeModule } from "../src/lib/native";
@@ -59,7 +70,7 @@ function backendSays(matched: Record<string, unknown>[]) {
 
 /** A harness that renders whatever the hook currently says. */
 function Harness() {
-  const { briefing, ask } = useBriefing();
+  const { briefing, ask, alerts, askForAlerts } = useBriefing();
   if (briefing.state === "loading") return null;
   if (briefing.state === "ask") {
     return (
@@ -67,7 +78,14 @@ function Harness() {
     );
   }
   if (briefing.state === "ready") {
-    return <BriefingCard state="ready" briefing={briefing.briefing} />;
+    return (
+      <BriefingCard
+        state="ready"
+        briefing={briefing.briefing}
+        alerts={alerts}
+        onEnableAlerts={() => void askForAlerts()}
+      />
+    );
   }
   return <BriefingCard state={briefing.state} />;
 }
@@ -82,6 +100,13 @@ beforeEach(() => {
   // three tests passed for the wrong reason before this was found.
   (hasNativeModule as jest.Mock).mockReturnValue(true);
   (Calendar.getCalendars as jest.Mock).mockResolvedValue([{ id: "cal-1" }]);
+  (Notifications.getPermissionsAsync as jest.Mock).mockResolvedValue({
+    granted: true,
+    canAskAgain: false,
+  });
+  (Notifications.getAllScheduledNotificationsAsync as jest.Mock).mockResolvedValue([]);
+  (Notifications.cancelScheduledNotificationAsync as jest.Mock).mockResolvedValue(undefined);
+  (Notifications.scheduleNotificationAsync as jest.Mock).mockResolvedValue("id");
   backendSays([]);
   calendarSays([]);
   grant(true);
@@ -321,6 +346,34 @@ test("should drop an event whose dates cannot be read", async () => {
   // `NaN` sorts into the middle of the list and renders as "Invalid Date".
   await waitFor(() => expect(screen.getByText("Nothing coming up")).toBeTruthy());
   expect(query).not.toHaveBeenCalled();
+});
+
+test("should refresh once when two foregrounds arrive together", async () => {
+  calendarSays([
+    {
+      id: "e1",
+      title: "Coffee with Marcus",
+      startDate: new Date(AT),
+      endDate: new Date(AT + 3600_000),
+      allDay: false,
+    },
+  ]);
+  const query = backendSays([]);
+  await render(<Harness />);
+  await waitFor(() => expect(query).toHaveBeenCalledTimes(1));
+
+  // Two "active" transitions before the first refresh settles — a quick app
+  // switch, pulling notification centre down, dismissing a permission sheet.
+  // Each refresh cancels this app's pending briefings and schedules the whole
+  // set again, so two interleaved leave duplicate pairs for one meeting:
+  // two buzzes twenty minutes before one coffee.
+  const listener = (AppState.addEventListener as jest.Mock).mock.calls.at(-1);
+  await act(async () => {
+    (listener?.[1] as (phase: string) => void)("active");
+    (listener?.[1] as (phase: string) => void)("active");
+  });
+
+  expect(query).toHaveBeenCalledTimes(2);
 });
 
 test("should send the names on the invitation, dropping the blanks", async () => {
