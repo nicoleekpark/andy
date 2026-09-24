@@ -12,7 +12,8 @@
       "bundleIdentifier": "com.houseofhuynh.andy",
       "infoPlist": {
         "NSCalendarsUsageDescription": "Andy reads your upcoming events to see who you are about to meet, then shows what you already wrote down about them. Event titles and attendee names are matched against the people saved in your own Andy account and are never sent to any AI service. Andy never adds, changes or deletes anything in your calendar.",
-        "NSCalendarsFullAccessUsageDescription": "Andy reads your upcoming events to see who you are about to meet, then shows what you already wrote down about them. Event titles and attendee names are matched against the people saved in your own Andy account and are never sent to any AI service. Andy never adds, changes or deletes anything in your calendar."
+        "NSCalendarsFullAccessUsageDescription": "Andy reads your upcoming events to see who you are about to meet, then shows what you already wrote down about them. Event titles and attendee names are matched against the people saved in your own Andy account and are never sent to any AI service. Andy never adds, changes or deletes anything in your calendar.",
+        "NSFaceIDUsageDescription": "Andy uses Face ID to keep the people and notes you've saved locked when you're not looking at the app."
       }
     },
     "android": {

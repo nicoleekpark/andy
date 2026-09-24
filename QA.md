@@ -470,9 +470,35 @@ this replaces could not answer `oneill` for `O'Neill`, or `선희` for `지선�
 
 ---
 
+## 21. App lock
+
+Passcode/biometric app lock — Day 9's Must-have, closing the window
+`AFTER_FIRST_UNLOCK` Keychain storage leaves open (a phone unlocked once
+after boot keeps a readable session even while subsequently locked). Gates
+`(app)/_layout.tsx`, after the Convex-auth check and before the real screens.
+
+**Needs a build.** `expo-local-authentication` is a native module — a build
+predating it (or the simulator with no passcode/Face ID set up) fails open
+(21.6) rather than showing a lock screen at all, so 21.1–21.5 and 21.7–21.8
+need a device or simulator with Face ID/Touch ID **and** a passcode enrolled.
+
+| # | Do this | Expect | |
+|---|---|---|---|
+| 21.1 | Sign in, cold-launch the app | Lock screen appears **before any note content** — no name, no note count, nothing about who's signed in. The OS's Face ID/Touch ID sheet fires automatically, no tap needed | ⬜ |
+| 21.2 | Complete Face ID/Touch ID successfully | The real app appears | ⬜ |
+| 21.3 | Cancel or dismiss the OS prompt | Lock screen stays up, with an **Unlock** button | ⬜ |
+| 21.4 | Tap **Unlock** after cancelling | Prompts again | ⬜ |
+| 21.5 | From inside the app, background it (home gesture/button), then return **immediately** — even after a couple seconds | **Locked again**, no grace period. This is deliberate (decided 2026-09-24, not a bug to file as "locks too aggressively") | ⬜ |
+| 21.6 | On a simulator/device with **no** passcode or biometrics enrolled at all | App opens straight through — **no lock screen ever appears**. Fails open: a security layer that bricks the app on a device with nothing to gate behind is worse than none | ⬜ |
+| 21.7 | Fail Face ID/Touch ID a few times in a row (wrong finger, cover the camera) | Stays locked, **Unlock** still available to retry — never gets stuck with no way back in | ⬜ |
+| 21.8 | After a failed biometric attempt, use **Enter Passcode** on the OS's own sheet | Unlocks the app too — device-passcode fallback is left on deliberately, not biometric-only | ⬜ |
+| 21.9 | Sign out, or open while signed out | **No lock screen** — the gate only applies inside the authenticated `(app)` group; the sign-in screen itself is never behind it | ⬜ |
+
+---
+
 ## Not built yet — do not file these
 
-**Coming in V1, just not yet.** Business-card photo, the app lock, dark mode.
+**Coming in V1, just not yet.** Dark mode.
 Also **tapping the nudge does not yet open that person's capture screen** — the
 notification carries who it is about and nothing reads it yet (§19.5).
 

@@ -1,9 +1,12 @@
 import { useEffect } from "react";
+import { StyleSheet, View } from "react-native";
 import { Redirect, Stack } from "expo-router";
 import { useConvexAuth, useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { Connecting } from "@/components/connecting";
+import { LockScreen } from "@/components/lock-screen";
 import { colors } from "@/constants/theme";
+import { useAppLock } from "@/lib/use-app-lock";
 
 /**
  * The gate for everything that reads user data.
@@ -16,6 +19,11 @@ import { colors } from "@/constants/theme";
 export default function AppLayout() {
   const { isLoading, isAuthenticated } = useConvexAuth();
   const ensureUser = useMutation(api.users.ensureUser);
+  // `isAuthenticated`, not unconditionally: `useAppLock`'s effect fires
+  // whether or not this component's *render output* was the lock screen,
+  // and a signed-out visitor must never see a biometric prompt for a
+  // session that doesn't exist yet.
+  const lock = useAppLock(isAuthenticated);
 
   // Bootstrapping here rather than in a sign-in callback: a user who is signed
   // in but has no users row — interrupted first launch, cleared data — repairs
@@ -46,6 +54,29 @@ export default function AppLayout() {
     return <Redirect href="/sign-in" />;
   }
 
+  // A device with Face ID / Touch ID / a passcode gates the notes behind it,
+  // re-checked on every return to the foreground — see `useAppLock`. A device
+  // with none of those (or under jest, where the native module isn't in the
+  // binary) fails open: `lock.state.phase` goes straight to "unlocked" for it,
+  // since there would be nothing to unlock.
+  //
+  // "checking" gates too, not just "locked" — it is the state between a
+  // return to the foreground and `lockAvailability`/`authenticateAsync`
+  // resolving. Falling through to <Stack> during it would render one frame
+  // of real content before the prompt appears, which is exactly the leak
+  // this whole feature exists to close.
+  if (lock.state.phase !== "unlocked") {
+    return lock.state.phase === "locked" ? (
+      <LockScreen
+        kind={lock.state.kind}
+        authenticating={lock.state.authenticating}
+        onUnlock={lock.retry}
+      />
+    ) : (
+      <View style={styles.checking} />
+    );
+  }
+
   return (
     <Stack
       screenOptions={{
@@ -64,3 +95,9 @@ export default function AppLayout() {
     </Stack>
   );
 }
+
+const styles = StyleSheet.create({
+  // Same paper ground the splash/connecting screens use, so the brief gap
+  // while `useAppLock` decides reads as one surface rather than a flash.
+  checking: { flex: 1, backgroundColor: colors.paper },
+});
