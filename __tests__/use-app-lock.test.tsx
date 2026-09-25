@@ -206,7 +206,7 @@ test("should not leave the gate open while backgrounded — state drops out of u
   expect(result.current.state.phase).not.toBe("unlocked");
 });
 
-test("should re-check on a stray active event rather than get wedged", async () => {
+test("should re-check on a background-then-active cycle, not get wedged", async () => {
   (lockAvailability as jest.Mock).mockResolvedValue({ state: "unavailable" });
 
   const { unmount } = await renderHook(() => useAppLock(true));
@@ -214,8 +214,61 @@ test("should re-check on a stray active event rather than get wedged", async () 
 
   await waitFor(() => expect(lockAvailability).toHaveBeenCalledTimes(1));
 
+  await fireAppStateChange("background");
   await fireAppStateChange("active");
   await waitFor(() => expect(lockAvailability).toHaveBeenCalledTimes(2));
+});
+
+/**
+ * The bug reported live, 2026-09-25: Face ID succeeded, the user landed on
+ * the real app, and a *second* Face ID prompt appeared seconds later,
+ * unprompted. Traced via added debug logging to the actual device event
+ * sequence: `unlock()`'s own native sheet flips `AppState` through
+ * `inactive` while it's open, then back to `active` when it closes — and
+ * the old listener treated *any* `"active"` event as "returned from the
+ * background," so the prompt's own dismissal re-armed itself. `"inactive"`
+ * fires just as often for Control Center or a notification banner — nothing
+ * that left the app at all.
+ */
+test("should not re-trigger on inactive-then-active alone — this is what the prompt's own sheet looks like", async () => {
+  (lockAvailability as jest.Mock).mockResolvedValue({ state: "ready", kind: "face" });
+  (unlock as jest.Mock).mockResolvedValue({ success: true });
+
+  const { result, unmount } = await renderHook(() => useAppLock(true));
+  cleanup = unmount;
+  await waitFor(() => expect(result.current.state.phase).toBe("unlocked"));
+  expect(unlock).toHaveBeenCalledTimes(1);
+
+  // The exact sequence from the device logs: inactive (sheet opens/closes
+  // around the successful unlock, already reflected above) then active,
+  // with no "background" in between.
+  await fireAppStateChange("inactive");
+  await fireAppStateChange("active");
+
+  // Give a wrongly-fired attempt() a chance to run before asserting silence.
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+
+  expect(unlock).toHaveBeenCalledTimes(1);
+  expect(result.current.state.phase).toBe("unlocked");
+});
+
+test("should still re-lock on active when it follows a real background exit, inactive step included", async () => {
+  (lockAvailability as jest.Mock).mockResolvedValue({ state: "ready", kind: "face" });
+  (unlock as jest.Mock).mockResolvedValue({ success: true });
+
+  const { result, unmount } = await renderHook(() => useAppLock(true));
+  cleanup = unmount;
+  await waitFor(() => expect(result.current.state.phase).toBe("unlocked"));
+
+  // The real transition sequence leaving the app is usually active ->
+  // inactive -> background, not a bare jump to "background".
+  await fireAppStateChange("inactive");
+  await fireAppStateChange("background");
+  await fireAppStateChange("active");
+
+  await waitFor(() => expect(unlock).toHaveBeenCalledTimes(2));
 });
 
 // ---------------------------------------------------------------------------

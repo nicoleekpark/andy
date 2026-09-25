@@ -83,6 +83,11 @@ export function useAppLock(enabled: boolean): {
     }
   }, []);
 
+  // The phase *before* the current AppState event, so "active" can tell a
+  // genuine return from the background apart from the far more common case
+  // of merely dismissing a foreground system sheet.
+  const previousPhase = useRef(AppState.currentState);
+
   useEffect(() => {
     if (!enabled) return;
 
@@ -90,14 +95,25 @@ export function useAppLock(enabled: boolean): {
     void attempt();
 
     const subscription = AppState.addEventListener("change", (phase) => {
-      if (phase === "active") {
-        void attempt();
+      const previous = previousPhase.current;
+      previousPhase.current = phase;
+
+      // "background" is the only phase that means the app was genuinely
+      // left. "inactive" fires just as often for reasons that never left
+      // the app at all — Control Center, a notification banner, and (found
+      // live, 2026-09-25) **this very lock's own Face ID sheet opening and
+      // closing**. Reacting to "inactive" here made the prompt's own
+      // dismissal look like a fresh foreground return: unlock() succeeds →
+      // the sheet closes → AppState fires inactive → active → this listener
+      // saw "active" and re-armed the gate on the spot, showing a second
+      // Face ID prompt seconds after the first one succeeded.
+      if (phase === "background") {
+        setState((prev) => (prev.phase === "unlocked" ? { phase: "checking" } : prev));
         return;
       }
-      // Leaving the foreground re-arms the gate. Only matters while unlocked
-      // — mid-prompt this fires no-op, since the biometric sheet's own
-      // "inactive" blip finds the state already "locked".
-      setState((prev) => (prev.phase === "unlocked" ? { phase: "checking" } : prev));
+      if (phase === "active" && previous === "background") {
+        void attempt();
+      }
     });
 
     return () => {
