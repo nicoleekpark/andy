@@ -151,6 +151,17 @@ permission string, the bundle id. Never for JS changes.
 | `xcrun simctl openurl booted "andy:///search"` | Jumping straight to a screen, or reaching one with no link to it yet | **Three slashes.** `andy://search` treats `search` as the URL host, so nested paths like `andy://profile/abc` silently land on the home screen instead of erroring. |
 | `xcrun simctl io booted screenshot out.png` | Recording what a screen actually looks like | Faster than describing it. |
 | `npx convex run search:recall '{"query":"…"}' --identity '{"tokenIdentifier":"…","subject":"…","issuer":"…"}'` | Running a **signed-in** backend function from a terminal | The single most useful thing found on day 5. Without `--identity` every authenticated function just answers `You're signed out.`, which is why the whole backend used to be untestable outside the app. Copy `tokenIdentifier` from `npm run db` → Data → `users`. This is how Ask Andy was measured against real notes, and how "auth propagates from an action's `ctx.runQuery`" was proven against the deployment rather than taken from `convex-test`, which has now been caught disagreeing with the backend twice. |
+| `npm run dev:mcp` | Letting Claude Code look at the simulator directly | `npm run dev` plus `EXPO_UNSTABLE_MCP_SERVER=1`. Exposes the running simulator (screenshots, logs, UI state) to an MCP-capable agent through Expo's own MCP server, instead of manually screenshotting and describing what's on screen. Found necessary day 9, debugging the app lock's Face ID flow purely from pasted screenshots and terminal logs. |
+
+**One-time setup for `dev:mcp`** (already done in this repo, kept here for a fresh machine):
+
+```bash
+claude mcp add --transport http expo https://mcp.expo.dev/mcp   # registers the server with Claude Code
+npx expo install expo-mcp --dev                                  # already a dependency — see package.json
+npx expo whoami || npx expo login                                 # the server needs a logged-in Expo account
+```
+
+**MCP servers attach only when a Claude Code session starts.** Adding the server, or running `dev:mcp` for the first time, does nothing for a session that's already running — restart Claude Code (or start a new session) for it to actually connect.
 
 ### Release
 

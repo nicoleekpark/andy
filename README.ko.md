@@ -151,6 +151,17 @@ convex/             # schema.ts, functions (queries/mutations/actions), vector i
 | `xcrun simctl openurl booted "andy:///search"` | 화면으로 바로 뛰어들 때, 또는 아직 링크가 없는 화면에 들어갈 때 | **슬래시 세 개.** `andy://search` 는 `search` 를 URL 호스트로 해석하므로, `andy://profile/abc` 같은 중첩 경로는 에러 없이 조용히 홈 화면에 머문다. |
 | `npx convex run search:recall '{"query":"…"}' --identity '{"tokenIdentifier":"…","subject":"…","issuer":"…"}'` | **로그인 상태로** 백엔드 함수를 터미널에서 돌릴 때 | Day 5에 찾은 가장 쓸모 있는 것. `--identity` 없이는 인증이 필요한 함수가 전부 `You're signed out.` 만 답하고, 그래서 백엔드를 앱 밖에서 시험할 방법이 없었다. `tokenIdentifier` 는 `npm run db` → Data → `users` 에서 복사. Ask Andy 를 실제 노트로 측정한 것도, "액션의 `ctx.runQuery` 로 인증이 전파된다"를 `convex-test` 가 아니라 **배포**에 대고 증명한 것도 이 명령이다 — 그 목은 이제 두 번이나 배포와 다르게 동작한 것으로 확인됐다. |
 | `xcrun simctl io booted screenshot out.png` | 화면이 실제로 어떻게 보이는지 남길 때 | 말로 설명하는 것보다 빠르다. |
+| `npm run dev:mcp` | Claude Code가 시뮬레이터를 직접 들여다보게 할 때 | `npm run dev` + `EXPO_UNSTABLE_MCP_SERVER=1`. 실행 중인 시뮬레이터(스크린샷, 로그, UI 상태)를 Expo 자체 MCP 서버로 MCP 지원 에이전트에 노출시킴 — 매번 스크린샷 찍어서 설명해줄 필요 없이. Day 9에 앱 잠금의 Face ID 흐름을 스크린샷과 터미널 로그만으로 디버깅하다가 필요해짐. |
+
+**`dev:mcp` 최초 1회 설정** (이 저장소엔 이미 되어 있음, 새 머신 대비용으로 남겨둠):
+
+```bash
+claude mcp add --transport http expo https://mcp.expo.dev/mcp   # Claude Code에 서버 등록
+npx expo install expo-mcp --dev                                  # 이미 의존성으로 들어가 있음 — package.json 참고
+npx expo whoami || npx expo login                                 # 서버가 로그인된 Expo 계정을 필요로 함
+```
+
+**MCP 서버는 Claude Code 세션이 시작될 때만 연결됨.** 서버를 추가하거나 `dev:mcp`를 처음 돌려도 이미 실행 중인 세션에는 아무 효과 없음 — Claude Code를 재시작(또는 새 세션 시작)해야 실제로 연결됨.
 
 ### 릴리스
 

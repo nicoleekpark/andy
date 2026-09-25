@@ -9,6 +9,7 @@
 ## 스택 & 명령어
 
 - 실행: **`npm run dev`** (또는 그에 준하는 것) — 스택의 **모든 절반을 한 명령으로** 함께 띄운다(예: 백엔드 개발 서버 + 프론트엔드 개발 서버). `convex dev`가 백엔드를 올리고 `expo start --dev-client`가 JS를 공급한다. 여기서 시작할 것. JS 쪽만 켜는 것이 **백엔드 변경이 조용히 배포에 안 닿는 경로**다. (`npm start`는 JS 쪽만 — 백엔드가 이미 딴 데서 돌 때. 이 앱은 Expo Go에서 실행되지 않으므로 그냥 `expo start`는 선택지가 아님.)
+- AI 보조 시뮬레이터 디버깅: **`npm run dev:mcp`** (`npm run dev`와 동일 + `EXPO_UNSTABLE_MCP_SERVER=1`)는 실행 중인 시뮬레이터 — 스크린샷, 로그, UI 상태 — 를 Expo 자체 MCP 서버를 통해 MCP 지원 에이전트(Claude Code)에 노출시킨다. 개발자가 매번 스크린샷 찍어서 설명해줄 필요 없이. 최초 1회 설정은 이미 완료됨: `expo-mcp`가 dev dependency로 들어가 있고, `claude mcp add --transport http expo https://mcp.expo.dev/mcp`로 서버 등록됨(`npx expo login`으로 Expo 계정 로그인 필요). **MCP 서버는 세션 시작 시점에만 연결됨** — 세션 중간에 추가해도 그 세션은 못 봄; Claude Code를 재시작해야 실제로 연결됨. README.ko.md의 "돌아가는 앱 들여다보기" 참고.
 - 백엔드: Convex (로컬은 `npx convex dev`, 배포는 `npx convex deploy`). `convex codegen`은 타입만 재생성하고 `auth.config.ts`나 스키마를 **배포에 적용하지 않음.**
 - 테스트: `npm run test` — 러너 두 개를 순차 실행: jest(`src/`, RN 컴포넌트) 후 vitest(`convex/**/*.test.ts`, convex-test). Convex 함수는 jest로 테스트할 수 없음, `convex/_generated/ai/guidelines.md` 참고. 개별 실행: `npm run test:rn`, `npm run test:convex`.
 - 린트/타입체크: `npm run lint` (커밋 전 반드시 통과해야 함)
