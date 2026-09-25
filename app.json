@@ -12,7 +12,11 @@
       "bundleIdentifier": "com.houseofhuynh.andy",
       "infoPlist": {
         "NSCalendarsUsageDescription": "Andy reads your upcoming events to see who you are about to meet, then shows what you already wrote down about them. Event titles and attendee names are matched against the people saved in your own Andy account and are never sent to any AI service. Andy never adds, changes or deletes anything in your calendar.",
-        "NSCalendarsFullAccessUsageDescription": "Andy reads your upcoming events to see who you are about to meet, then shows what you already wrote down about them. Event titles and attendee names are matched against the people saved in your own Andy account and are never sent to any AI service. Andy never adds, changes or deletes anything in your calendar."
+        "NSCalendarsFullAccessUsageDescription": "Andy reads your upcoming events to see who you are about to meet, then shows what you already wrote down about them. Event titles and attendee names are matched against the people saved in your own Andy account and are never sent to any AI service. Andy never adds, changes or deletes anything in your calendar.",
+        "NSFaceIDUsageDescription": "Andy uses Face ID to keep the people and notes you've saved locked when you're not looking at the app.",
+        "NSSpeechRecognitionUsageDescription": "Andy turns your recorded voice note into text so it can be saved to the right person's profile.",
+        "NSMicrophoneUsageDescription": "Andy records your voice note so you can capture what you just learned about someone. Recording only starts when you tap the record button.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -22,7 +26,10 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "static",
