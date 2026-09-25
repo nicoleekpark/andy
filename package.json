@@ -50,11 +50,13 @@
     "convex-test": "^0.0.56",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~57.0.1",
+    "expo-mcp": "~0.2.1",
     "typescript": "~6.0.3",
     "vitest": "^4.1.11"
   },
   "scripts": {
     "dev": "concurrently -k -i --default-input-target expo -n convex,expo -c blue,green \"convex dev\" \"expo start --dev-client --ios\"",
+    "dev:mcp": "EXPO_UNSTABLE_MCP_SERVER=1 npm run dev",
     "start": "expo start --dev-client",
     "build:ios": "eas build --profile development --platform ios",
     "build:ios:device": "eas build --profile development-device --platform ios",
