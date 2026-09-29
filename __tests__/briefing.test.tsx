@@ -9,7 +9,23 @@ jest.mock("expo-calendar", () => ({
   requestCalendarPermissions: jest.fn(),
   getCalendars: jest.fn(async () => [{ id: "cal-1" }]),
   listEvents: jest.fn(async () => []),
+  EntityTypes: { EVENT: "event", REMINDER: "reminder" },
 }));
+
+/**
+ * `getCalendars` as SDK 57's native module actually behaves: called without
+ * `EntityTypes.EVENT` it lists reminder lists as well and throws unless the
+ * REMINDERS permission is held, which this app never asks for. The stub used
+ * to answer any call, so the suite stayed green while every real read failed.
+ */
+function calendarsNeedAnEntityType() {
+  (Calendar.getCalendars as jest.Mock).mockImplementation(async (type?: string) => {
+    if (type !== "event") {
+      throw new Error("MissionPermissionsException: REMINDERS permission is required");
+    }
+    return [{ id: "cal-1" }];
+  });
+}
 
 jest.mock("expo-notifications", () => ({
   getPermissionsAsync: jest.fn(),
@@ -99,7 +115,7 @@ beforeEach(() => {
   // the throw is caught, and the card silently renders as "unavailable" —
   // three tests passed for the wrong reason before this was found.
   (hasNativeModule as jest.Mock).mockReturnValue(true);
-  (Calendar.getCalendars as jest.Mock).mockResolvedValue([{ id: "cal-1" }]);
+  calendarsNeedAnEntityType();
   (Notifications.getPermissionsAsync as jest.Mock).mockResolvedValue({
     granted: true,
     canAskAgain: false,
@@ -153,6 +169,47 @@ test("should ask iOS only when the invitation is taken", async () => {
   await waitFor(() =>
     expect(Calendar.requestCalendarPermissions).toHaveBeenCalledTimes(1),
   );
+});
+
+test("should show the meeting straight after access is allowed, asking for nothing else", async () => {
+  grant(false, true);
+  (Calendar.requestCalendarPermissions as jest.Mock).mockResolvedValue({
+    granted: true,
+    canAskAgain: false,
+    status: "granted",
+  });
+  calendarSays([
+    {
+      id: "e1",
+      title: "Coffee with Marcus",
+      startDate: new Date(AT),
+      endDate: new Date(AT + 3600_000),
+      allDay: false,
+    },
+  ]);
+  backendSays([
+    {
+      eventId: "e1",
+      title: "Coffee with Marcus",
+      startsAt: AT,
+      endsAt: AT + 3600_000,
+      people: [{ profileId: "p1", name: "Marcus", noteCount: 1 }],
+      ambiguous: [],
+    },
+  ]);
+  await render(<Harness />);
+  await waitFor(() =>
+    expect(screen.getByLabelText("Let Andy read my calendar")).toBeTruthy(),
+  );
+
+  await act(async () => {
+    fireEvent.press(screen.getByLabelText("Let Andy read my calendar"));
+  });
+
+  // Found live: Allow was tapped and the card disappeared, because the read
+  // behind it needed a reminders permission nobody had been asked for.
+  await waitFor(() => expect(screen.getByText("Coffee with Marcus")).toBeTruthy());
+  expect(Calendar.getCalendars).toHaveBeenCalledWith("event");
 });
 
 test("should ask once however fast the invitation is tapped twice", async () => {

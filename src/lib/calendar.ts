@@ -117,7 +117,11 @@ export async function readUpcoming(
   const calendar = calendarModule();
   if (calendar === null) return [];
 
-  const calendars = await calendar.getCalendars();
+  // `EVENT`, never the bare call. With no type, SDK 57's `getCalendars` lists
+  // reminder lists too and so demands the REMINDERS permission, which this
+  // app never asks for — every read threw, and the card vanished the moment
+  // calendar access was granted (found live, 2026-09-26).
+  const calendars = await calendar.getCalendars(calendar.EntityTypes.EVENT);
   if (calendars.length === 0) return [];
 
   const events = await calendar.listEvents(calendars, from, to);
