@@ -413,6 +413,76 @@ describe("capture screen review step", () => {
     expect(call.draft.primary.keyFacts).toContain("branding designer");
   });
 
+  test("should throw the recording away and listen again on Start over, reading none of it", async () => {
+    // Asked for 2026-09-29: redoing a note used to mean Stop → wait for
+    // extraction → "Discard and start over", a Claude call paid for words the
+    // person had already decided to throw away.
+    const { ExpoSpeechRecognitionModule } = jest.requireMock("expo-speech-recognition");
+    (ExpoSpeechRecognitionModule.requestPermissionsAsync as jest.Mock).mockResolvedValue({
+      granted: true,
+    });
+    const extract = jest.fn(async () => makeDraft());
+    mockActions({ extract });
+    const handlers = captureListeners();
+    await renderRouter("src/app", { initialUrl: "/profile/contact-1/capture" });
+
+    // Only while listening: there is nothing to start over before a recording.
+    expect(screen.queryByRole("button", { name: "Start over" })).toBeNull();
+
+    await act(async () => {
+      handlers.start?.();
+    });
+    await act(async () => {
+      handlers.result?.({ results: [{ transcript: "Met Nina umm no wait" }], isFinal: true });
+    });
+    expect(screen.getByText("Met Nina umm no wait")).toBeTruthy();
+
+    // Twice, in one go: two taps can land before the button unmounts.
+    const startOverButton = screen.getByRole("button", { name: "Start over" });
+    await act(async () => {
+      fireEvent.press(startOverButton);
+      fireEvent.press(startOverButton);
+    });
+    expect(ExpoSpeechRecognitionModule.abort).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("Met Nina umm no wait")).toBeNull();
+
+    // The abandoned session may fail on its way out. Whatever it reports is
+    // about a recording nobody wants any more, so it is not shown.
+    await act(async () => {
+      handlers.error?.({ error: "audio-capture", message: "dying session" });
+    });
+    expect(screen.queryByText(/dying session/)).toBeNull();
+
+    // The abandoned session concludes. Its `end` starts the next recording
+    // rather than an extraction of what was thrown away.
+    await act(async () => {
+      handlers.end?.();
+    });
+    await waitFor(() => expect(ExpoSpeechRecognitionModule.start).toHaveBeenCalledTimes(1));
+    expect(extract).not.toHaveBeenCalled();
+
+    // The new session begins, and the old one's `aborted` arrives late. It
+    // belongs to the recording that was thrown away, not this one.
+    await act(async () => {
+      handlers.start?.();
+    });
+    await act(async () => {
+      handlers.error?.({ error: "aborted", message: "aborted" });
+    });
+    expect(screen.getByRole("button", { name: "Stop recording" })).toBeTruthy();
+
+    // And the second take is the one that gets read.
+    await act(async () => {
+      handlers.result?.({ results: [{ transcript: "Met Nina for lunch" }], isFinal: true });
+    });
+    await act(async () => {
+      handlers.end?.();
+    });
+    await waitFor(() => expect(extract).toHaveBeenCalledTimes(1));
+    expect(JSON.stringify(extract.mock.calls[0])).toContain("Met Nina for lunch");
+    expect(JSON.stringify(extract.mock.calls[0])).not.toContain("umm no wait");
+  });
+
   test("should save a corrected mention name, the field transcription actually gets wrong", async () => {
     const draft = makeDraft();
     (useAction as jest.Mock).mockReturnValue(jest.fn(async () => draft));

@@ -1,5 +1,5 @@
 import { Stack, router } from "expo-router";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -662,6 +662,16 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
    */
   const recordingRef = useRef(false);
   /**
+   * Set by "Start over" and spent by the `end` that concludes the recording it
+   * abandoned. The new recording is started from there, not straight after
+   * `abort()`: the old session's `end` still has to arrive, and if a new
+   * session were already listening by then, that `end` would look like the
+   * close of the new one and send half a sentence off to be read.
+   */
+  const restartRef = useRef(false);
+  /** `start`, for the `end` handler above its declaration. */
+  const startRef = useRef<() => Promise<void>>(async () => {});
+  /**
    * The last first-met date we held, so unticking the box and changing your
    * mind restores the date extraction worked out ("어제 처음 만났는데" →
    * 2026-08-26) rather than silently replacing it with today.
@@ -803,6 +813,11 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
   });
 
   useSpeechRecognitionEvent("error", (event) => {
+    // Only "Start over" aborts, and the abandoned session's `aborted` can land
+    // after the new one has begun. It is not the new recording's error.
+    if (event.error === "aborted") {
+      return;
+    }
     // An error arriving after this recording already concluded would drop the
     // user from the review screen back to an empty capture screen mid-edit,
     // losing the corrections this step exists to collect.
@@ -822,6 +837,11 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
   });
 
   useSpeechRecognitionEvent("end", () => {
+    if (restartRef.current) {
+      restartRef.current = false;
+      void startRef.current();
+      return;
+    }
     // Exactly one `end` may start an extraction. A duplicate would re-run
     // Claude on the same transcript and replace the draft the user is part-way
     // through editing — silently discarding their corrections is the precise
@@ -909,6 +929,37 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
 
   const stop = useCallback(() => {
     ExpoSpeechRecognitionModule.stop();
+  }, []);
+
+  useEffect(() => {
+    startRef.current = start;
+  }, [start]);
+
+  /**
+   * Throw this recording away and listen again, without reading any of it.
+   *
+   * The only other way to redo a note used to be Stop → wait for extraction →
+   * "Discard and start over", which pays for a Claude call on words the
+   * person has already decided to throw away (asked for 2026-09-29).
+   * `restartRef` makes the abandoned session's `end` start the next recording
+   * instead of an extraction. `recordingRef` is dropped so anything else that
+   * session reports on its way out, an error included, is ignored rather than
+   * shown against the recording that replaces it.
+   */
+  const startOver = useCallback(() => {
+    // One restart at a time. Two taps can land before the button unmounts,
+    // and a second `abort()` could produce a second `end` that arrives after
+    // the new recording has begun and closes it early.
+    if (restartRef.current) {
+      return;
+    }
+    recordingRef.current = false;
+    restartRef.current = true;
+    finalRef.current = "";
+    setFinalText("");
+    setInterim("");
+    setPhase("starting");
+    ExpoSpeechRecognitionModule.abort();
   }, []);
 
   const discard = useCallback(() => {
@@ -1752,6 +1803,17 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
                   : "Record"}
           </Text>
         </Pressable>
+
+        {listening ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Start over"
+            onPress={startOver}
+            style={styles.secondaryButton}
+          >
+            <Text style={styles.secondaryLabel}>Start over</Text>
+          </Pressable>
+        ) : null}
 
         <Pressable
           accessibilityRole="button"
