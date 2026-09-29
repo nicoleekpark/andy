@@ -593,3 +593,31 @@ test("should send the events in time order, earliest first", async () => {
   const sent = query.mock.calls[0]?.[1] as { events: { eventId: string }[] };
   expect(sent.events.map((e) => e.eventId)).toEqual(["soon", "late"]);
 });
+
+// ---------------------------------------------------------------------------
+// The card's look
+// ---------------------------------------------------------------------------
+
+test("should draw no dashed border, which React Native cannot render on one side", async () => {
+  // STYLE.md once asked for a dashed "torn edge" on top of this card. It never
+  // appeared: React Native warns "Unsupported dashed / dotted border style"
+  // and draws nothing (QA 18.3). It was dropped rather than hand-drawn, so a
+  // dashed style here is a regression to something that silently does nothing.
+  const view = await render(<BriefingCard state="empty" />);
+
+  const dashed: unknown[] = [];
+  const walk = (node: unknown) => {
+    if (node === null || typeof node !== "object") return;
+    if (Array.isArray(node)) return node.forEach(walk);
+    const { props, children } = node as { props?: { style?: unknown }; children?: unknown };
+    const flat = [props?.style].flat(Infinity) as ({ borderStyle?: string } | undefined)[];
+    if (flat.some((style) => style?.borderStyle === "dashed" || style?.borderStyle === "dotted")) {
+      dashed.push(node);
+    }
+    walk(children);
+  };
+  walk(view.toJSON());
+
+  expect(screen.getByText("Nothing coming up")).toBeTruthy();
+  expect(dashed).toHaveLength(0);
+});

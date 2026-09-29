@@ -50,14 +50,23 @@ forever — an entire screen lost to a typeface is the worse failure.
 
 ## Signature Element — spend the one risk here
 
-The **Briefing card** (pre-meeting digest / post-meeting nudge) is the single place that looks different from everything else — and it survived the day-4 scope cut precisely because it is the app's signature, not despite it: a `brass` left-edge accent stripe, a soft dashed top border (evokes a torn note edge), quiet icon. Every other screen — profile list, search results, settings — stays plain and disciplined. Don't spread this treatment elsewhere or it stops being a signature.
+The **Briefing card** (pre-meeting digest / post-meeting nudge) is the single place that looks different from everything else — and it survived the day-4 scope cut precisely because it is the app's signature, not despite it: a `brass` left-edge accent stripe and a `brass` timestamp. Every other screen — profile list, search results, settings — stays plain and disciplined. Don't spread this treatment elsewhere or it stops being a signature.
 
-**The quiet icon is deliberately not built.** Day 7 shipped the card with the
-stripe, the torn edge and a `brass` timestamp and stopped there: this project
-has no icon set at all, so adding one is choosing a dependency and a whole
-visual vocabulary, which is a larger decision than the slice that needed it.
-The three elements above carry the signal on their own. Revisit when an icon
-set is chosen for some other reason — not by inventing one here.
+**Dropped: the torn edge and the quiet icon.** The first version of this
+section also asked for a soft dashed top border (a torn note edge) and a quiet
+icon. Neither is in the app, on purpose.
+
+- *The torn edge* never rendered. React Native does not draw a dashed border on
+  one side only, and warns `Unsupported dashed / dotted border style`; found in
+  live QA on 2026-09-27 (`QA.md` 18.3). Drawing it by hand was weighed against
+  dropping it with mockups side by side, and dropped (2026-09-29): the stripe
+  already sets the card apart from the plain rows below it.
+- *The quiet icon* was never built. This project has no icon set, and adding one
+  is choosing a dependency and a whole visual vocabulary, a larger decision than
+  the slice that needed it. Revisit when an icon set is chosen for some other
+  reason, not by inventing one here.
+
+The stripe and the `brass` timestamp carry the signal on their own.
 
 ## One Structural Idea
 
