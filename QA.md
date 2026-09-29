@@ -380,6 +380,13 @@ runner here can read one.
 **Needs a build.** `expo-calendar` is a native module and is not in the binary
 currently installed.
 
+**On the simulator** (found 2026-09-27): an app that was already running may
+still hold the old JS. Metro's WebSocket can drop (`code 1006`) and fast refresh
+then never reaches it. After changing calendar code, `xcrun simctl terminate`
+and relaunch before judging a row. Check the end **date** as well as the time
+when you add an event: the Calendar app once saved an end date a day late,
+which left the event "in progress" and on top of the card.
+
 **Set up a calendar first.** The simulator ships with an empty Calendar app, so
 open it and add today's events by hand: one titled with somebody you keep notes
 about, one with nobody ("Standup"), one all-day. On a device, your real calendar
@@ -388,15 +395,15 @@ your actual messy real calendar, not synthetic data".
 
 | # | Do this | Expect | |
 |---|---|---|---|
-| 18.1 | Open the app for the first time after the build | A card at the top of home inviting you to let Andy read your calendar. **No system permission sheet** — `CLAUDE.md` requires asking at the point of use, and this is the point | ⬜ |
-| 18.2 | Tap `Read my calendar` → **Allow** | The card becomes the next meeting that is about somebody you keep notes on | ⬜ |
-| 18.3 | Look at the card | A **brass left-edge stripe** and a **dashed top border** — a torn note edge. This appears nowhere else in the app; if you see it elsewhere, that is the bug | ⬜ |
+| 18.1 | Open the app for the first time after the build | A card at the top of home inviting you to let Andy read your calendar. **No system permission sheet** — `CLAUDE.md` requires asking at the point of use, and this is the point | ✅ — simulator, 2026-09-25: the invitation card, and no system sheet until tapped |
+| 18.2 | Tap `Read my calendar` → **Allow** | The card becomes the next meeting that is about somebody you keep notes on | ✅ — simulator, 2026-09-27, after PR #50. Before it, Allow made the card vanish (`getCalendars()` demanded REMINDERS) |
+| 18.3 | Look at the card | A **brass left-edge stripe** and a **dashed top border** — a torn note edge. This appears nowhere else in the app; if you see it elsewhere, that is the bug | ❌ — simulator, 2026-09-27: the brass stripe renders, the **dashed top border does not** (Metro: `Unsupported dashed / dotted border style`) |
 | 18.4 | Tap the person's name on the card | Their profile opens | ⬜ |
 | 18.5 | Add an event named for somebody you keep notes on, then background and foreground the app | The card updates. A briefing an hour stale is about a meeting you have already had | ⬜ |
-| 18.6 | Put a "Standup" at the top of today, ahead of a meeting that names someone | The card shows **the meeting, not the standup**. A standup is not a briefing, and showing it pushes the useful one off the screen | ⬜ |
-| 18.7 | Clear the next twelve hours | "Nothing coming up" — an invitation, not an error. Says *coming up*, not *today*, because after about 9pm the window is mostly tomorrow | ⬜ |
-| 18.8 | Add an **all-day** event named for someone you keep notes on | It is **ignored**. A birthday sitting on today would put a briefing at the top of the screen all day about a meeting that is not happening | ⬜ |
-| 18.9 | Name an event with somebody you keep **two** people called (e.g. two Judys) | "Andy can't tell which one this is" — **never a guess.** One of them having more notes is not evidence about who you are meeting | ⬜ |
+| 18.6 | Put a "Standup" at the top of today, ahead of a meeting that names someone | The card shows **the meeting, not the standup**. A standup is not a briefing, and showing it pushes the useful one off the screen | ✅ — simulator, 2026-09-27 |
+| 18.7 | Clear the next twelve hours | "Nothing coming up" — an invitation, not an error. Says *coming up*, not *today*, because after about 9pm the window is mostly tomorrow | ✅ — simulator, 2026-09-29: "Nothing coming up" once the only meeting had passed |
+| 18.8 | Add an **all-day** event named for someone you keep notes on | It is **ignored**. A birthday sitting on today would put a briefing at the top of the screen all day about a meeting that is not happening | ✅ — simulator, 2026-09-27 |
+| 18.9 | Name an event with somebody you keep **two** people called (e.g. two Judys) | "Andy can't tell which one this is" — **never a guess.** One of them having more notes is not evidence about who you are meeting | ✅ — simulator, 2026-09-27, with three Marcuses |
 | 18.10 | Name an event with a word that *contains* a name you keep — "Alignment review" when you keep an "Al" | Nobody is matched. This is how a briefing about a stranger reaches your phone | ⬜ |
 | 18.11 | **Korean**: title an event `지선이랑 점심`, and another `지선희와 점심`, keeping only 지선 | The first matches, the second does **not** — 지선희 is a different person | ⬜ |
 | 18.12 | Title an event `Judy랑 점심` | Matches Judy. A particle belongs to the sentence, not the name | ⬜ |
@@ -420,13 +427,21 @@ a meeting and a nudge 15 minutes after it ends, so the quickest honest test is
 to put an event in the calendar starting ~22 minutes from now and leave the app.
 Rows 19.6–19.8 are the ones that do not need waiting.
 
+**You do not have to wait to know it was scheduled.** SpringBoard logs every
+pending request with its trigger time:
+`xcrun simctl spawn booted log show --last 10m --predicate 'process == "SpringBoard" AND eventMessage CONTAINS "com.houseofhuynh.andy"' | grep "trigger date"`.
+Lock the simulator (⌘L) before the time, not just go home: 19.3 is about the
+lock screen. A meeting whose name matches **several** people you keep gets no
+notification at all (`briefable` needs a resolved person), so test 19.x with a
+name only one person answers to.
+
 | # | Do this | Expect | |
 |---|---|---|---|
 | 19.1 | With the briefing card showing a real meeting, tap `Remind me 20 minutes before ›` | The system notification sheet. **Only then** — nothing asked on launch, and it is not stacked on the calendar prompt | ⬜ |
-| 19.2 | Allow, then put an event ~22 minutes out naming somebody you keep notes on. Background the app | A notification ~20 minutes before it starts | ⬜ |
-| 19.3 | **Read the lock screen carefully** | The person's name and the meeting title. **No notes, no facts, nothing you wrote down.** A lock screen is read by whoever is holding the phone, and that is not always you | ⬜ |
-| 19.4 | Wait until 15 minutes after the meeting ends | *"How was Marcus?"* — tap to add what you want to remember | ⬜ |
-| 19.5 | Tap the nudge | Opens the app. **It does not yet open that person's capture screen** — the id is carried on the notification and nothing reads it. Deliberate slice boundary, not a bug | ⬜ |
+| 19.2 | Allow, then put an event ~22 minutes out naming somebody you keep notes on. Background the app | A notification ~20 minutes before it starts | ✅ — simulator, 2026-09-29: an 11:00 meeting alerted at 10:40:00 exactly |
+| 19.3 | **Read the lock screen carefully** | The person's name and the meeting title. **No notes, no facts, nothing you wrote down.** A lock screen is read by whoever is holding the phone, and that is not always you | ✅ — simulator, 2026-09-29: lock screen showed `Irene` / `Coffee with Irene` and nothing else |
+| 19.4 | Wait until 15 minutes after the meeting ends | *"How was Marcus?"* — tap to add what you want to remember | ✅ — simulator, 2026-09-29: a meeting ending 11:15 nudged at 11:30:00, *"How was Irene?"*, no notes shown |
+| 19.5 | Tap the nudge | Opens the app. **It does not yet open that person's capture screen** — the id is carried on the notification and nothing reads it. Deliberate slice boundary, not a bug | ✅ — simulator, 2026-09-29: opened to home, as designed |
 | 19.6 | Deny notifications, then look at the card | A line saying alerts are off and to turn them on in Settings › Andy — **and no button**, because iOS will not show the sheet again | ⬜ |
 | 19.7 | Put ~25 matched meetings in the calendar, foreground the app | **At most 20 get a pair** (40 notifications). iOS keeps 64 pending per app and drops the oldest **silently** past that — a briefing that simply never arrives | ⬜ |
 | 19.8 | Delete a meeting from the calendar, foreground the app | Its briefing and nudge are gone. The whole set is rebuilt from the calendar each time, so a deleted meeting cannot leave a notification behind | ⬜ |
