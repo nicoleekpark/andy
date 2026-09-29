@@ -34,6 +34,24 @@ import {
 
 const WINDOW_HOURS = 12;
 
+/**
+ * Why the card is not there, said to whoever is running a development build.
+ *
+ * Every failure below is swallowed on purpose: a briefing that cannot be built
+ * is not worth a banner on home, and the person using the app should just see
+ * no card. But swallowing it *everywhere* meant nobody could see it either.
+ * On 2026-09-26 the card vanished the moment calendar access was allowed, and
+ * finding out why took a temporary `console.warn` pasted into this file,
+ * because the one thing the failure said was nothing (PR #50).
+ *
+ * `__DEV__` is false in a release build, so what ships is still silence. The
+ * same `__DEV__` line `profile/[id]` draws for a failed photo upload, though
+ * that screen appends the cause to its message, since it has one to show.
+ */
+function sayWhyInDevelopment(what: string, thrown: unknown) {
+  if (__DEV__) console.warn(`Briefing: ${what}`, thrown);
+}
+
 export type BriefingState =
   | { state: "loading" }
   | { state: "unavailable" }
@@ -123,8 +141,8 @@ export function useBriefing(): {
       const matched = await convex.query(api.calendar.matchEvents, { events });
 
       // Scheduled from the same answer the card is drawn from, so what the
-      // phone will say and what the screen says cannot disagree. Silent on
-      // failure: a briefing that could not be scheduled is not a reason to
+      // phone will say and what the screen says cannot disagree. Silent to the
+      // person on failure: a briefing that could not be scheduled is not a reason to
       // take the card down, and the reason is almost always "notifications
       // are off", which the card already offers to fix.
       void scheduleBriefings(
@@ -139,7 +157,9 @@ export function useBriefing(): {
           })),
         ),
         Date.now(),
-      ).catch(() => {});
+      ).catch((thrown: unknown) =>
+        sayWhyInDevelopment("could not schedule the alerts", thrown),
+      );
 
       // The *next* one that is about somebody, not the next one at all. A
       // standup at 09:00 is not a briefing, and showing it would push the
@@ -169,7 +189,8 @@ export function useBriefing(): {
   const refresh = useCallback(async (): Promise<BriefingState> => {
     try {
       return await load(await calendarAccess());
-    } catch {
+    } catch (thrown) {
+      sayWhyInDevelopment("could not be built", thrown);
       // A briefing that cannot be built is not an error worth a banner on the
       // home screen — the rest of the app works and the card simply is not
       // there.
@@ -229,7 +250,8 @@ export function useBriefing(): {
     try {
       const next = await load(await askForCalendar());
       if (mounted.current) setState(next);
-    } catch {
+    } catch (thrown) {
+      sayWhyInDevelopment("could not be built after asking", thrown);
       if (mounted.current) setState({ state: "unavailable" });
     } finally {
       asking.current = false;
