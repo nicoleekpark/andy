@@ -393,6 +393,102 @@ test("should drop an all-day event rather than brief you for a birthday", async 
   expect(query).not.toHaveBeenCalled();
 });
 
+// ---------------------------------------------------------------------------
+// Failing quietly, but not invisibly
+// ---------------------------------------------------------------------------
+
+/** Only this hook's own warnings, so an unrelated one cannot pass a test. */
+function briefingWarnings(warn: jest.SpyInstance) {
+  return warn.mock.calls.filter(
+    ([first]) => typeof first === "string" && first.startsWith("Briefing:"),
+  );
+}
+
+test("should say why the card is missing, in a development build", async () => {
+  const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+  const cause = new Error("REMINDERS permission is required");
+  (Calendar.getCalendars as jest.Mock).mockRejectedValue(cause);
+  const view = await render(<Harness />);
+
+  // What the person sees is unchanged: no card, no banner. What changed is
+  // that the person running the build is told why — PR #50's bug took a
+  // pasted-in console.warn to find, because this said nothing at all.
+  await waitFor(() => expect(briefingWarnings(warn)).toHaveLength(1));
+  expect(briefingWarnings(warn)[0]?.[1]).toBe(cause);
+  expect(view.toJSON()).toBeNull();
+});
+
+test("should say why when the card goes the moment access is allowed", async () => {
+  // The exact path PR #50's bug took: invitation → Allow → the read throws.
+  const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+  grant(false, true);
+  (Calendar.requestCalendarPermissions as jest.Mock).mockResolvedValue({
+    granted: true,
+    canAskAgain: false,
+    status: "granted",
+  });
+  const cause = new Error("REMINDERS permission is required");
+  (Calendar.getCalendars as jest.Mock).mockRejectedValue(cause);
+  const view = await render(<Harness />);
+  await waitFor(() =>
+    expect(screen.getByLabelText("Let Andy read my calendar")).toBeTruthy(),
+  );
+
+  await act(async () => {
+    fireEvent.press(screen.getByLabelText("Let Andy read my calendar"));
+  });
+
+  await waitFor(() => expect(briefingWarnings(warn)).toHaveLength(1));
+  expect(briefingWarnings(warn)[0]?.[1]).toBe(cause);
+  expect(view.toJSON()).toBeNull();
+});
+
+test("should stay silent about it in a release build", async () => {
+  const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+  const wasDev = (globalThis as { __DEV__?: boolean }).__DEV__;
+  (globalThis as { __DEV__?: boolean }).__DEV__ = false;
+  try {
+    (Calendar.getCalendars as jest.Mock).mockRejectedValue(new Error("boom"));
+    const view = await render(<Harness />);
+
+    await waitFor(() => expect(Calendar.getCalendars).toHaveBeenCalled());
+    expect(view.toJSON()).toBeNull();
+    expect(briefingWarnings(warn)).toHaveLength(0);
+  } finally {
+    (globalThis as { __DEV__?: boolean }).__DEV__ = wasDev;
+  }
+});
+
+test("should keep the card up and say so when the alerts cannot be scheduled", async () => {
+  const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+  const cause = new Error("scheduling refused");
+  (Notifications.scheduleNotificationAsync as jest.Mock).mockRejectedValue(cause);
+  calendarSays([
+    {
+      id: "e1",
+      title: "Coffee with Irene",
+      startDate: new Date(Date.now() + 3 * 3600_000),
+      endDate: new Date(Date.now() + 4 * 3600_000),
+      allDay: false,
+    },
+  ]);
+  backendSays([
+    {
+      eventId: "e1",
+      title: "Coffee with Irene",
+      startsAt: Date.now() + 3 * 3600_000,
+      endsAt: Date.now() + 4 * 3600_000,
+      people: [{ profileId: "p1", name: "Irene", noteCount: 1 }],
+      ambiguous: [],
+    },
+  ]);
+  await render(<Harness />);
+
+  await waitFor(() => expect(screen.getByText("Coffee with Irene")).toBeTruthy());
+  await waitFor(() => expect(briefingWarnings(warn)).toHaveLength(1));
+  expect(briefingWarnings(warn)[0]?.[0]).toMatch(/schedule/);
+});
+
 test("should drop an event whose dates cannot be read", async () => {
   calendarSays([
     { id: "x", title: "Coffee with Marcus", startDate: "not a date", endDate: "not a date", allDay: false },
