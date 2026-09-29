@@ -6,9 +6,10 @@ import { colors, fonts } from "../constants/theme";
  * The Briefing card — who you are about to meet, and what you wrote about them.
  *
  * `STYLE.md` calls this "the single place that looks different from everything
- * else" and spends the app's one visual risk here: a `brass` left-edge stripe,
- * a soft dashed top border that reads as a torn note edge, and nothing else in
- * the app allowed to borrow any of it. `brass` appears in exactly this file.
+ * else" and spends the app's one visual risk here: a `brass` left-edge stripe
+ * and a `brass` timestamp, and nothing else in the app allowed to borrow
+ * either. `brass` appears in exactly this file. (It once also had a dashed
+ * "torn edge" on top; React Native cannot draw that, and `STYLE.md` dropped it.)
  *
  * It sits at the top of home rather than on a screen of its own because the
  * thing it is for is the twenty minutes before you walk into a room, and a
@@ -64,14 +65,8 @@ export function BriefingCard(props: Props) {
 
   return (
     <View style={styles.card} testID="briefing-card">
-      {/*
-        The stripe and the torn edge, and the only place either is allowed.
-        Drawn as siblings rather than as borders on the card so the dashes stop
-        where the stripe begins, which is what makes it read as a torn sheet
-        rather than as a box with a dotted line on top.
-      */}
+      {/* The stripe, and the only place it is allowed. */}
       <View style={styles.stripe} />
-      <View style={styles.torn} />
 
       {props.state === "ask" ? (
         <>
@@ -212,16 +207,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: 3,
     backgroundColor: colors.brass,
-  },
-  /** The torn edge. Starts after the stripe so the two read as one object. */
-  torn: {
-    position: "absolute",
-    left: 3,
-    right: 0,
-    top: 0,
-    borderTopWidth: 1,
-    borderStyle: "dashed",
-    borderTopColor: colors.line,
   },
   when: {
     color: colors.brass,
