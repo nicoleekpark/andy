@@ -857,7 +857,11 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
       return;
     }
     setInterim("");
-    void runExtraction(spoken);
+    // Onto the same editor a typed note uses, not straight to Claude
+    // (decided 2026-09-29). A misheard name fixed here is fixed once, in the
+    // words every field is then built from; fixed after extraction, it has to
+    // be fixed again in the draft, or read twice.
+    setTyping(spoken);
   });
 
   const start = useCallback(async () => {
@@ -1675,16 +1679,46 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
    */
   if (typing !== null) {
     const empty = typing.trim() === "";
+    // The same editor for two doors: words typed from scratch, and words just
+    // spoken, waiting to be checked before anything reads them.
+    const heard = source === "voice";
     return (
       <>
         <Stack.Screen options={{ title: "New note" }} />
-        <View style={styles.container}>
+        {/*
+          One scroll view for the whole editor, not a scrolling input in a fixed
+          screen: found live 2026-09-29 with a long note, the input ran on
+          under the keyboard, the lines being edited and Read it back were
+          hidden behind it, and nothing put the keyboard away.
+
+          Keyboard insets come from `automaticallyAdjustKeyboardInsets`, the
+          same call `draft-sheet.tsx` made and wrote down: iOS measures the
+          keyboard itself and keeps the caret above it as the note grows, where
+          a `KeyboardAvoidingView` needs the header height guessed. Tapping any
+          empty part of the screen, or dragging down, puts the keyboard away.
+        */}
+        <ScrollView
+          style={styles.editorScroll}
+          contentContainerStyle={styles.editorContent}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          automaticallyAdjustKeyboardInsets
+        >
+          {heard ? (
+            <Text style={styles.lead}>
+              Check what Andy heard. Fix any names or words before it&apos;s read.
+            </Text>
+          ) : null}
           <TextInput
             value={typing}
             onChangeText={setTyping}
-            style={[styles.transcriptArea, styles.typedNote]}
+            style={styles.typedNote}
             multiline
-            autoFocus
+            // Grows with the note; the screen scrolls, not the field.
+            scrollEnabled={false}
+            // Straight into the keyboard for a blank note; for words already
+            // heard, most of the time there is nothing to fix.
+            autoFocus={!heard}
             editable={!busy}
             textAlignVertical="top"
             placeholder={
@@ -1693,10 +1727,14 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
                 : `What do you want to remember about ${aboutName}?`
             }
             placeholderTextColor={colors.line}
-            accessibilityLabel="Type a note"
+            accessibilityLabel={heard ? "What you said" : "Type a note"}
           />
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
+
+          {/* Keeps the buttons at the bottom of a short note, and is the empty
+              space a tap lands on to put the keyboard away. */}
+          <View style={styles.editorSpacer} />
 
           <Pressable
             accessibilityRole="button"
@@ -1712,21 +1750,36 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
             </Text>
           </Pressable>
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Stop typing"
-            onPress={() => {
-              setTyping(null);
-              // Back to the door this screen opens on, or a later recording
-              // would be filed as something the user wrote.
-              setSource("voice");
-            }}
-            disabled={busy}
-            style={styles.secondaryButton}
-          >
-            <Text style={styles.secondaryLabel}>Cancel</Text>
-          </Pressable>
-        </View>
+          {heard ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Record again"
+              onPress={() => {
+                setTyping(null);
+                void start();
+              }}
+              disabled={busy}
+              style={styles.secondaryButton}
+            >
+              <Text style={styles.secondaryLabel}>Record again</Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Stop typing"
+              onPress={() => {
+                setTyping(null);
+                // Back to the door this screen opens on, or a later recording
+                // would be filed as something the user wrote.
+                setSource("voice");
+              }}
+              disabled={busy}
+              style={styles.secondaryButton}
+            >
+              <Text style={styles.secondaryLabel}>Cancel</Text>
+            </Pressable>
+          )}
+        </ScrollView>
       </>
     );
   }
@@ -1992,7 +2045,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 27,
     paddingVertical: 8,
+    // A tap target even while empty, before the first word is typed.
+    minHeight: 120,
   },
+  editorScroll: { flex: 1, backgroundColor: colors.paper },
+  editorContent: { flexGrow: 1, padding: 24, gap: 16 },
+  editorSpacer: { flexGrow: 1 },
 
   checkRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   checkBox: {

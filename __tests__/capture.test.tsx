@@ -220,6 +220,11 @@ async function reachReview(handlers: Record<string, Listener>, spoken: string) {
   await act(async () => {
     handlers.end?.();
   });
+  // A finished recording waits on the editor first (2026-09-29), so the words
+  // can be fixed before anything reads them. Reading them is one more tap.
+  await act(async () => {
+    fireEvent.press(await screen.findByRole("button", { name: "Read it back" }));
+  });
   await waitFor(() => expect(screen.getByRole("button", { name: "Save note" })).toBeTruthy());
 }
 
@@ -413,6 +418,124 @@ describe("capture screen review step", () => {
     expect(call.draft.primary.keyFacts).toContain("branding designer");
   });
 
+  test("should let the words be fixed before anything reads them, and read and save only the fixed words", async () => {
+    // Decided 2026-09-29: a misheard name fixed after extraction had to be
+    // fixed twice, in the note and in every field built from it, or read a
+    // second time. Fixed here, it is fixed once.
+    const extract = jest.fn(async () => makeDraft());
+    mockActions({ extract });
+    const saveCapture = jest.fn(
+      async (_args: { transcript: string; draft: Draft; source: string }) => ({
+        profileId: "p1",
+        noteId: "n1",
+        createdProfile: true,
+        createdMentionCount: 0,
+      }),
+    );
+    mockSaveCapture(saveCapture);
+    const handlers = captureListeners();
+    await renderRouter("src/app", { initialUrl: "/profile/contact-1/capture" });
+
+    await act(async () => {
+      handlers.start?.();
+    });
+    await act(async () => {
+      handlers.result?.({ results: [{ transcript: "Met Nena for lunch" }], isFinal: true });
+    });
+    await act(async () => {
+      handlers.end?.();
+    });
+
+    // Stopped, and nothing has been read yet.
+    expect(extract).not.toHaveBeenCalled();
+    expect(screen.getByText(/Fix any names or words before it/)).toBeTruthy();
+    const said = screen.getByLabelText("What you said");
+    // Most of the time there is nothing to fix, so no keyboard in the way.
+    expect(said.props.autoFocus).toBe(false);
+
+    await act(async () => {
+      fireEvent.changeText(said, "Met Nina for lunch");
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Read it back" }));
+    });
+    await waitFor(() => expect(extract).toHaveBeenCalledTimes(1));
+    expect(JSON.stringify(extract.mock.calls[0])).toContain("Met Nina for lunch");
+    expect(JSON.stringify(extract.mock.calls[0])).not.toContain("Nena");
+
+    // The fix is the note, not an edit made after it: saving asks nothing,
+    // and the note is still filed as something said.
+    const alert = mockAlert();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Save note" })).toBeTruthy());
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+    });
+    await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
+    expect(alert).not.toHaveBeenCalled();
+    const [call] = saveCapture.mock.calls[0];
+    expect(call.transcript).toBe("Met Nina for lunch");
+    expect(call.source).toBe("voice");
+  });
+
+  test("should keep a long note editable above the keyboard, with a way to put the keyboard away", async () => {
+    // Found live 2026-09-29: a long note ran on under the keyboard, the lines
+    // being edited and Read it back were hidden, and nothing put the keyboard
+    // away. The keyboard itself only exists on a device (QA 7a.36); this pins
+    // the settings that fix it, so none of them quietly goes missing.
+    const handlers = captureListeners();
+    await renderRouter("src/app", { initialUrl: "/profile/contact-1/capture" });
+    await act(async () => {
+      handlers.start?.();
+    });
+    await act(async () => {
+      handlers.result?.({ results: [{ transcript: "Met Nina ".repeat(200) }], isFinal: true });
+    });
+    await act(async () => {
+      handlers.end?.();
+    });
+
+    const said = screen.getByLabelText("What you said");
+    // The field grows; the screen around it is what scrolls.
+    expect(said.props.scrollEnabled).toBe(false);
+    let scroller = said.parent;
+    while (scroller && scroller.props.automaticallyAdjustKeyboardInsets === undefined) {
+      scroller = scroller.parent;
+    }
+    expect(scroller?.props.automaticallyAdjustKeyboardInsets).toBe(true);
+    expect(scroller?.props.keyboardDismissMode).toBe("interactive");
+    expect(scroller?.props.keyboardShouldPersistTaps).toBe("handled");
+    // And Read it back is inside what scrolls, so it can always be reached.
+    expect(within(scroller!).getByRole("button", { name: "Read it back" })).toBeTruthy();
+  });
+
+  test("should record again from the check step without reading what was heard", async () => {
+    const { ExpoSpeechRecognitionModule } = jest.requireMock("expo-speech-recognition");
+    (ExpoSpeechRecognitionModule.requestPermissionsAsync as jest.Mock).mockResolvedValue({
+      granted: true,
+    });
+    const extract = jest.fn(async () => makeDraft());
+    mockActions({ extract });
+    const handlers = captureListeners();
+    await renderRouter("src/app", { initialUrl: "/profile/contact-1/capture" });
+
+    await act(async () => {
+      handlers.start?.();
+    });
+    await act(async () => {
+      handlers.result?.({ results: [{ transcript: "Met Nina umm" }], isFinal: true });
+    });
+    await act(async () => {
+      handlers.end?.();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Record again" }));
+    });
+    await waitFor(() => expect(ExpoSpeechRecognitionModule.start).toHaveBeenCalledTimes(1));
+    expect(extract).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText("What you said")).toBeNull();
+  });
+
   test("should throw the recording away and listen again on Start over, reading none of it", async () => {
     // Asked for 2026-09-29: redoing a note used to mean Stop → wait for
     // extraction → "Discard and start over", a Claude call paid for words the
@@ -477,6 +600,10 @@ describe("capture screen review step", () => {
     });
     await act(async () => {
       handlers.end?.();
+    });
+    expect(screen.getByDisplayValue("Met Nina for lunch")).toBeTruthy();
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Read it back" }));
     });
     await waitFor(() => expect(extract).toHaveBeenCalledTimes(1));
     expect(JSON.stringify(extract.mock.calls[0])).toContain("Met Nina for lunch");
