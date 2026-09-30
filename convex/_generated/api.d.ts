@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as account from "../account.js";
 import type * as answer from "../answer.js";
 import type * as answerPrompt from "../answerPrompt.js";
 import type * as calendar from "../calendar.js";
@@ -40,6 +41,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  account: typeof account;
   answer: typeof answer;
   answerPrompt: typeof answerPrompt;
   calendar: typeof calendar;
