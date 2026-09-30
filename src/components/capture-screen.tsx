@@ -1709,6 +1709,13 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
               Check what Andy heard. Fix any names or words before it&apos;s read.
             </Text>
           ) : null}
+          {/*
+            Heard words get the review screen's own field label, and both doors
+            get its underline: without them the words read as plain text, and
+            nothing but the line above says they can be changed (2026-09-29,
+            chosen from six mockups).
+          */}
+          {heard ? <Text style={styles.fieldLabel}>What you said</Text> : null}
           <TextInput
             value={typing}
             onChangeText={setTyping}
@@ -2045,8 +2052,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 27,
     paddingVertical: 8,
-    // A tap target even while empty, before the first word is typed.
-    minHeight: 120,
+    // No minHeight: the underline is drawn at the field's bottom edge, and a
+    // field taller than its words left the line floating lines below them
+    // (seen on the simulator, 2026-09-30). A blank note still has its
+    // placeholder line to tap, and opens with the keyboard up anyway.
+    // The same line as the review screen's `input`: this is a field.
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.line,
   },
   editorScroll: { flex: 1, backgroundColor: colors.paper },
   editorContent: { flexGrow: 1, padding: 24, gap: 16 },

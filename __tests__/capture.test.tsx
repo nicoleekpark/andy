@@ -5,7 +5,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react-native";
-import { Alert } from "react-native";
+import { Alert, StyleSheet } from "react-native";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { getFunctionName } from "convex/server";
 import { useSpeechRecognitionEvent } from "expo-speech-recognition";
@@ -452,6 +452,10 @@ describe("capture screen review step", () => {
     const said = screen.getByLabelText("What you said");
     // Most of the time there is nothing to fix, so no keyboard in the way.
     expect(said.props.autoFocus).toBe(false);
+    // And it looks like a field, not a paragraph: the review screen's label
+    // and underline (chosen from mockups, 2026-09-29).
+    expect(screen.getByText("What you said")).toBeTruthy();
+    expect(StyleSheet.flatten(said.props.style).borderBottomWidth).toBeGreaterThan(0);
 
     await act(async () => {
       fireEvent.changeText(said, "Met Nina for lunch");
