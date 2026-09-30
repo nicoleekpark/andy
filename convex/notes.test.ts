@@ -136,6 +136,44 @@ test("should not erase existing relationshipContext, firstMetDate, or tags when 
   });
 });
 
+test("should keep the first-met date and relationship already on a person when a later note claims different ones", async () => {
+  // The test above covers a later note saying *nothing*. This is the other
+  // half: a later note saying something *else*. The capture screen ticks
+  // "This was the first time we met" by default even after an existing person
+  // is chosen (found live, QA 7a.31, 2026-09-29), so a second "first meeting"
+  // is the ordinary case, not an edge. The date you first met somebody does
+  // not move because you met them again.
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  const first = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "Met Nina at the design conference. She's a client.",
+    draft: buildDraft({
+      primaryName: "Nina",
+      relationshipContext: "client",
+      firstMetDate: "2026-01-15",
+    }),
+    source: "voice",
+  });
+
+  await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "Met Nina for coffee, a friend from the gym.",
+    draft: buildDraft({
+      primaryName: "Nina",
+      relationshipContext: "friend",
+      firstMetDate: "2026-09-29",
+    }),
+    source: "voice",
+  });
+
+  await t.run(async (ctx) => {
+    const profile = await ctx.db.get(first.profileId);
+    expect(profile?.firstMetDate).toBe("2026-01-15");
+    expect(profile?.relationshipContext).toBe("client");
+  });
+});
+
 test("should create a stub profile for a mentioned person and promote it to a non-stub profile when a later capture is about them", async () => {
   const t = convexTest(schema, modules);
   await ensureUser(t, ALICE);
