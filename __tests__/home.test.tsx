@@ -6,7 +6,7 @@ import { api } from "@convex/_generated/api";
 
 /**
  * src/app/(app)/index.tsx's three branches — loading, empty, populated — are
- * driven entirely by what `api.profiles.recent` returns, the same shape as
+ * driven entirely by what `api.profiles.people` returns, the same shape as
  * __tests__/profile.test.tsx's coverage of `api.profiles.withNotes`.
  *
  * Unlike that file, this route tree now has two `useQuery` call sites live at
@@ -15,13 +15,13 @@ import { api } from "@convex/_generated/api";
  * would still be wrong here on principle — the generated `api` is a Proxy, so
  * nothing stops a future screen sharing this tree from adding a second
  * `useQuery` caller silently. Branching by `getFunctionName` pins this test
- * to `api.profiles.recent` specifically, the way capture.test.tsx's
+ * to `api.profiles.people` specifically, the way capture.test.tsx's
  * `mockSaveCapture` pins `useMutation` to `api.notes.saveCapture`.
  */
 
-function mockRecentQuery(value: unknown) {
+function mockPeopleQuery(value: unknown) {
   (useQuery as jest.Mock).mockImplementation((fn: unknown) =>
-    getFunctionName(fn as never) === getFunctionName(api.profiles.recent)
+    getFunctionName(fn as never) === getFunctionName(api.profiles.people)
       ? value
       : undefined,
   );
@@ -49,7 +49,7 @@ describe("home screen", () => {
   });
 
   test("should show a loading state when the query has not resolved yet", async () => {
-    mockRecentQuery(undefined);
+    mockPeopleQuery(undefined);
 
     const result = renderRouter("src/app", { initialUrl: "/" });
     await result;
@@ -58,7 +58,7 @@ describe("home screen", () => {
   });
 
   test("should show the invitation copy when there is no one yet", async () => {
-    mockRecentQuery([]);
+    mockPeopleQuery([]);
 
     const result = renderRouter("src/app", { initialUrl: "/" });
     await result;
@@ -69,7 +69,7 @@ describe("home screen", () => {
   });
 
   test("should render a row for each person when the query resolves", async () => {
-    mockRecentQuery([
+    mockPeopleQuery([
       buildPerson({
         profile: { _id: "profile-1", name: "Nina" },
         noteCount: 2,
@@ -88,7 +88,7 @@ describe("home screen", () => {
   });
 
   test("should route to that person's profile when a row is tapped", async () => {
-    mockRecentQuery([buildPerson({ profile: { _id: "profile-42", name: "Nina" } })]);
+    mockPeopleQuery([buildPerson({ profile: { _id: "profile-42", name: "Nina" } })]);
 
     const result = renderRouter("src/app", { initialUrl: "/" });
     await result;
@@ -101,7 +101,7 @@ describe("home screen", () => {
   });
 
   test("should route to capture when Record is tapped", async () => {
-    mockRecentQuery([]);
+    mockPeopleQuery([]);
 
     const result = renderRouter("src/app", { initialUrl: "/" });
     await result;
@@ -114,7 +114,7 @@ describe("home screen", () => {
   });
 
   test("should route to settings when the header Settings button is tapped", async () => {
-    mockRecentQuery([]);
+    mockPeopleQuery([]);
 
     const result = renderRouter("src/app", { initialUrl: "/" });
     await result;
@@ -127,7 +127,7 @@ describe("home screen", () => {
   });
 
   test("should offer a way into Ask Andy, since a screen nobody can reach is not shipped", async () => {
-    mockRecentQuery([]);
+    mockPeopleQuery([]);
 
     const router = renderRouter("src/app", { initialUrl: "/" });
     await router;

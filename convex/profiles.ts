@@ -3,7 +3,7 @@ import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { removeOrphanedAutoCreated } from "./cleanup";
 import { MAX_NAME_CHARS } from "./extractionPrompt";
-import { candidatesForSpokenName, cleanAliases, matchKey, mergeTags } from "./naming";
+import { candidatesForSpokenName, cleanAliases, compareNamesForList, matchKey, mergeTags } from "./naming";
 import { possessiveBases } from "./possessive";
 import schema from "./schema";
 import { getAuthenticatedUser } from "./users";
@@ -141,7 +141,7 @@ export const withNotes = query({
       .collect();
 
     // Every link this user owns, read once and split two ways rather than
-    // queried per note. Same trade as `recent` below: one read while a person
+    // queried per note. Same trade as `people` below: one read while a person
     // has hundreds of notes, revisited with pagination when that stops holding.
     const links = await ctx.db
       .query("noteMentions")
@@ -214,7 +214,9 @@ export const withNotes = query({
 });
 
 /**
- * The people you have actually recorded, most recently written about first.
+ * The people you have actually recorded, A to Z and then 가 to 힣
+ * (`compareNamesForList`; decided 2026-09-29, replacing most-recent-first).
+ * Two people with the same name keep the order they were added in.
  *
  * Someone who only ever appeared inside a note about somebody else is left out.
  * They are a real row — that is what makes "who was at that dinner" answerable
@@ -223,11 +225,11 @@ export const withNotes = query({
  *
  * Membership is derived from the notes rather than from `autoCreated`, and the
  * two are not the same question. `autoCreated` says who invented the row; this
- * list is about who has been written about, which the recency ordering has to
- * count anyway. Reading the flag instead would answer a different question and
- * go stale the first time a note was deleted.
+ * list is about who has been written about, which the note counts and dates
+ * shown on each row have to read anyway. Reading the flag instead would answer
+ * a different question and go stale the first time a note was deleted.
  */
-export const recent = query({
+export const people = query({
   args: {},
   returns: v.array(
     v.object({
@@ -266,7 +268,9 @@ export const recent = query({
         const stats = byProfile.get(profile._id);
         return stats === undefined ? [] : [{ profile, ...stats }];
       })
-      .sort((a, b) => b.lastNoteAt - a.lastNoteAt);
+      // Stable, and `by_user` hands profiles over oldest first, so two people
+      // with the same name stay in the order they were added.
+      .sort((a, b) => compareNamesForList(a.profile.name, b.profile.name));
   },
 });
 
@@ -438,7 +442,7 @@ export const resolveNames = query({
       candidatesForSpokenName(owned, key);
 
     // Read once and counted here rather than per candidate: the same trade as
-    // `recent`, and revisited by pagination when a person has thousands.
+    // `people`, and revisited by pagination when a person has thousands.
     const notes = await ctx.db
       .query("notes")
       .withIndex("by_user", (q) => q.eq("userId", user._id))

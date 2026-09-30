@@ -319,7 +319,7 @@ said "last-notes digest" and described a worse app.
 **Screens (minimum for V1, Expo Router)**
 
 ```
-/ (home)               → recent profiles, "Ask Andy" button, record button
+/ (home)               → everyone you keep, A→Z then 가→힣 (was most-recent-first until 2026-09-29), "Ask Andy" button, record button
                          (a button, not a live search bar — see below)
 /profile/[id]          → timeline, tags, metrics (if animal), photo, follow-up email button
 /profile/[id]/capture  → voice/typed capture, pre-scoped to this profile

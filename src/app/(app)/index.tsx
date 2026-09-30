@@ -21,7 +21,7 @@ import { colors, fonts } from "@/constants/theme";
  * submit would promise something it cannot do.
  */
 export default function HomeScreen() {
-  const people = useQuery(api.profiles.recent);
+  const people = useQuery(api.profiles.people);
   const { briefing, ask, alerts, askForAlerts } = useBriefing();
 
   return (
