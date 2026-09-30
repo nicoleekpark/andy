@@ -552,6 +552,27 @@ real-device pass. `CLERK_SECRET_KEY` was also not yet set on the dev deployment.
 | 22.5 | Unset `CLERK_SECRET_KEY`, tap Delete | "Andy can't delete accounts right now. Nothing was deleted." and every note still there | ⬜ |
 | 22.6 | Another account's data, checked in `npm run db` after 22.3 | Untouched | ⬜ |
 
+## 23. App icon and splash
+
+The Rising thread: one brass thread climbing from bottom left to top right,
+with a single loop lifted above it, on the paper ground. No letters, no dots.
+iOS reads it from the Icon Composer bundle `assets/expo.icon` (`ios.icon`);
+`assets/images/icon.png` is only the fallback for other platforms.
+
+**Needs a build — and the build is the first check of the bundle.** This Mac's
+Xcode predates 26, so `assets/expo.icon` has never been compiled locally; a
+malformed `icon.json` shows up as an EAS build error or a blank icon, not in
+lint or tests. The layer order is top-first (`twist` over `thread`), the same
+as the Expo template it replaced.
+
+| # | Do this | Expect | |
+|---|---|---|---|
+| 23.1 | Install the new build, look at the home screen (Light appearance) | Brass thread with one loop on a paper-coloured square. The dashed twist along the thread is visible up close. **No** Expo symbol, grid, or blue gradient anywhere | ⬜ |
+| 23.2 | Settings → Display & Brightness → Dark, back to the home screen | Dark ground (ink `#2A2622`) with a lighter brass thread. The loop still reads clearly | ⬜ |
+| 23.3 | Long-press the home screen → Edit → Customize → **Tinted** | A plain single-colour thread, **without** the dashed stripes (`twist` is hidden for tinted in `icon.json`). If the stripes show, `hidden-specializations` is not being honoured — schema-consistent but not seen in a shipped icon | ⬜ |
+| 23.4 | Look at the icon at its smallest: Settings app list, a notification, Spotlight | The loop is still a loop (not a blob or a scribble) | ⬜ |
+| 23.5 | Cold-launch the app | Splash: paper ground with only the loop in the middle, thread fading out at both ends — **no** cut-off line ends, and not the old ink chevron | ⬜ |
+
 ---
 
 ## Not built yet — do not file these

@@ -41,8 +41,8 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#E8E6DE",
-          "image": "./assets/images/splash-icon-ink.png",
-          "imageWidth": 76
+          "image": "./assets/images/splash-loop.png",
+          "imageWidth": 144
         }
       ],
       "@clerk/expo",
