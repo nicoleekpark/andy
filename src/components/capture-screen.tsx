@@ -1864,7 +1864,15 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
           </Text>
         </Pressable>
 
-        {listening ? (
+        {/*
+          While recording, only what works while recording (2026-09-30). The
+          card and typing doors were disabled mid-recording but drawn exactly
+          like live buttons, so they read as broken; and Start over, shown
+          before any word was heard, had nothing to throw away and so seemed to
+          do nothing. Start over now waits for words; the two doors come back
+          once the recording ends.
+        */}
+        {listening && body !== "" ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Start over"
@@ -1875,29 +1883,33 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
           </Pressable>
         ) : null}
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Scan a business card"
-          onPress={chooseCardSource}
-          disabled={listening || busy || phase === "starting"}
-          style={styles.secondaryButton}
-        >
-          <Text style={styles.secondaryLabel}>Scan a business card</Text>
-        </Pressable>
+        {listening || phase === "starting" ? null : (
+          <>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Scan a business card"
+              onPress={chooseCardSource}
+              disabled={busy}
+              style={styles.secondaryButton}
+            >
+              <Text style={styles.secondaryLabel}>Scan a business card</Text>
+            </Pressable>
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Type it instead"
-          onPress={() => {
-            setSource("manual");
-            setError(null);
-            setTyping("");
-          }}
-          disabled={listening || busy || phase === "starting"}
-          style={styles.secondaryButton}
-        >
-          <Text style={styles.secondaryLabel}>Type it instead</Text>
-        </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Type it instead"
+              onPress={() => {
+                setSource("manual");
+                setError(null);
+                setTyping("");
+              }}
+              disabled={busy}
+              style={styles.secondaryButton}
+            >
+              <Text style={styles.secondaryLabel}>Type it instead</Text>
+            </Pressable>
+          </>
+        )}
 
         {/*
           Measurement instrument, not product. PROJECT_SCOPE.md requires Korean

@@ -540,6 +540,47 @@ describe("capture screen review step", () => {
     expect(screen.queryByLabelText("What you said")).toBeNull();
   });
 
+  test("should offer only what works while recording, and Start over only once something was heard", async () => {
+    // Found live 2026-09-30: mid-recording, the card and typing doors were
+    // disabled but drawn like live buttons, and Start over with nothing heard
+    // yet had nothing to throw away. Each read as a button that does nothing.
+    const { ExpoSpeechRecognitionModule } = jest.requireMock("expo-speech-recognition");
+    // Held open, so the screen sits in "starting" long enough to look at.
+    (ExpoSpeechRecognitionModule.requestPermissionsAsync as jest.Mock).mockReturnValue(
+      new Promise(() => {}),
+    );
+    const handlers = captureListeners();
+    await renderRouter("src/app", { initialUrl: "/profile/contact-1/capture" });
+    const doors = () => [
+      screen.queryByRole("button", { name: "Scan a business card" }),
+      screen.queryByRole("button", { name: "Type it instead" }),
+    ];
+
+    // Before recording: every door.
+    expect(doors().every((door) => door !== null)).toBe(true);
+
+    // Starting: the doors go at once, not after the recogniser answers.
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Start recording" }));
+    });
+    expect(doors()).toEqual([null, null]);
+
+    // Listening, nothing heard yet: Stop, and nothing else.
+    await act(async () => {
+      handlers.start?.();
+    });
+    expect(screen.getByRole("button", { name: "Stop recording" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Start over" })).toBeNull();
+    expect(doors()).toEqual([null, null]);
+
+    // Words heard: now there is something to start over from.
+    await act(async () => {
+      handlers.result?.({ results: [{ transcript: "Met Nina" }], isFinal: false });
+    });
+    expect(screen.getByRole("button", { name: "Start over" })).toBeTruthy();
+    expect(doors()).toEqual([null, null]);
+  });
+
   test("should throw the recording away and listen again on Start over, reading none of it", async () => {
     // Asked for 2026-09-29: redoing a note used to mean Stop → wait for
     // extraction → "Discard and start over", a Claude call paid for words the
