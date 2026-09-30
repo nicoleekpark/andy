@@ -63,7 +63,7 @@ Internally model the core entity generically (not hardcoded to "contact") — th
 
 ## Visual Design
 
-Check `STYLE.md` before building any screen — color tokens, type roles, and the one signature element (the Briefing card) are decided there. Don't invent ad hoc colors/fonts per screen.
+Check `STYLE.md` before building any screen — color tokens, type roles, and the one signature element (the Briefing card) are decided there. Don't invent ad hoc colors/fonts per screen. Its **Voice** section governs every word a person reads (screens, store listing, README, the privacy page): Andy *remembers*, it never *collects*, and "Andy's promises" only ever list what the code already guarantees.
 
 ## Scope Discipline
 

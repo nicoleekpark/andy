@@ -76,6 +76,42 @@ The per-profile **timeline** is genuinely sequential data (notes in time order),
 
 Plain verbs, active voice, no filler. "Save note," not "Submit." Empty states are invitations, not apologies: "No notes yet — tap record to remember your first person," not "No data available." Errors state what happened and what to do, in the interface's voice, never "Oops!"
 
+## Voice — remembering, never collecting
+
+Decided 2026-09-30. Andy holds notes about people who never signed up for it.
+Read as "an app that collects information on people", it fails, with users and
+at review. Read as "someone who remembers what you told them", the same
+features are warm. The difference is where the information goes: what someone
+told you, kept between the two of you, is care; the same words flowing anywhere
+else are intrusion. So every screen, store line, README sentence and icon says
+the first thing and never the second.
+
+**The one line:** Andy is a private notebook that keeps the attention you already
+gave people, so you remember what they told you.
+
+**Words.** Never: *track, profile, data, database, intel, dossier, contacts,
+leads, CRM, manage relationships, never forget a face, know everything about.*
+Use: *remember, notes, the people you meet, what they told you, before you walk
+in, ask about, only you.* "Profile" is the code's word for a person; it does not
+belong on a screen.
+
+**Andy's promises.** The same five lines everywhere they appear (the privacy
+policy, the store listing, the README, onboarding). Only list what the code
+already guarantees; a promise is added after the code keeps it, never before.
+
+1. **Only you.** Your notes are never shared, sold or shown to anyone.
+2. **Andy never reaches out.** It doesn't message anyone. Drafts stay with you.
+3. **Quiet on the lock screen.** Reminders show a name, never what you wrote.
+4. **No ads, no tracking.** Not now, not later.
+5. **Gone when you say.** Delete a note, a person, or everything, in the app.
+
+**The story the design tells.** The address-book marginalia in *Grounding*, plus
+the friend at your shoulder who says the name just before you need it. Paper is
+the notebook, ink is your own hand, brass is the whisper (the Briefing card, a
+reminder), moss is a relationship growing. The icon is the first frame of that
+story. When showing Andy anywhere, show the face of the person who was
+remembered, never a screen full of what was written about someone.
+
 ## Guardrail for Claude Code
 
 Before building any screen, check this file. If a color/font choice isn't listed here, don't invent one ad hoc — flag it and ask, or extend this file deliberately (and say why) rather than drifting screen by screen.
