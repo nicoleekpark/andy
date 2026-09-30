@@ -12,8 +12,10 @@ export const colors = {
   /** primary accent — buttons, active states */
   moss: "#5C6B4F",
   /**
-   * The signature colour, reserved for the Briefing card alone. Using it
-   * anywhere else is what would stop it being a signature.
+   * The signature colour. Inside the signed-in app it is the Briefing card's
+   * alone; using it on any other screen there is what would stop it being a
+   * signature. Before sign-in it is also the thread: the icon, the launch
+   * screen and the name mark on sign-in. See STYLE.md.
    */
   brass: "#B8935A",
   /** dividers, borders */
@@ -42,6 +44,11 @@ export const fonts = {
    */
   display: "Lora",
   displayMedium: "Lora-Medium",
+  /**
+   * The one line under the name mark on the sign-in screen, and nowhere else.
+   * The italic keeps the pen that drew it, which is the point there.
+   */
+  displayItalic: "Lora-Italic",
   /**
    * Dates, tags and metrics. A ledger reads as a record because its numbers
    * line up, which a proportional face cannot do.
