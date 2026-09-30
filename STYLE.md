@@ -68,6 +68,21 @@ icon. Neither is in the app, on purpose.
 
 The stripe and the `brass` timestamp carry the signal on their own.
 
+## App Icon — the Rising thread
+
+Decided 2026-09-30. One brass thread climbs from bottom left to top right and
+makes a single loop, lifted above the line, on the paper ground: the string you
+tie so you don't forget. Source: `assets/expo.icon` (Icon Composer; paper/brass
+in light, ink/lighter brass in dark, plain thread in tinted). The splash is the
+loop alone, fading out at both ends.
+
+What was tried and dropped, so it isn't re-proposed: a lowercase **a** (reads as
+Amazon's logo), sound arcs **))** (Wi-Fi, a live mic: "sent", not "kept"), a plain
+bookmark ribbon (Day One), dots on the thread or a loop hanging below it (odd,
+sagging), and **two** loops in a row (every spacing reads as cursive *ll*/*el*/*ee*).
+No letters in the icon: the name already sits under it, and text is unreadable
+at 29 pt.
+
 ## One Structural Idea
 
 The per-profile **timeline** is genuinely sequential data (notes in time order), so a connected vertical thread between entries is justified — not decoration, actual information. Don't add numbered markers (01/02/03) anywhere else; nothing else in this app is a sequence.
