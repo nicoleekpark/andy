@@ -857,7 +857,11 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
       return;
     }
     setInterim("");
-    void runExtraction(spoken);
+    // Onto the same editor a typed note uses, not straight to Claude
+    // (decided 2026-09-29). A misheard name fixed here is fixed once, in the
+    // words every field is then built from; fixed after extraction, it has to
+    // be fixed again in the draft, or read twice.
+    setTyping(spoken);
   });
 
   const start = useCallback(async () => {
@@ -1675,16 +1679,53 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
    */
   if (typing !== null) {
     const empty = typing.trim() === "";
+    // The same editor for two doors: words typed from scratch, and words just
+    // spoken, waiting to be checked before anything reads them.
+    const heard = source === "voice";
     return (
       <>
         <Stack.Screen options={{ title: "New note" }} />
-        <View style={styles.container}>
+        {/*
+          One scroll view for the whole editor, not a scrolling input in a fixed
+          screen: found live 2026-09-29 with a long note, the input ran on
+          under the keyboard, the lines being edited and Read it back were
+          hidden behind it, and nothing put the keyboard away.
+
+          Keyboard insets come from `automaticallyAdjustKeyboardInsets`, the
+          same call `draft-sheet.tsx` made and wrote down: iOS measures the
+          keyboard itself and keeps the caret above it as the note grows, where
+          a `KeyboardAvoidingView` needs the header height guessed. Tapping any
+          empty part of the screen, or dragging down, puts the keyboard away.
+        */}
+        <ScrollView
+          style={styles.editorScroll}
+          contentContainerStyle={styles.editorContent}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          automaticallyAdjustKeyboardInsets
+        >
+          {heard ? (
+            <Text style={styles.lead}>
+              Check what Andy heard. Fix any names or words before it&apos;s read.
+            </Text>
+          ) : null}
+          {/*
+            Heard words get the review screen's own field label, and both doors
+            get its underline: without them the words read as plain text, and
+            nothing but the line above says they can be changed (2026-09-29,
+            chosen from six mockups).
+          */}
+          {heard ? <Text style={styles.fieldLabel}>What you said</Text> : null}
           <TextInput
             value={typing}
             onChangeText={setTyping}
-            style={[styles.transcriptArea, styles.typedNote]}
+            style={styles.typedNote}
             multiline
-            autoFocus
+            // Grows with the note; the screen scrolls, not the field.
+            scrollEnabled={false}
+            // Straight into the keyboard for a blank note; for words already
+            // heard, most of the time there is nothing to fix.
+            autoFocus={!heard}
             editable={!busy}
             textAlignVertical="top"
             placeholder={
@@ -1693,10 +1734,14 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
                 : `What do you want to remember about ${aboutName}?`
             }
             placeholderTextColor={colors.line}
-            accessibilityLabel="Type a note"
+            accessibilityLabel={heard ? "What you said" : "Type a note"}
           />
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
+
+          {/* Keeps the buttons at the bottom of a short note, and is the empty
+              space a tap lands on to put the keyboard away. */}
+          <View style={styles.editorSpacer} />
 
           <Pressable
             accessibilityRole="button"
@@ -1712,21 +1757,36 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
             </Text>
           </Pressable>
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Stop typing"
-            onPress={() => {
-              setTyping(null);
-              // Back to the door this screen opens on, or a later recording
-              // would be filed as something the user wrote.
-              setSource("voice");
-            }}
-            disabled={busy}
-            style={styles.secondaryButton}
-          >
-            <Text style={styles.secondaryLabel}>Cancel</Text>
-          </Pressable>
-        </View>
+          {heard ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Record again"
+              onPress={() => {
+                setTyping(null);
+                void start();
+              }}
+              disabled={busy}
+              style={styles.secondaryButton}
+            >
+              <Text style={styles.secondaryLabel}>Record again</Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Stop typing"
+              onPress={() => {
+                setTyping(null);
+                // Back to the door this screen opens on, or a later recording
+                // would be filed as something the user wrote.
+                setSource("voice");
+              }}
+              disabled={busy}
+              style={styles.secondaryButton}
+            >
+              <Text style={styles.secondaryLabel}>Cancel</Text>
+            </Pressable>
+          )}
+        </ScrollView>
       </>
     );
   }
@@ -1804,7 +1864,15 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
           </Text>
         </Pressable>
 
-        {listening ? (
+        {/*
+          While recording, only what works while recording (2026-09-30). The
+          card and typing doors were disabled mid-recording but drawn exactly
+          like live buttons, so they read as broken; and Start over, shown
+          before any word was heard, had nothing to throw away and so seemed to
+          do nothing. Start over now waits for words; the two doors come back
+          once the recording ends.
+        */}
+        {listening && body !== "" ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Start over"
@@ -1815,29 +1883,33 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
           </Pressable>
         ) : null}
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Scan a business card"
-          onPress={chooseCardSource}
-          disabled={listening || busy || phase === "starting"}
-          style={styles.secondaryButton}
-        >
-          <Text style={styles.secondaryLabel}>Scan a business card</Text>
-        </Pressable>
+        {listening || phase === "starting" ? null : (
+          <>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Scan a business card"
+              onPress={chooseCardSource}
+              disabled={busy}
+              style={styles.secondaryButton}
+            >
+              <Text style={styles.secondaryLabel}>Scan a business card</Text>
+            </Pressable>
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Type it instead"
-          onPress={() => {
-            setSource("manual");
-            setError(null);
-            setTyping("");
-          }}
-          disabled={listening || busy || phase === "starting"}
-          style={styles.secondaryButton}
-        >
-          <Text style={styles.secondaryLabel}>Type it instead</Text>
-        </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Type it instead"
+              onPress={() => {
+                setSource("manual");
+                setError(null);
+                setTyping("");
+              }}
+              disabled={busy}
+              style={styles.secondaryButton}
+            >
+              <Text style={styles.secondaryLabel}>Type it instead</Text>
+            </Pressable>
+          </>
+        )}
 
         {/*
           Measurement instrument, not product. PROJECT_SCOPE.md requires Korean
@@ -1992,7 +2064,17 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 27,
     paddingVertical: 8,
+    // No minHeight: the underline is drawn at the field's bottom edge, and a
+    // field taller than its words left the line floating lines below them
+    // (seen on the simulator, 2026-09-30). A blank note still has its
+    // placeholder line to tap, and opens with the keyboard up anyway.
+    // The same line as the review screen's `input`: this is a field.
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.line,
   },
+  editorScroll: { flex: 1, backgroundColor: colors.paper },
+  editorContent: { flexGrow: 1, padding: 24, gap: 16 },
+  editorSpacer: { flexGrow: 1 },
 
   checkRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   checkBox: {
