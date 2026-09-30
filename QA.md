@@ -523,6 +523,28 @@ their rows.
 | 21.8 | After a failed biometric attempt, use **Enter Passcode** on the OS's own sheet | Unlocks the app too — device-passcode fallback is left on deliberately, not biometric-only | ⏭️ device only — after two misses the simulator's sheet stays on Face ID (`Application retry limit exceeded`) and never offers the passcode |
 | 21.9 | Sign out, or open while signed out | **No lock screen** — the gate only applies inside the authenticated `(app)` group; the sign-in screen itself is never behind it | ✅ — simulator, 2026-09-25; signed-out cold launch made no LocalAuthentication call |
 
+
+## 22. Deleting your account
+
+App Store Guideline 5.1.1(v): an app you sign into has to let you delete the
+account from inside it. **This deletes real data.** Run it on a second Apple ID
+with a few throwaway notes, not on the account you test everything else with.
+
+**Needs** `CLERK_SECRET_KEY` on the Convex deployment (`npx convex env set
+CLERK_SECRET_KEY sk_…`). Without it the button refuses and deletes nothing.
+
+**Not yet done, and required by Apple:** revoking the Sign in with Apple tokens.
+Clerk does not do it; it is its own slice.
+
+| # | Do this | Expect | |
+|---|---|---|---|
+| 22.1 | Settings | **Delete account** under Sign out, in the muted red. Easy to find is part of the rule | ⬜ |
+| 22.2 | Tap it → **Cancel** | Nothing deleted; still signed in | ⬜ |
+| 22.3 | Tap it → **Delete account** | "Deleting your account…", then the sign-in screen. `npm run db`: no rows for that user in any table, no `users` row, and the profile photos gone from Files. Clerk dashboard: the user is gone | ⬜ |
+| 22.4 | Sign in again with the same Apple ID | A **fresh, empty** Andy. Nothing from before comes back | ⬜ |
+| 22.5 | Unset `CLERK_SECRET_KEY`, tap Delete | "Andy can't delete accounts right now. Nothing was deleted." and every note still there | ⬜ |
+| 22.6 | Another account's data, checked in `npm run db` after 22.3 | Untouched | ⬜ |
+
 ---
 
 ## Not built yet — do not file these

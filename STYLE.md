@@ -18,9 +18,9 @@ The subject is _personal memory-keeping_ — closer to marginalia in a well-love
 | `alert` | `#A8503E` | errors only — muted, not a bright red                                    |
 
 `src/constants/theme.ts` is the only place these hex values appear; screens
-import `colors`. `alert` has exactly one non-error use — the destructive
-controls on the note and profile edit screens, which have earned the same
-weight as an error.
+import `colors`. `alert` has exactly one non-error use — destructive controls:
+deleting a note or a person on their edit screens, and deleting the whole
+account in Settings. Each has earned the same weight as an error.
 
 **Light only.** There is no dark palette, and `app.json` pins `userInterfaceStyle: "light"` so the OS setting can't half-apply one. A dark variant isn't a colour swap here — `brass` is the signature and it would need re-deciding against a dark ground, which is a real design pass this V1 timeline doesn't have. Not in PROJECT_SCOPE's Must/Should either. Reverting is one line in `app.json` plus six dark values in the table above.
 

@@ -1,24 +1,82 @@
 import { useAuth } from "@clerk/expo";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useAction } from "convex/react";
+import { ConvexError } from "convex/values";
+import { useCallback, useRef, useState } from "react";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { api } from "@convex/_generated/api";
 import { ScreenPlaceholder } from "@/components/screen-placeholder";
 import { colors } from "@/constants/theme";
 
 export default function SettingsScreen() {
   const { signOut } = useAuth();
+  const deleteMyAccount = useAction(api.account.deleteMyAccount);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // A latch, not state: two taps can land before `deleting` re-renders.
+  const running = useRef(false);
+
+  const deleteAccount = useCallback(async () => {
+    if (running.current) return;
+    running.current = true;
+    setDeleting(true);
+    setError(null);
+    try {
+      await deleteMyAccount({});
+      // The account is gone; the session that named it goes with it.
+      await signOut();
+    } catch (thrown) {
+      setError(
+        thrown instanceof ConvexError
+          ? String(thrown.data)
+          : "Andy couldn't delete your account. Check your connection and try again.",
+      );
+    } finally {
+      running.current = false;
+      setDeleting(false);
+    }
+  }, [deleteMyAccount, signOut]);
+
+  /**
+   * App Store Guideline 5.1.1(v): deletion has to be in the app, not a support
+   * email. It asks once, and says plainly what goes, because nothing comes back.
+   */
+  const confirmDelete = useCallback(() => {
+    Alert.alert(
+      "Delete your account?",
+      "Everyone you keep in Andy, every note and every photo will be deleted, and your sign-in with it. This can't be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete account", style: "destructive", onPress: () => void deleteAccount() },
+      ],
+    );
+  }, [deleteAccount]);
 
   return (
     <View style={styles.container}>
-      <ScreenPlaceholder
-        title="Settings"
-        note="Choose what Andy can reach — contacts, calendar — and manage your account."
-      />
+      <ScreenPlaceholder title="Settings" note="Manage your account." />
+
       <Pressable
         style={styles.signOut}
         onPress={() => signOut()}
+        disabled={deleting}
         accessibilityRole="button"
       >
         <Text style={styles.signOutLabel}>Sign out</Text>
       </Pressable>
+
+      <Pressable
+        style={styles.delete}
+        onPress={confirmDelete}
+        disabled={deleting}
+        accessibilityRole="button"
+        accessibilityLabel="Delete account"
+      >
+        <Text style={styles.deleteLabel}>
+          {deleting ? "Deleting your account…" : "Delete account"}
+        </Text>
+      </Pressable>
+
+      {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
   );
 }
@@ -27,6 +85,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.paper },
   signOut: {
     margin: 24,
+    marginBottom: 12,
     paddingVertical: 14,
     borderRadius: 10,
     borderWidth: 1,
@@ -34,4 +93,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   signOutLabel: { color: colors.moss, fontSize: 16 },
+  // STYLE.md: `alert` for errors and the destructive controls that have earned
+  // the same weight. Deleting the whole account is the heaviest of them.
+  delete: { marginHorizontal: 24, paddingVertical: 14, alignItems: "center" },
+  deleteLabel: { color: colors.alert, fontSize: 16 },
+  error: { color: colors.alert, marginHorizontal: 24, marginTop: 8, fontSize: 14, textAlign: "center" },
 });
