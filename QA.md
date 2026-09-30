@@ -536,6 +536,13 @@ CLERK_SECRET_KEY sk_…`). Without it the button refuses and deletes nothing.
 **Not yet done, and required by Apple:** revoking the Sign in with Apple tokens.
 Clerk does not do it; it is its own slice.
 
+**Not run yet (2026-09-30).** No second Apple ID was available: creating one at
+appleid.apple.com failed every time with "Cannot Verify Email Address", with
+ordinary email addresses too. Running §22 on the everyday test account would
+delete all of its QA data for good (signing back in makes a new Clerk user, so
+nothing can be restored), so the rows wait for a test Apple ID or the
+real-device pass. `CLERK_SECRET_KEY` was also not yet set on the dev deployment.
+
 | # | Do this | Expect | |
 |---|---|---|---|
 | 22.1 | Settings | **Delete account** under Sign out, in the muted red. Easy to find is part of the rule | ⬜ |
