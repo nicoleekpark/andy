@@ -182,7 +182,7 @@ test("should exclude a profile that exists only because it was mentioned in anot
     source: "voice",
   });
 
-  const result = await asAlice.query(api.profiles.recent, {});
+  const result = await asAlice.query(api.profiles.people, {});
 
   // Only Nina, who was actually recorded, appears — Marcus is a real row (a
   // stub) but never chosen, so home must not show him.
@@ -190,66 +190,62 @@ test("should exclude a profile that exists only because it was mentioned in anot
   expect(result[0]?.profile.name).toBe("Nina");
 });
 
-test("should order by most recent note rather than by profile creation order, and count only each profile's own notes", async () => {
+test("should list people A to Z then 가 to 힣, whatever order they were written about in, and count only each profile's own notes", async () => {
   const t = convexTest(schema, modules);
   const aliceUserId = await ensureUser(t, ALICE);
   const asAlice = t.withIdentity(ALICE);
 
-  // Created in this order: A first, B second. If the sort were dropped, the
-  // handler's own scan order (by creation) would return A before B — the
-  // opposite of what the note timestamps below demand.
-  const { profileA, profileB } = await t.run(async (ctx) => {
-    const profileA = await ctx.db.insert("profiles", {
-      userId: aliceUserId,
-      name: "A",
-      entityType: "person",
-      tags: [],
-      autoCreated: false,
-    });
-    const profileB = await ctx.db.insert("profiles", {
-      userId: aliceUserId,
-      name: "B",
-      entityType: "person",
-      tags: [],
-      autoCreated: false,
-    });
+  // Created, and written about most recently, in an order that is neither
+  // alphabetical nor its reverse: dropping the sort returns creation order,
+  // and sorting by the newest note (the old rule) puts 민호 first.
+  const ids = await t.run(async (ctx) => {
+    const add = (name: string) =>
+      ctx.db.insert("profiles", {
+        userId: aliceUserId,
+        name,
+        entityType: "person",
+        tags: [],
+        autoCreated: false,
+      });
+    const zoe = await add("Zoe");
+    const minho = await add("민호");
+    const aaron = await add("Aaron");
+    const maisieFirst = await add("Maisie");
+    const maisieSecond = await add("Maisie");
 
-    // A has two notes of its own; B has one. B's single note is the most
-    // recent thing written about anyone, so B must sort first despite being
-    // created after A and having fewer notes.
-    await ctx.db.insert("notes", {
-      userId: aliceUserId,
-      profileId: profileA,
-      text: "A, first note.",
-      source: "manual",
-      createdAt: 1,
-    });
-    await ctx.db.insert("notes", {
-      userId: aliceUserId,
-      profileId: profileA,
-      text: "A, second note.",
-      source: "manual",
-      createdAt: 2,
-    });
-    await ctx.db.insert("notes", {
-      userId: aliceUserId,
-      profileId: profileB,
-      text: "B, only note, newest overall.",
-      source: "manual",
-      createdAt: 3,
-    });
+    let at = 0;
+    const note = (profileId: typeof zoe) =>
+      ctx.db.insert("notes", {
+        userId: aliceUserId,
+        profileId,
+        text: "A note.",
+        source: "manual",
+        createdAt: ++at,
+      });
+    await note(aaron);
+    await note(zoe);
+    await note(zoe);
+    await note(maisieSecond);
+    await note(maisieFirst);
+    await note(minho);
 
-    return { profileA, profileB };
+    return { zoe, minho, aaron, maisieFirst, maisieSecond };
   });
 
-  const result = await asAlice.query(api.profiles.recent, {});
+  const result = await asAlice.query(api.profiles.people, {});
 
-  expect(result.map((r) => r.profile._id)).toEqual([profileB, profileA]);
+  // Two people called Maisie keep the order they were added in.
+  expect(result.map((r) => r.profile._id)).toEqual([
+    ids.aaron,
+    ids.maisieFirst,
+    ids.maisieSecond,
+    ids.zoe,
+    ids.minho,
+  ]);
   const byId = new Map(result.map((r) => [r.profile._id, r]));
-  expect(byId.get(profileB)?.noteCount).toBe(1);
-  expect(byId.get(profileA)?.noteCount).toBe(2);
-  expect(byId.get(profileB)?.lastNoteAt).toBe(3);
-  expect(byId.get(profileA)?.lastNoteAt).toBe(2);
+  expect(byId.get(ids.zoe)?.noteCount).toBe(2);
+  expect(byId.get(ids.zoe)?.lastNoteAt).toBe(3);
+  expect(byId.get(ids.minho)?.noteCount).toBe(1);
 });
 
 test("should populate both directions of a mention: the note lists who came up in it, and the mentioned profile's mentionedIn lists that note with the same quote", async () => {
@@ -489,7 +485,7 @@ test("should never let one user's note mentioning a name leak into another user'
 test("should throw when recent is called while signed out", async () => {
   const t = convexTest(schema, modules);
 
-  await expect(t.query(api.profiles.recent, {})).rejects.toThrow();
+  await expect(t.query(api.profiles.people, {})).rejects.toThrow();
 });
 
 test("should never include another user's profiles", async () => {
@@ -515,7 +511,7 @@ test("should never include another user's profiles", async () => {
     source: "voice",
   });
 
-  const result = await asAlice.query(api.profiles.recent, {});
+  const result = await asAlice.query(api.profiles.people, {});
 
   expect(result).toEqual([]);
 });

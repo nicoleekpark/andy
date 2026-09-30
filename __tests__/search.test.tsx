@@ -13,7 +13,7 @@ import { api } from "@convex/_generated/api";
  * transitions between them are the behaviour.
  *
  * `useAction` is pinned to `api.search.recall` by name the way home.test.tsx
- * pins `useQuery` to `api.profiles.recent`: the generated `api` is a Proxy, so a
+ * pins `useQuery` to `api.profiles.people`: the generated `api` is a Proxy, so a
  * blanket `mockReturnValue` would keep passing if the screen were rewired to
  * call something else entirely.
  */

@@ -142,3 +142,54 @@ export function candidatesForSpokenName<
   const byName = (x: T, y: T) => x.name.localeCompare(y.name);
   return [...exact.sort(byName), ...overlap.sort(byName)];
 }
+
+/**
+ * Which group a character sorts in: a space before a letter, so "Adam Aron"
+ * comes before "Adamo"; Latin letters, then Hangul; anything else last.
+ */
+function sortGroup(char: string): number {
+  if (char === " ") return 0;
+  if (/[a-z]/.test(char)) return 1;
+  if (/[가-힣]/.test(char)) return 2;
+  return 3;
+}
+
+/**
+ * Lower-cased, with punctuation out ("O'Brien" sorts as "obrien"). Decomposing
+ * first makes an accent a separate mark, so the same pass drops it ("Émile"
+ * sorts with E). Hangul decomposes too, into jamo, and is put back together
+ * at the end so a syllable is recognised as Hangul.
+ */
+function sortKey(name: string): string {
+  return name
+    .normalize("NFD")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N} ]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .normalize("NFC");
+}
+
+/**
+ * The order people are listed in: A to Z, then 가 to 힣, compared one
+ * character at a time (decided 2026-09-29). A name mixing both scripts is
+ * placed by its characters in order: "Aaron" < "Adam Aron" < "Adam 한솔" <
+ * "Azizi", because at the sixth character a Latin letter comes before Hangul.
+ * A pure Hangul name follows every Latin one.
+ *
+ * Not `localeCompare`: its script order depends on the device's locale, and
+ * this list has to read the same on every phone.
+ */
+export function compareNamesForList(a: string, b: string): number {
+  const left = [...sortKey(a)];
+  const right = [...sortKey(b)];
+  for (let i = 0; i < Math.min(left.length, right.length); i++) {
+    const l = left[i]!;
+    const r = right[i]!;
+    if (l === r) continue;
+    const byGroup = sortGroup(l) - sortGroup(r);
+    if (byGroup !== 0) return byGroup;
+    return l < r ? -1 : 1;
+  }
+  return left.length - right.length;
+}

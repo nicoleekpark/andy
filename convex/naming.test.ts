@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { candidatesForSpokenName, namesOverlap } from "./naming";
+import { candidatesForSpokenName, compareNamesForList, namesOverlap } from "./naming";
 
 // ---------------------------------------------------------------------------
 // namesOverlap
@@ -121,4 +121,38 @@ test("should still refuse a fragment, through this entry point too", () => {
 test("should not offer a Korean name for one it merely starts", () => {
   const owned = kept("지선희");
   expect(candidatesForSpokenName(owned, "지선")).toEqual([]);
+});
+
+// ---------------------------------------------------------------------------
+// compareNamesForList
+// ---------------------------------------------------------------------------
+
+function listed(names: string[]) {
+  return [...names].sort(compareNamesForList);
+}
+
+test("should list A to Z, then pure Hangul names after Z", () => {
+  expect(listed(["민호", "Zoe", "지수", "Aaron"])).toEqual(["Aaron", "Zoe", "민호", "지수"]);
+});
+
+test("should place a name mixing both scripts by its characters in order", () => {
+  // The three examples the order was decided with, 2026-09-29.
+  expect(listed(["Adam 한솔", "Aaron"])).toEqual(["Aaron", "Adam 한솔"]);
+  expect(listed(["Adam 한솔", "Adam Aron"])).toEqual(["Adam Aron", "Adam 한솔"]);
+  expect(listed(["Azizi", "Adam 한솔"])).toEqual(["Adam 한솔", "Azizi"]);
+});
+
+test("should ignore case, accents and punctuation, and put a shorter name first", () => {
+  expect(listed(["emma", "Émile", "Adam", "Oliver", "O’Brien"])).toEqual([
+    "Adam",
+    "Émile",
+    "emma",
+    "O’Brien",
+    "Oliver",
+  ]);
+  expect(listed(["Adamo", "Adam Aron", "Adam"])).toEqual(["Adam", "Adam Aron", "Adamo"]);
+});
+
+test("should put Hangul before any other script", () => {
+  expect(listed(["Анна", "민호"])).toEqual(["민호", "Анна"]);
 });
