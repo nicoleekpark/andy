@@ -95,6 +95,65 @@ function savedNote(overrides: Record<string, unknown> = {}) {
 }
 
 describe("note screen", () => {
+  test("should open to read, with no field to type in, when reached from search", async () => {
+    mockQueries(savedNote());
+    const updateNote = jest.fn(async () => null);
+    mockUpdateNote(updateNote);
+
+    // How a search result arrives: no `edit`. Reaching for a memory should not
+    // put a form in front of it.
+    const result = renderRouter("src/app", { initialUrl: "/note/note-1" });
+    await result;
+
+    expect(screen.getByText("His mother has cancer")).toBeTruthy();
+    expect(screen.getByTestId("note-record")).toBeTruthy();
+    expect(screen.queryByDisplayValue("His mother has cancer")).toBeNull();
+    expect(screen.queryByLabelText("Fact 1")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Delete this note" })).toBeNull();
+    expect(screen.queryByText(/fix any fact/)).toBeNull();
+
+    // Editing is one tap away, and then it is the same screen as before.
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Edit this note" }));
+    });
+    expect(screen.getByDisplayValue("His mother has cancer")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Edit this note" })).toBeNull();
+  });
+
+  test("should open straight into editing from the timeline's Edit", async () => {
+    (useQuery as jest.Mock).mockImplementation((reference: unknown) =>
+      getFunctionName(reference as never) === "notes:byId"
+        ? savedNote()
+        : {
+            profile: {
+              _id: "contact-1",
+              name: "Emma",
+              entityType: "person",
+              tags: [],
+              autoCreated: false,
+            },
+            notes: [{ note: savedNote().note, mentions: [] }],
+            mentionedIn: [],
+            mentionedInTotal: 0,
+          },
+    );
+
+    const result = renderRouter("src/app", { initialUrl: "/profile/contact-1" });
+    await result;
+    await act(async () => {
+      fireEvent.press(
+        screen.getByLabelText(
+          `Edit the note from ${new Date("2026-08-31").toLocaleDateString("en-CA")}`,
+        ),
+      );
+    });
+
+    expect(result.getPathname()).toBe("/note/note-1");
+    expect(screen.getByLabelText("Fact 1")).toBeTruthy();
+  });
+
   test("should show a not-found line when the id names nothing of the caller's", async () => {
     (useQuery as jest.Mock).mockReturnValue(null);
 
@@ -118,7 +177,7 @@ describe("note screen", () => {
     const result = renderRouter("src/app", { initialUrl: "/profile/contact-1" });
     await result;
     await act(async () => {
-      router.push("/note/note-1");
+      router.push("/note/note-1?edit=1");
     });
 
     // The exact failure this screen was built for: extraction moved the
@@ -158,7 +217,7 @@ describe("note screen", () => {
     const result = renderRouter("src/app", { initialUrl: "/profile/contact-1" });
     await result;
     await act(async () => {
-      router.push("/note/note-1");
+      router.push("/note/note-1?edit=1");
     });
 
     // Found by its content, not by a label. A `Text` with an
@@ -214,7 +273,7 @@ describe("note screen", () => {
       }),
     );
 
-    const result = renderRouter("src/app", { initialUrl: "/note/note-1" });
+    const result = renderRouter("src/app", { initialUrl: "/note/note-1?edit=1" });
     await result;
 
     await act(async () => {
@@ -234,7 +293,7 @@ describe("note screen", () => {
       savedNote({ keyFacts: undefined, source: "manual" }),
     );
 
-    const result = renderRouter("src/app", { initialUrl: "/note/note-1" });
+    const result = renderRouter("src/app", { initialUrl: "/note/note-1?edit=1" });
     await result;
 
     expect(
@@ -256,7 +315,7 @@ describe("note screen", () => {
     const result = renderRouter("src/app", { initialUrl: "/profile/contact-1" });
     await result;
     await act(async () => {
-      router.push("/note/note-1");
+      router.push("/note/note-1?edit=1");
     });
 
     await act(async () => {
@@ -278,7 +337,7 @@ describe("note screen", () => {
     mockNoteMutations({ remove });
     mockDeleteAlert("Cancel");
 
-    const result = renderRouter("src/app", { initialUrl: "/note/note-1" });
+    const result = renderRouter("src/app", { initialUrl: "/note/note-1?edit=1" });
     await result;
 
     await act(async () => {
@@ -299,7 +358,7 @@ describe("note screen", () => {
     });
     mockDeleteAlert("Delete");
 
-    const result = renderRouter("src/app", { initialUrl: "/note/note-1" });
+    const result = renderRouter("src/app", { initialUrl: "/note/note-1?edit=1" });
     await result;
 
     await act(async () => {
@@ -321,7 +380,7 @@ describe("note screen", () => {
     const result = renderRouter("src/app", { initialUrl: "/profile/contact-1" });
     await result;
     await act(async () => {
-      router.push("/note/note-1");
+      router.push("/note/note-1?edit=1");
     });
 
     // Editing that can only remove is half an edit. What is usually wrong with
