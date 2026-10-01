@@ -323,7 +323,7 @@ watched happen.
 | # | Do this | Expect | |
 |---|---|---|---|
 | 16.1 | Open a person with notes → `Draft a follow-up` | A sheet slides up **inside Andy** with a subject and 3–5 sentences, both in editable fields. **No Mail, no share sheet, nothing opens** | ⬜ |
-| 16.2 | Open a person with **no** notes and no mentions | **No button at all** — a line where it would be: "There's nothing written down about {name} yet — record a note first." | ✅ CLI |
+| 16.2 | Open a person with **no** notes and no mentions | **No button at all** — a line where it would be: "Andy doesn't remember anything about {name} yet. Add a note, and a follow-up can be written from it." | ✅ CLI |
 | 16.2a | Open somebody **Andy invented from a mention** (tap a name inside another person's note) | **No button.** The line says they "only come up in notes about other people". This is the one that shipped wrong: their timeline shows a note, so "nothing is written down" read as a lie — and that note is somebody else's words about them, which must never be mailed to them | ✅ CLI, on 민호 |
 | 16.2b | Open a person whose notes have an **empty "What to remember"** | **No button.** The line names the facts as what is missing, not the note — pointing them at "record a note" would point at the thing they already did | ✅ CLI, on Emily Watson |
 | 16.2c | Open a person **with** facts | The button is there. (A gate that never opens passes every row above) | ✅ CLI, on Judy |
@@ -411,7 +411,7 @@ your actual messy real calendar, not synthetic data".
 | 18.10 | Name an event with a word that *contains* a name you keep — "Alignment review" when you keep an "Al" | Nobody is matched. This is how a briefing about a stranger reaches your phone | ⬜ |
 | 18.11 | **Korean**: title an event `지선이랑 점심`, and another `지선희와 점심`, keeping only 지선 | The first matches, the second does **not** — 지선희 is a different person | ⏭️ V1.1 — Korean-only; covered by unit tests, screen check deferred to Korean capture (decided 2026-09-29, V1 launches English-only) |
 | 18.12 | Title an event `Judy랑 점심` | Matches Judy. A particle belongs to the sentence, not the name | ⏭️ V1.1 — Korean-only; covered by unit tests, screen check deferred to Korean capture (decided 2026-09-29, V1 launches English-only) |
-| 18.13 | Name an event with someone you have **no** notes about but do keep a profile for | The card still shows them, saying "nothing written down yet". Knowing you have nothing is the reminder this app exists to give | ⬜ |
+| 18.13 | Name an event with someone you have **no** notes about but do keep a profile for | The card still shows them, saying "nothing remembered yet". Knowing you have nothing is the reminder this app exists to give | ⬜ |
 | 18.14 | Deny calendar access, then reopen the app | The card says access is off and points at Settings — **and shows no button**, because iOS will not open the sheet a second time and a button that does nothing reads as a broken app | ⬜ |
 | 18.15 | Open the app on a build **without** `expo-calendar` (i.e. the current one) | **No card, and home works normally.** Day 6 lost a whole profile screen to a missing native module; this is the check that it cannot happen here | ⬜ |
 | 18.16 | Check the Convex logs (`npm run db` → Logs) after a briefing | One `calendar:matchEvents` per foreground, not one per event. Titles appear in the log as arguments — they are your own calendar reaching your own backend, and nothing stores them | ⬜ |

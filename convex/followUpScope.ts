@@ -59,15 +59,15 @@ export function followUpRefusal(scope: FollowUpScope): string | null {
     return scope.hasMentions
       ? // The case that started this. They are on screen *because* somebody
         // else's note names them, so "nothing is written down" reads as a lie.
-        `${scope.name} only comes up in notes about other people. A follow-up is written from notes about them — record one first.`
-      : `There's nothing written down about ${scope.name} yet — record a note first.`;
+        `${scope.name} only comes up in notes about other people. Add a note about them to draft a follow-up.`
+      : `Andy doesn't remember anything about ${scope.name} yet. Add a note, and a follow-up can be written from it.`;
   }
 
   if (scope.factNoteCount === 0) {
     // Notes exist and none of them carries an endorsed fact. Their raw text is
     // the unreviewed wording, which is exactly what carries other people in it,
     // so this feature does not fall back to it the way search does.
-    return `None of the notes about ${scope.name} have anything under "What to remember" yet — that's what a follow-up is written from.`;
+    return `Nothing about ${scope.name} is under "What to remember" yet — that's what a follow-up is written from.`;
   }
 
   return null;

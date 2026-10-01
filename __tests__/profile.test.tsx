@@ -109,6 +109,15 @@ describe("profile screen", () => {
     ).toBeTruthy();
   });
 
+  test("should say nothing is remembered yet on a person with no notes", async () => {
+    (useQuery as jest.Mock).mockReturnValue(withNotes([]));
+
+    const result = renderRouter("src/app", { initialUrl: "/profile/contact-1" });
+    await result;
+
+    expect(screen.getByText("Nothing remembered yet.")).toBeTruthy();
+  });
+
   test("should render the profile name and notes newest first when the query resolves", async () => {
     (useQuery as jest.Mock).mockReturnValue({
       ...withNotes([
@@ -847,7 +856,7 @@ describe("follow-up email", () => {
     mockDraft(
       jest.fn(async () => {
         throw new ConvexError(
-          "There's nothing written down about them yet — record a note first.",
+          "Andy doesn't remember anything about them yet. Add a note, and a follow-up can be written from it.",
         );
       }),
     );
@@ -859,7 +868,7 @@ describe("follow-up email", () => {
     });
 
     await waitFor(() =>
-      expect(screen.getByText(/nothing written down/)).toBeTruthy(),
+      expect(screen.getByText(/doesn't remember anything/)).toBeTruthy(),
     );
     // And Mail is never opened on an empty draft.
     expect(open).not.toHaveBeenCalled();

@@ -314,7 +314,7 @@ test("should say plainly when there is nothing written about the person yet", as
   // The briefing is still worth showing — knowing you have nothing on somebody
   // you are about to meet is the reminder this app exists to give.
   await waitFor(() =>
-    expect(screen.getByText("nothing written down yet")).toBeTruthy(),
+    expect(screen.getByText("nothing remembered yet")).toBeTruthy(),
   );
 });
 

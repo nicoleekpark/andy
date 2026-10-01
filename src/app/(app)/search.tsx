@@ -195,7 +195,7 @@ export default function SearchScreen() {
                       ? person.mentionCount === 1
                         ? "only mentioned, in 1 note"
                         : `only mentioned, in ${person.mentionCount} notes`
-                      : "nothing written down yet"}
+                      : "nothing remembered yet"}
                 </Text>
               </Pressable>
             ))}
