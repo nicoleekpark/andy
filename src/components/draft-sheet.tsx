@@ -263,15 +263,21 @@ export function DraftSheet({
             </Text>
           ) : null}
 
-          {copied !== null ? (
-            <Text
-              testID="copied"
-              accessibilityLiveRegion="polite"
-              style={styles.copied}
-            >
-              {copiedMessage(copied)}
-            </Text>
-          ) : null}
+          {/* A slot one line tall whether or not it says anything. Shown
+              only when it had something to say, the line pushed both copy
+              buttons down under the finger that had just pressed one, so the
+              next tap landed on the wrong thing. */}
+          <View testID="copied-slot" style={styles.copiedSlot}>
+            {copied !== null ? (
+              <Text
+                testID="copied"
+                accessibilityLiveRegion="polite"
+                style={styles.copied}
+              >
+                {copiedMessage(copied)}
+              </Text>
+            ) : null}
+          </View>
 
           <View style={styles.row}>
             <Pressable
@@ -356,7 +362,8 @@ const styles = StyleSheet.create({
     minHeight: 180,
     paddingVertical: 8,
   },
-  copied: { color: colors.moss, fontSize: 13 },
+  copied: { color: colors.moss, fontSize: 13, lineHeight: 18 },
+  copiedSlot: { minHeight: 18, justifyContent: "center" },
   error: { color: colors.alert, fontSize: 14, lineHeight: 20 },
   row: { flexDirection: "row", gap: 12, marginTop: 12 },
   action: {

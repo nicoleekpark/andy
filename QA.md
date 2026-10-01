@@ -348,6 +348,7 @@ watched happen.
 | 16.12 | With the keyboard up, tap `Copy message` **once** | It copies on the first tap. The keyboard dismissing must not eat the press | ⬜ |
 | 16.13 | Turn **VoiceOver** on, tap `Copy message` | It says "Message copied". The result of this button is invisible, so the confirmation is the only evidence it worked | ⬜ |
 | 16.14 | **On a build without `expo-clipboard`** (i.e. before rebuilding): open a profile, draft, tap `Copy message` | The profile and the draft are **fine**; only the copy fails, with a line saying so. This is the regression that cost a whole screen — worth re-checking whenever a native module is added | ⬜ |
+| 16.15 | Tap `Copy message`, then — without moving — tap `Copy with subject` | **The buttons do not move** when "Message copied" appears: the line has its own room above them. It used to push both buttons down a line under the finger, so the second tap landed on the wrong thing (found on the simulator 2026-09-30) | ⬜ |
 
 ## 17. Profile photo
 
