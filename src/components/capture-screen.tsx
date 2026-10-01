@@ -1240,9 +1240,15 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
           contentContainerStyle={styles.reviewContent}
           keyboardShouldPersistTaps="handled"
         >
+          {/* Says how the words came in. "Heard" on a note somebody typed
+              reads as Andy claiming a microphone it never used. */}
           <Text style={styles.lead}>
-            Andy heard this. Fix anything that isn&apos;t right before it&apos;s
-            saved.
+            {source === "business_card"
+              ? "Andy read this from the card."
+              : source === "manual"
+                ? "Andy read what you wrote."
+                : "Andy heard this."}{" "}
+            Fix anything that isn&apos;t right before it&apos;s saved.
           </Text>
 
           <Field label="Name">

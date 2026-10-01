@@ -248,6 +248,15 @@ describe("capture screen review step", () => {
     jest.restoreAllMocks();
   });
 
+  test("should say Andy heard a recorded note before showing what it made of it", async () => {
+    (useAction as jest.Mock).mockReturnValue(jest.fn(async () => makeDraft()));
+    const handlers = captureListeners();
+    await renderRouter("src/app", { initialUrl: "/profile/contact-1/capture" });
+    await reachReview(handlers, "Emma is a branding designer.");
+
+    expect(screen.getByText(/Andy heard this\./)).toBeTruthy();
+  });
+
   test("should show the extracted name, key facts, and mentions for review", async () => {
     const draft = makeDraft();
     (useAction as jest.Mock).mockReturnValue(jest.fn(async () => draft));
@@ -1403,6 +1412,9 @@ describe("capture screen review step", () => {
       expect(extract.mock.calls[0]?.[0].text).toBe("Emma is a branding designer."),
     );
     expect(screen.getByText("What you wrote")).toBeTruthy();
+    // Nothing was heard: the note was typed, and the lead says so.
+    expect(screen.getByText(/Andy read what you wrote\./)).toBeTruthy();
+    expect(screen.queryByText(/Andy heard this/)).toBeNull();
 
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Save note" }));
@@ -2634,6 +2646,7 @@ describe("capture screen business card door", () => {
     // fields, only the transcript field's label and content differ.
     expect(screen.getByDisplayValue("Sarah Chen")).toBeTruthy();
     expect(screen.getByText("What the card says")).toBeTruthy();
+    expect(screen.getByText(/Andy read this from the card\./)).toBeTruthy();
     expect(screen.getByDisplayValue(cardText)).toBeTruthy();
 
     await act(async () => {
