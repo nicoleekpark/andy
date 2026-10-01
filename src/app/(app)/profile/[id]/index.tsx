@@ -300,9 +300,9 @@ export default function ProfileScreen() {
       // outside the scroll view, or the sheet open in front of it, so the line
       // is visible in both.
       //
-      // The server's own words when they were written for a person; "there's
-      // nothing written down about them yet" is the common one. Never the raw
-      // error.
+      // The server's own words when they were written for a person; "Andy
+      // doesn't remember anything about them yet" is the common one. Never the
+      // raw error.
       setError(
         thrown instanceof ConvexError
           ? String(thrown.data)
@@ -445,7 +445,7 @@ export default function ProfileScreen() {
 
             {result.notes.length === 0 ? (
               <Text style={styles.quiet}>
-                Nothing recorded yet.
+                Nothing remembered yet.
               </Text>
             ) : (
               <View style={styles.timeline}>
@@ -620,8 +620,8 @@ export default function ProfileScreen() {
               Offered only where it can actually work, and the reason given
               where it cannot.
 
-              Animals get neither the button nor a line: "record a note to draft
-              a follow-up" is not advice anyone wants about a foster cat.
+              Animals get neither the button nor a line: "add a note to draft a
+              follow-up" is not advice anyone wants about a foster cat.
               Everyone else gets one or the other, because every way of failing
               here is reachable by ordinary use — most of all the person Andy
               invented from a mention, who has a note on screen and nothing this

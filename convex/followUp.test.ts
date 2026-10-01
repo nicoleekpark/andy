@@ -228,7 +228,7 @@ test("should say a mentioned-only person is mentioned only, not that nothing is 
       profileId: john,
       today: "2026-09-17",
     }),
-  ).rejects.toThrow(/only comes up in notes about other people/);
+  ).rejects.toThrow(/^.+ only comes up in notes about other people\. Add a note about them to draft a follow-up\.$/);
   expect(createMessage).not.toHaveBeenCalled();
 });
 
@@ -252,7 +252,7 @@ test("should refuse a person nobody has written or said anything about", async (
       profileId: stranger,
       today: "2026-09-17",
     }),
-  ).rejects.toThrow(/nothing written down about Priya/);
+  ).rejects.toThrow(/^Andy doesn't remember anything about Priya yet\. Add a note, and a follow-up can be written from it\.$/);
   expect(createMessage).not.toHaveBeenCalled();
 });
 
@@ -286,7 +286,7 @@ test("should name the facts as what is missing when the notes exist but carry no
       profileId: emily,
       today: "2026-09-17",
     }),
-  ).rejects.toThrow(/What to remember/);
+  ).rejects.toThrow(/^Nothing about .+ is under "What to remember" yet — that's what a follow-up is written from\.$/);
   expect(createMessage).not.toHaveBeenCalled();
 });
 

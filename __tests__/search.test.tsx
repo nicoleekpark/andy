@@ -279,6 +279,30 @@ describe("search screen", () => {
     );
   });
 
+  // Somebody kept with nothing yet — no notes, not even a mention. Said in
+  // the app's verb, "remember", like every line about what Andy holds.
+  test("should say nothing is remembered yet about somebody kept with no notes", async () => {
+    mockPeople({
+      people: [
+        {
+          profileId: "p-empty",
+          name: "Sam Test",
+          matchedName: "Sam Test",
+          entityType: "person",
+          noteCount: 0,
+          mentionCount: 0,
+          lastNoteAt: null,
+        },
+      ],
+      mentions: [],
+    });
+    await renderSearch();
+
+    await type("sam");
+
+    await waitFor(() => expect(screen.getByText(/nothing remembered yet/)).toBeTruthy());
+  });
+
   test("should show no People section when nobody is called that", async () => {
     mockPeople({ people: [], mentions: [] });
     await renderSearch();

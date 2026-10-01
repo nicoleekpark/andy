@@ -139,7 +139,7 @@ export function BriefingCard(props: Props) {
               <Text style={styles.personName}>{person.name}</Text>
               <Text style={styles.personMeta}>
                 {person.noteCount === 0
-                  ? "nothing written down yet"
+                  ? "nothing remembered yet"
                   : person.noteCount === 1
                     ? "1 note"
                     : `${person.noteCount} notes`}
