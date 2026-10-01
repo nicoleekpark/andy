@@ -620,10 +620,11 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
     if (subjectDeclared && scoped) {
       return { name: scoped.profile.name };
     }
-    const key = matchKey(draft.primary.name);
-    const answer = Object.entries(resolutions).find(
-      ([name]) => matchKey(name) === key,
-    )?.[1];
+    // Read the way `commit` builds what it sends — folded, last answer wins —
+    // so the screen cannot show one answer while the save sends another.
+    const answer = new Map(
+      Object.entries(resolutions).map(([name, id]) => [matchKey(name), id]),
+    ).get(matchKey(draft.primary.name));
     if (typeof answer !== "string") {
       return null;
     }
@@ -1353,80 +1354,80 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
           */}
           {subjectKept === null ? (
             <>
-            <Field label="How you know them">
-              <TextInput
-                value={draft.primary.relationshipContext ?? ""}
-                onChangeText={(value) =>
-                  // Empty means "the note didn't say", which the save path spells
-                  // as null — the same distinction the extraction schema makes.
-                  editPrimary({
-                    relationshipContext: value.trim() === "" ? null : value,
-                  })
-                }
-                style={styles.input}
-                placeholder="client, friend, foster…"
-                placeholderTextColor={colors.line}
-                accessibilityLabel="How you know them"
-              />
-            </Field>
-
-            <Field label="First meeting">
-              {/*
-                A checkbox, not a date field, because the judgement a person can
-                actually make here is yes-or-no. Whether "오늘 지수 만났는데"
-                describes a first meeting is not decidable from the sentence, and
-                extraction fills it about half the time — so this is the tick a
-                person confirms or clears, and the date only matters once they
-                have said yes.
-              */}
-              <Pressable
-                accessibilityRole="checkbox"
-                accessibilityLabel="This was the first time we met"
-                accessibilityState={{
-                  checked: draft.primary.firstMetDate !== null,
-                }}
-                onPress={() => {
-                  if (draft.primary.firstMetDate !== null) {
-                    lastFirstMetRef.current = draft.primary.firstMetDate;
-                    editPrimary({ firstMetDate: null });
-                  } else {
-                    editPrimary({
-                      firstMetDate: lastFirstMetRef.current ?? localToday(),
-                    });
-                  }
-                }}
-                style={styles.checkRow}
-              >
-                <View
-                  style={[
-                    styles.checkBox,
-                    draft.primary.firstMetDate !== null && styles.checkBoxOn,
-                  ]}
-                >
-                  {draft.primary.firstMetDate !== null ? (
-                    <Text style={styles.checkMark}>✓</Text>
-                  ) : null}
-                </View>
-                <Text style={styles.checkLabel}>
-                  This was the first time we met
-                </Text>
-              </Pressable>
-
-              {draft.primary.firstMetDate !== null ? (
+              <Field label="How you know them">
                 <TextInput
-                  value={draft.primary.firstMetDate}
+                  value={draft.primary.relationshipContext ?? ""}
                   onChangeText={(value) =>
+                    // Empty means "the note didn't say", which the save path spells
+                    // as null — the same distinction the extraction schema makes.
                     editPrimary({
-                      firstMetDate: value.trim() === "" ? null : value,
+                      relationshipContext: value.trim() === "" ? null : value,
                     })
                   }
                   style={styles.input}
-                  placeholder="YYYY-MM-DD"
+                  placeholder="client, friend, foster…"
                   placeholderTextColor={colors.line}
-                  accessibilityLabel="First met date"
+                  accessibilityLabel="How you know them"
                 />
-              ) : null}
-            </Field>
+              </Field>
+
+              <Field label="First meeting">
+                {/*
+                  A checkbox, not a date field, because the judgement a person can
+                  actually make here is yes-or-no. Whether "오늘 지수 만났는데"
+                  describes a first meeting is not decidable from the sentence, and
+                  extraction fills it about half the time — so this is the tick a
+                  person confirms or clears, and the date only matters once they
+                  have said yes.
+                */}
+                <Pressable
+                  accessibilityRole="checkbox"
+                  accessibilityLabel="This was the first time we met"
+                  accessibilityState={{
+                    checked: draft.primary.firstMetDate !== null,
+                  }}
+                  onPress={() => {
+                    if (draft.primary.firstMetDate !== null) {
+                      lastFirstMetRef.current = draft.primary.firstMetDate;
+                      editPrimary({ firstMetDate: null });
+                    } else {
+                      editPrimary({
+                        firstMetDate: lastFirstMetRef.current ?? localToday(),
+                      });
+                    }
+                  }}
+                  style={styles.checkRow}
+                >
+                  <View
+                    style={[
+                      styles.checkBox,
+                      draft.primary.firstMetDate !== null && styles.checkBoxOn,
+                    ]}
+                  >
+                    {draft.primary.firstMetDate !== null ? (
+                      <Text style={styles.checkMark}>✓</Text>
+                    ) : null}
+                  </View>
+                  <Text style={styles.checkLabel}>
+                    This was the first time we met
+                  </Text>
+                </Pressable>
+
+                {draft.primary.firstMetDate !== null ? (
+                  <TextInput
+                    value={draft.primary.firstMetDate}
+                    onChangeText={(value) =>
+                      editPrimary({
+                        firstMetDate: value.trim() === "" ? null : value,
+                      })
+                    }
+                    style={styles.input}
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor={colors.line}
+                    accessibilityLabel="First met date"
+                  />
+                ) : null}
+              </Field>
             </>
           ) : (
             <Text style={styles.quiet}>
