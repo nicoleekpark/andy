@@ -595,6 +595,25 @@ fault, not the code's: `npm run build:ios`, then `npm run ios:install`.
 | 24.4 | Rotate / use the largest and smallest iPhone you have | The thread still reaches both edges and the word is never clipped | ⬜ |
 | 24.5 | Sign in | Nothing else changed: the Apple button, the "Finishing sign-in…" and stuck states behave as before | ⬜ |
 
+## 25. Launch thread
+
+The loop from the launch screen stays in place while Andy connects, and passes
+through if that takes more than 1.5 s. Layout, motion and the hand-over are what
+no test here can see; the timing and Reduce Motion are unit-tested.
+
+**To see the moving part** you need a slow start: turn the Mac's Wi-Fi off
+(the simulator shares it), cold-launch Andy, and watch; turn it back on and
+press Try again when the failure screen comes.
+
+| # | Do this | Expect | |
+|---|---|---|---|
+| 25.1 | Cold-launch normally | The launch screen's loop **does not jump or blink** when the app takes over — same place, same size — then home (or the lock screen) appears. No blank paper in between | ⬜ |
+| 25.2 | Wi-Fi off, cold-launch | After about 1.5 s the thread starts **passing through**: draws in from the left, holds as the loop, leaves to the right, repeats. "Connecting…" below it, and the thread **does not move up** when the words appear | ⬜ |
+| 25.3 | Keep waiting | At ~8 s the words change to "Still connecting…"; at ~20 s the failure screen, with **no thread** | ⬜ |
+| 25.4 | Settings → Accessibility → Motion → **Reduce Motion** on, repeat 25.2 | The loop stays **still**; the words still change | ⬜ |
+| 25.5 | Look at both ends of the thread while it moves | They **fade out**, as on the launch image — no cut end appears as it draws in or leaves | ⬜ |
+| 25.6 | Repeat 25.2 on the smallest simulator you have (e.g. iPhone SE) | The thread and the words below it both fit, nothing clipped or overlapping the bottom of the screen | ⬜ |
+
 ## Simulator pass, 2026-09-30 (Claude, while the developer was away)
 
 **How it was run.** iPhone 17 Pro simulator, the dev build of commit `47f3837`

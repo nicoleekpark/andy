@@ -104,6 +104,26 @@ thing Andy keeps for you. Inside the app the rule is unchanged.
 Kept plain on purpose. Yarn balls, spirals, wraps and knit textures were all
 tried on 2026-09-30 and all read as odd; the thread says enough on its own.
 
+## Launch thread — the loop while Andy gets ready
+
+Decided 2026-09-30/10-01, `src/components/launch-thread.tsx`, used by
+`connecting.tsx`. The iOS launch screen is a still image (the loop, fading at
+both ends, on paper). The screen that takes over shows **the same loop in the
+same spot** from its first frame, so launching reads as one surface rather than
+a cut to blank paper. Only if Andy is still connecting after 1.5 s does the
+thread move: it **passes through** — draws in from the left, holds as the whole
+loop for a beat, leaves to the right, and again (~2.4 s a pass). It never rests
+on a finished state, so nobody mistakes it for done. At the 20 s failure screen
+it is gone; Reduce Motion keeps it still, and it does not move until the system
+has said which.
+
+**This reverses the platform spinner**, chosen earlier because it followed
+Reduce Motion for free, spent none of the Briefing card's signature, and
+belonged to the phone. Each is answered rather than dropped: Reduce Motion is
+honoured by hand, brass is the thread before sign-in (Color Tokens), and the
+words under it stay in the system face. Three bouncing dots stay rejected —
+messaging apps taught them to mean someone is typing.
+
 ## One Structural Idea
 
 The per-profile **timeline** is genuinely sequential data (notes in time order), so a connected vertical thread between entries is justified — not decoration, actual information. Don't add numbered markers (01/02/03) anywhere else; nothing else in this app is a sequence.

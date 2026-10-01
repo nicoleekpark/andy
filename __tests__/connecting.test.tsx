@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
+import { AccessibilityInfo, Animated } from "react-native";
 import { Connecting, RetryConnectionContext } from "../src/components/connecting";
 
 /**
@@ -16,6 +17,10 @@ import { Connecting, RetryConnectionContext } from "../src/components/connecting
  * clock: the phases are absolute offsets in the implementation, and a test that
  * accumulated time would keep passing if they were rewritten as a chain.
  */
+// The thread is hidden from assistive tech on purpose (the words carry the
+// meaning), and testing-library skips hidden elements unless told otherwise.
+const HIDDEN = { includeHiddenElements: true } as const;
+
 describe("connecting screen", () => {
   beforeEach(() => {
     jest.useFakeTimers();
@@ -23,6 +28,7 @@ describe("connecting screen", () => {
 
   afterEach(() => {
     jest.useRealTimers();
+    jest.restoreAllMocks();
   });
 
   async function advance(ms: number) {
@@ -31,13 +37,18 @@ describe("connecting screen", () => {
     });
   }
 
-  test("should show nothing at all for the first moment, so a normal launch never flickers", async () => {
+  test("should hold the launch screen's still loop for the first moment, with no words", async () => {
     await render(<Connecting />);
 
     await advance(1_400);
 
+    // The loop the launch image left, so the hand-over is not a cut to blank
+    // paper; and no words, so a normal launch never flickers.
+    expect(screen.getByTestId("launch-thread-still", HIDDEN)).toBeTruthy();
+    expect(screen.queryByTestId("launch-thread-moving", HIDDEN)).toBeNull();
     expect(screen.queryByText("Connecting…")).toBeNull();
-    expect(screen.queryByTestId("connecting-spinner")).toBeNull();
+    // Decorative: not a focus stop for a screen reader.
+    expect(screen.queryByTestId("launch-thread-still")).toBeNull();
   });
 
   test("should say it is connecting once the quiet window has passed", async () => {
@@ -46,7 +57,42 @@ describe("connecting screen", () => {
     await advance(1_500);
 
     expect(screen.getByText("Connecting…")).toBeTruthy();
-    expect(screen.queryByTestId("connecting-spinner")).toBeTruthy();
+    expect(screen.getByTestId("launch-thread-moving", HIDDEN)).toBeTruthy();
+  });
+
+  test("should start the thread passing through once it is connecting", async () => {
+    const loop = jest.spyOn(Animated, "loop");
+    await render(<Connecting />);
+
+    await advance(1_500);
+
+    expect(loop).toHaveBeenCalledTimes(1);
+  });
+
+  test("should keep the loop still when Reduce Motion is on", async () => {
+    jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(true);
+    const loop = jest.spyOn(Animated, "loop");
+    await render(<Connecting />);
+
+    await advance(1_500);
+
+    // The words still say it is connecting; only the motion goes.
+    expect(screen.getByText("Connecting…")).toBeTruthy();
+    expect(screen.getByTestId("launch-thread-still", HIDDEN)).toBeTruthy();
+    expect(screen.queryByTestId("launch-thread-moving", HIDDEN)).toBeNull();
+    expect(loop).not.toHaveBeenCalled();
+  });
+
+  test("should not move before the system has said whether Reduce Motion is on", async () => {
+    // An answer that never comes: the thread must wait for it, not assume.
+    jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockReturnValue(new Promise(() => {}));
+    const loop = jest.spyOn(Animated, "loop");
+    await render(<Connecting />);
+
+    await advance(1_500);
+
+    expect(screen.getByTestId("launch-thread-still", HIDDEN)).toBeTruthy();
+    expect(loop).not.toHaveBeenCalled();
   });
 
   test("should point at the network once connecting has taken too long", async () => {
@@ -72,9 +118,10 @@ describe("connecting screen", () => {
         "If that doesn't help, close the app completely and open it again.",
       ),
     ).toBeTruthy();
-    // The spinner has to go: left running it would keep saying that waiting is
+    // The thread has to go: left moving it would keep saying that waiting is
     // enough, at the one moment the screen exists to say it isn't.
-    expect(screen.queryByTestId("connecting-spinner")).toBeNull();
+    expect(screen.queryByTestId("launch-thread-moving", HIDDEN)).toBeNull();
+    expect(screen.queryByTestId("launch-thread-still", HIDDEN)).toBeNull();
   });
 
   test("should ask for a new session when the way out is taken", async () => {

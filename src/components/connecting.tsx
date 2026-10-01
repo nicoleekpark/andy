@@ -1,11 +1,11 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { LAUNCH_THREAD_HEIGHT, LaunchThread } from "@/components/launch-thread";
 import { colors } from "@/constants/theme";
 
 /**
@@ -78,20 +78,30 @@ function useConnectionPhase(): Phase {
  * recorded on day 1 and hit again in development on day 3, where a blank
  * paper-coloured screen was indistinguishable from a crash.
  *
- * The platform spinner rather than a drawn one, deliberately. STYLE.md picks
- * the platform typeface because a memory app "should feel like it belongs on
- * the phone", and this is that decision applied to motion; it also spends none
- * of the one-signature budget already committed to the Briefing card, and it
- * honours Reduce Motion without anyone having to remember to. Three bouncing
- * dots were considered and rejected: every messaging app has taught that mark
- * to mean *someone is typing*, which is not what is happening here.
+ * The wait is the icon's thread (decided 2026-09-30/10-01, reversing the
+ * platform spinner). The still loop shows from the first frame, in exactly the
+ * spot the launch screen's image occupies, so the hand-over from the launch
+ * screen is not a cut to blank paper — which is the part almost every launch
+ * sees, since a normal one resolves inside the quiet window. Only if Andy is
+ * still connecting after it does the thread start passing through.
+ *
+ * The spinner had three things going for it, and each is answered here rather
+ * than dropped: it followed Reduce Motion for free (LaunchThread checks it and
+ * stays still); it spent none of the Briefing card's signature (brass is the
+ * thread before sign-in, STYLE.md); and it belonged to the phone, which the
+ * system face and the words under it still do. Three bouncing dots stay
+ * rejected: messaging apps taught them to mean someone is typing.
  */
 export function Connecting() {
   const phase = useConnectionPhase();
   const retry = useRetryConnection();
 
   if (phase === "quiet") {
-    return <View style={styles.screen} />;
+    return (
+      <View style={[styles.screen, styles.centred]}>
+        <LaunchThread moving={false} />
+      </View>
+    );
   }
 
   if (phase === "failed") {
@@ -121,20 +131,22 @@ export function Connecting() {
 
   return (
     <View style={[styles.screen, styles.centred]}>
-      {/* The spinner disappears at `failed` on purpose. Left running it would
-          keep promising that waiting is enough, which by then is untrue. */}
-      {/* Left out of the accessibility tree on purpose: the sentence below
-          already says what is happening, and a second focus stop that only
-          spins would make a screen reader slower without saying more. The
-          testID is therefore the only handle a test has on it. */}
-      <ActivityIndicator testID="connecting-spinner" color={colors.moss} />
-      {phase === "slow" ? (
-        <Text style={styles.quiet}>
-          Still connecting. Check your internet connection.
-        </Text>
-      ) : (
-        <Text style={styles.quiet}>Connecting…</Text>
-      )}
+      {/* The thread stops at `failed` on purpose — that screen has no thread.
+          Left moving it would keep promising that waiting is enough, which by
+          then is untrue. */}
+      <LaunchThread moving />
+      {/* Below the thread, not beside it in the flow: centred as a group the
+          thread would jump up the moment words appear, away from the spot the
+          launch image left it in. */}
+      <View style={styles.below}>
+        {phase === "slow" ? (
+          <Text style={styles.quiet}>
+            Still connecting. Check your internet connection.
+          </Text>
+        ) : (
+          <Text style={styles.quiet}>Connecting…</Text>
+        )}
+      </View>
     </View>
   );
 }
@@ -151,6 +163,13 @@ const styles = StyleSheet.create({
   },
 
   headline: { color: colors.ink, fontSize: 17, textAlign: "center" },
+  below: {
+    position: "absolute",
+    left: 32,
+    right: 32,
+    top: "50%",
+    marginTop: LAUNCH_THREAD_HEIGHT / 2 + 24,
+  },
   quiet: {
     color: colors.ink,
     fontSize: 15,
