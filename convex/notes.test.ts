@@ -671,6 +671,37 @@ test("should let a direct note correct the kind a passing mention had to guess",
   });
 });
 
+test("should keep an animal kept from a passing mention an animal when a note about it is saved", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  // Kiln was created as an animal from a mention, before V1 kept people only.
+  await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "Priya is fostering a second dog called Kiln.",
+    draft: buildDraft({
+      primaryName: "Priya",
+      mentions: [{ name: "Kiln", entityType: "animal" }],
+    }),
+    source: "voice",
+  });
+
+  // Now a note about Kiln — and extraction, under peopleOnly, says "person".
+  await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "Kiln had a vet visit today.",
+    draft: buildDraft({ primaryName: "Kiln", primaryEntityType: "person" }),
+    source: "voice",
+  });
+
+  await t.run(async (ctx) => {
+    const kiln = (await ctx.db.query("profiles").collect()).find(
+      (p) => p.name === "Kiln",
+    );
+    expect(kiln?.autoCreated).toBe(false);
+    expect(kiln?.entityType).toBe("animal");
+  });
+});
+
 test("should drop a blanked-out key fact and store a whitespace-only relationshipContext as absent", async () => {
   const t = convexTest(schema, modules);
   await ensureUser(t, ALICE);

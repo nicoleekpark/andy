@@ -296,7 +296,15 @@ export const saveCapture = mutation({
         // Nothing else needs an exception. A stub carries no relationship, no
         // tags and no dates — a mention no longer claims any of those — so the
         // ordinary fill-when-empty rules below are already right for it.
-        patch.entityType = primary.entityType;
+        //
+        // Except an animal. V1 files every subject as a person (`peopleOnly`,
+        // extractionPrompt.ts), so "person" here is no longer the note's
+        // statement — it is the rule's. A dog created from a passing mention
+        // before that rule must not be turned into a person by the first
+        // note about it.
+        if (existing.entityType !== "animal") {
+          patch.entityType = primary.entityType;
+        }
       }
 
       if (
