@@ -13,10 +13,11 @@ jest.mock("expo-notifications", () => ({
   SchedulableTriggerInputTypes: { DATE: "date" },
 }));
 
-import { act, waitFor } from "@testing-library/react-native";
+import { act, screen, waitFor } from "@testing-library/react-native";
 import * as Notifications from "expo-notifications";
 import { renderRouter } from "expo-router/testing-library";
 import { captureTargetOf } from "../src/lib/notifications";
+import { hasNativeModule } from "../src/lib/native";
 
 /**
  * The briefing flow's last step (PROJECT_SCOPE.md): tapping the nudge after a
@@ -89,5 +90,23 @@ describe("tapping the nudge", () => {
 
     expect(result.getPathname()).toBe("/");
     expect(Notifications.clearLastNotificationResponse).not.toHaveBeenCalled();
+  });
+
+  // This runs in the signed-in layout, so a binary without the emitter, or one
+  // that throws, must cost only the shortcut — never the app (day 6 lost the
+  // whole profile screen to a missing native module).
+  test("should leave the app working when the notification side is missing or throws", async () => {
+    (hasNativeModule as jest.Mock).mockReturnValueOnce(false);
+    const missing = renderRouter("src/app", { initialUrl: "/" });
+    await missing;
+    expect(screen.getByText("Record")).toBeTruthy();
+
+    (Notifications.getLastNotificationResponse as jest.Mock).mockImplementationOnce(() => {
+      throw new Error("no emitter in this binary");
+    });
+    const throwing = renderRouter("src/app", { initialUrl: "/" });
+    await throwing;
+    expect(screen.getByText("Record")).toBeTruthy();
+    expect(throwing.getPathname()).toBe("/");
   });
 });

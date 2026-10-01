@@ -299,6 +299,11 @@ export function captureTargetOf(response: {
  * is subscribed (it is, after every unlock). Returns the unsubscribe.
  */
 export function onNudgeOpened(open: (profileId: string) => void): () => void {
+  // Checked first and then caught, the way the rest of this file treats the
+  // native side: this runs in the signed-in layout, so a binary without the
+  // emitter (or one that throws) must cost the nudge's shortcut, not the app.
+  // The profile screen was once lost whole to a missing native module (day 6).
+  if (!hasNativeModule("ExpoNotificationsEmitter")) return () => {};
   const notifications = notificationsModule();
   if (notifications === null) return () => {};
   const handle = (response: Parameters<typeof captureTargetOf>[0]) => {
@@ -307,8 +312,12 @@ export function onNudgeOpened(open: (profileId: string) => void): () => void {
     notifications.clearLastNotificationResponse();
     open(target);
   };
-  const last = notifications.getLastNotificationResponse();
-  if (last) handle(last);
-  const sub = notifications.addNotificationResponseReceivedListener(handle);
-  return () => sub.remove();
+  try {
+    const last = notifications.getLastNotificationResponse();
+    if (last) handle(last);
+    const sub = notifications.addNotificationResponseReceivedListener(handle);
+    return () => sub.remove();
+  } catch {
+    return () => {};
+  }
 }
