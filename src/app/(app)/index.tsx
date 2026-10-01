@@ -120,7 +120,13 @@ export default function HomeScreen() {
           renderItem={({ item }) => (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={item.profile.name}
+              // The fact too: two rows called Marcus should not sound the same
+              // to VoiceOver either.
+              accessibilityLabel={
+                item.latestFact === null
+                  ? item.profile.name
+                  : `${item.profile.name}, ${item.latestFact}`
+              }
               onPress={() => router.push(`/profile/${item.profile._id}`)}
               style={styles.row}
             >

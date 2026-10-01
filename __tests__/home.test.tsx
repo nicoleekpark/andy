@@ -173,6 +173,10 @@ describe("home screen", () => {
     expect(fact.props.numberOfLines).toBe(1);
     // Nina has none, so her row says nothing rather than an empty line.
     expect(screen.getAllByText(/Opening a gym/)).toHaveLength(1);
+    expect(
+      screen.getByRole("button", { name: "Marcus, Opening a gym in Oakland" }),
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Nina" })).toBeTruthy();
   });
 
   test("should route to that person's profile when a row is tapped", async () => {

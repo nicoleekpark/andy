@@ -274,6 +274,9 @@ export const people = query({
       // Through the same filter search and Ask Andy use, so a whitespace-only
       // fact is no more a line here than it is a fact there.
       const fact = rememberedFacts(note.keyFacts)[0];
+      // `>=`: on an exact tie the later-read note wins, which is arbitrary.
+      // Harmless while `createdAt` is `Date.now()` at save; decide it properly
+      // if notes ever get backdated (schema.ts says they may).
       const newer =
         fact !== undefined && note.createdAt >= (seen?.latestFactAt ?? -Infinity);
       byProfile.set(note.profileId, {
