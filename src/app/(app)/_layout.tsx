@@ -1,12 +1,13 @@
 import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
-import { Redirect, Stack } from "expo-router";
+import { Redirect, Stack, router } from "expo-router";
 import { useConvexAuth, useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { Connecting } from "@/components/connecting";
 import { LockScreen } from "@/components/lock-screen";
 import { colors } from "@/constants/theme";
 import { useAppLock } from "@/lib/use-app-lock";
+import { onNudgeOpened } from "@/lib/notifications";
 
 /**
  * The gate for everything that reads user data.
@@ -37,6 +38,19 @@ export default function AppLayout() {
       ensureUser({}).catch(() => {});
     }
   }, [isAuthenticated, ensureUser]);
+
+  // The nudge after a meeting ("How was Marcus?") opens that person's capture
+  // screen — the briefing flow's last step (PROJECT_SCOPE.md). Only once the
+  // app is unlocked: subscribed while it is, so a tap that arrived behind the
+  // lock screen is picked up the moment Face ID succeeds, and never shows a
+  // person's page to whoever is holding a locked phone. A person deleted since
+  // the nudge was scheduled lands on the capture screen's own "doesn't have
+  // anyone by that link".
+  const unlocked = isAuthenticated && lock.state.phase === "unlocked";
+  useEffect(() => {
+    if (!unlocked) return;
+    return onNudgeOpened((profileId) => router.push(`/profile/${profileId}/capture`));
+  }, [unlocked]);
 
   // Restoring the session from the keychain takes a moment. Rendering the
   // signed-out branch during it would flash the sign-in screen on every launch.

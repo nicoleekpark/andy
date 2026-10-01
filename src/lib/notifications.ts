@@ -271,3 +271,53 @@ export function briefable(
       people: event.people,
     }));
 }
+
+/**
+ * Who a tapped notification should open the capture screen for, or null.
+ *
+ * Only our nudge asks for it (`capture: true`, and the KIND every one of ours
+ * carries); the briefing before a meeting just opens the app. Only the plain
+ * tap counts, not a future action button, and the id has to be a real string —
+ * `data` round-trips through the OS, and anything else is not ours to trust.
+ */
+export function captureTargetOf(response: {
+  actionIdentifier: string;
+  notification: { request: { content: { data?: Record<string, unknown> | null } } };
+}): string | null {
+  const notifications = notificationsModule();
+  const plainTap = notifications?.DEFAULT_ACTION_IDENTIFIER ?? "expo.modules.notifications.actions.DEFAULT";
+  if (response.actionIdentifier !== plainTap) return null;
+  const data = response.notification.request.content.data ?? {};
+  if (data.kind !== KIND || data.capture !== true) return null;
+  return typeof data.profileId === "string" && data.profileId !== "" ? data.profileId : null;
+}
+
+/**
+ * Calls `open` with the person a tapped nudge is about — the tap that launched
+ * the app as well as a tap while it runs — once per tap. The response is
+ * cleared as it is handled, so the same tap is not replayed the next time this
+ * is subscribed (it is, after every unlock). Returns the unsubscribe.
+ */
+export function onNudgeOpened(open: (profileId: string) => void): () => void {
+  // Checked first and then caught, the way the rest of this file treats the
+  // native side: this runs in the signed-in layout, so a binary without the
+  // emitter (or one that throws) must cost the nudge's shortcut, not the app.
+  // The profile screen was once lost whole to a missing native module (day 6).
+  if (!hasNativeModule("ExpoNotificationsEmitter")) return () => {};
+  const notifications = notificationsModule();
+  if (notifications === null) return () => {};
+  const handle = (response: Parameters<typeof captureTargetOf>[0]) => {
+    const target = captureTargetOf(response);
+    if (target === null) return;
+    notifications.clearLastNotificationResponse();
+    open(target);
+  };
+  try {
+    const last = notifications.getLastNotificationResponse();
+    if (last) handle(last);
+    const sub = notifications.addNotificationResponseReceivedListener(handle);
+    return () => sub.remove();
+  } catch {
+    return () => {};
+  }
+}
