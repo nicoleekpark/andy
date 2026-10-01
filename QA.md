@@ -123,6 +123,7 @@ Priya already kept, and one match joined silently.
 | 7.5 | `Delete this note` | Confirms; returns to the profile; a person who only appeared in that note is gone too |
 | 7.6 | Profile `Edit` → `Delete …` | Confirmation states the note count, what follows them out, and what stays |
 | 7.7 | After 7.6, open a note that had mentioned them | Name **still there**, in ink not moss, and **not tappable** |
+| 7.8 | Delete somebody reached the usual way (home → their page → Edit), then look at home's top left; repeat after opening `andy:///profile/<id>/edit` directly | **No back button** in either case. It used to read "< Their name", a way back to somebody deleted. The direct case relies on expo-router's documented fallback (dismissTo replaces when home is not underneath), which no test here can reach |
 
 ## 7a. Before the first save — the capture screen
 
