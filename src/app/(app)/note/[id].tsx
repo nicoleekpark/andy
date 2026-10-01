@@ -34,9 +34,20 @@ import { colors } from "@/constants/theme";
  * object being created together; here they are two saved rows with different
  * owners of truth, and folding them into one screen would mean pretending a
  * note's name and a profile's name are the same thing.
+ *
+ * Read first, edit on request. A search result lands here, and reaching for a
+ * memory should not put a form with "fix any fact" in front of it — that is
+ * where a stray keystroke rewrites something true. The profile timeline's own
+ * Edit opens straight into editing (`?edit=1`), because there the person has
+ * already said what they came to do.
  */
 export default function NoteScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, edit: editParam } = useLocalSearchParams<{
+    id: string;
+    edit?: string;
+  }>();
+  const [editRequested, setEditRequested] = useState(false);
+  const editing = editParam === "1" || editRequested;
   const result = useQuery(api.notes.byId, { noteId: id });
   const updateNote = useMutation(api.notes.updateNote);
   const removeNote = useMutation(api.notes.remove);
@@ -75,7 +86,8 @@ export default function NoteScreen() {
     setEdits({ ...working, ...patch });
   }
 
-  const profileId = result === undefined || result === null ? null : result.note.profileId;
+  const profileId =
+    result === undefined || result === null ? null : result.note.profileId;
 
   const save = useCallback(async () => {
     if (working === null) {
@@ -85,6 +97,17 @@ export default function NoteScreen() {
     setError(null);
     try {
       await updateNote({ noteId: id, ...working });
+
+      // Opened to read and switched to editing here: the note is what the
+      // person came for, so saving puts the corrected note back in front of
+      // them. Leaving would drop them on search, a step further back than
+      // where they pressed Edit.
+      if (editParam !== "1") {
+        setEdits(null);
+        setEditRequested(false);
+        setSaving(false);
+        return;
+      }
 
       // Normally this screen was opened from the timeline it edits, so closing
       // it puts the corrected note back in view — Convex queries are live, so
@@ -106,7 +129,7 @@ export default function NoteScreen() {
       );
       setSaving(false);
     }
-  }, [id, working, updateNote, profileId]);
+  }, [id, working, updateNote, profileId, editParam]);
 
   /**
    * Deleting, behind a confirmation, because it cannot be undone.
@@ -130,7 +153,9 @@ export default function NoteScreen() {
             void (async () => {
               setError(null);
               try {
-                const { profileId: leftBehind } = await removeNote({ noteId: id });
+                const { profileId: leftBehind } = await removeNote({
+                  noteId: id,
+                });
                 router.replace(`/profile/${leftBehind}`);
               } catch (e) {
                 setError(
@@ -164,7 +189,21 @@ export default function NoteScreen() {
   return (
     <>
       <Stack.Screen
-        options={{ title: result.profileName || "Note" }}
+        options={{
+          title: result.profileName || "Note",
+          headerRight: editing
+            ? undefined
+            : () => (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Edit this note"
+                  onPress={() => setEditRequested(true)}
+                  hitSlop={12}
+                >
+                  <Text style={styles.headerAction}>Edit</Text>
+                </Pressable>
+              ),
+        }}
       />
       <ScrollView
         style={styles.container}
@@ -172,55 +211,76 @@ export default function NoteScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.lead}>
-          {new Date(result.note.createdAt).toLocaleDateString("en-CA")} · fix
-          any fact Andy got wrong.
+          {new Date(result.note.createdAt).toLocaleDateString("en-CA")}
+          {editing ? " · fix any fact Andy got wrong." : ""}
         </Text>
 
-        <View style={styles.field}>
-          <Text style={styles.fieldLabel}>What to remember</Text>
-          {working !== null && working.keyFacts.length > 0 ? (
-            working.keyFacts.map((fact, index) => (
-              <TextInput
-                key={index}
-                value={fact}
-                onChangeText={(value) =>
-                  edit({
-                    keyFacts: working.keyFacts.map((fact, i) =>
-                      i === index ? value : fact,
-                    ),
-                  })
-                }
-                style={styles.input}
-                multiline
-                accessibilityLabel={`Fact ${index + 1}`}
-              />
-            ))
-          ) : (
-            // Nothing extracted from this note, which is what a typed note
-            // looks like. Saying so beats an empty gap that reads as a bug.
-            <Text style={styles.quiet}>
-              Nothing was pulled out of this one — the note itself is below.
-            </Text>
-          )}
-          <View style={styles.factActions}>
-            <Text style={styles.hint}>Clearing a line removes that fact.</Text>
-            {/*
+        {!editing ? (
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>What to remember</Text>
+            {saved !== null && saved.keyFacts.length > 0 ? (
+              saved.keyFacts.map((fact, index) => (
+                <Text key={index} style={styles.fact}>
+                  {fact}
+                </Text>
+              ))
+            ) : (
+              <Text style={styles.quiet}>
+                Nothing was pulled out of this one — the note itself is below.
+              </Text>
+            )}
+          </View>
+        ) : null}
+
+        {editing ? (
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>What to remember</Text>
+            {working !== null && working.keyFacts.length > 0 ? (
+              working.keyFacts.map((fact, index) => (
+                <TextInput
+                  key={index}
+                  value={fact}
+                  onChangeText={(value) =>
+                    edit({
+                      keyFacts: working.keyFacts.map((fact, i) =>
+                        i === index ? value : fact,
+                      ),
+                    })
+                  }
+                  style={styles.input}
+                  multiline
+                  accessibilityLabel={`Fact ${index + 1}`}
+                />
+              ))
+            ) : (
+              // Nothing extracted from this note, which is what a typed note
+              // looks like. Saying so beats an empty gap that reads as a bug.
+              <Text style={styles.quiet}>
+                Nothing was pulled out of this one — the note itself is below.
+              </Text>
+            )}
+            <View style={styles.factActions}>
+              <Text style={styles.hint}>
+                Clearing a line removes that fact.
+              </Text>
+              {/*
               The other half of editing. A note whose facts can only shrink is
               one you cannot correct by adding what extraction missed, which is
               most of what is wrong with a note weeks later.
             */}
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Add a fact"
-              onPress={() =>
-                edit({ keyFacts: [...(working?.keyFacts ?? []), ""] })
-              }
-              hitSlop={8}
-            >
-              <Text style={styles.addLine}>Add a fact</Text>
-            </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Add a fact"
+                onPress={() =>
+                  edit({ keyFacts: [...(working?.keyFacts ?? []), ""] })
+                }
+                hitSlop={8}
+              >
+                <Text style={styles.addLine}>Add a fact</Text>
+              </Pressable>
+            </View>
           </View>
-        </View>
+        ) : null}
 
         <View style={styles.field}>
           <Text style={styles.fieldLabel}>
@@ -266,38 +326,44 @@ export default function NoteScreen() {
             edit it, which leaves someone who taps it and gets no keyboard still
             wondering — `STYLE.md` asks for what happened and what to do.
           */}
-          <Text style={styles.hint}>
-            Kept as it was saved. Corrections go in what you remember, above.
-          </Text>
+          {editing ? (
+            <Text style={styles.hint}>
+              Kept as it was saved. Corrections go in what you remember, above.
+            </Text>
+          ) : null}
         </View>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Save changes"
-          onPress={save}
-          disabled={saving}
-          style={[styles.save, saving && styles.disabled]}
-        >
-          <Text style={styles.saveLabel}>
-            {saving ? "Saving…" : "Save changes"}
-          </Text>
-        </Pressable>
+        {editing ? (
+          <>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Save changes"
+              onPress={save}
+              disabled={saving}
+              style={[styles.save, saving && styles.disabled]}
+            >
+              <Text style={styles.saveLabel}>
+                {saving ? "Saving…" : "Save changes"}
+              </Text>
+            </Pressable>
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Delete this note"
-          onPress={confirmDelete}
-          disabled={saving}
-          style={styles.delete}
-        >
-          {/* `alert`, and the only place in the app that uses it: STYLE.md
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Delete this note"
+              onPress={confirmDelete}
+              disabled={saving}
+              style={styles.delete}
+            >
+              {/* `alert`, and the only place in the app that uses it: STYLE.md
               reserves it for errors, and a control that destroys something is
               the one non-error that has earned the same weight. Plain text
               rather than a filled button, so it does not compete with Save. */}
-          <Text style={styles.deleteLabel}>Delete this note</Text>
-        </Pressable>
+              <Text style={styles.deleteLabel}>Delete this note</Text>
+            </Pressable>
+          </>
+        ) : null}
       </ScrollView>
     </>
   );
@@ -309,6 +375,8 @@ const styles = StyleSheet.create({
   onlyStatus: { justifyContent: "center", alignItems: "center", padding: 24 },
 
   lead: { color: colors.ink, fontSize: 14, opacity: 0.6, lineHeight: 21 },
+  headerAction: { color: colors.ink, fontSize: 15 },
+  fact: { color: colors.ink, fontSize: 16, lineHeight: 23 },
 
   field: { gap: 8 },
   fieldLabel: {

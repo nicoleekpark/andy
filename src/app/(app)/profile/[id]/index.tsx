@@ -325,7 +325,7 @@ export default function ProfileScreen() {
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`Edit the note from ${new Date(note.createdAt).toLocaleDateString("en-CA")}`}
-      onPress={() => router.push(`/note/${note._id}`)}
+      onPress={() => router.push(`/note/${note._id}?edit=1`)}
       hitSlop={8}
     >
       <Text style={styles.reveal}>Edit</Text>

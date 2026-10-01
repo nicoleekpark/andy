@@ -487,6 +487,8 @@ this replaces could not answer `oneill` for `O'Neill`, or `선희` for `지선�
 | 20.9 | Several Korean names, e.g. `지원` matching 가지원/나지원/하지원 | 가나다 order, not code-point order | ⬜ |
 | 20.10 | A nickname you saved as an **alias** | Found, and the row shows the alias beside the filed name, so you can see why they matched | ✅ — simulator, 2026-09-30: "qt" → "Quinn Tester · QT · friend · 3 notes" |
 | 20.11 | A name that comes up **inside somebody else's note** | A **Came up in** section under People, with the verbatim quote. Tapping opens that note | ✅ — simulator, 2026-09-30: "marcus" → Came up in: Irene, Amy, Priya with quotes; tapping Irene opened that note |
+| 20.11a | Tap one of those **Came up in** rows | The note opens **to read**: date, the facts as plain text, what was said. No fields, no Save, no Delete. **Edit** at the top right turns it into the editor; **Save changes** brings you back to reading the corrected note. (Before 2026-10-01 it opened straight into the editor) | ⬜ |
+| 20.11b | On a profile, tap **Edit** beside a note | Straight into the editor, as before — no extra tap | ⬜ |
 | 20.12 | A name whose person you **deleted**, that a note still mentions | Still listed under Came up in, with the name the note recorded. Deleting somebody must not erase them from other people's notes | ⬜ |
 | 20.13 | `!!!` or spaces only | **Nothing.** A folded-empty query is a substring of every name | ✅ — simulator, 2026-09-30: nothing for "!!!" or spaces. ⚠ Ask is enabled for "!!!" (a paid search on punctuation) |
 | 20.14 | A name nobody has | No People section at all — not an empty box | ✅ — simulator, 2026-09-30: "zzqx" → no People section |
