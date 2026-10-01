@@ -236,33 +236,11 @@ export default function EditProfileScreen() {
           </View>
         </View>
 
-        <View style={styles.field}>
-          <Text style={styles.fieldLabel}>Who or what</Text>
-          <View style={styles.row}>
-            {(["person", "animal"] as const).map((kind) => (
-              <Pressable
-                key={kind}
-                accessibilityRole="button"
-                accessibilityLabel={kind}
-                accessibilityState={{ selected: working.entityType === kind }}
-                onPress={() => edit({ entityType: kind })}
-                style={[
-                  styles.choice,
-                  working.entityType === kind && styles.choiceOn,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.choiceLabel,
-                    working.entityType === kind && styles.choiceLabelOn,
-                  ]}
-                >
-                  {kind}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
+        {/*
+          No Person / Animal choice in V1 — people only. A profile that is
+          already an animal keeps that: `working.entityType` is still sent
+          unchanged on save.
+        */}
 
         <View style={styles.field}>
           <Text style={styles.fieldLabel}>How you know them</Text>
@@ -375,18 +353,6 @@ const styles = StyleSheet.create({
   hint: { color: colors.ink, fontSize: 12, opacity: 0.5, flex: 1 },
   quiet: { color: colors.ink, fontSize: 15, opacity: 0.6, lineHeight: 22 },
   error: { color: colors.alert, fontSize: 14, lineHeight: 21 },
-
-  row: { flexDirection: "row", gap: 8 },
-  choice: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.line,
-    borderRadius: 999,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  choiceOn: { backgroundColor: colors.moss, borderColor: colors.moss },
-  choiceLabel: { color: colors.ink, fontSize: 15 },
-  choiceLabelOn: { color: colors.paper },
 
   tagActions: {
     flexDirection: "row",

@@ -281,6 +281,9 @@ describe("capture screen review step", () => {
     // the transcript is what recognition gets wrong — locking it left the user
     // watching a mistranscription being written to two people's profiles.
     expect(screen.getByDisplayValue("her business partner Marcus")).toBeTruthy();
+    // V1 keeps people only: no Person / Animal choice on the review.
+    expect(screen.queryByText("Who or what")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Animal" })).toBeNull();
   });
 
   test("should save the edited fact text, not the original, when Remember this is pressed", async () => {

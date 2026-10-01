@@ -106,8 +106,12 @@ describe("edit profile screen", () => {
     expect(args?.entityType).toBe("person");
   });
 
-  test("should send the kind the user picked", async () => {
-    (useQuery as jest.Mock).mockReturnValue(profile({ name: "Biscuit" }));
+  test("should offer no Person / Animal choice, and leave an animal an animal on save", async () => {
+    // V1 keeps people only, but a profile saved as an animal before that must
+    // not be quietly turned into a person by an unrelated edit.
+    (useQuery as jest.Mock).mockReturnValue(
+      profile({ name: "Biscuit", entityType: "animal" }),
+    );
     const updateProfile = jest.fn(async (_args: Args) => null);
     mockUpdateProfile(updateProfile);
 
@@ -116,9 +120,10 @@ describe("edit profile screen", () => {
     });
     await result;
 
-    await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "animal" }));
-    });
+    expect(screen.queryByText("Who or what")).toBeNull();
+    expect(screen.queryByRole("button", { name: "animal" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "person" })).toBeNull();
+
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Save changes" }));
     });

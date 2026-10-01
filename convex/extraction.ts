@@ -17,6 +17,7 @@ import {
   cardDraftValidator,
   draftValidator,
   normalizeCardName,
+  peopleOnly,
 } from "./extractionPrompt";
 import type { CardDraft, Draft } from "./extractionPrompt";
 import { askClaude } from "./claude";
@@ -116,7 +117,7 @@ export const fromTranscript = action({
       );
     }
 
-    return (await askClaude({
+    const draft = (await askClaude({
       model: EXTRACTION_MODEL,
       maxTokens: MAX_TOKENS,
       system: SYSTEM_PROMPT,
@@ -129,6 +130,7 @@ export const fromTranscript = action({
       ],
       label: "Extraction",
     })) as Draft;
+    return peopleOnly(draft);
   },
 });
 
@@ -200,12 +202,10 @@ export const fromBusinessCard = action({
       return card;
     }
 
-    return {
-      ...card,
-      draft: {
-        ...card.draft,
-        primary: { ...primary, name: normalizeCardName(primary.name) },
-      },
+    const recased = {
+      ...card.draft,
+      primary: { ...primary, name: normalizeCardName(primary.name) },
     };
+    return { ...card, draft: peopleOnly(recased) };
   },
 });
