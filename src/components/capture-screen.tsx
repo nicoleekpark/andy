@@ -384,6 +384,14 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
    * different person" is one tap away rather than absent.
    */
   const [expanded, setExpanded] = useState<string[]>([]);
+  /**
+   * The line an "Add …" button just made, so it opens with the keyboard up.
+   * Without it the button produced an empty field and nothing else — a second
+   * tap on a blank line was the only way to type in it. Read through
+   * `autoFocus`, which only acts when an input mounts, so typing in other
+   * lines never steals focus back.
+   */
+  const [justAdded, setJustAdded] = useState<number | null>(null);
 
   /** Record an answer for one name. */
   const pick = useCallback((name: string, profileId: string | null) => {
@@ -1453,6 +1461,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
                     }
                     style={[styles.input, styles.factInput]}
                     multiline
+                    autoFocus={justAdded === index}
                     accessibilityLabel={`Fact ${index + 1}`}
                   />
                   <Pressable
@@ -1480,9 +1489,10 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Add a fact"
-              onPress={() =>
-                editPrimary({ keyFacts: [...draft.primary.keyFacts, ""] })
-              }
+              onPress={() => {
+                setJustAdded(draft.primary.keyFacts.length);
+                editPrimary({ keyFacts: [...draft.primary.keyFacts, ""] });
+              }}
               hitSlop={8}
             >
               <Text style={styles.addLine}>Add a fact</Text>

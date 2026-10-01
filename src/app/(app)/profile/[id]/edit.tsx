@@ -42,6 +42,14 @@ export default function EditProfileScreen() {
     aliases: string[];
   };
 
+  /**
+   * The line an "Add …" button just made, so it opens with the keyboard up.
+   * Without it the button produced an empty field and nothing else — a second
+   * tap on a blank line was the only way to type in it. Read through
+   * `autoFocus`, which only acts when an input mounts, so typing in other
+   * lines never steals focus back.
+   */
+  const [justAdded, setJustAdded] = useState<string | null>(null);
   const [edits, setEdits] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -212,6 +220,7 @@ export default function EditProfileScreen() {
                 })
               }
               style={styles.input}
+              autoFocus={justAdded === `alias-${index}`}
               accessibilityLabel={`Other name ${index + 1}`}
             />
           ))}
@@ -228,7 +237,10 @@ export default function EditProfileScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Add another name"
-              onPress={() => edit({ aliases: [...working.aliases, ""] })}
+              onPress={() => {
+                setJustAdded(`alias-${working.aliases.length}`);
+                edit({ aliases: [...working.aliases, ""] });
+              }}
               hitSlop={8}
             >
               <Text style={styles.addTag}>Add a name</Text>
@@ -281,6 +293,7 @@ export default function EditProfileScreen() {
                 })
               }
               style={styles.input}
+              autoFocus={justAdded === `tag-${index}`}
               accessibilityLabel={`Tag ${index + 1}`}
             />
           ))}
@@ -292,7 +305,10 @@ export default function EditProfileScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Add a tag"
-              onPress={() => edit({ tags: [...working.tags, ""] })}
+              onPress={() => {
+                setJustAdded(`tag-${working.tags.length}`);
+                edit({ tags: [...working.tags, ""] });
+              }}
               hitSlop={8}
             >
               <Text style={styles.addTag}>Add a tag</Text>

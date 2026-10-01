@@ -145,6 +145,9 @@ describe("edit profile screen", () => {
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Add a tag" }));
     });
+    // Only the line just added takes focus; the one already there does not.
+    expect(screen.getByLabelText("Tag 2").props.autoFocus).toBe(true);
+    expect(screen.getByLabelText("Tag 1").props.autoFocus).toBe(false);
     await act(async () => {
       fireEvent.changeText(screen.getByLabelText("Tag 2"), "professional");
     });
@@ -342,6 +345,9 @@ describe("edit profile screen", () => {
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Add another name" }));
     });
+    // The new line opens with the keyboard up, rather than waiting for a
+    // second tap on a blank field.
+    expect(screen.getByLabelText("Other name 1").props.autoFocus).toBe(true);
     await act(async () => {
       fireEvent.changeText(screen.getByLabelText("Other name 1"), "Em");
     });

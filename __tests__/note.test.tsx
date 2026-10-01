@@ -416,6 +416,7 @@ describe("note screen", () => {
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Add a fact" }));
     });
+    expect(screen.getByLabelText("Fact 1").props.autoFocus).toBe(true);
     await act(async () => {
       fireEvent.changeText(
         screen.getByLabelText("Fact 1"),

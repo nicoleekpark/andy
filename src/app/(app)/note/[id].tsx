@@ -64,6 +64,14 @@ export default function NoteScreen() {
    * shows whatever is currently stored.
    */
   const [edits, setEdits] = useState<{ keyFacts: string[] } | null>(null);
+  /**
+   * The line an "Add …" button just made, so it opens with the keyboard up.
+   * Without it the button produced an empty field and nothing else — a second
+   * tap on a blank line was the only way to type in it. Read through
+   * `autoFocus`, which only acts when an input mounts, so typing in other
+   * lines never steals focus back.
+   */
+  const [justAdded, setJustAdded] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -249,6 +257,7 @@ export default function NoteScreen() {
                   }
                   style={styles.input}
                   multiline
+                  autoFocus={justAdded === index}
                   accessibilityLabel={`Fact ${index + 1}`}
                 />
               ))
@@ -271,9 +280,10 @@ export default function NoteScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Add a fact"
-                onPress={() =>
-                  edit({ keyFacts: [...(working?.keyFacts ?? []), ""] })
-                }
+                onPress={() => {
+                  setJustAdded(working?.keyFacts.length ?? 0);
+                  edit({ keyFacts: [...(working?.keyFacts ?? []), ""] });
+                }}
                 hitSlop={8}
               >
                 <Text style={styles.addLine}>Add a fact</Text>
