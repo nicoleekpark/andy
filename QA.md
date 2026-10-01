@@ -150,15 +150,15 @@ live here rather than in §7 because that is the screen they happen on.
 | 7a.15 | After 7a.10, check `npm run db` → `profiles` | **No new "Parks" row** if you picked Park. This is the whole point: a second person one letter from a real one used to appear with nothing said | ⬜ |
 | 7a.16 | With a name showing "Adding to …", tap **`Different person?`** | The choices open **right under that name**, without scrolling. They used to open in one block above `Remember this`, so pressing this looked like pressing nothing | ⬜ |
 | 7a.17 | In those choices, tap `View` on a candidate | Their profile opens. **Coming back finds the draft exactly as it was** — every edit, the transcript, any other answer | ⬜ |
-| 7a.18 | Tap the candidate card itself (not `View`) | It is selected, and the line above stops saying "Adding to …". Choosing is one tap; looking is its own | ⬜ |
+| 7a.18 | Tap the candidate card itself (not `View`) | It is selected, and the line above stops saying "Adding to …". Choosing is one tap; looking is its own | ✅ — simulator, 2026-09-30: one tap on the card selected it and the "Adding to" line went |
 | 7a.19 | Choose `Someone new` and save | A **second** person by that name. Two people may share a name, and this is how you say so | ⬜ |
 | 7a.20 | Record "Priya and I went to MET to see Prisley's show", keeping nobody called Prisley | If a person is created for the show, they are filed as **`Prisley`** — never `Prisley's`. An apostrophe-possessive is grammar, and no question can fix it because there is nobody to ask about | ⬜ |
 | 7a.21 | Same, but you **do** keep a Prisley | The possessive question instead (7a.10). The two rules divide there: a base that matches somebody is asked about, a base that matches nobody is just the name | ⬜ |
 | 7a.22 | A note naming **`Parks`** while keeping nobody called Park | Filed as **`Parks`**, unchanged. Parks is a surname and only you know — stripping it here would answer the question instead of asking it | ⬜ |
-| 7a.23 | From **home**, record about somebody you already keep — one person by that name | **"This Priya?"**, and **Save is blocked** until you answer. One person answering to a name is not the same as this being them: somebody kept months ago is easy to forget, and a note about a *different* Priya does not create a wrong person — it writes into a real one | ⬜ |
-| 7a.24 | From **that person's own page**, record about them | **No question**, just "Adding to Priya · …". Choosing where to record is the answer, and this is the path that keeps every ordinary save from becoming a form | ⬜ |
+| 7a.23 | From **home**, record about somebody you already keep — one person by that name | **"This Priya?"**, and **Save is blocked** until you answer. One person answering to a name is not the same as this being them: somebody kept months ago is easy to forget, and a note about a *different* Priya does not create a wrong person — it writes into a real one | ✅ — simulator, 2026-09-30: typed "Had lunch with QT…" from home → "This QT?", Save disabled with "Say which person each name above means" |
+| 7a.24 | From **that person's own page**, record about them | **No question**, just "Adding to Priya · …". Choosing where to record is the answer, and this is the path that keeps every ordinary save from becoming a form | ✅ — simulator, 2026-09-30: from the profile's Add a note, "Adding to Quinn Tester · friend · 2 notes" and no question |
 | 7a.25 | In 7a.23, choose `Someone new` and save | A **second** person by that name, kept separately | ⬜ |
-| 7a.26 | From home, record about somebody you keep **none** of | No question — nothing to confuse them with. The line still says a new person is about to be created | ⬜ |
+| 7a.26 | From home, record about somebody you keep **none** of | No question — nothing to confuse them with. The line still says a new person is about to be created | ✅ — simulator, 2026-09-30: "New person — nobody by this name yet." and no question |
 | 7a.27 | A **mention** matching exactly one person | **Corrected — see 7a.31a.** This row described the mention's old, lighter treatment (a line, not a question). #45 removed that asymmetry: a mention with one candidate now asks too, same as the subject | ⬜ |
 | 7a.28 | In 7a.23, correct the name's **capitalisation** after answering | The question stays, still answered — `priya` and `Priya` are the same name. It used to lose both the picker and the answer, leaving Save blocked by a question that was nowhere on screen | ⬜ |
 | 7a.29 | Keep **two** people with the exact same name (e.g. two Priyas). From **one of their own pages**, record and save | **Saves — no question, no error.** Reported live: this threw `"You keep more than one Priya"` from the server, on a screen that had just promised no question would be asked. The route's own profile is now sent as the answer without being asked | ✅ — verified live twice (the reported Priya case, and again independently on a duplicate Marcus) |
@@ -323,7 +323,7 @@ watched happen.
 
 | # | Do this | Expect | |
 |---|---|---|---|
-| 16.1 | Open a person with notes → `Draft a follow-up` | A sheet slides up **inside Andy** with a subject and 3–5 sentences, both in editable fields. **No Mail, no share sheet, nothing opens** | ⬜ |
+| 16.1 | Open a person with notes → `Draft a follow-up` | A sheet slides up **inside Andy** with a subject and 3–5 sentences, both in editable fields. **No Mail, no share sheet, nothing opens** | ✅ — simulator, 2026-09-30: sheet inside Andy, subject + message, nothing else opened |
 | 16.2 | Open a person with **no** notes and no mentions | **No button at all** — a line where it would be: "Andy doesn't remember anything about {name} yet. Add a note, and a follow-up can be written from it." | ✅ CLI |
 | 16.2a | Open somebody **Andy invented from a mention** (tap a name inside another person's note) | **No button.** The line says they "only come up in notes about other people". This is the one that shipped wrong: their timeline shows a note, so "nothing is written down" read as a lie — and that note is somebody else's words about them, which must never be mailed to them | ✅ CLI, on 민호 |
 | 16.2b | Open a person whose notes have an **empty "What to remember"** | **No button.** The line names the facts as what is missing, not the note — pointing them at "record a note" would point at the thing they already did | ✅ CLI, on Emily Watson |
@@ -335,14 +335,14 @@ watched happen.
 | 16.5a | Read any draft carefully for **any hint that notes are kept** — "you mentioned on the 1st", "looking back at what you told me", a date | Never. This app's whole premise is notes kept without the subject's consent, so a draft that discloses the filing system is the worst thing it can produce. Measured 2026-09-17 on two real profiles | ✅ CLI |
 | 16.5b | Draft for someone whose notes mention **their own family** (a parent's illness, a partner's job) | May ask after them — "how is your mother getting on?" — and must never restate the detail. This is the one exception to "no third parties", because the recipient raised it themselves. Measured on a note recording a cancer diagnosis: asked, named nothing | ✅ CLI |
 | 16.5c | Open a **foster animal's** profile | **No button, and no explanatory line either** — "record a note to draft a follow-up" is not advice anybody wants about a foster cat. The action refuses one too, since it is public and no screen guards it | ✅ CLI |
-| 16.6 | **Double-tap** `Draft a follow-up` | One call. The button greys to "Writing…" — each press is paid | ⬜ |
-| 16.7 | In the sheet: `Copy message` → paste into Messages | The body only, no subject. A subject is an email's idea and a text message has nowhere to put it | ⬜ |
-| 16.8 | `Copy with subject` → paste anywhere | Subject, blank line, body | ⬜ |
-| 16.8a | **Edit the message, then `Copy message`** | What is **on screen now**, not what Claude first wrote. Pasting a correction you already made would be a silent wrong answer | ⬜ |
-| 16.8b | Copy, then type one character in the field | The "Message copied" line **goes away** — it stopped being true | ⬜ |
-| 16.8c | `Write another` **without editing** | A new draft, no question asked | ⬜ |
-| 16.8d | Edit, then `Write another` | Asks first — "Replace what you wrote?". Cancelling keeps your edit; confirming replaces it, **even if the new draft is word-for-word the old one** | ⬜ |
-| 16.8e | `Done`, then `Draft a follow-up` again | Your edits are **gone**. A draft is generated from notes, not saved as a document | ⬜ |
+| 16.6 | **Double-tap** `Draft a follow-up` | One call. The button greys to "Writing…" — each press is paid | ✅ — simulator, 2026-09-30: double tap → button greyed to "Writing…", one sheet. Call count not checked in the logs |
+| 16.7 | In the sheet: `Copy message` → paste into Messages | The body only, no subject. A subject is an email's idea and a text message has nowhere to put it | ✅ — simulator, 2026-09-30: pasteboard read right after the copy held the body only |
+| 16.8 | `Copy with subject` → paste anywhere | Subject, blank line, body | ✅ — simulator, 2026-09-30: subject, blank line, body |
+| 16.8a | **Edit the message, then `Copy message`** | What is **on screen now**, not what Claude first wrote. Pasting a correction you already made would be a silent wrong answer | ✅ — simulator, 2026-09-30: added " Cheers." → the copy carried it |
+| 16.8b | Copy, then type one character in the field | The "Message copied" line **goes away** — it stopped being true | ✅ — simulator, 2026-09-30 |
+| 16.8c | `Write another` **without editing** | A new draft, no question asked | ✅ — simulator, 2026-09-30: straight to "Writing…", no question |
+| 16.8d | Edit, then `Write another` | Asks first — "Replace what you wrote?". Cancelling keeps your edit; confirming replaces it, **even if the new draft is word-for-word the old one** | ✅ — simulator, 2026-09-30: "Replace what you wrote?"; Cancel kept the edit |
+| 16.8e | `Done`, then `Draft a follow-up` again | Your edits are **gone**. A draft is generated from notes, not saved as a document | ✅ — simulator, 2026-09-30 |
 | 16.9 | Turn Wi-Fi off, tap `Draft a follow-up` | One error line, no sheet | ⬜ |
 | 16.10 | Read the message before you send it **anywhere** | **Nothing is sent by Andy at all.** This is the review step, and it is the only one | ⬜ |
 | 16.11 | In the sheet, tap into **Message** and keep typing past the bottom of the visible area | The caret stays above the keyboard **as it moves**, not just when the field is first tapped. `Copy` and `Write another` are reachable by scrolling, with no dead gap between the content and the keyboard | ⬜ |
@@ -471,22 +471,22 @@ this replaces could not answer `oneill` for `O'Neill`, or `선희` for `지선�
 
 | # | Type this | Expect | |
 |---|---|---|---|
-| 20.1 | A name you keep, e.g. `judy` | A **People** section appears as you type. **No Ask press, no spinner, no cost** | ⬜ |
-| 20.2 | Tap a row | Their profile opens | ⬜ |
-| 20.3 | A name only **one** person has | Still a list to tap, not a jump. "There is only one Judy" is itself worth seeing — and this app does not decide who you meant | ⬜ |
-| 20.4 | A name **two** people have | Both, best match first, and equal matches in alphabetical order. Each row shows their relationship and note count so you can tell them apart | ⬜ |
-| 20.5 | `ONEILL`, `oneill`, `o'neill`, `judy o`, `neill` for a `Judy O'Neill` | **All five find her.** Case, spacing and punctuation are ignored | ⬜ |
+| 20.1 | A name you keep, e.g. `judy` | A **People** section appears as you type. **No Ask press, no spinner, no cost** | ✅ — simulator, 2026-09-30: "judy" → People: Judy O'Neill, no Ask press |
+| 20.2 | Tap a row | Their profile opens | ✅ — simulator, 2026-09-30 |
+| 20.3 | A name only **one** person has | Still a list to tap, not a jump. "There is only one Judy" is itself worth seeing — and this app does not decide who you meant | ✅ — simulator, 2026-09-30: one Judy, still a list |
+| 20.4 | A name **two** people have | Both, best match first, and equal matches in alphabetical order. Each row shows their relationship and note count so you can tell them apart | ✅ — simulator, 2026-09-30: "marcus" → three Marcuses. ⚠ Two rows read identically ("Marcus · 1 note") — see the pass log |
+| 20.5 | `ONEILL`, `oneill`, `o'neill`, `judy o`, `neill` for a `Judy O'Neill` | **All five find her.** Case, spacing and punctuation are ignored | ✅ — simulator, 2026-09-30: all five, including o'neill typed with iOS's curly apostrophe |
 | 20.6 | `judy o` when you keep a `Judy Park` too | **Only O'Neill.** More typed is fewer results, not more | ⬜ |
 | 20.7 | `선희` when you keep `지선희` | Found. A script with no spaces has no mid-word prefix for a tokeniser — this is the case that disqualified the index | ⬜ |
 | 20.8 | `지선` when you keep both `지선` and `지선희` | **Both**, 지선 first. Deliberately the opposite of the briefing card, which must never match 지선희 for 지선 — **there the app picks alone; here you are reading a list** | ⬜ |
 | 20.9 | Several Korean names, e.g. `지원` matching 가지원/나지원/하지원 | 가나다 order, not code-point order | ⬜ |
-| 20.10 | A nickname you saved as an **alias** | Found, and the row shows the alias beside the filed name, so you can see why they matched | ⬜ |
-| 20.11 | A name that comes up **inside somebody else's note** | A **Came up in** section under People, with the verbatim quote. Tapping opens that note | ⬜ |
+| 20.10 | A nickname you saved as an **alias** | Found, and the row shows the alias beside the filed name, so you can see why they matched | ✅ — simulator, 2026-09-30: "qt" → "Quinn Tester · QT · friend · 3 notes" |
+| 20.11 | A name that comes up **inside somebody else's note** | A **Came up in** section under People, with the verbatim quote. Tapping opens that note | ✅ — simulator, 2026-09-30: "marcus" → Came up in: Irene, Amy, Priya with quotes; tapping Irene opened that note |
 | 20.12 | A name whose person you **deleted**, that a note still mentions | Still listed under Came up in, with the name the note recorded. Deleting somebody must not erase them from other people's notes | ⬜ |
-| 20.13 | `!!!` or spaces only | **Nothing.** A folded-empty query is a substring of every name | ⬜ |
-| 20.14 | A name nobody has | No People section at all — not an empty box | ⬜ |
-| 20.16 | Search a name that exists **only as a mention** (e.g. 어머니, 민호) | The row says **"only mentioned, in N notes"**, not "0 notes". Andy invents somebody the moment a note says a name, and this is the line that makes a wrongly-invented one visible — "Park's housewarming party" once became a person called "Parks" | ⬜ |
-| 20.17 | Compare that row to somebody you have written about | Theirs says "N notes". The two are different kinds of person and the list has to say which | ⬜ |
+| 20.13 | `!!!` or spaces only | **Nothing.** A folded-empty query is a substring of every name | ✅ — simulator, 2026-09-30: nothing for "!!!" or spaces. ⚠ Ask is enabled for "!!!" (a paid search on punctuation) |
+| 20.14 | A name nobody has | No People section at all — not an empty box | ✅ — simulator, 2026-09-30: "zzqx" → no People section |
+| 20.16 | Search a name that exists **only as a mention** (e.g. 어머니, 민호) | The row says **"only mentioned, in N notes"**, not "0 notes". Andy invents somebody the moment a note says a name, and this is the line that makes a wrongly-invented one visible — "Park's housewarming party" once became a person called "Parks" | ✅ — simulator, 2026-09-30: "Marcus · only mentioned, in 1 note" |
+| 20.17 | Compare that row to somebody you have written about | Theirs says "N notes". The two are different kinds of person and the list has to say which | ✅ — simulator, 2026-09-30 |
 | 20.15 | Type a name, then press **Ask** | Both: the people stay above, the written answer arrives below. The cheap half never waits for the paid one | ⬜ |
 
 ---
@@ -594,6 +594,76 @@ fault, not the code's: `npm run build:ios`, then `npm run ios:install`.
 | 24.3 | Turn on VoiceOver, swipe to the top of the screen | Reads "Andy, heading", once. Not "image", not silent, not the drawing's parts | ⬜ |
 | 24.4 | Rotate / use the largest and smallest iPhone you have | The thread still reaches both edges and the word is never clipped | ⬜ |
 | 24.5 | Sign in | Nothing else changed: the Apple button, the "Finishing sign-in…" and stuck states behave as before | ⬜ |
+
+## Simulator pass, 2026-09-30 (Claude, while the developer was away)
+
+**How it was run.** iPhone 17 Pro simulator, the dev build of commit `47f3837`
+(PR #62's branch, carrying #61), Metro + `convex dev` from `npm run dev`. Taps,
+drags and text went in through synthetic macOS input; text was pasted from the
+simulator pasteboard, because the Mac's Korean input source turned key codes
+into jamo. Every note was **typed**, never spoken.
+
+**What was not touched, by rule.** Access was limited to the Andy app: no
+microphone (it records the room), no calendar (§18/§19 read the developer's
+calendar), no photo library (§9, §17.2+), no account deletion (§22), no
+sign-out (11.5, 21.9, all of §24 — signing back in needs the Apple ID), no
+Wi-Fi changes (the simulator shares the Mac's network), no VoiceOver. Those
+rows keep their ⬜.
+
+**Test data.** One invented person, "Quinn Tester" (alias QT), three typed
+notes, and "Robin Example" who only came up inside one of them. Both were
+deleted at the end through §7.6 — searching "quinn" and "robin" returned
+nothing afterwards.
+
+| Row | Result |
+|---|---|
+| 1.3 | ✅ typed: "next April" kept as written |
+| 1.4 | ✅ typed: "Met Quinn Tester at the QA meetup" ticked the first-meeting box with today's date |
+| 3.1 | ✅ "New person — nobody by this name yet." |
+| 3.3 | ✅ "Tap record. This note goes to Quinn Tester, whoever else comes up." |
+| 3.4 | ✅ a note entirely about Robin, recorded from Quinn's page, filed under Quinn with Robin under Also came up |
+| 4.2 | ✅ Robin's page: Mentioned in → Quinn Tester's note |
+| 5a.1 | ✅ "Adding to Quinn Tester · friend · 2 notes · last 2026-09-30" with Different person? |
+| 6.1 | ✅ "also QT" on the profile |
+| 6.2 | ✅ a note naming only "QT" offered Quinn Tester (as the 7a.23 question, from home) |
+| 7.1 | ✅ fact edited Portland → Seattle, timeline updated; one back press reached home |
+| 7.2 | ✅ |
+| 7.3 | ✅ tapping "What you wrote" on the saved note gave no cursor |
+| 7.4 | ✅ alias + relationship saved together; name and tags kept |
+| 7.6 | ✅ "Delete Quinn Tester? 3 notes go with them…", what follows them out and what stays |
+| 7a.7 | ✅ untouched transcript → saved with no question |
+| 8.1–8.3 | ✅ whole screen; Read it disabled while empty; "What you wrote" |
+| 11.3 | ✅ serif names, monospace dates |
+| 11.4 | ✅ "Andy doesn't have anyone by that link." centred |
+| 12.1, 12.4 | ✅ indirectly: the new note was found by meaning ("who runs a pottery studio") and the answer used the edited fact ("Seattle") |
+| 14.1 | ✅ placeholder in full |
+| 14.2 | ✅ return key searched |
+| 14.6 | ✅ two Quinn notes as two cards |
+| 15.9 | ✅ "Quinn Tester runs a pottery studio in Seattle." above the cards, the note marked "used in the answer" |
+| 16.2a | ✅ on device: Robin's page — no draft button, the "only comes up in notes about other people" line |
+| 16.2c | ✅ on device: Quinn's page had the button |
+| 16.5a | ✅ one draft read: nothing about notes being kept |
+| 17.1 | ✅ empty circle with + above the name |
+| 21.1–21.2 | ✅ re-seen on every relaunch |
+| 23.x | Installed bundle inspected (`assetutil`): light, dark and tinted renditions compiled from `expo.icon`. ❌ the light icon's loop is **filled solid** — fix in its own PR. 23.5 ✅ loop-only splash; ⚠ its faded ends look grey |
+
+**Bugs found, each fixed in its own PR (all merged 2026-10-01):**
+- The review screen said "Andy heard this." on typed notes and cards — #63.
+- A note with no facts had no Edit link on the profile — it could not be edited or deleted from there — #64.
+- Deleting a person left their profile under home in the back stack (home showed "< Quinn Tester") — #65.
+- The "Message copied" line pushed the copy buttons down under the finger — #66.
+- The icon's loop compiled filled; the splash fade looked grey — #67.
+
+**Found, not fixed (need a decision or a measurement):**
+- A note written in English (2026-09-22, "met irene who's Marcus's girlfriend") carries a **Korean** fact ("Marcus의 여자친구이다"). Either §1's language fix regressed or the locale was toggled to Korean that day; needs a re-measure of §1.
+- People sharing a name are indistinguishable in lists: two rows read "Marcus · 1 note".
+- A pet named in a note ("a second dog called Kiln") was offered as **"New person"** under Also came up.
+- "Andy" in the capture screen's Who-or-what reads "Person / Animal"; the profile editor reads "person / animal".
+- "Add a name" (aliases) adds an empty field without focusing it.
+- Ask is enabled for punctuation-only input ("!!!").
+
+**Simulator quirk, not a bug:** synthetic clicks occasionally landed on the Expo
+dev-menu gear (top left, dev builds only) instead of the back button under it.
 
 ---
 
