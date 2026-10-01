@@ -624,6 +624,18 @@ Turn Wi-Fi back on and press Try again when the failure screen comes.
 | 25.5 | Look at both ends of the thread while it moves | They **fade out**, as on the launch image — no cut end appears as it draws in or leaves | ⬜ |
 | 25.6 | Repeat 25.2 on the smallest simulator you have (e.g. iPhone SE) | The thread and the words below it both fit, nothing clipped or overlapping the bottom of the screen | ⬜ |
 
+## 26. The thread greets you
+
+`draw` motion: once, then still (STYLE.md → Thread motion). The timing and Reduce
+Motion are unit-tested; how it looks is not.
+
+| # | Do this | Expect | |
+|---|---|---|---|
+| 26.1 | Sign out (or fresh install) | The thread **writes "andy"** from the left edge, through the name and the loop, out past the right edge, in about 1.5 s — **then stops**. The twist appears along it as it goes | ⬜ |
+| 26.2 | On an account with nobody kept, open the app | Above "No one yet — tap record…", the loop **draws itself once** and rests, a clear gap above the words | ⬜ |
+| 26.3 | Go to Settings and back to home | The loop is **already there**, still. It greets once per run of the app, not every visit | ⬜ |
+| 26.4 | Reduce Motion on, repeat 26.1 and 26.2 | Both appear **finished and still**; nothing draws, nothing flashes in first | ⬜ |
+
 ## Simulator pass, 2026-09-30 (Claude, while the developer was away)
 
 **How it was run.** iPhone 17 Pro simulator, the dev build of commit `47f3837`

@@ -1,4 +1,5 @@
 import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { AccessibilityInfo } from "react-native";
 import { useConvexAuth } from "convex/react";
 import { useAuth } from "@clerk/expo";
 import { useSignInWithApple } from "@clerk/expo/apple";
@@ -39,6 +40,25 @@ describe("sign-in screen", () => {
     await renderSignIn();
 
     expect(screen.getByRole("header", { name: "Andy" })).toBeOnTheScreen();
+  });
+
+  // The name writes itself once as the screen appears — a greeting in the
+  // launch loop's own motion, then still (STYLE.md → Thread motion).
+  test("should write the name mark once as the screen appears", async () => {
+    await renderSignIn();
+    await act(async () => {});
+
+    expect(screen.getByTestId("name-mark-drawing")).toBeTruthy();
+  });
+
+  test("should show the name mark still when Reduce Motion is on", async () => {
+    // Once, not a spy to restore: restoring the setup's own mock leaves it
+    // returning nothing, which breaks every test after this one.
+    (AccessibilityInfo.isReduceMotionEnabled as jest.Mock).mockResolvedValueOnce(true);
+    await renderSignIn();
+    await act(async () => {});
+
+    expect(screen.getByTestId("name-mark-still")).toBeTruthy();
   });
 
   test("should say what Andy is for under the name mark", async () => {

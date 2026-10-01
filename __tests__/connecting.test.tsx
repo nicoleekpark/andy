@@ -44,11 +44,11 @@ describe("connecting screen", () => {
 
     // The loop the launch image left, so the hand-over is not a cut to blank
     // paper; and no words, so a normal launch never flickers.
-    expect(screen.getByTestId("launch-thread-still", HIDDEN)).toBeTruthy();
-    expect(screen.queryByTestId("launch-thread-moving", HIDDEN)).toBeNull();
+    expect(screen.getByTestId("thread-loop-still", HIDDEN)).toBeTruthy();
+    expect(screen.queryByTestId("thread-loop-moving", HIDDEN)).toBeNull();
     expect(screen.queryByText("Connecting…")).toBeNull();
     // Decorative: not a focus stop for a screen reader.
-    expect(screen.queryByTestId("launch-thread-still")).toBeNull();
+    expect(screen.queryByTestId("thread-loop-still")).toBeNull();
   });
 
   test("should say it is connecting once the quiet window has passed", async () => {
@@ -57,7 +57,7 @@ describe("connecting screen", () => {
     await advance(1_500);
 
     expect(screen.getByText("Connecting…")).toBeTruthy();
-    expect(screen.getByTestId("launch-thread-moving", HIDDEN)).toBeTruthy();
+    expect(screen.getByTestId("thread-loop-moving", HIDDEN)).toBeTruthy();
   });
 
   test("should start the thread passing through once it is connecting", async () => {
@@ -98,10 +98,10 @@ describe("connecting screen", () => {
     await render(<Connecting />);
 
     await advance(1_400);
-    const still = pathsUnder("launch-thread-still");
+    const still = pathsUnder("thread-loop-still");
 
     await advance(100);
-    const moving = pathsUnder("launch-thread-moving");
+    const moving = pathsUnder("thread-loop-moving");
 
     // The thread plus every dash of its twist, in both states.
     expect(still).toBeGreaterThan(10);
@@ -109,7 +109,7 @@ describe("connecting screen", () => {
   });
 
   test("should keep the loop still when Reduce Motion is on", async () => {
-    jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(true);
+    (AccessibilityInfo.isReduceMotionEnabled as jest.Mock).mockResolvedValueOnce(true);
     const loop = jest.spyOn(Animated, "loop");
     await render(<Connecting />);
 
@@ -117,20 +117,20 @@ describe("connecting screen", () => {
 
     // The words still say it is connecting; only the motion goes.
     expect(screen.getByText("Connecting…")).toBeTruthy();
-    expect(screen.getByTestId("launch-thread-still", HIDDEN)).toBeTruthy();
-    expect(screen.queryByTestId("launch-thread-moving", HIDDEN)).toBeNull();
+    expect(screen.getByTestId("thread-loop-still", HIDDEN)).toBeTruthy();
+    expect(screen.queryByTestId("thread-loop-moving", HIDDEN)).toBeNull();
     expect(loop).not.toHaveBeenCalled();
   });
 
   test("should not move before the system has said whether Reduce Motion is on", async () => {
     // An answer that never comes: the thread must wait for it, not assume.
-    jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockReturnValue(new Promise(() => {}));
+    (AccessibilityInfo.isReduceMotionEnabled as jest.Mock).mockReturnValueOnce(new Promise(() => {}));
     const loop = jest.spyOn(Animated, "loop");
     await render(<Connecting />);
 
     await advance(1_500);
 
-    expect(screen.getByTestId("launch-thread-still", HIDDEN)).toBeTruthy();
+    expect(screen.getByTestId("thread-loop-still", HIDDEN)).toBeTruthy();
     expect(loop).not.toHaveBeenCalled();
   });
 
@@ -159,8 +159,8 @@ describe("connecting screen", () => {
     ).toBeTruthy();
     // The thread has to go: left moving it would keep saying that waiting is
     // enough, at the one moment the screen exists to say it isn't.
-    expect(screen.queryByTestId("launch-thread-moving", HIDDEN)).toBeNull();
-    expect(screen.queryByTestId("launch-thread-still", HIDDEN)).toBeNull();
+    expect(screen.queryByTestId("thread-loop-moving", HIDDEN)).toBeNull();
+    expect(screen.queryByTestId("thread-loop-still", HIDDEN)).toBeNull();
   });
 
   test("should ask for a new session when the way out is taken", async () => {

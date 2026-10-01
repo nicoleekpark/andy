@@ -5,7 +5,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { LaunchThread } from "@/components/launch-thread";
+import { ThreadLoop } from "@/components/thread-loop";
 import { colors, space } from "@/constants/theme";
 
 /**
@@ -86,7 +86,7 @@ function useConnectionPhase(): Phase {
  * still connecting after it does the thread start passing through.
  *
  * The spinner had three things going for it, and each is answered here rather
- * than dropped: it followed Reduce Motion for free (LaunchThread checks it and
+ * than dropped: it followed Reduce Motion for free (ThreadLoop checks it and
  * stays still); it spent none of the Briefing card's signature (brass is the
  * thread before sign-in, STYLE.md); and it belonged to the phone, which the
  * system face and the words under it still do. Three bouncing dots stay
@@ -100,7 +100,7 @@ export function Connecting() {
     return (
       <View style={[styles.screen, styles.centred]}>
         <View style={styles.anchor}>
-          <LaunchThread moving={false} />
+          <ThreadLoop motion="still" />
         </View>
       </View>
     );
@@ -140,7 +140,7 @@ export function Connecting() {
         {/* The thread stops at `failed` on purpose — that screen has no
             thread. Left moving it would keep promising that waiting is
             enough, which by then is untrue. */}
-        <LaunchThread moving />
+        <ThreadLoop motion="pass" />
         <View style={styles.below}>
           {phase === "slow" ? (
             // Two lines, two jobs: what is happening, then what to do.

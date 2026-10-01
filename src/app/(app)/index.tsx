@@ -3,8 +3,10 @@ import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { BriefingCard } from "@/components/briefing-card";
+import { ThreadLoop } from "@/components/thread-loop";
 import { useBriefing } from "@/lib/use-briefing";
-import { colors, fonts } from "@/constants/theme";
+import { colors, fonts, space } from "@/constants/theme";
+import { useOncePerSession } from "@/lib/use-once-per-session";
 
 /**
  * Home: the people you keep, and the way in to everything else.
@@ -20,6 +22,27 @@ import { colors, fonts } from "@/constants/theme";
  * search-as-you-type to be had here. A field that looked live and only acted on
  * submit would promise something it cannot do.
  */
+/**
+ * Nobody kept yet. The loop draws itself the first time this appears in a run
+ * of the app — a greeting that finishes and rests — and is simply there after
+ * that (STYLE.md → Thread motion). Its own component so the "first time"
+ * counts appearances of the empty home, not of home.
+ */
+function EmptyHome() {
+  const first = useOncePerSession("empty-home");
+  return (
+    <View style={styles.emptyInner}>
+      <ThreadLoop motion={first ? "draw" : "still"} width={EMPTY_THREAD_WIDTH} />
+      <Text style={styles.quiet}>
+        No one yet — tap record to remember your first person.
+      </Text>
+    </View>
+  );
+}
+
+/** Smaller than the launch loop: here it sits beside words, not alone. */
+const EMPTY_THREAD_WIDTH = 112;
+
 export default function HomeScreen() {
   const people = useQuery(api.profiles.people);
   const { briefing, ask, alerts, askForAlerts } = useBriefing();
@@ -76,9 +99,7 @@ export default function HomeScreen() {
               {people === undefined ? (
                 <Text style={styles.quiet}>Loading…</Text>
               ) : (
-                <Text style={styles.quiet}>
-                  No one yet — tap record to remember your first person.
-                </Text>
+                <EmptyHome />
               )}
             </View>
           }
@@ -145,6 +166,7 @@ const styles = StyleSheet.create({
   },
 
   emptyState: { flex: 1, justifyContent: "center", alignItems: "center" },
+  emptyInner: { alignItems: "center", gap: space.xl },
   quiet: {
     color: colors.ink,
     fontSize: 15,

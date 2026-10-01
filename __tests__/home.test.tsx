@@ -1,8 +1,10 @@
 import { act, fireEvent, screen } from "@testing-library/react-native";
+import { AccessibilityInfo, Animated } from "react-native";
 import { useQuery } from "convex/react";
 import { getFunctionName } from "convex/server";
 import { renderRouter } from "expo-router/testing-library";
 import { api } from "@convex/_generated/api";
+import { forgetSession } from "@/lib/use-once-per-session";
 
 /**
  * src/app/(app)/index.tsx's three branches — loading, empty, populated — are
@@ -43,7 +45,15 @@ function buildPerson(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
+// The loop is hidden from assistive tech on purpose (the words carry the
+// meaning), and testing-library skips hidden elements unless told otherwise.
+const HIDDEN = { includeHiddenElements: true } as const;
+
 describe("home screen", () => {
+  beforeEach(() => {
+    forgetSession();
+  });
+
   afterEach(() => {
     jest.clearAllMocks();
   });
@@ -66,6 +76,43 @@ describe("home screen", () => {
     expect(
       screen.getByText("No one yet — tap record to remember your first person."),
     ).toBeTruthy();
+  });
+
+  // The empty home greets you once: the loop draws itself the first time it
+  // appears in a run of the app, then rests; after that it is simply there.
+  test("should draw the loop the first time the empty home appears, and not again", async () => {
+    mockPeopleQuery([]);
+    const timing = jest.spyOn(Animated, "timing");
+
+    const first = renderRouter("src/app", { initialUrl: "/" });
+    await first;
+    await act(async () => {});
+
+    expect(screen.getByTestId("thread-loop-drawing", HIDDEN)).toBeTruthy();
+    expect(timing).toHaveBeenCalledTimes(1);
+
+    // A second render in the same test is the second appearance: `screen`
+    // follows the latest render. Fine here because only the second tree is
+    // queried; a test querying both would hit duplicate testIDs.
+    const second = renderRouter("src/app", { initialUrl: "/" });
+    await second;
+    await act(async () => {});
+
+    expect(screen.getByTestId("thread-loop-still", HIDDEN)).toBeTruthy();
+    expect(timing).toHaveBeenCalledTimes(1);
+  });
+
+  test("should not draw the loop when Reduce Motion is on", async () => {
+    (AccessibilityInfo.isReduceMotionEnabled as jest.Mock).mockResolvedValueOnce(true);
+    mockPeopleQuery([]);
+    const timing = jest.spyOn(Animated, "timing");
+
+    const result = renderRouter("src/app", { initialUrl: "/" });
+    await result;
+    await act(async () => {});
+
+    expect(screen.getByTestId("thread-loop-still", HIDDEN)).toBeTruthy();
+    expect(timing).not.toHaveBeenCalled();
   });
 
   test("should render a row for each person when the query resolves", async () => {
