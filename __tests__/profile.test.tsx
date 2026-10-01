@@ -610,6 +610,24 @@ describe("follow-up email", () => {
     expect(screen.getByTestId("copied")).toHaveTextContent("Message copied");
   });
 
+  // The confirmation used to appear above the buttons and push them down a
+  // line, under the finger that had just pressed one. Its room is kept now,
+  // said or not. Layout itself is QA 16.15; this pins the slot that keeps it.
+  test("should keep the copy confirmation's room whether or not it is showing", async () => {
+    jest.spyOn(Clipboard, "setStringAsync").mockResolvedValue(true);
+    await draftAndOpen(jest.fn(async () => NINA));
+
+    expect(screen.getByTestId("copied-slot")).toHaveStyle({ minHeight: 18 });
+    expect(screen.queryByTestId("copied")).toBeNull();
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Copy the message"));
+    });
+
+    expect(screen.getByTestId("copied-slot")).toHaveStyle({ minHeight: 18 });
+    expect(screen.getByTestId("copied")).toBeTruthy();
+  });
+
   test("should say out loud that it copied, since the result is invisible", async () => {
     jest.spyOn(Clipboard, "setStringAsync").mockResolvedValue(true);
     const announce = jest
