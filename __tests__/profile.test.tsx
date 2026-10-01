@@ -164,6 +164,36 @@ describe("profile screen", () => {
     expect(screen.getByText("Typed by hand, never extracted.")).toBeTruthy();
   });
 
+  // A note with no facts is shown as its own text, and it used to get no Edit
+  // at all — so the fact Andy missed could never be added, and the note could
+  // never be deleted from the person it was filed under. Found on the
+  // simulator on 2026-09-30, on a note that was entirely about somebody else.
+  test("should let a note with no facts be opened for editing, like any other", async () => {
+    const profile = withNotes([
+      {
+        _id: "note-without-facts",
+        createdAt: Date.now(),
+        text: "Ran into Robin at the studio.",
+      },
+    ]);
+    // The note screen the button opens reads its own query; left loading so
+    // this test is about the way in, not that screen.
+    (useQuery as jest.Mock).mockImplementation((reference: unknown) =>
+      getFunctionName(reference as never) === getFunctionName(api.notes.byId)
+        ? undefined
+        : profile,
+    );
+
+    const result = renderRouter("src/app", { initialUrl: "/profile/contact-1" });
+    await result;
+
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: /^Edit the note from/ }));
+    });
+
+    expect(result.getPathname()).toBe("/note/note-without-facts");
+  });
+
   test("should keep the original transcript reachable behind a toggle when a note has facts", async () => {
     // The facts are what a person confirmed; the transcript is what the
     // recogniser heard, and they drift on purpose. Measured on device,

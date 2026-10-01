@@ -321,6 +321,17 @@ export default function ProfileScreen() {
     );
   }, []);
 
+  const editNote = (note: { _id: string; createdAt: number }) => (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Edit the note from ${new Date(note.createdAt).toLocaleDateString("en-CA")}`}
+      onPress={() => router.push(`/note/${note._id}`)}
+      hitSlop={8}
+    >
+      <Text style={styles.reveal}>Edit</Text>
+    </Pressable>
+  );
+
   const title = result?.profile.name ?? "Profile";
 
   return (
@@ -479,14 +490,7 @@ export default function ProfileScreen() {
                                 and a row that both expands and navigates
                                 depending on where you land on it is a row you
                                 learn to distrust. */}
-                            <Pressable
-                              accessibilityRole="button"
-                              accessibilityLabel={`Edit the note from ${new Date(note.createdAt).toLocaleDateString("en-CA")}`}
-                              onPress={() => router.push(`/note/${note._id}`)}
-                              hitSlop={8}
-                            >
-                              <Text style={styles.reveal}>Edit</Text>
-                            </Pressable>
+                            {editNote(note)}
                           </View>
                           {openTranscripts.includes(note._id) ? (
                             <Text style={styles.transcript}>{note.text}</Text>
@@ -495,8 +499,16 @@ export default function ProfileScreen() {
                       ) : (
                         // No facts means nothing was extracted from this note,
                         // so the note *is* its text — there is no original to
-                        // reveal separately.
-                        <Text style={styles.fact}>{note.text}</Text>
+                        // reveal separately. It still needs Edit: that is the
+                        // only way to add the fact Andy missed, or to delete
+                        // the note at all, and a note with every fact cleared
+                        // (QA 7.3c) lands here too.
+                        <>
+                          <Text style={styles.fact}>{note.text}</Text>
+                          <View style={styles.entryActions}>
+                            {editNote(note)}
+                          </View>
+                        </>
                       )}
 
                       {mentions.length > 0 ? (
