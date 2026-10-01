@@ -93,12 +93,13 @@ export default function SearchScreen() {
    * there for whoever wants to check the answer did not miss one.
    */
   const [showOthers, setShowOthers] = useState(false);
-  const shown = cited
-    ? (results ?? []).filter((result) => result.used)
-    : (results ?? []);
-  const others = cited
-    ? (results ?? []).filter((result) => !result.used)
-    : [];
+  const shown = (results ?? []).filter((result) => !cited || result.used);
+  const others = (results ?? []).filter((result) => cited && !result.used);
+  const othersLabel = showOthers
+    ? "Hide the other notes"
+    : others.length === 1
+      ? "1 other note came up"
+      : `${others.length} other notes came up`;
 
   async function ask() {
     // Submit only. An embedding is a paid call on somebody else's meter, so a
@@ -296,17 +297,12 @@ export default function SearchScreen() {
                 <View testID="other-notes">
                   <Pressable
                     accessibilityRole="button"
+                    accessibilityLabel={othersLabel}
                     accessibilityState={{ expanded: showOthers }}
                     onPress={() => setShowOthers((open) => !open)}
                     style={styles.othersToggle}
                   >
-                    <Text style={styles.othersLabel}>
-                      {showOthers
-                        ? "Hide the other notes"
-                        : others.length === 1
-                          ? "1 other note came up"
-                          : `${others.length} other notes came up`}
-                    </Text>
+                    <Text style={styles.othersLabel}>{othersLabel}</Text>
                   </Pressable>
                   {showOthers
                     ? others.map((result) => (

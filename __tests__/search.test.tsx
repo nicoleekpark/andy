@@ -624,6 +624,23 @@ describe("search screen", () => {
     expect(screen.queryByText("Runs a climbing gym in Oakland")).toBeNull();
   });
 
+  test("should count the folded notes when there is more than one", async () => {
+    recall.mockResolvedValue({
+      query: "pottery studio",
+      answer: "Amy is opening a pottery studio in October.",
+      results: [
+        buildResult({ noteId: "note-amy", used: true }),
+        buildResult({ noteId: "note-2", used: false }),
+        buildResult({ noteId: "note-3", used: false }),
+      ],
+    });
+    await renderSearch();
+
+    await ask("pottery studio");
+
+    expect(screen.getByRole("button", { name: "2 other notes came up" })).toBeTruthy();
+  });
+
   test("should show no answer block at all when the search found nothing to answer from", async () => {
     recall.mockResolvedValue({ query: "the capital of France", answer: "", results: [] });
     await renderSearch();
