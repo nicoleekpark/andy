@@ -126,6 +126,17 @@ export default function HomeScreen() {
             >
               <View style={styles.rowText}>
                 <Text style={styles.rowName}>{item.profile.name}</Text>
+                {/*
+                  What they told you most recently, in your own saved words —
+                  recognising somebody beats recalling them, and two people
+                  who share a name stop looking identical. One line: the
+                  profile is where the rest is.
+                */}
+                {item.latestFact !== null ? (
+                  <Text style={styles.rowFact} numberOfLines={1}>
+                    {item.latestFact}
+                  </Text>
+                ) : null}
                 <Text style={styles.rowMeta}>
                   {[
                     item.profile.relationshipContext,
@@ -172,6 +183,7 @@ const styles = StyleSheet.create({
   row: { paddingVertical: 14 },
   rowText: { gap: 3 },
   rowName: { color: colors.ink, fontSize: 18, fontFamily: fonts.display },
+  rowFact: { color: colors.ink, fontSize: 14, opacity: 0.8, lineHeight: 19 },
   rowMeta: {
     color: colors.ink,
     fontSize: 13,

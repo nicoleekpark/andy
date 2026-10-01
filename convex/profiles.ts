@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { removeOrphanedAutoCreated } from "./cleanup";
+import { rememberedFacts } from "./embeddingModel";
 import { MAX_NAME_CHARS } from "./extractionPrompt";
 import { candidatesForSpokenName, cleanAliases, compareNamesForList, matchKey, mergeTags } from "./naming";
 import { possessiveBases } from "./possessive";
@@ -236,6 +237,16 @@ export const people = query({
       profile: schema.doc("profiles"),
       lastNoteAt: v.number(),
       noteCount: v.number(),
+      /**
+       * The first remembered fact of their most recent note that has any,
+       * exactly as saved — the line under the name on home.
+       *
+       * Verbatim on purpose (decided 2026-10-01): a one-line AI summary was
+       * the alternative, and a summary that misstates someone is believed
+       * from a list without being checked. A saved fact cannot be wrong in a
+       * way the user did not write. `null` when no note has a fact yet.
+       */
+      latestFact: v.union(v.string(), v.null()),
     }),
   ),
   handler: async (ctx) => {
@@ -249,12 +260,27 @@ export const people = query({
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect();
 
-    const byProfile = new Map<string, { lastNoteAt: number; noteCount: number }>();
+    const byProfile = new Map<
+      string,
+      {
+        lastNoteAt: number;
+        noteCount: number;
+        latestFact: string | null;
+        latestFactAt: number;
+      }
+    >();
     for (const note of notes) {
       const seen = byProfile.get(note.profileId);
+      // Through the same filter search and Ask Andy use, so a whitespace-only
+      // fact is no more a line here than it is a fact there.
+      const fact = rememberedFacts(note.keyFacts)[0];
+      const newer =
+        fact !== undefined && note.createdAt >= (seen?.latestFactAt ?? -Infinity);
       byProfile.set(note.profileId, {
         lastNoteAt: Math.max(seen?.lastNoteAt ?? 0, note.createdAt),
         noteCount: (seen?.noteCount ?? 0) + 1,
+        latestFact: newer ? fact : (seen?.latestFact ?? null),
+        latestFactAt: newer ? note.createdAt : (seen?.latestFactAt ?? -Infinity),
       });
     }
 
@@ -266,7 +292,16 @@ export const people = query({
     return profiles
       .flatMap((profile) => {
         const stats = byProfile.get(profile._id);
-        return stats === undefined ? [] : [{ profile, ...stats }];
+        return stats === undefined
+          ? []
+          : [
+              {
+                profile,
+                lastNoteAt: stats.lastNoteAt,
+                noteCount: stats.noteCount,
+                latestFact: stats.latestFact,
+              },
+            ];
       })
       // Stable, and `by_user` hands profiles over oldest first, so two people
       // with the same name stay in the order they were added.
