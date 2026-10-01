@@ -1,8 +1,12 @@
 import { act, fireEvent, screen } from "@testing-library/react-native";
+import { AccessibilityInfo } from "react-native";
 import { useQuery } from "convex/react";
 import { getFunctionName } from "convex/server";
 import { renderRouter } from "expo-router/testing-library";
 import { api } from "@convex/_generated/api";
+import { forgetSession } from "@/lib/use-once-per-session";
+import { drawn } from "../test-support/drawn";
+import { LOOP_WRITE_MS } from "@/components/thread-loop";
 
 /**
  * src/app/(app)/index.tsx's three branches — loading, empty, populated — are
@@ -43,7 +47,15 @@ function buildPerson(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
+// The loop is hidden from assistive tech on purpose (the words carry the
+// meaning), and testing-library skips hidden elements unless told otherwise.
+const HIDDEN = { includeHiddenElements: true } as const;
+
 describe("home screen", () => {
+  beforeEach(() => {
+    forgetSession();
+  });
+
   afterEach(() => {
     jest.clearAllMocks();
   });
@@ -66,6 +78,62 @@ describe("home screen", () => {
     expect(
       screen.getByText("No one yet — tap record to remember your first person."),
     ).toBeTruthy();
+  });
+
+  // The empty home greets you once: the loop draws itself the first time it
+  // appears in a run of the app, then rests; after that it is simply there.
+  // Measured by what is drawn over time, not by whether an animation was
+  // asked for (an Animated version passed that while sitting blank).
+  test("should draw the loop the first time the empty home appears, and not again", async () => {
+    jest.useFakeTimers();
+    mockPeopleQuery([]);
+
+    const first = renderRouter("src/app", { initialUrl: "/" });
+    await first;
+    await act(async () => {});
+    expect(screen.getByTestId("thread-loop-drawing", HIDDEN)).toBeTruthy();
+    await act(async () => {
+      jest.advanceTimersByTime(LOOP_WRITE_MS * 0.4);
+    });
+    const midway = drawn("thread-loop-drawing");
+    await act(async () => {
+      jest.advanceTimersByTime(LOOP_WRITE_MS * 0.6 + 200);
+    });
+    const written = drawn("thread-loop-drawing");
+    // Part-way: more than the bare thread (1 path, nothing of the twist yet)
+    // and less than all of it. Blank-then-whole fails the first half.
+    expect(midway).toBeGreaterThan(1);
+    expect(midway).toBeLessThan(written);
+
+    // A second render in the same test is the second appearance: `screen`
+    // follows the latest render. Fine here because only the second tree is
+    // queried; a test querying both would hit duplicate testIDs.
+    const second = renderRouter("src/app", { initialUrl: "/" });
+    await second;
+    await act(async () => {});
+
+    expect(screen.getByTestId("thread-loop-still", HIDDEN)).toBeTruthy();
+    expect(drawn("thread-loop-still")).toBe(written);
+    jest.useRealTimers();
+  });
+
+  test("should not draw the loop when Reduce Motion is on", async () => {
+    jest.useFakeTimers();
+    (AccessibilityInfo.isReduceMotionEnabled as jest.Mock).mockResolvedValueOnce(true);
+    mockPeopleQuery([]);
+
+    const result = renderRouter("src/app", { initialUrl: "/" });
+    await result;
+    await act(async () => {});
+    const at = drawn("thread-loop-still");
+    await act(async () => {
+      jest.advanceTimersByTime(800);
+    });
+
+    expect(screen.getByTestId("thread-loop-still", HIDDEN)).toBeTruthy();
+    expect(at).toBeGreaterThan(10);
+    expect(drawn("thread-loop-still")).toBe(at);
+    jest.useRealTimers();
   });
 
   test("should render a row for each person when the query resolves", async () => {

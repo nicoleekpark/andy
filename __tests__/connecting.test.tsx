@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
-import { AccessibilityInfo, Animated } from "react-native";
+import { AccessibilityInfo } from "react-native";
 import { Connecting, RetryConnectionContext } from "../src/components/connecting";
+import { drawn } from "../test-support/drawn";
 
 /**
  * Covers src/components/connecting.tsx, the screen both auth gates show while
@@ -44,11 +45,11 @@ describe("connecting screen", () => {
 
     // The loop the launch image left, so the hand-over is not a cut to blank
     // paper; and no words, so a normal launch never flickers.
-    expect(screen.getByTestId("launch-thread-still", HIDDEN)).toBeTruthy();
-    expect(screen.queryByTestId("launch-thread-moving", HIDDEN)).toBeNull();
+    expect(screen.getByTestId("thread-loop-still", HIDDEN)).toBeTruthy();
+    expect(screen.queryByTestId("thread-loop-moving", HIDDEN)).toBeNull();
     expect(screen.queryByText("Connecting…")).toBeNull();
     // Decorative: not a focus stop for a screen reader.
-    expect(screen.queryByTestId("launch-thread-still")).toBeNull();
+    expect(screen.queryByTestId("thread-loop-still")).toBeNull();
   });
 
   test("should say it is connecting once the quiet window has passed", async () => {
@@ -57,51 +58,40 @@ describe("connecting screen", () => {
     await advance(1_500);
 
     expect(screen.getByText("Connecting…")).toBeTruthy();
-    expect(screen.getByTestId("launch-thread-moving", HIDDEN)).toBeTruthy();
+    expect(screen.getByTestId("thread-loop-moving", HIDDEN)).toBeTruthy();
   });
 
-  test("should start the thread passing through once it is connecting", async () => {
-    const loop = jest.spyOn(Animated, "loop");
+  test("should pass the thread through: drawn in, whole, then leaving", async () => {
     await render(<Connecting />);
+    await advance(1_400);
+    const whole = drawn("thread-loop-still");
 
-    await advance(1_500);
+    await advance(100); // connecting: the motion starts once this commits
+    await advance(300); // 0.3 s into drawing in
+    const drawingIn = drawn("thread-loop-moving");
+    await advance(900); // into the hold
+    const held = drawn("thread-loop-moving");
+    await advance(700); // leaving
+    const leaving = drawn("thread-loop-moving");
 
-    expect(loop).toHaveBeenCalledTimes(1);
+    // Part-way, not blank-then-whole: some of the twist, not all of it.
+    expect(drawingIn).toBeGreaterThan(1);
+    expect(drawingIn).toBeLessThan(whole);
+    expect(held).toBe(whole);
+    expect(leaving).toBeLessThan(whole);
   });
 
   // Found on the simulator 2026-10-01: the moving thread lost the twist the
   // launch image and the still loop both carry, so it changed look the moment
   // it started.
   test("should keep the twist on the thread while it moves", async () => {
-    // Paths drawn inside the thread with this testID, read off the rendered
-    // tree (host elements here have no findAll).
-    type Node = { type?: string; props?: { testID?: string }; children?: unknown[] | null };
-    const pathsUnder = (testID: string) => {
-      const find = (node: Node | null): Node | null => {
-        if (!node || typeof node !== "object") return null;
-        if (node.props?.testID === testID) return node;
-        for (const child of node.children ?? []) {
-          const hit = find(child as Node);
-          if (hit) return hit;
-        }
-        return null;
-      };
-      const count = (node: Node): number =>
-        (node.type === "RNSVGPath" ? 1 : 0) +
-        (node.children ?? []).reduce<number>(
-          (sum, child) => sum + (child && typeof child === "object" ? count(child as Node) : 0),
-          0,
-        );
-      const root = find(screen.toJSON() as Node);
-      return root ? count(root) : 0;
-    };
     await render(<Connecting />);
 
     await advance(1_400);
-    const still = pathsUnder("launch-thread-still");
-
-    await advance(100);
-    const moving = pathsUnder("launch-thread-moving");
+    const still = drawn("thread-loop-still");
+    await advance(100); // connecting: the motion starts once this commits
+    await advance(1_200); // held, whole
+    const moving = drawn("thread-loop-moving");
 
     // The thread plus every dash of its twist, in both states.
     expect(still).toBeGreaterThan(10);
@@ -109,29 +99,30 @@ describe("connecting screen", () => {
   });
 
   test("should keep the loop still when Reduce Motion is on", async () => {
-    jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(true);
-    const loop = jest.spyOn(Animated, "loop");
+    (AccessibilityInfo.isReduceMotionEnabled as jest.Mock).mockResolvedValueOnce(true);
     await render(<Connecting />);
 
     await advance(1_500);
+    const at = drawn("thread-loop-still");
+    await advance(700);
 
     // The words still say it is connecting; only the motion goes.
     expect(screen.getByText("Connecting…")).toBeTruthy();
-    expect(screen.getByTestId("launch-thread-still", HIDDEN)).toBeTruthy();
-    expect(screen.queryByTestId("launch-thread-moving", HIDDEN)).toBeNull();
-    expect(loop).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("thread-loop-moving", HIDDEN)).toBeNull();
+    expect(drawn("thread-loop-still")).toBe(at);
   });
 
   test("should not move before the system has said whether Reduce Motion is on", async () => {
     // An answer that never comes: the thread must wait for it, not assume.
-    jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockReturnValue(new Promise(() => {}));
-    const loop = jest.spyOn(Animated, "loop");
+    (AccessibilityInfo.isReduceMotionEnabled as jest.Mock).mockReturnValueOnce(new Promise(() => {}));
     await render(<Connecting />);
 
     await advance(1_500);
+    const at = drawn("thread-loop-still");
+    await advance(700);
 
-    expect(screen.getByTestId("launch-thread-still", HIDDEN)).toBeTruthy();
-    expect(loop).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("thread-loop-moving", HIDDEN)).toBeNull();
+    expect(drawn("thread-loop-still")).toBe(at);
   });
 
   test("should point at the network once connecting has taken too long", async () => {
@@ -159,8 +150,8 @@ describe("connecting screen", () => {
     ).toBeTruthy();
     // The thread has to go: left moving it would keep saying that waiting is
     // enough, at the one moment the screen exists to say it isn't.
-    expect(screen.queryByTestId("launch-thread-moving", HIDDEN)).toBeNull();
-    expect(screen.queryByTestId("launch-thread-still", HIDDEN)).toBeNull();
+    expect(screen.queryByTestId("thread-loop-moving", HIDDEN)).toBeNull();
+    expect(screen.queryByTestId("thread-loop-still", HIDDEN)).toBeNull();
   });
 
   test("should ask for a new session when the way out is taken", async () => {

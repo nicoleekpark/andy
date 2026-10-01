@@ -85,7 +85,9 @@ export default function SignInScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.intro}>
-        <NameMark style={styles.mark} />
+        {/* Writes itself once as the screen appears — the same thread as the
+            launch loop, greeting rather than waiting (STYLE.md → Thread motion). */}
+        <NameMark style={styles.mark} draw />
         <Text style={styles.tagline}>Remember what they told you.</Text>
         <Text style={styles.body}>
           Notes about the people you meet, so you can ask about it next time.

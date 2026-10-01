@@ -1,6 +1,9 @@
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
-import Svg, { Path } from "react-native-svg";
+import Svg from "react-native-svg";
+import { ThreadPaths } from "@/components/thread-paths";
 import { colors } from "@/constants/theme";
+import { threadGeometry } from "@/lib/thread-geometry";
+import { useThreadMotion } from "@/lib/use-thread-motion";
 
 /**
  * "andy", written in one brass thread — the app icon's thread, spelling the
@@ -24,35 +27,36 @@ export const NAME_MARK_PATH =
 const WIDTH = 400;
 const HEIGHT = 150;
 
-export function NameMark({ style }: { style?: StyleProp<ViewStyle> }) {
+/** The twist as on the icon: 1.8 on, 2.6 off at this scale. */
+const GEOMETRY = threadGeometry(NAME_MARK_PATH, { on: 1.8, off: 2.6 });
+
+/**
+ * `draw` writes the name once when the mark appears — a greeting, not a loop
+ * (STYLE.md → Thread motion). Without it the mark is simply there.
+ */
+export function NameMark({ style, draw = false }: { style?: StyleProp<ViewStyle>; draw?: boolean }) {
+  const { offset, state } = useThreadMotion(draw ? "draw" : "still", GEOMETRY.length);
   return (
     // One element to assistive tech: the app's name as the screen's heading.
     // The drawing inside says nothing a screen reader could use.
     <View
+      testID={`name-mark-${state}`}
       accessible
       accessibilityRole="header"
       accessibilityLabel="Andy"
       style={[styles.box, style]}
     >
       <Svg width="100%" height="100%" viewBox={`0 0 ${WIDTH} ${HEIGHT}`}>
-        <Path
+        {/* The twist: ink over brass rather than a seventh colour. */}
+        <ThreadPaths
           d={NAME_MARK_PATH}
-          fill="none"
+          geometry={GEOMETRY}
+          offset={offset}
+          width={4.4}
           stroke={colors.brass}
-          strokeWidth={4.4}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        {/* The twist of the thread, as in the icon. Ink over brass rather
-            than a seventh colour: theme.ts's six are the whole palette. */}
-        <Path
-          d={NAME_MARK_PATH}
-          fill="none"
-          stroke={colors.ink}
-          strokeOpacity={0.18}
-          strokeWidth={1}
-          strokeDasharray="1.8 2.6"
-          strokeLinecap="round"
+          twistWidth={1}
+          twistStroke={colors.ink}
+          twistOpacity={0.18}
         />
       </Svg>
     </View>

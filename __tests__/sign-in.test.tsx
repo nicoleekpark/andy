@@ -1,9 +1,12 @@
 import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { AccessibilityInfo } from "react-native";
 import { useConvexAuth } from "convex/react";
 import { useAuth } from "@clerk/expo";
 import { useSignInWithApple } from "@clerk/expo/apple";
 import { renderRouter } from "expo-router/testing-library";
 import { STUCK_AFTER_MS } from "@/app/(auth)/sign-in";
+import { drawn } from "../test-support/drawn";
+import { WRITE_MS } from "@/lib/use-thread-motion";
 
 /**
  * src/app/(auth)/sign-in.tsx wires expo-apple-authentication's button to
@@ -39,6 +42,45 @@ describe("sign-in screen", () => {
     await renderSignIn();
 
     expect(screen.getByRole("header", { name: "Andy" })).toBeOnTheScreen();
+  });
+
+  // The name writes itself once as the screen appears — a greeting in the
+  // launch loop's own motion, then still (STYLE.md → Thread motion).
+  test("should write the name mark once as the screen appears", async () => {
+    jest.useFakeTimers();
+    await renderSignIn();
+    await act(async () => {});
+    expect(screen.getByTestId("name-mark-drawing")).toBeTruthy();
+
+    // Written gradually, then finished: what is drawn grows, then stops.
+    await act(async () => {
+      jest.advanceTimersByTime(WRITE_MS * 0.4);
+    });
+    const midway = drawn("name-mark-drawing");
+    await act(async () => {
+      jest.advanceTimersByTime(WRITE_MS * 0.6 + 200);
+    });
+    const written = drawn("name-mark-drawing");
+    await act(async () => {
+      jest.advanceTimersByTime(1_000);
+    });
+
+    // Part-way: more than the bare thread (1 path, nothing of the twist yet)
+    // and less than all of it. Blank-then-whole fails the first half.
+    expect(midway).toBeGreaterThan(1);
+    expect(midway).toBeLessThan(written);
+    expect(drawn("name-mark-drawing")).toBe(written);
+    jest.useRealTimers();
+  });
+
+  test("should show the name mark still when Reduce Motion is on", async () => {
+    // Once, not a spy to restore: restoring the setup's own mock leaves it
+    // returning nothing, which breaks every test after this one.
+    (AccessibilityInfo.isReduceMotionEnabled as jest.Mock).mockResolvedValueOnce(true);
+    await renderSignIn();
+    await act(async () => {});
+
+    expect(screen.getByTestId("name-mark-still")).toBeTruthy();
   });
 
   test("should say what Andy is for under the name mark", async () => {

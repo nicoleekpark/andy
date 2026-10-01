@@ -114,7 +114,7 @@ tried on 2026-09-30 and all read as odd; the thread says enough on its own.
 
 ## Launch thread — the loop while Andy gets ready
 
-Decided 2026-09-30/10-01, `src/components/launch-thread.tsx`, used by
+Decided 2026-09-30/10-01, `src/components/thread-loop.tsx`, used by
 `connecting.tsx`. The iOS launch screen is a still image (the loop, fading at
 both ends, on paper). The screen that takes over shows **the same loop in the
 same spot** from its first frame, so launching reads as one surface rather than
@@ -131,6 +131,31 @@ belonged to the phone. Each is answered rather than dropped: Reduce Motion is
 honoured by hand, brass is the thread before sign-in (Color Tokens), and the
 words under it stay in the system face. Three bouncing dots stay rejected —
 messaging apps taught them to mean someone is typing.
+
+## Thread motion — when the thread moves, and how much
+
+Decided 2026-10-01, after weighing a figure for Andy (a thread person, a hand,
+a whisper) against none: Andy's presence is **motion, not a picture** — no eyes
+or face, ever, because a face on an app full of notes about other people says
+"someone reads this". The thread moves in three ways, and only these
+(`src/lib/use-thread-motion.ts`):
+
+- **pass** — draws in, holds, leaves, again. Only while something is being
+  waited for: the connecting screen.
+- **draw** — writes itself once and rests: the name over **4 s**
+  (`WRITE_MS`), the shorter loop over **~1.2 s** (`LOOP_WRITE_MS`, the pace
+  picked from the presence mock), so both read as written rather than
+  flashed or crawling. A greeting: the sign-in name mark
+  every time sign-in appears, and the empty home's loop the first time it
+  appears in a run of the app. Never a loop: steady motion keeps pulling at the
+  eye while you read or reach for a button, and starts to feel like an
+  assistant hovering.
+- **still** — everywhere else, and everything under Reduce Motion. The
+  Briefing card, the icon, notifications and every screen you work in never
+  move.
+
+The twist moves with the thread (its dashes appear as the thread reaches them),
+so nothing changes look when motion starts or stops.
 
 ## One Structural Idea
 
