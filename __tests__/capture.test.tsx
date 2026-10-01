@@ -827,6 +827,106 @@ describe("capture screen review step", () => {
     ]);
   });
 
+  test("should neither show nor send person details for somebody already kept", async () => {
+    // Extraction guessed a relationship and a first meeting. Marcus is already
+    // kept, so neither may reach his profile unseen — saving fills empty
+    // fields, and a hidden field filling one is a claim nobody confirmed.
+    (useAction as jest.Mock).mockReturnValue(
+      jest.fn(async () =>
+        makeDraft({ name: "Nina", relationshipContext: "coworker", firstMetDate: "2026-10-01" }, []),
+      ),
+    );
+    const saveCapture = jest.fn(
+      async (_args: { draft: Draft }) => ({
+        profileId: "contact-1",
+        noteId: "note-1",
+        createdProfile: false,
+        createdMentionCount: 0,
+      }),
+    );
+    mockSaveCapture(saveCapture);
+    scopeTo("Nina", []);
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", {
+      initialUrl: "/profile/contact-1/capture",
+    });
+    await result;
+    await reachReview(handlers, "Nina liked the new brief.");
+
+    expect(screen.queryByLabelText("How you know them")).toBeNull();
+    expect(screen.queryByLabelText("This was the first time we met")).toBeNull();
+    expect(screen.getByText(/Nina's details stay as they are/)).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Remember this"));
+    });
+    await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
+    const sent = saveCapture.mock.calls[0]?.[0].draft.primary;
+    expect(sent?.relationshipContext).toBeNull();
+    expect(sent?.firstMetDate).toBeNull();
+    // The note's own content still goes.
+    expect(sent?.keyFacts).toEqual(["brandon house design specialist"]);
+  });
+
+  test("should hide person details once a kept person is picked, and show them again for somebody new", async () => {
+    (useAction as jest.Mock).mockReturnValue(
+      jest.fn(async () => makeDraft({ name: "Prisley" }, [])),
+    );
+    const saveCapture = jest.fn(
+      async (_args: { draft: Draft }) => ({
+        profileId: "profile-1",
+        noteId: "note-1",
+        createdProfile: true,
+        createdMentionCount: 0,
+      }),
+    );
+    mockSaveCapture(saveCapture);
+    scopeTo("Prisley", [
+      {
+        name: "Prisley",
+        viaPossessive: false,
+        candidates: [
+          {
+            profileId: "profile-old",
+            name: "Prisley",
+            relationshipContext: "from the gallery",
+            entityType: "person",
+            noteCount: 1,
+            lastNoteAt: new Date("2026-03-04T12:00:00").getTime(),
+          },
+        ],
+      },
+    ]);
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+    await reachReview(handlers, "Prisley's show was good.");
+
+    // Not settled yet: nothing to hide on behalf of.
+    expect(screen.getByLabelText("How you know them")).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(
+        screen.getByLabelText("Prisley, from the gallery · 1 note · last 2026-03-04"),
+      );
+    });
+    expect(screen.queryByLabelText("How you know them")).toBeNull();
+
+    // Somebody new after all: their details are theirs to fill in.
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("New person called Prisley"));
+    });
+    expect(screen.getByLabelText("How you know them")).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Remember this"));
+    });
+    await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
+    expect(saveCapture.mock.calls[0]?.[0].draft.primary.relationshipContext).toBe("client");
+  });
+
   test("should ask nothing about a subject the route already decided", async () => {
     (useAction as jest.Mock).mockReturnValue(
       jest.fn(async () => makeDraft({ name: "Nina" }, [])),
@@ -2575,9 +2675,9 @@ describe("capture screen review step", () => {
     mockSaveCapture(saveCapture);
     const handlers = captureListeners();
 
-    const result = renderRouter("src/app", {
-      initialUrl: "/profile/contact-1/capture",
-    });
+    // From home: somebody new, so the first meeting is theirs to confirm. On
+    // a kept person's page the field is not shown at all.
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
     await result;
     await reachReview(handlers, "saw Nina today");
 
