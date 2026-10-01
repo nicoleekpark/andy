@@ -447,7 +447,10 @@ name only one person answers to.
 | 19.2 | Allow, then put an event ~22 minutes out naming somebody you keep notes on. Background the app | A notification ~20 minutes before it starts | ✅ — simulator, 2026-09-29: an 11:00 meeting alerted at 10:40:00 exactly |
 | 19.3 | **Read the lock screen carefully** | The person's name and the meeting title. **No notes, no facts, nothing you wrote down.** A lock screen is read by whoever is holding the phone, and that is not always you | ✅ — simulator, 2026-09-29: lock screen showed `Irene` / `Coffee with Irene` and nothing else |
 | 19.4 | Wait until 15 minutes after the meeting ends | *"How was Marcus?"* — tap to add what you want to remember | ✅ — simulator, 2026-09-29: a meeting ending 11:15 nudged at 11:30:00, *"How was Irene?"*, no notes shown |
-| 19.5 | Tap the nudge | Opens the app. **It does not yet open that person's capture screen** — the id is carried on the notification and nothing reads it. Deliberate slice boundary, not a bug | ✅ — simulator, 2026-09-29: opened to home, as designed |
+| 19.5 | Tap the nudge | **That person's capture screen opens** ("This note goes to Marcus…"), ready to record. Until 2026-10-01 it only opened the app — the id was carried and nothing read it | ⬜ |
+| 19.5a | Tap the nudge with the app **locked** (background it first so the lock comes back) | Face ID first; the capture screen opens **only after** unlocking. Nothing about the person shows on the lock screen. Not reachable in jest (the lock fails open there) | ⬜ |
+| 19.5b | Tap the **briefing** (the one before a meeting), not the nudge | Opens the app where it was — no capture screen | ⬜ |
+| 19.5c | Delete the person after the nudge was scheduled, then tap it | The capture screen's own "Andy doesn't have anyone by that link." — no crash | ⬜ |
 | 19.6 | Deny notifications, then look at the card | A line saying alerts are off and to turn them on in Settings › Andy — **and no button**, because iOS will not show the sheet again | ⬜ |
 | 19.7 | Put ~25 matched meetings in the calendar, foreground the app | **At most 20 get a pair** (40 notifications). iOS keeps 64 pending per app and drops the oldest **silently** past that — a briefing that simply never arrives | ⬜ |
 | 19.8 | Delete a meeting from the calendar, foreground the app | Its briefing and nudge are gone. The whole set is rebuilt from the calendar each time, so a deleted meeting cannot leave a notification behind | ⬜ |
@@ -711,8 +714,6 @@ dev-menu gear (top left, dev builds only) instead of the back button under it.
 ## Not built yet — do not file these
 
 **Coming in V1, just not yet.** Dark mode.
-Also **tapping the nudge does not yet open that person's capture screen** — the
-notification carries who it is about and nothing reads it yet (§19.5).
 
 **Cut from V1 on day 4 — will not be built before launch, so a bug report
 against them is noise, not signal.** The home widget, the Siri shortcut,
