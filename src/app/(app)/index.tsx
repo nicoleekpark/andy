@@ -52,6 +52,20 @@ export default function HomeScreen() {
       <Stack.Screen
         options={{
           title: "Andy",
+          // Lora, like the names in the list under it: the one heading on
+          // home that was in the system face (dev/design/home-title.html, B).
+          // Same bar and height, so the briefing card does not move.
+          //
+          // `fontWeight` is not decoration: the navigator lays this over iOS's
+          // default title style, which carries `fontWeight: "600"`. Lora-Medium
+          // is one static weight with no 600, and iOS answers a family + weight
+          // it does not have with the system font — silently. "400" asks for
+          // the face that exists.
+          headerTitleStyle: {
+            fontFamily: fonts.displayMedium,
+            fontSize: 20,
+            fontWeight: "400",
+          },
           headerRight: () => (
             <Pressable
               accessibilityRole="button"

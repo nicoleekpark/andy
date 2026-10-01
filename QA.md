@@ -643,6 +643,16 @@ Motion are unit-tested; how it looks is not.
 | 26.3 | Go to Settings and back to home | The loop is **already there**, still. It greets once per run of the app, not every visit | ⬜ |
 | 26.4 | Reduce Motion on, repeat 26.1 and 26.2 | Both appear **finished and still**; nothing draws, nothing flashes in first | ⬜ |
 
+## 27. Home title
+
+"Andy" in the home bar is set in Lora Medium (STYLE.md → Type). The bar is
+drawn natively, so jest never sees its title — this is the only check.
+
+| # | Do this | Expect | |
+|---|---|---|---|
+| 27.1 | Open home | **"Andy" in the serif** the names below use, centred in the normal bar. Settings at the right, the briefing card exactly where it was — nothing below has moved | ⬜ |
+| 27.2 | Open a profile, Search, Settings | Their titles are **unchanged** (system face). Only home's title is Lora | ⬜ |
+
 ## Simulator pass, 2026-09-30 (Claude, while the developer was away)
 
 **How it was run.** iPhone 17 Pro simulator, the dev build of commit `47f3837`
