@@ -246,6 +246,39 @@ describe("edit profile screen", () => {
     await waitFor(() => expect(result.getPathname()).toBe("/"));
   });
 
+  // The way it is actually reached: home → profile → edit. Replacing only the
+  // edit screen with home left the deleted person's profile under it, so home
+  // showed "< Emma" as its back button — a way back to somebody who is gone.
+  // Found on the simulator on 2026-09-30.
+  test("should leave no way back to the person once they are deleted", async () => {
+    const withNotes = profile({ name: "Emma" });
+    (useQuery as jest.Mock).mockImplementation((reference: unknown) =>
+      getFunctionName(reference as never) === getFunctionName(api.profiles.withNotes)
+        ? withNotes
+        : undefined,
+    );
+    mockProfileMutations({
+      remove: jest.fn(async () => ({ removedNoteCount: 0, removedAutoCreatedCount: 0 })),
+    });
+    mockDeleteAlert("Delete");
+
+    const result = renderRouter("src/app", { initialUrl: "/" });
+    await result;
+    await act(async () => {
+      router.push("/profile/contact-1");
+    });
+    await act(async () => {
+      router.push("/profile/contact-1/edit");
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Delete this person" }));
+    });
+
+    await waitFor(() => expect(result.getPathname()).toBe("/"));
+    expect(router.canGoBack()).toBe(false);
+  });
+
   test("should delete nothing when the confirmation is dismissed", async () => {
     (useQuery as jest.Mock).mockReturnValue(profile());
     const remove = jest.fn(async () => ({

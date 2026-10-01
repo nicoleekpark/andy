@@ -143,7 +143,10 @@ export default function EditProfileScreen() {
               setError(null);
               try {
                 await removeProfile({ profileId: id });
-                router.replace("/");
+                // Back to the home already underneath, not a new one on top:
+                // replace() swapped only this screen and left the deleted
+                // person's profile below home, as its back button.
+                router.dismissTo("/");
               } catch (e) {
                 setError(
                   e instanceof Error && e.message
