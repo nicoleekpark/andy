@@ -1371,7 +1371,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
                 />
               </Field>
 
-              <Field label="First meeting">
+              <Field label="First met">
                 {/*
                   A checkbox, not a date field, because the judgement a person can
                   actually make here is yes-or-no. Whether "오늘 지수 만났는데"
