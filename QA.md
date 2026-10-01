@@ -733,7 +733,13 @@ dev-menu gear (top left, dev builds only) instead of the back button under it.
 
 ## Not built yet — do not file these
 
-**Coming in V1, just not yet.** Dark mode.
+**Not in V1 (decided 2026-10-01).** Dark mode — V1 is light only, and
+`app.json` pins it, so a phone in dark mode still shows Andy light. That is
+expected, not a bug. Only the home-screen **icon** follows dark mode (§23.2).
+Dark mode needs its own palette design first (STYLE.md → Light only).
+**People only.** There is no Person / Animal choice; an animal that comes up in
+a note is not offered as anyone (§4.6–4.7). A `person | project | animal` type
+comes later.
 
 **Cut from V1 on day 4 — will not be built before launch, so a bug report
 against them is noise, not signal.** The home widget, the Siri shortcut,
