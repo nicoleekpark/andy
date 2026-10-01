@@ -631,7 +631,7 @@ Motion are unit-tested; how it looks is not.
 
 | # | Do this | Expect | |
 |---|---|---|---|
-| 26.1 | Sign out (or fresh install) | The thread **writes "andy"** from the left edge, through the name and the loop, out past the right edge, in about 1.5 s — **then stops**. The twist appears along it as it goes | ⬜ |
+| 26.1 | Sign out (or fresh install) | The thread **writes "andy"** from the left edge, through the name and the loop, out past the right edge, in about 2 s — **then stops**. The twist appears along it as it goes | ⬜ |
 | 26.2 | On an account with nobody kept, open the app | Above "No one yet — tap record…", the loop **draws itself once** and rests, a clear gap above the words | ⬜ |
 | 26.3 | Go to Settings and back to home | The loop is **already there**, still. It greets once per run of the app, not every visit | ⬜ |
 | 26.4 | Reduce Motion on, repeat 26.1 and 26.2 | Both appear **finished and still**; nothing draws, nothing flashes in first | ⬜ |

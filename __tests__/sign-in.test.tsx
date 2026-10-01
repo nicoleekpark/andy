@@ -6,6 +6,7 @@ import { useSignInWithApple } from "@clerk/expo/apple";
 import { renderRouter } from "expo-router/testing-library";
 import { STUCK_AFTER_MS } from "@/app/(auth)/sign-in";
 import { drawn } from "../test-support/drawn";
+import { WRITE_MS } from "@/lib/use-thread-motion";
 
 /**
  * src/app/(auth)/sign-in.tsx wires expo-apple-authentication's button to
@@ -53,11 +54,11 @@ describe("sign-in screen", () => {
 
     // Written gradually, then finished: what is drawn grows, then stops.
     await act(async () => {
-      jest.advanceTimersByTime(600);
+      jest.advanceTimersByTime(WRITE_MS * 0.4);
     });
     const midway = drawn("name-mark-drawing");
     await act(async () => {
-      jest.advanceTimersByTime(1_200);
+      jest.advanceTimersByTime(WRITE_MS * 0.6 + 200);
     });
     const written = drawn("name-mark-drawing");
     await act(async () => {
