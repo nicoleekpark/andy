@@ -142,7 +142,8 @@ or face, ever, because a face on an app full of notes about other people says
 
 - **pass** — draws in, holds, leaves, again. Only while something is being
   waited for: the connecting screen.
-- **draw** — writes itself once and rests. A greeting: the sign-in name mark
+- **draw** — writes itself once, over **4 s**, and rests (slow enough to read
+  as written rather than flashed; `WRITE_MS`). A greeting: the sign-in name mark
   every time sign-in appears, and the empty home's loop the first time it
   appears in a run of the app. Never a loop: steady motion keeps pulling at the
   eye while you read or reach for a button, and starts to feel like an

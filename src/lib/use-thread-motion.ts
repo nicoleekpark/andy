@@ -25,13 +25,18 @@ export type ThreadMotion = "still" | "pass" | "draw";
 
 export const DRAW_MS = 1080;
 export const HOLD_MS = 240;
-/** Writing once: 2 s, so the name reads as written rather than flashed (developer, 2026-10-01). */
-export const WRITE_MS = 2000;
+/** Writing once: 4 s, so the name reads as written rather than flashed (developer, 2026-10-01). */
+export const WRITE_MS = 4000;
 
-const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
+const ease = (t: number) =>
+  t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
 
 /** Where the dash sits `elapsed` ms into a motion; `length` = hidden, 0 = drawn. */
-export function offsetAt(motion: "pass" | "draw", elapsed: number, length: number): number {
+export function offsetAt(
+  motion: "pass" | "draw",
+  elapsed: number,
+  length: number,
+): number {
   if (motion === "draw") {
     return length * (1 - ease(Math.min(elapsed / WRITE_MS, 1)));
   }
@@ -46,7 +51,11 @@ export function useThreadMotion(motion: ThreadMotion, length: number) {
   const [offset, setOffset] = useState(length);
 
   const animated =
-    motion === "pass" ? reduceMotion === false : motion === "draw" ? reduceMotion !== true : false;
+    motion === "pass"
+      ? reduceMotion === false
+      : motion === "draw"
+        ? reduceMotion !== true
+        : false;
   const running = animated && reduceMotion === false;
 
   useEffect(() => {
