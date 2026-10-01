@@ -398,6 +398,47 @@ describe("note screen", () => {
     );
   });
 
+  test("should focus an added fact once, not a saved line the next time Edit is opened", async () => {
+    // What is stored follows the save, so the second Edit shows three facts.
+    let stored = savedNote();
+    (useQuery as jest.Mock).mockImplementation((reference: unknown) =>
+      getFunctionName(reference as never) === "notes:byId" ? stored : undefined,
+    );
+    mockUpdateNote(
+      jest.fn(async (args: { noteId: string; keyFacts: string[] }) => {
+        stored = savedNote({ keyFacts: args.keyFacts });
+        return null;
+      }),
+    );
+
+    const result = renderRouter("src/app", { initialUrl: "/note/note-1" });
+    await result;
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Edit this note" }));
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Add a fact" }));
+    });
+    expect(screen.getByLabelText("Fact 3").props.autoFocus).toBe(true);
+    // On a phone the field takes focus as it mounts; jest has to say so.
+    await act(async () => {
+      fireEvent(screen.getByLabelText("Fact 3"), "focus");
+      fireEvent.changeText(screen.getByLabelText("Fact 3"), "Started a new job");
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Save changes" }));
+    });
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Edit this note" })).toBeTruthy(),
+    );
+
+    // Editing again, with no Add pressed: the saved third line is just a line.
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Edit this note" }));
+    });
+    expect(screen.getByLabelText("Fact 3").props.autoFocus).toBe(false);
+  });
+
   test("should let a fact be added to a saved note", async () => {
     mockQueries(savedNote({ keyFacts: undefined }));
     const updateNote = jest.fn(

@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
+import { useJustAdded } from "@/lib/use-just-added";
 import { colors } from "@/constants/theme";
 
 /**
@@ -42,14 +43,7 @@ export default function EditProfileScreen() {
     aliases: string[];
   };
 
-  /**
-   * The line an "Add …" button just made, so it opens with the keyboard up.
-   * Without it the button produced an empty field and nothing else — a second
-   * tap on a blank line was the only way to type in it. Read through
-   * `autoFocus`, which only acts when an input mounts, so typing in other
-   * lines never steals focus back.
-   */
-  const [justAdded, setJustAdded] = useState<string | null>(null);
+  const { markAdded, focusProps } = useJustAdded<string>();
   const [edits, setEdits] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -220,7 +214,7 @@ export default function EditProfileScreen() {
                 })
               }
               style={styles.input}
-              autoFocus={justAdded === `alias-${index}`}
+              {...focusProps(`alias-${index}`)}
               accessibilityLabel={`Other name ${index + 1}`}
             />
           ))}
@@ -238,7 +232,7 @@ export default function EditProfileScreen() {
               accessibilityRole="button"
               accessibilityLabel="Add another name"
               onPress={() => {
-                setJustAdded(`alias-${working.aliases.length}`);
+                markAdded(`alias-${working.aliases.length}`);
                 edit({ aliases: [...working.aliases, ""] });
               }}
               hitSlop={8}
@@ -293,7 +287,7 @@ export default function EditProfileScreen() {
                 })
               }
               style={styles.input}
-              autoFocus={justAdded === `tag-${index}`}
+              {...focusProps(`tag-${index}`)}
               accessibilityLabel={`Tag ${index + 1}`}
             />
           ))}
@@ -306,7 +300,7 @@ export default function EditProfileScreen() {
               accessibilityRole="button"
               accessibilityLabel="Add a tag"
               onPress={() => {
-                setJustAdded(`tag-${working.tags.length}`);
+                markAdded(`tag-${working.tags.length}`);
                 edit({ tags: [...working.tags, ""] });
               }}
               hitSlop={8}

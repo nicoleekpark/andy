@@ -18,6 +18,7 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import type { Draft } from "@convex/extractionPrompt";
 import { matchKey } from "@convex/naming";
+import { useJustAdded } from "@/lib/use-just-added";
 import { colors } from "@/constants/theme";
 
 /**
@@ -384,14 +385,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
    * different person" is one tap away rather than absent.
    */
   const [expanded, setExpanded] = useState<string[]>([]);
-  /**
-   * The line an "Add …" button just made, so it opens with the keyboard up.
-   * Without it the button produced an empty field and nothing else — a second
-   * tap on a blank line was the only way to type in it. Read through
-   * `autoFocus`, which only acts when an input mounts, so typing in other
-   * lines never steals focus back.
-   */
-  const [justAdded, setJustAdded] = useState<number | null>(null);
+  const { markAdded, focusProps } = useJustAdded<number>();
 
   /** Record an answer for one name. */
   const pick = useCallback((name: string, profileId: string | null) => {
@@ -1461,7 +1455,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
                     }
                     style={[styles.input, styles.factInput]}
                     multiline
-                    autoFocus={justAdded === index}
+                    {...focusProps(index)}
                     accessibilityLabel={`Fact ${index + 1}`}
                   />
                   <Pressable
@@ -1490,7 +1484,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
               accessibilityRole="button"
               accessibilityLabel="Add a fact"
               onPress={() => {
-                setJustAdded(draft.primary.keyFacts.length);
+                markAdded(draft.primary.keyFacts.length);
                 editPrimary({ keyFacts: [...draft.primary.keyFacts, ""] });
               }}
               hitSlop={8}
