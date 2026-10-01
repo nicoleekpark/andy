@@ -113,6 +113,7 @@ Priya already kept, and one match joined silently.
 |---|---|---|
 | 6.1 | Profile → `Edit` → `ALSO KNOWN AS` → add a nickname | Profile shows `also …` |
 | 6.2 | Record a note using **only the nickname** | **`Adding to <real name>`** — no second person created |
+| 6.3 | Tap **Add a name** (and, elsewhere, **Add a tag** / **Add a fact** on the profile editor, a note's editor and the capture review) | The new empty line appears **with the keyboard already up** and the cursor in it. Typing in an older line afterwards does not jump back. On a long list the new line sits **above the keyboard**, not under it. Save, then Edit again: **no** line takes the keyboard by itself |
 
 ## 7. Correcting what is already saved
 

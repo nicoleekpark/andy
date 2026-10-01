@@ -18,6 +18,7 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import type { Draft } from "@convex/extractionPrompt";
 import { matchKey } from "@convex/naming";
+import { useJustAdded } from "@/lib/use-just-added";
 import { colors } from "@/constants/theme";
 
 /**
@@ -384,6 +385,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
    * different person" is one tap away rather than absent.
    */
   const [expanded, setExpanded] = useState<string[]>([]);
+  const { markAdded, focusProps } = useJustAdded<number>();
 
   /** Record an answer for one name. */
   const pick = useCallback((name: string, profileId: string | null) => {
@@ -1453,6 +1455,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
                     }
                     style={[styles.input, styles.factInput]}
                     multiline
+                    {...focusProps(index)}
                     accessibilityLabel={`Fact ${index + 1}`}
                   />
                   <Pressable
@@ -1480,9 +1483,10 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Add a fact"
-              onPress={() =>
-                editPrimary({ keyFacts: [...draft.primary.keyFacts, ""] })
-              }
+              onPress={() => {
+                markAdded(draft.primary.keyFacts.length);
+                editPrimary({ keyFacts: [...draft.primary.keyFacts, ""] });
+              }}
               hitSlop={8}
             >
               <Text style={styles.addLine}>Add a fact</Text>

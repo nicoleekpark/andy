@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
+import { useJustAdded } from "@/lib/use-just-added";
 import { colors } from "@/constants/theme";
 
 /**
@@ -64,6 +65,7 @@ export default function NoteScreen() {
    * shows whatever is currently stored.
    */
   const [edits, setEdits] = useState<{ keyFacts: string[] } | null>(null);
+  const { markAdded, focusProps } = useJustAdded<number>();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -249,6 +251,7 @@ export default function NoteScreen() {
                   }
                   style={styles.input}
                   multiline
+                  {...focusProps(index)}
                   accessibilityLabel={`Fact ${index + 1}`}
                 />
               ))
@@ -271,9 +274,10 @@ export default function NoteScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Add a fact"
-                onPress={() =>
-                  edit({ keyFacts: [...(working?.keyFacts ?? []), ""] })
-                }
+                onPress={() => {
+                  markAdded(working?.keyFacts.length ?? 0);
+                  edit({ keyFacts: [...(working?.keyFacts ?? []), ""] });
+                }}
                 hitSlop={8}
               >
                 <Text style={styles.addLine}>Add a fact</Text>

@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
+import { useJustAdded } from "@/lib/use-just-added";
 import { colors } from "@/constants/theme";
 
 /**
@@ -42,6 +43,7 @@ export default function EditProfileScreen() {
     aliases: string[];
   };
 
+  const { markAdded, focusProps } = useJustAdded<string>();
   const [edits, setEdits] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -212,6 +214,7 @@ export default function EditProfileScreen() {
                 })
               }
               style={styles.input}
+              {...focusProps(`alias-${index}`)}
               accessibilityLabel={`Other name ${index + 1}`}
             />
           ))}
@@ -228,7 +231,10 @@ export default function EditProfileScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Add another name"
-              onPress={() => edit({ aliases: [...working.aliases, ""] })}
+              onPress={() => {
+                markAdded(`alias-${working.aliases.length}`);
+                edit({ aliases: [...working.aliases, ""] });
+              }}
               hitSlop={8}
             >
               <Text style={styles.addTag}>Add a name</Text>
@@ -281,6 +287,7 @@ export default function EditProfileScreen() {
                 })
               }
               style={styles.input}
+              {...focusProps(`tag-${index}`)}
               accessibilityLabel={`Tag ${index + 1}`}
             />
           ))}
@@ -292,7 +299,10 @@ export default function EditProfileScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Add a tag"
-              onPress={() => edit({ tags: [...working.tags, ""] })}
+              onPress={() => {
+                markAdded(`tag-${working.tags.length}`);
+                edit({ tags: [...working.tags, ""] });
+              }}
               hitSlop={8}
             >
               <Text style={styles.addTag}>Add a tag</Text>
