@@ -171,7 +171,7 @@ function makeDraft(
 /**
  * Drives the screen from idle straight to the review step by firing the
  * recognizer's `result` (final) and `end` events, the same two events
- * `runExtraction` reacts to. Waits for "Save note" rather than a fixed
+ * `runExtraction` reacts to. Waits for "Remember this" rather than a fixed
  * number of ticks, since extraction is an awaited action call.
  */
 /**
@@ -223,9 +223,9 @@ async function reachReview(handlers: Record<string, Listener>, spoken: string) {
   // A finished recording waits on the editor first (2026-09-29), so the words
   // can be fixed before anything reads them. Reading them is one more tap.
   await act(async () => {
-    fireEvent.press(await screen.findByRole("button", { name: "Read it back" }));
+    fireEvent.press(await screen.findByRole("button", { name: "Read it" }));
   });
-  await waitFor(() => expect(screen.getByRole("button", { name: "Save note" })).toBeTruthy());
+  await waitFor(() => expect(screen.getByRole("button", { name: "Remember this" })).toBeTruthy());
 }
 
 describe("capture screen review step", () => {
@@ -246,6 +246,20 @@ describe("capture screen review step", () => {
     // four tests earlier was pressing "Keep my facts" on its behalf. Run alone
     // it failed.
     jest.restoreAllMocks();
+  });
+
+  test("should open the review with the line every way in shares", async () => {
+    (useAction as jest.Mock).mockReturnValue(jest.fn(async () => makeDraft()));
+    const handlers = captureListeners();
+    await renderRouter("src/app", { initialUrl: "/profile/contact-1/capture" });
+    await reachReview(handlers, "Emma is a branding designer.");
+
+    expect(screen.getByText(/This is what Andy will remember\./)).toBeTruthy();
+    // The line and the button share a verb, so the line says what the button
+    // does. Checked as visible text: the role queries above find buttons by
+    // accessibility label, which could drift from what is drawn.
+    expect(screen.getByText("Remember this")).toBeTruthy();
+    expect(screen.queryByText("Save note")).toBeNull();
   });
 
   test("should show the extracted name, key facts, and mentions for review", async () => {
@@ -269,7 +283,7 @@ describe("capture screen review step", () => {
     expect(screen.getByDisplayValue("her business partner Marcus")).toBeTruthy();
   });
 
-  test("should save the edited fact text, not the original, when Save note is pressed", async () => {
+  test("should save the edited fact text, not the original, when Remember this is pressed", async () => {
     const draft = makeDraft();
     (useAction as jest.Mock).mockReturnValue(jest.fn(async () => draft));
     const saveCapture = jest.fn(async (_args: { transcript: string; draft: Draft; source: string }) => ({
@@ -291,7 +305,7 @@ describe("capture screen review step", () => {
       screen.getByLabelText("Fact 1"),
       "branding designer",
     );
-    await fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
 
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
     const [call] = saveCapture.mock.calls[0];
@@ -318,7 +332,7 @@ describe("capture screen review step", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Remove fact 1" }));
     await fireEvent.press(screen.getByRole("button", { name: "Remove tag 1" }));
     await fireEvent.press(screen.getByRole("button", { name: "Remove mention 1" }));
-    await fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
 
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
     const [call] = saveCapture.mock.calls[0];
@@ -327,7 +341,7 @@ describe("capture screen review step", () => {
     expect(call.draft.mentions).toEqual([]);
   });
 
-  test("should disable Save note when the draft has no name", async () => {
+  test("should disable Remember this when the draft has no name", async () => {
     const draft = makeDraft({ name: "" });
     (useAction as jest.Mock).mockReturnValue(jest.fn(async () => draft));
     const saveCapture = jest.fn(async (_args: { transcript: string; draft: Draft; source: string }) => ({
@@ -343,7 +357,7 @@ describe("capture screen review step", () => {
     await result;
     await reachReview(handlers, "garbled transcript");
 
-    const saveButton = screen.getByRole("button", { name: "Save note" });
+    const saveButton = screen.getByRole("button", { name: "Remember this" });
     expect(saveButton).toBeDisabled();
 
     await fireEvent.press(saveButton);
@@ -367,12 +381,12 @@ describe("capture screen review step", () => {
       screen.getByLabelText("Fact 1"),
       "branding designer",
     );
-    await fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
 
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
     // Still on review, with the edit intact — not lost, not re-navigated away.
     expect(screen.getByDisplayValue("branding designer")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Save note" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Remember this" })).toBeTruthy();
   });
 
   test("should ignore a duplicate end event rather than re-running extraction over the user's edits", async () => {
@@ -412,7 +426,7 @@ describe("capture screen review step", () => {
     expect(screen.getByDisplayValue("branding designer")).toBeTruthy();
 
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+      fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
     const [call] = saveCapture.mock.calls[0];
     expect(call.draft.primary.keyFacts).toContain("branding designer");
@@ -461,7 +475,7 @@ describe("capture screen review step", () => {
       fireEvent.changeText(said, "Met Nina for lunch");
     });
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Read it back" }));
+      fireEvent.press(screen.getByRole("button", { name: "Read it" }));
     });
     await waitFor(() => expect(extract).toHaveBeenCalledTimes(1));
     expect(JSON.stringify(extract.mock.calls[0])).toContain("Met Nina for lunch");
@@ -470,9 +484,9 @@ describe("capture screen review step", () => {
     // The fix is the note, not an edit made after it: saving asks nothing,
     // and the note is still filed as something said.
     const alert = mockAlert();
-    await waitFor(() => expect(screen.getByRole("button", { name: "Save note" })).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Remember this" })).toBeTruthy());
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+      fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
     expect(alert).not.toHaveBeenCalled();
@@ -483,7 +497,7 @@ describe("capture screen review step", () => {
 
   test("should keep a long note editable above the keyboard, with a way to put the keyboard away", async () => {
     // Found live 2026-09-29: a long note ran on under the keyboard, the lines
-    // being edited and Read it back were hidden, and nothing put the keyboard
+    // being edited and Read it were hidden, and nothing put the keyboard
     // away. The keyboard itself only exists on a device (QA 7a.36); this pins
     // the settings that fix it, so none of them quietly goes missing.
     const handlers = captureListeners();
@@ -508,8 +522,8 @@ describe("capture screen review step", () => {
     expect(scroller?.props.automaticallyAdjustKeyboardInsets).toBe(true);
     expect(scroller?.props.keyboardDismissMode).toBe("interactive");
     expect(scroller?.props.keyboardShouldPersistTaps).toBe("handled");
-    // And Read it back is inside what scrolls, so it can always be reached.
-    expect(within(scroller!).getByRole("button", { name: "Read it back" })).toBeTruthy();
+    // And Read it is inside what scrolls, so it can always be reached.
+    expect(within(scroller!).getByRole("button", { name: "Read it" })).toBeTruthy();
   });
 
   test("should record again from the check step without reading what was heard", async () => {
@@ -648,7 +662,7 @@ describe("capture screen review step", () => {
     });
     expect(screen.getByDisplayValue("Met Nina for lunch")).toBeTruthy();
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Read it back" }));
+      fireEvent.press(screen.getByRole("button", { name: "Read it" }));
     });
     await waitFor(() => expect(extract).toHaveBeenCalledTimes(1));
     expect(JSON.stringify(extract.mock.calls[0])).toContain("Met Nina for lunch");
@@ -681,7 +695,7 @@ describe("capture screen review step", () => {
       fireEvent.changeText(screen.getByDisplayValue("Marcus"), "Marcus Park");
     });
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+      fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
 
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
@@ -717,7 +731,7 @@ describe("capture screen review step", () => {
       });
       await reachReview(handlers, `note number ${round}`);
       await act(async () => {
-        fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+        fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
       });
       await waitFor(() =>
         expect(result.getPathname()).toBe("/profile/contact-1"),
@@ -776,7 +790,7 @@ describe("capture screen review step", () => {
     // different Prisley onto her does not create a wrong person — it writes
     // into a real one, and nothing afterwards says so.
     await waitFor(() => expect(screen.getByText("This Prisley?")).toBeTruthy());
-    expect(screen.getByLabelText("Save note")).toBeDisabled();
+    expect(screen.getByLabelText("Remember this")).toBeDisabled();
     // The line and the question are alternatives. "Adding to Prisley" above
     // "This Prisley?" states a thing and then asks whether that thing is true.
     expect(screen.queryByText(/Adding to Prisley/)).toBeNull();
@@ -799,10 +813,10 @@ describe("capture screen review step", () => {
         screen.getByLabelText("New person called Prisley"),
       );
     });
-    expect(screen.getByLabelText("Save note")).not.toBeDisabled();
+    expect(screen.getByLabelText("Remember this")).not.toBeDisabled();
 
     await act(async () => {
-      fireEvent.press(screen.getByLabelText("Save note"));
+      fireEvent.press(screen.getByLabelText("Remember this"));
     });
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
     expect(saveCapture.mock.calls[0]?.[0].resolutions).toEqual([
@@ -850,7 +864,7 @@ describe("capture screen review step", () => {
 
     expect(screen.queryByText("This Nina?")).toBeNull();
     expect(screen.getByText(/Adding to Nina/)).toBeTruthy();
-    expect(screen.getByLabelText("Save note")).not.toBeDisabled();
+    expect(screen.getByLabelText("Remember this")).not.toBeDisabled();
   });
 
   test("should ask nothing on a person's own page even when somebody shares their name", async () => {
@@ -902,7 +916,7 @@ describe("capture screen review step", () => {
     // of somebody who already knows the answer, which is how a wrong tap
     // happens.
     expect(screen.queryByText("Which Priya?")).toBeNull();
-    expect(screen.getByLabelText("Save note")).not.toBeDisabled();
+    expect(screen.getByLabelText("Remember this")).not.toBeDisabled();
   });
 
   test("should send its own resolution for a declared subject who shares a name, so saving does not throw", async () => {
@@ -965,7 +979,7 @@ describe("capture screen review step", () => {
     expect(screen.queryByText("Which Priya?")).toBeNull();
 
     await act(async () => {
-      fireEvent.press(screen.getByLabelText("Save note"));
+      fireEvent.press(screen.getByLabelText("Remember this"));
     });
 
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
@@ -1008,7 +1022,7 @@ describe("capture screen review step", () => {
     await result;
     await reachReview(handlers, "Met Nina today.");
 
-    // The picker used to render in one block above `Save note`, several
+    // The picker used to render in one block above `Remember this`, several
     // screens down — so opening it was indistinguishable from pressing
     // nothing. Position is the fix, so position is what this asserts: the
     // choices sit inside the same Name field as the input.
@@ -1180,7 +1194,7 @@ describe("capture screen review step", () => {
     expect(screen.getByText("New person — nobody by this name yet.")).toBeTruthy();
     // Still saveable: inventing somebody is often exactly right. The screen
     // says which it is, it does not decide.
-    expect(screen.getByLabelText("Save note")).not.toBeDisabled();
+    expect(screen.getByLabelText("Remember this")).not.toBeDisabled();
   });
 
   test("should name the person a note is being added to", async () => {
@@ -1395,7 +1409,7 @@ describe("capture screen review step", () => {
       );
     });
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Read it back" }));
+      fireEvent.press(screen.getByRole("button", { name: "Read it" }));
     });
 
     // Same extraction, same review step, same save — only the door differs.
@@ -1403,9 +1417,12 @@ describe("capture screen review step", () => {
       expect(extract.mock.calls[0]?.[0].text).toBe("Emma is a branding designer."),
     );
     expect(screen.getByText("What you wrote")).toBeTruthy();
+    // Nothing was heard: the note was typed, and the lead must not say it was.
+    expect(screen.getByText(/This is what Andy will remember\./)).toBeTruthy();
+    expect(screen.queryByText(/heard/i)).toBeNull();
 
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+      fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
     // The one difference that reaches the database.
@@ -1430,7 +1447,7 @@ describe("capture screen review step", () => {
       screen.queryByRole("button", { name: "Scan a business card" }),
     ).toBeNull();
     expect(screen.getByLabelText("Type a note")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Read it back" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Read it" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Stop typing" })).toBeTruthy();
   });
 
@@ -1465,7 +1482,7 @@ describe("capture screen review step", () => {
       fireEvent.press(screen.getByRole("button", { name: "Type it instead" }));
     });
 
-    expect(screen.getByLabelText("Read it back")).toBeDisabled();
+    expect(screen.getByLabelText("Read it")).toBeDisabled();
     expect(extract).not.toHaveBeenCalled();
   });
 
@@ -1503,7 +1520,7 @@ describe("capture screen review step", () => {
       fireEvent.changeText(screen.getByLabelText("Fact 1"), "Is a branding designer.");
     });
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+      fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
 
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
@@ -1561,7 +1578,7 @@ describe("capture screen review step", () => {
       screen.getByLabelText("Emma, friend · 3 notes · last 2026-08-30"),
     ).toBeTruthy();
     expect(screen.getByText("New person — nobody by this name yet.")).toBeTruthy();
-    expect(screen.getByLabelText("Save note")).toBeDisabled();
+    expect(screen.getByLabelText("Remember this")).toBeDisabled();
   });
 
   test("should say nothing about a mention that repeats the subject", async () => {
@@ -1640,7 +1657,7 @@ describe("capture screen review step", () => {
     await waitFor(() =>
       expect(screen.getByText("This Priya?")).toBeTruthy(),
     );
-    expect(screen.getByLabelText("Save note")).toBeDisabled();
+    expect(screen.getByLabelText("Remember this")).toBeDisabled();
 
     await act(async () => {
       fireEvent.press(
@@ -1648,7 +1665,7 @@ describe("capture screen review step", () => {
       );
     });
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+      fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
 
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
@@ -1718,7 +1735,7 @@ describe("capture screen review step", () => {
 
     await waitFor(() => expect(screen.getByText("This Priya?")).toBeTruthy());
     expect(screen.getByText("This Marcus?")).toBeTruthy();
-    expect(screen.getByLabelText("Save note")).toBeDisabled();
+    expect(screen.getByLabelText("Remember this")).toBeDisabled();
 
     await act(async () => {
       fireEvent.press(
@@ -1726,7 +1743,7 @@ describe("capture screen review step", () => {
       );
     });
     // Priya answered, Marcus not yet — still refused.
-    expect(screen.getByLabelText("Save note")).toBeDisabled();
+    expect(screen.getByLabelText("Remember this")).toBeDisabled();
 
     await act(async () => {
       fireEvent.press(
@@ -1735,10 +1752,10 @@ describe("capture screen review step", () => {
         }),
       );
     });
-    expect(screen.getByLabelText("Save note")).not.toBeDisabled();
+    expect(screen.getByLabelText("Remember this")).not.toBeDisabled();
 
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+      fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
     expect(saveCapture.mock.calls[0]?.[0].resolutions).toEqual([
@@ -1805,7 +1822,7 @@ describe("capture screen review step", () => {
       );
     });
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+      fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
 
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
@@ -1863,14 +1880,14 @@ describe("capture screen review step", () => {
     // kept, and joining them silently is the same mistake wherever it
     // happens — so the picker is already open, not something to go find.
     await waitFor(() => expect(screen.getByText("This Marcus?")).toBeTruthy());
-    expect(screen.getByLabelText("Save note")).toBeDisabled();
+    expect(screen.getByLabelText("Remember this")).toBeDisabled();
     await act(async () => {
       fireEvent.press(
         screen.getByRole("button", { name: "New person called Marcus" }),
       );
     });
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+      fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
 
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
@@ -1939,7 +1956,7 @@ describe("capture screen review step", () => {
       );
     });
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+      fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
 
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
@@ -2034,7 +2051,7 @@ describe("capture screen review step", () => {
     // the way out. Not what this test is about — it keeps its facts and goes.
     mockAlert("Keep my facts");
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+      fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
 
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
@@ -2094,7 +2111,7 @@ describe("capture screen review step", () => {
 
     // Saving on a coin toss is the failure this replaces, so the button is
     // shut until the question is answered rather than showing an error after.
-    expect(screen.getByLabelText("Save note")).toBeDisabled();
+    expect(screen.getByLabelText("Remember this")).toBeDisabled();
     expect(
       screen.getByText("Say which person each name above means, and this can be saved."),
     ).toBeTruthy();
@@ -2108,7 +2125,7 @@ describe("capture screen review step", () => {
       );
     });
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+      fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
 
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
@@ -2143,7 +2160,7 @@ describe("capture screen review step", () => {
     // missing key: the mutation reads it either way, and sending `[]` says the
     // screen looked.
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+      fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
     expect(saveCapture.mock.calls[0]?.[0].resolutions).toEqual([]);
@@ -2254,7 +2271,7 @@ describe("capture screen review step", () => {
       );
     });
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+      fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
 
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
@@ -2323,7 +2340,7 @@ describe("capture screen review step", () => {
     // Nothing pressed: the alert is raised and no button answered.
     const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+      fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
 
     expect(alert).toHaveBeenCalledTimes(1);
@@ -2357,7 +2374,7 @@ describe("capture screen review step", () => {
 
     mockAlert("Keep my facts");
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+      fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
 
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
@@ -2390,7 +2407,7 @@ describe("capture screen review step", () => {
     const alert = mockAlert("Read it again");
     alert.mockClear();
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+      fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
 
     await waitFor(() => expect(extract).toHaveBeenCalledTimes(2));
@@ -2416,7 +2433,7 @@ describe("capture screen review step", () => {
 
     mockAlert("Read it again");
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+      fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
     await waitFor(() => expect(extract).toHaveBeenCalledTimes(2));
 
@@ -2428,7 +2445,7 @@ describe("capture screen review step", () => {
     const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
     alert.mockClear();
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+      fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
 
     expect(alert).toHaveBeenCalledTimes(1);
@@ -2454,7 +2471,7 @@ describe("capture screen review step", () => {
     // Read it again, which rebuilds the facts from the corrected words.
     mockAlert("Read it again");
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+      fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
     await waitFor(() => expect(extract).toHaveBeenCalledTimes(2));
 
@@ -2468,7 +2485,7 @@ describe("capture screen review step", () => {
     const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
     alert.mockClear();
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+      fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
 
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
@@ -2496,7 +2513,7 @@ describe("capture screen review step", () => {
 
     const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+      fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
 
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
@@ -2528,7 +2545,7 @@ describe("capture screen review step", () => {
 
     const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+      fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
 
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
@@ -2571,7 +2588,7 @@ describe("capture screen review step", () => {
     // answer to "was this the first time" is no.
     expect(screen.queryByDisplayValue("2026-08-27")).toBeNull();
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+      fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
 
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
@@ -2628,16 +2645,18 @@ describe("capture screen business card door", () => {
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Scan a business card" }));
     });
-    await waitFor(() => expect(screen.getByRole("button", { name: "Save note" })).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Remember this" })).toBeTruthy());
 
     // Lands on the identical review screen a voice note reaches — same
     // fields, only the transcript field's label and content differ.
     expect(screen.getByDisplayValue("Sarah Chen")).toBeTruthy();
     expect(screen.getByText("What the card says")).toBeTruthy();
+    expect(screen.getByText(/This is what Andy will remember\./)).toBeTruthy();
+    expect(screen.queryByText(/heard/i)).toBeNull();
     expect(screen.getByDisplayValue(cardText)).toBeTruthy();
 
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+      fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
 
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
@@ -2645,6 +2664,42 @@ describe("capture screen business card door", () => {
     expect(call.source).toBe("business_card");
     expect(call.transcript).toBe(cardText);
     expect(call.draft.primary.name).toBe("Sarah Chen");
+  });
+
+  // Found on the simulator 2026-10-01: while a card was being read, the
+  // screen behind it still said "Tap record and say what you want to
+  // remember", an instruction to do something else entirely.
+  test("should say it is reading the card while the card is being read", async () => {
+    const { draft, cardText } = makeCardDraft();
+    let finish: (value: { draft: Draft; cardText: string }) => void = () => {};
+    const readCard = jest.fn(
+      () => new Promise<{ draft: Draft; cardText: string }>((resolve) => { finish = resolve; }),
+    );
+    mockActions({ readCard });
+    mockAlert("Take a photo");
+    (ImagePicker.requestCameraPermissionsAsync as jest.Mock).mockResolvedValueOnce({
+      granted: true,
+    });
+    (ImagePicker.launchCameraAsync as jest.Mock).mockResolvedValueOnce({
+      canceled: false,
+      assets: [{ base64: "fake-base64-jpeg-data" }],
+    });
+
+    const result = renderRouter("src/app", { initialUrl: "/profile/contact-1/capture" });
+    await result;
+
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Scan a business card" }));
+    });
+    await waitFor(() => expect(readCard).toHaveBeenCalledTimes(1));
+
+    expect(screen.getByText("Reading the card…")).toBeTruthy();
+    expect(screen.queryByText(/Tap record/)).toBeNull();
+
+    await act(async () => {
+      finish({ draft, cardText });
+    });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Remember this" })).toBeTruthy());
   });
 
   test("should name the door it came through when asking about a changed card", async () => {
@@ -2670,7 +2725,7 @@ describe("capture screen business card door", () => {
       );
     });
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Save note" })).toBeTruthy(),
+      expect(screen.getByRole("button", { name: "Remember this" })).toBeTruthy(),
     );
 
     await act(async () => {
@@ -2683,7 +2738,7 @@ describe("capture screen business card door", () => {
     const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
     alert.mockClear();
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Save note" }));
+      fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
 
     // The review screen already branches this label three ways. Telling
@@ -2733,7 +2788,7 @@ describe("capture screen business card door", () => {
     // screen ready to try again.
     expect(readCard).not.toHaveBeenCalled();
     expect(saveCapture).not.toHaveBeenCalled();
-    expect(screen.queryByRole("button", { name: "Save note" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Remember this" })).toBeNull();
     expect(
       screen.getByRole("button", { name: "Start recording" }),
     ).toBeTruthy();

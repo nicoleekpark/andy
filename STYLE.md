@@ -110,7 +110,7 @@ The per-profile **timeline** is genuinely sequential data (notes in time order),
 
 ## Copy Tone
 
-Plain verbs, active voice, no filler. "Save note," not "Submit." Empty states are invitations, not apologies: "No notes yet — tap record to remember your first person," not "No data available." Errors state what happened and what to do, in the interface's voice, never "Oops!"
+Plain verbs, active voice, no filler. "Remember this," not "Submit." Empty states are invitations, not apologies: "No notes yet — tap record to remember your first person," not "No data available." Errors state what happened and what to do, in the interface's voice, never "Oops!"
 
 ## Voice — remembering, never collecting
 

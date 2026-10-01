@@ -110,7 +110,7 @@ function describe(candidate: {
  * The picker for one name: who this note goes to, or somebody new.
  *
  * Rendered directly beneath the name it is about. It used to live in one
- * block above `Save note`, which meant "Different person?" opened something
+ * block above `Remember this`, which meant "Different person?" opened something
  * off the bottom of a long form — pressing it looked like pressing nothing,
  * and the possessive question, which *must* be answered before saving, was
  * hidden in the same place with the save button greyed out and no visible
@@ -576,7 +576,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
    * distrusts — and the cost of being wrong is specific and bad. A question
    * that must be answered, rendered nowhere, is a save button that is greyed
    * out for no reason the screen gives. So anything left over is shown above
-   * `Save note`, where the block used to live for everything.
+   * `Remember this`, where the block used to live for everything.
    */
   const orphaned = useMemo(() => {
     // Folded, for the same reason `questionFor` is: a question keyed to the
@@ -764,6 +764,11 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
         return;
       }
 
+      // Set before the read, not after it: the waiting screen says what it is
+      // reading, and it can only do that if it already knows it is a card.
+      // Recording and typing each set their own source, so a failed read
+      // leaves nothing stale behind.
+      setSource("business_card");
       setPhase("extracting");
       try {
         // `base64` is documented as the image's JPEG data regardless of the
@@ -773,7 +778,6 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
         setDraft(result.draft);
         setTranscript(result.cardText);
         setReadTranscript(result.cardText);
-        setSource("business_card");
         setPhase("review");
       } catch (e) {
         setError(
@@ -1240,9 +1244,14 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
           contentContainerStyle={styles.reviewContent}
           keyboardShouldPersistTaps="handled"
         >
+          {/* One line for every way in — voice, typing, a card, whatever comes
+              next. "Andy heard this" was wrong for two of the three, and "fix
+              anything that isn't right" cast Andy as error-prone and the user
+              as its proofreader. This frames checking as keeping: it is their
+              memory. The button below says the same verb, "Remember this", so the
+              line already tells you what it does (decided 2026-10-01). */}
           <Text style={styles.lead}>
-            Andy heard this. Fix anything that isn&apos;t right before it&apos;s
-            saved.
+            This is what Andy will remember. Change anything first.
           </Text>
 
           <Field label="Name">
@@ -1615,7 +1624,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
               hitSlop={8}
             >
               <Text style={styles.reread}>
-                {phase === "extracting" ? "Reading it back…" : "Read it again"}
+                {phase === "extracting" ? "Reading…" : "Read it again"}
               </Text>
             </Pressable>
           </Field>
@@ -1634,13 +1643,13 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
 
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Save note"
+            accessibilityLabel="Remember this"
             onPress={save}
             disabled={!canSave}
             style={[styles.primaryButton, !canSave && styles.disabled]}
           >
             <Text style={styles.primaryLabel}>
-              {phase === "saving" ? "Saving…" : "Save note"}
+              {phase === "saving" ? "Remembering…" : "Remember this"}
             </Text>
           </Pressable>
           {named ? null : (
@@ -1688,7 +1697,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
         {/*
           One scroll view for the whole editor, not a scrolling input in a fixed
           screen: found live 2026-09-29 with a long note, the input ran on
-          under the keyboard, the lines being edited and Read it back were
+          under the keyboard, the lines being edited and Read it were
           hidden behind it, and nothing put the keyboard away.
 
           Keyboard insets come from `automaticallyAdjustKeyboardInsets`, the
@@ -1745,7 +1754,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
 
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Read it back"
+            accessibilityLabel="Read it"
             onPress={() => void runExtraction(typing)}
             disabled={empty || busy}
             style={[styles.primaryButton, (empty || busy) && styles.disabled]}
@@ -1753,7 +1762,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
             <Text style={styles.primaryLabel}>
               {/* The same words the wait is labelled with, so pressing it
                   shows the sentence continuing rather than a new one. */}
-              {phase === "extracting" ? "Reading it back…" : "Read it back"}
+              {phase === "extracting" ? "Reading…" : "Read it"}
             </Text>
           </Pressable>
 
@@ -1823,6 +1832,12 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
             <Text style={styles.empty}>
               {listening
                 ? "Listening — say what's new."
+                : phase === "extracting"
+                  ? // A card is read from this screen, so without this the
+                    // invitation to record sat behind the whole wait.
+                    source === "business_card"
+                    ? "Reading the card…"
+                    : "Reading…"
                 : scopeMissing
                   ? "Andy doesn't have anyone by that link."
                   : scopeLoading
@@ -1855,7 +1870,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
         >
           <Text style={styles.primaryLabel}>
             {phase === "extracting"
-              ? "Reading it back…"
+              ? "Reading…"
               : phase === "starting"
                 ? "Starting…"
                 : listening
