@@ -572,6 +572,8 @@ as the Expo template it replaced.
 | 23.3 | Long-press the home screen → Edit → Customize → **Tinted** | A plain single-colour thread, **without** the dashed stripes (`twist` is hidden for tinted in `icon.json`). If the stripes show, `hidden-specializations` is not being honoured — schema-consistent but not seen in a shipped icon | ⬜ |
 | 23.4 | Look at the icon at its smallest: Settings app list, a notification, Spotlight | The loop is still a loop (not a blob or a scribble) | ⬜ |
 | 23.5 | Cold-launch the app | Splash: paper ground with only the loop in the middle, thread fading out at both ends — **no** cut-off line ends, and not the old ink chevron | ⬜ |
+| 23.6 | Look closely at the loop on the home-screen icon | A **ring of thread with paper inside it**. On the first build (2026-09-30) the inside of the loop came out filled solid — the layers were stroke-only SVGs and Icon Composer's per-layer fill colours the area a shape encloses. The layers are now filled outlines (`dev/design/icon-outlines.py`, local) | ⬜ |
+| 23.7 | Look at both faded ends of the splash thread | The thread fades **into the paper colour**. On the first build the fade went grey. The transparent pixels now carry the thread colour instead of black, which keeps a resize from mixing black in — but that the grey came from there is a guess, so if it is still grey the cause is elsewhere | ⬜ |
 
 ---
 
