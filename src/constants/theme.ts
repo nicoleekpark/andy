@@ -55,3 +55,19 @@ export const fonts = {
    */
   utility: "IBMPlexMono",
 } as const;
+
+/**
+ * The spacing scale, in points. Taken from what the screens already use most
+ * (8, 24, 12, 16, 4, 32, 48 — counted on 2026-10-01), so adopting it changes
+ * nothing that already looks right. New layout reaches for these; existing
+ * screens move over as they are touched, not in one sweep.
+ */
+export const space = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
+  xxl: 32,
+  xxxl: 48,
+} as const;

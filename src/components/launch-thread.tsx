@@ -20,36 +20,63 @@ const LOOP =
 /** The launch image is this crop of the loop at 432×280 (3× of 144pt). */
 const VIEW = { x: -4, y: 14, width: 108, height: 70 };
 export const LAUNCH_THREAD_WIDTH = 144;
-export const LAUNCH_THREAD_HEIGHT = (LAUNCH_THREAD_WIDTH * VIEW.height) / VIEW.width;
 
 /**
- * react-native-svg has no `pathLength`, so the dash that draws the thread on
- * needs the real length. Measured once from the curve itself.
+ * The curve, walked once: points with their distance along it. react-native-svg
+ * has no `pathLength`, so the dash that draws the thread on needs the real
+ * length, and the twist's dashes need to know where along it they sit.
  */
-function cubicLength(points: number[][], samples = 120): number {
-  let length = 0;
+function walk(points: number[][], samples = 120): { x: number; y: number; at: number }[] {
+  const out = [{ x: points[0][0], y: points[0][1], at: 0 }];
   for (let s = 0; s + 3 < points.length; s += 3) {
     const [p0, p1, p2, p3] = points.slice(s, s + 4);
-    let [px, py] = p0;
     for (let i = 1; i <= samples; i++) {
       const t = i / samples;
       const u = 1 - t;
       const x = u * u * u * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t * t * t * p3[0];
       const y = u * u * u * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t * t * t * p3[1];
-      length += Math.hypot(x - px, y - py);
-      px = x;
-      py = y;
+      const last = out[out.length - 1];
+      out.push({ x, y, at: last.at + Math.hypot(x - last.x, y - last.y) });
     }
   }
-  return length;
+  return out;
 }
 
-const LENGTH = cubicLength(
+const WALK = walk(
   (LOOP.match(/-?\d+(\.\d+)?/g) ?? []).reduce<number[][]>((pairs, n, i, all) => {
     if (i % 2 === 0) pairs.push([Number(n), Number(all[i + 1])]);
     return pairs;
   }, []),
 );
+const LENGTH = WALK[WALK.length - 1].at;
+
+/** The twist's pattern: 2.5 on, 3.9 off, as on the icon and the launch image. */
+const TWIST_ON = 2.5;
+const TWIST_OFF = 3.9;
+
+/**
+ * The twist as separate dashes, each knowing where along the thread it sits.
+ * A dash pattern cannot also be the dash that draws the thread on, so while it
+ * moves each dash appears only once the thread has been drawn past it, and goes
+ * once the thread has left it.
+ */
+const TWIST = (() => {
+  const dashes: { d: string; at: number }[] = [];
+  for (let start = 0; start < LENGTH; start += TWIST_ON + TWIST_OFF) {
+    const end = Math.min(start + TWIST_ON, LENGTH);
+    const pts = WALK.filter((p) => p.at >= start && p.at <= end);
+    // Away from the very ends, where the fade has them invisible anyway and
+    // their visibility window would run off the animation's range.
+    const at = (start + end) / 2;
+    if (pts.length > 1 && at > 1 && at < LENGTH - 1) {
+      dashes.push({
+        d: pts.map((p, i) => `${i ? "L" : "M"}${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(" "),
+        at,
+      });
+    }
+  }
+  return dashes;
+})();
 
 const DRAW_MS = 1080;
 const HOLD_MS = 240;
@@ -157,28 +184,47 @@ export function LaunchThread({ moving }: { moving: boolean }) {
             strokeDashoffset={offset}
           />
         ) : (
-          <>
-            <Path
-              d={LOOP}
-              fill="none"
-              stroke={`url(#${fade})`}
-              strokeWidth={6.4}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            {/* The twist, as on the icon and the name mark: ink over brass
-                rather than a seventh colour, faded at the ends with the thread
-                so no dash outlives it. Not drawn while moving — a dash
-                pattern cannot also be the dash that draws the thread on. */}
-            <Path
-              d={LOOP}
+          <Path
+            d={LOOP}
+            fill="none"
+            stroke={`url(#${fade})`}
+            strokeWidth={6.4}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        )}
+        {/* The twist, as on the icon, the launch image and the name mark: ink
+            over brass rather than a seventh colour, faded at the ends with the
+            thread so no dash outlives it. The same dashes still or moving, so
+            nothing changes look at the moment it starts. */}
+        {TWIST.map((dash) =>
+          animate ? (
+            <AnimatedPath
+              key={dash.at}
+              d={dash.d}
               fill="none"
               stroke={`url(#${fadeTwist})`}
               strokeWidth={1.4}
-              strokeDasharray="2.5 3.9"
+              strokeLinecap="round"
+              // Drawn while the thread covers it: the offset runs LENGTH → 0
+              // (drawing in) → −LENGTH (leaving), and the thread covers the
+              // point `at` exactly while −at < offset < LENGTH − at.
+              opacity={offset.interpolate({
+                inputRange: [-LENGTH, -dash.at - 0.5, -dash.at + 0.5, LENGTH - dash.at - 0.5, LENGTH - dash.at + 0.5, LENGTH],
+                outputRange: [0, 0, 1, 1, 0, 0],
+                extrapolate: "clamp",
+              })}
+            />
+          ) : (
+            <Path
+              key={dash.at}
+              d={dash.d}
+              fill="none"
+              stroke={`url(#${fadeTwist})`}
+              strokeWidth={1.4}
               strokeLinecap="round"
             />
-          </>
+          ),
         )}
       </Svg>
     </View>

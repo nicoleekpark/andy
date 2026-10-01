@@ -69,6 +69,45 @@ describe("connecting screen", () => {
     expect(loop).toHaveBeenCalledTimes(1);
   });
 
+  // Found on the simulator 2026-10-01: the moving thread lost the twist the
+  // launch image and the still loop both carry, so it changed look the moment
+  // it started.
+  test("should keep the twist on the thread while it moves", async () => {
+    // Paths drawn inside the thread with this testID, read off the rendered
+    // tree (host elements here have no findAll).
+    type Node = { type?: string; props?: { testID?: string }; children?: unknown[] | null };
+    const pathsUnder = (testID: string) => {
+      const find = (node: Node | null): Node | null => {
+        if (!node || typeof node !== "object") return null;
+        if (node.props?.testID === testID) return node;
+        for (const child of node.children ?? []) {
+          const hit = find(child as Node);
+          if (hit) return hit;
+        }
+        return null;
+      };
+      const count = (node: Node): number =>
+        (node.type === "RNSVGPath" ? 1 : 0) +
+        (node.children ?? []).reduce<number>(
+          (sum, child) => sum + (child && typeof child === "object" ? count(child as Node) : 0),
+          0,
+        );
+      const root = find(screen.toJSON() as Node);
+      return root ? count(root) : 0;
+    };
+    await render(<Connecting />);
+
+    await advance(1_400);
+    const still = pathsUnder("launch-thread-still");
+
+    await advance(100);
+    const moving = pathsUnder("launch-thread-moving");
+
+    // The thread plus every dash of its twist, in both states.
+    expect(still).toBeGreaterThan(10);
+    expect(moving).toBe(still);
+  });
+
   test("should keep the loop still when Reduce Motion is on", async () => {
     jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(true);
     const loop = jest.spyOn(Animated, "loop");
@@ -100,9 +139,9 @@ describe("connecting screen", () => {
 
     await advance(8_000);
 
-    expect(
-      screen.getByText("Still connecting. Check your internet connection."),
-    ).toBeTruthy();
+    // Two lines, two jobs: what is happening, then what to do.
+    expect(screen.getByText("Still connecting.")).toBeTruthy();
+    expect(screen.getByText("Check your internet connection.")).toBeTruthy();
     expect(screen.queryByText("Connecting…")).toBeNull();
   });
 

@@ -5,8 +5,8 @@ import {
   Text,
   View,
 } from "react-native";
-import { LAUNCH_THREAD_HEIGHT, LaunchThread } from "@/components/launch-thread";
-import { colors } from "@/constants/theme";
+import { LaunchThread } from "@/components/launch-thread";
+import { colors, space } from "@/constants/theme";
 
 /**
  * Rebuild the Convex session from inside it.
@@ -99,7 +99,9 @@ export function Connecting() {
   if (phase === "quiet") {
     return (
       <View style={[styles.screen, styles.centred]}>
-        <LaunchThread moving={false} />
+        <View style={styles.anchor}>
+          <LaunchThread moving={false} />
+        </View>
       </View>
     );
   }
@@ -131,21 +133,25 @@ export function Connecting() {
 
   return (
     <View style={[styles.screen, styles.centred]}>
-      {/* The thread stops at `failed` on purpose — that screen has no thread.
-          Left moving it would keep promising that waiting is enough, which by
-          then is untrue. */}
-      <LaunchThread moving />
-      {/* Below the thread, not beside it in the flow: centred as a group the
-          thread would jump up the moment words appear, away from the spot the
-          launch image left it in. */}
-      <View style={styles.below}>
-        {phase === "slow" ? (
-          <Text style={styles.quiet}>
-            Still connecting. Check your internet connection.
-          </Text>
-        ) : (
-          <Text style={styles.quiet}>Connecting…</Text>
-        )}
+      {/* The words hang off the thread's own bottom edge rather than the
+          screen's centre: centred as a group, the thread would jump up the
+          moment words appear, away from where the launch image left it. */}
+      <View style={styles.anchor}>
+        {/* The thread stops at `failed` on purpose — that screen has no
+            thread. Left moving it would keep promising that waiting is
+            enough, which by then is untrue. */}
+        <LaunchThread moving />
+        <View style={styles.below}>
+          {phase === "slow" ? (
+            // Two lines, two jobs: what is happening, then what to do.
+            <>
+              <Text style={styles.quiet}>Still connecting.</Text>
+              <Text style={styles.quiet}>Check your internet connection.</Text>
+            </>
+          ) : (
+            <Text style={styles.quiet}>Connecting…</Text>
+          )}
+        </View>
       </View>
     </View>
   );
@@ -163,12 +169,16 @@ const styles = StyleSheet.create({
   },
 
   headline: { color: colors.ink, fontSize: 17, textAlign: "center" },
+  // Full width, so the words below can be as wide as the screen while the
+  // thread inside stays centred.
+  anchor: { alignSelf: "stretch", alignItems: "center" },
   below: {
     position: "absolute",
-    left: 32,
-    right: 32,
-    top: "50%",
-    marginTop: LAUNCH_THREAD_HEIGHT / 2 + 24,
+    top: "100%",
+    left: 0,
+    right: 0,
+    marginTop: space.xxl,
+    gap: space.xs,
   },
   quiet: {
     color: colors.ink,
