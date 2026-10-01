@@ -22,6 +22,13 @@ const LOOP =
 const VIEW = { x: -4, y: 14, width: 108, height: 70 };
 export const LAUNCH_THREAD_WIDTH = 144;
 
+/**
+ * Drawing the loop once (the empty home): ~1.2 s, the pace the developer
+ * picked from the presence mock (option E's draw-in, 45% of a 2.6 s pass),
+ * 2026-10-01. The loop is a short line; the name's 4 s would crawl here.
+ */
+export const LOOP_WRITE_MS = 1200;
+
 /** The twist's pattern: 2.5 on, 3.9 off, as on the icon and the launch image. */
 const GEOMETRY = threadGeometry(LOOP, { on: 2.5, off: 3.9 });
 
@@ -32,7 +39,7 @@ export function ThreadLoop({
   motion: ThreadMotion;
   width?: number;
 }) {
-  const { offset, state } = useThreadMotion(motion, GEOMETRY.length);
+  const { offset, state } = useThreadMotion(motion, GEOMETRY.length, LOOP_WRITE_MS);
   // Per instance: SVG gradient ids are document-wide, and two threads on
   // screen at once would otherwise paint with each other's gradient.
   const id = useId().replace(/:/g, "");

@@ -6,7 +6,7 @@ import { renderRouter } from "expo-router/testing-library";
 import { api } from "@convex/_generated/api";
 import { forgetSession } from "@/lib/use-once-per-session";
 import { drawn } from "../test-support/drawn";
-import { WRITE_MS } from "@/lib/use-thread-motion";
+import { LOOP_WRITE_MS } from "@/components/thread-loop";
 
 /**
  * src/app/(app)/index.tsx's three branches — loading, empty, populated — are
@@ -93,11 +93,11 @@ describe("home screen", () => {
     await act(async () => {});
     expect(screen.getByTestId("thread-loop-drawing", HIDDEN)).toBeTruthy();
     await act(async () => {
-      jest.advanceTimersByTime(WRITE_MS * 0.4);
+      jest.advanceTimersByTime(LOOP_WRITE_MS * 0.4);
     });
     const midway = drawn("thread-loop-drawing");
     await act(async () => {
-      jest.advanceTimersByTime(WRITE_MS * 0.6 + 200);
+      jest.advanceTimersByTime(LOOP_WRITE_MS * 0.6 + 200);
     });
     const written = drawn("thread-loop-drawing");
     // Part-way: more than the bare thread (1 path, nothing of the twist yet)

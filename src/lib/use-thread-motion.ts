@@ -25,7 +25,10 @@ export type ThreadMotion = "still" | "pass" | "draw";
 
 export const DRAW_MS = 1080;
 export const HOLD_MS = 240;
-/** Writing once: 4 s, so the name reads as written rather than flashed (developer, 2026-10-01). */
+/**
+ * Writing the name once: 4 s, so it reads as written rather than flashed
+ * (developer, 2026-10-01). The default for `draw`; shorter lines pass their own.
+ */
 export const WRITE_MS = 4000;
 
 const ease = (t: number) =>
@@ -36,9 +39,10 @@ export function offsetAt(
   motion: "pass" | "draw",
   elapsed: number,
   length: number,
+  writeMs: number = WRITE_MS,
 ): number {
   if (motion === "draw") {
-    return length * (1 - ease(Math.min(elapsed / WRITE_MS, 1)));
+    return length * (1 - ease(Math.min(elapsed / writeMs, 1)));
   }
   const t = elapsed % (DRAW_MS + HOLD_MS + DRAW_MS);
   if (t < DRAW_MS) return length * (1 - ease(t / DRAW_MS));
@@ -46,7 +50,11 @@ export function offsetAt(
   return -length * ease((t - DRAW_MS - HOLD_MS) / DRAW_MS);
 }
 
-export function useThreadMotion(motion: ThreadMotion, length: number) {
+/**
+ * `writeMs` is how long `draw` takes: a long line (the name) needs longer than
+ * a short one (the loop) to read as written at the same pace.
+ */
+export function useThreadMotion(motion: ThreadMotion, length: number, writeMs: number = WRITE_MS) {
   const reduceMotion = useReduceMotion();
   const [offset, setOffset] = useState(length);
 
@@ -67,15 +75,15 @@ export function useThreadMotion(motion: ThreadMotion, length: number) {
     const tick = (now: number) => {
       start ??= now;
       const elapsed = now - start;
-      setOffset(offsetAt(motion, elapsed, length));
+      setOffset(offsetAt(motion, elapsed, length, writeMs));
       // `draw` stops when written; `pass` goes on until unmounted or stilled.
-      if (motion === "pass" || elapsed < WRITE_MS) {
+      if (motion === "pass" || elapsed < writeMs) {
         frame = requestAnimationFrame(tick);
       }
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [running, motion, length]);
+  }, [running, motion, length, writeMs]);
 
   return {
     offset: animated ? offset : null,
