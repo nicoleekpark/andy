@@ -1068,7 +1068,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
       "Andy will read the note from scratch. Anything you changed above goes back to what it finds.",
       [
         { text: "Cancel", style: "cancel" },
-        { text: "Read again", style: "destructive", onPress: run },
+        { text: "Read it again", style: "destructive", onPress: run },
       ],
     );
   }, [transcript, draft, extracted, rereadNow]);
@@ -1373,7 +1373,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
                 />
               </Field>
 
-              <Field label="First meeting">
+              <Field label="First met">
                 {/*
                   A checkbox, not a date field, because the judgement a person can
                   actually make here is yes-or-no. Whether "오늘 지수 만났는데"

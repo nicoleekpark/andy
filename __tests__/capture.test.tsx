@@ -1372,7 +1372,7 @@ describe("capture screen review step", () => {
       createdMentionCount: 0,
     })));
     scopeTo("Emma");
-    mockAlert("Read again");
+    mockAlert("Read it again");
     const handlers = captureListeners();
 
     const result = renderRouter("src/app", { initialUrl: "/capture" });
@@ -1398,6 +1398,30 @@ describe("capture screen review step", () => {
       "Met Emma at Marcus's housewarming.",
     );
     await waitFor(() => expect(screen.getByDisplayValue("Marcus")).toBeTruthy());
+  });
+
+  test("should name the confirmation's button exactly as the link that asked, and read again on it", async () => {
+    const extract = jest.fn(async () => makeDraft({ name: "Emma" }));
+    (useAction as jest.Mock).mockReturnValue(extract);
+    scopeTo("Emma");
+    // Presses only a button with this exact label. One action, one name
+    // (STYLE.md): the link says "Read it again", so the confirmation does too.
+    const alert = mockAlert("Read it again");
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+    await reachReview(handlers, "Met Emma today.");
+
+    await act(async () => {
+      fireEvent.changeText(screen.getByLabelText("Name"), "Emma Kim");
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Read it again"));
+    });
+
+    expect(alert).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(extract).toHaveBeenCalledTimes(2));
   });
 
   test("should ask before throwing away edits, and keep them when the answer is no", async () => {
@@ -1429,7 +1453,7 @@ describe("capture screen review step", () => {
     const extract = jest.fn(async () => makeDraft({ name: "Emma" }));
     (useAction as jest.Mock).mockReturnValue(extract);
     scopeTo("Emma");
-    const alert = mockAlert("Read again");
+    const alert = mockAlert("Read it again");
     const handlers = captureListeners();
 
     const result = renderRouter("src/app", { initialUrl: "/capture" });
@@ -1457,7 +1481,7 @@ describe("capture screen review step", () => {
     });
     (useAction as jest.Mock).mockReturnValue(extract);
     scopeTo("Emma");
-    mockAlert("Read again");
+    mockAlert("Read it again");
     const handlers = captureListeners();
 
     const result = renderRouter("src/app", { initialUrl: "/capture" });
