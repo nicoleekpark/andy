@@ -33,6 +33,23 @@ describe("sign-in screen", () => {
     return result;
   }
 
+  // The name mark is a drawing, so without its label a screen reader would
+  // meet a sign-in screen with no name on it at all.
+  test("should title the screen with the name mark, announced as Andy", async () => {
+    await renderSignIn();
+
+    expect(screen.getByRole("header", { name: "Andy" })).toBeOnTheScreen();
+  });
+
+  test("should say what Andy is for under the name mark", async () => {
+    await renderSignIn();
+
+    expect(screen.getByText("Remember what they told you.")).toBeOnTheScreen();
+    expect(
+      screen.getByText("Notes about the people you meet, so you can ask about it next time."),
+    ).toBeOnTheScreen();
+  });
+
   test("should call startAppleAuthenticationFlow once when the button is pressed", async () => {
     const startAppleAuthenticationFlow = jest.fn(async () => ({ createdSessionId: null }));
     (useSignInWithApple as jest.Mock).mockReturnValue({ startAppleAuthenticationFlow });

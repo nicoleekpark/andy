@@ -162,6 +162,7 @@ export default function RootLayout() {
   const [loaded, error] = useFonts({
     Lora: require("../../assets/fonts/Lora-Regular.ttf"),
     "Lora-Medium": require("../../assets/fonts/Lora-Medium.ttf"),
+    "Lora-Italic": require("../../assets/fonts/Lora-Italic.ttf"),
     IBMPlexMono: require("../../assets/fonts/IBMPlexMono-Regular.ttf"),
   });
 

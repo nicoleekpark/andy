@@ -13,7 +13,7 @@ The subject is _personal memory-keeping_ — closer to marginalia in a well-love
 | `ink`   | `#2A2622` | primary text                                                             |
 | `paper` | `#E8E6DE` | background (warm stone, not cream)                                       |
 | `moss`  | `#5C6B4F` | primary accent — buttons, active states                                  |
-| `brass` | `#B8935A` | **"Briefing" accent only** — the one signature color, not used elsewhere |
+| `brass` | `#B8935A` | **The signature.** Inside the signed-in app: the Briefing card only. Before sign-in: the thread (icon, launch screen, name mark). Nowhere else |
 | `line`  | `#B8B3A8` | dividers, borders                                                        |
 | `alert` | `#A8503E` | errors only — muted, not a bright red                                    |
 
@@ -40,6 +40,8 @@ family string in a screen.
   should feel like it belongs on the phone, not like an imported web font.
   `fonts` has no `body` token on purpose: a token holding `"System"` would
   invite somebody to apply it, which is the same as not having decided.
+- **Display italic (one line only)**: **Lora Italic**, for the tagline under
+  the name mark on the sign-in screen and nowhere else (`fonts.displayItalic`).
 - **Utility (dates, tags, note counts)**: **IBM Plex Mono** — a ledger reads as
   a record because its numbers line up, which a proportional face cannot do.
 
@@ -82,6 +84,25 @@ bookmark ribbon (Day One), dots on the thread or a loop hanging below it (odd,
 sagging), and **two** loops in a row (every spacing reads as cursive *ll*/*el*/*ee*).
 No letters in the icon: the name already sits under it, and text is unreadable
 at 29 pt.
+
+## Name Mark — the thread writes *andy*
+
+Decided 2026-09-30, `src/components/name-mark.tsx`. The icon's thread, writing
+the name: one hand-drawn path that enters from the left edge, writes *andy*
+without lifting, makes the icon's loop above the line and rises off the right
+edge. It sits where the screen edge can cut both ends (on sign-in it bleeds
+past the padding), because a thread end on the page is what the icon avoids.
+Not a font: a script typeface cannot enter and leave without a gap. Never
+inside the icon, where it would be unreadable at 29 pt.
+
+**Why brass is allowed here.** Brass is the signature, and the rule that keeps
+it one is about the signed-in app, where the Briefing card has to be the only
+thing that looks different. The icon, the launch screen and sign-in come before
+any of that, and there brass is the thread: the same idea as the whisper, the
+thing Andy keeps for you. Inside the app the rule is unchanged.
+
+Kept plain on purpose. Yarn balls, spirals, wraps and knit textures were all
+tried on 2026-09-30 and all read as odd; the thread says enough on its own.
 
 ## One Structural Idea
 

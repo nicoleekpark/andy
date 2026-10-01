@@ -573,6 +573,24 @@ as the Expo template it replaced.
 | 23.4 | Look at the icon at its smallest: Settings app list, a notification, Spotlight | The loop is still a loop (not a blob or a scribble) | ⬜ |
 | 23.5 | Cold-launch the app | Splash: paper ground with only the loop in the middle, thread fading out at both ends — **no** cut-off line ends, and not the old ink chevron | ⬜ |
 
+## 24. The name mark on sign-in
+
+The plain "Andy" title is replaced by *andy* written in one brass thread
+(`src/components/name-mark.tsx`), with one Lora Italic line under it.
+
+**Needs a new build before anything else.** `react-native-svg` is a native
+module. JS from this branch on a dev client built before it fails on the
+sign-in screen with a missing native component, which is the old build's
+fault, not the code's: `npm run build:ios`, then `npm run ios:install`.
+
+| # | Do this | Expect | |
+|---|---|---|---|
+| 24.1 | Sign out (or fresh install), look at the sign-in screen | *andy* in a brass thread where the title was, the thread running in from the **left screen edge** and out past the **right** one after a small loop above the line. **No** thread end visible on the screen | ⬜ |
+| 24.2 | Look under it | "Remember what they told you." in an **italic serif** (Lora Italic), then the description in the normal system face. If the tagline is upright or in the system face, `Lora-Italic` did not load | ⬜ |
+| 24.3 | Turn on VoiceOver, swipe to the top of the screen | Reads "Andy, heading", once. Not "image", not silent, not the drawing's parts | ⬜ |
+| 24.4 | Rotate / use the largest and smallest iPhone you have | The thread still reaches both edges and the word is never clipped | ⬜ |
+| 24.5 | Sign in | Nothing else changed: the Apple button, the "Finishing sign-in…" and stuck states behave as before | ⬜ |
+
 ---
 
 ## Not built yet — do not file these

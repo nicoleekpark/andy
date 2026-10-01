@@ -3,7 +3,8 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import * as AppleAuthentication from "expo-apple-authentication";
 import { useSignInWithApple } from "@clerk/expo/apple";
 import { useAuth } from "@clerk/expo";
-import { colors } from "@/constants/theme";
+import { NameMark } from "@/components/name-mark";
+import { colors, fonts } from "@/constants/theme";
 
 /**
  * Apple is the only way in for V1. Adding a second social login would oblige
@@ -84,10 +85,10 @@ export default function SignInScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.intro}>
-        <Text style={styles.title}>Andy</Text>
+        <NameMark style={styles.mark} />
+        <Text style={styles.tagline}>Remember what they told you.</Text>
         <Text style={styles.body}>
-          Remember the people you meet — what they do, what you talked about,
-          what to follow up on.
+          Notes about the people you meet, so you can ask about it next time.
         </Text>
       </View>
 
@@ -150,7 +151,10 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   intro: { flex: 1, justifyContent: "center", gap: 12 },
-  title: { color: colors.ink, fontSize: 32 },
+  // Bleeds past the container's padding to both screen edges: the thread
+  // enters and leaves off the edge, so no end of it shows on the page.
+  mark: { marginHorizontal: -32 },
+  tagline: { color: colors.ink, fontFamily: fonts.displayItalic, fontSize: 22 },
   body: { color: colors.ink, fontSize: 16, opacity: 0.75 },
   actions: { gap: 12, paddingBottom: 24 },
   error: { color: colors.alert, fontSize: 14 },
