@@ -31,8 +31,10 @@ them, are registered in `src/app/_layout.tsx`, and are named by role in
 `src/constants/theme.ts` — use `fonts.display` / `fonts.utility`, never a
 family string in a screen.
 
-- **Display (profile names, section headers only)**: **Lora**, a warm,
-  low-contrast serif. Regular for list rows, Medium for a profile's own name.
+- **Display (profile names, section headers, the home title only)**: **Lora**, a warm,
+  low-contrast serif. Regular for list rows, Medium for a profile's own name
+  and for "Andy" in home's navigation bar (decided 2026-10-01 over the system
+  face, a large title and the thread mark — `dev/design/home-title.html`).
   This is the one typographic flourish — don't extend it to body text or it
   stops being a signature.
 - **Body/UI**: platform default (SF Pro / Roboto), which means **setting no

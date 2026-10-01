@@ -52,6 +52,10 @@ export default function HomeScreen() {
       <Stack.Screen
         options={{
           title: "Andy",
+          // Lora, like the names in the list under it: the one heading on
+          // home that was in the system face (dev/design/home-title.html, B).
+          // Same bar and height, so the briefing card does not move.
+          headerTitleStyle: { fontFamily: fonts.displayMedium, fontSize: 20 },
           headerRight: () => (
             <Pressable
               accessibilityRole="button"
