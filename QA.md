@@ -66,6 +66,9 @@ The screen must say which of the two is about to happen, **before** saving.
 | 3.2 | Type over it with an existing name | Line changes immediately to **`Adding to … · N notes · last …`** |
 | 3.3 | Record from a profile's own `Add a note` | Header says the note goes to that person, whoever else comes up |
 | 3.4 | On a profile page, record a note that is entirely about someone else | Still filed under the profile you started from; the other person appears as a mention |
+| 3.5 | Marcus is kept as **friend**. From his page, record "Had lunch with Marcus, he just started at Stripe" | No **How you know them** or **First meeting** fields — instead *"Marcus's details stay as they are. Change them from their profile."* Save → his profile still says **friend**, and nothing new appears there that you did not see |
+| 3.6 | From home, record about a name you already keep, and answer **This X?** with them | The two fields disappear once you pick them; pick **Someone new** and they come back |
+| 3.7 | From home, record somebody nobody has | Both fields are shown and saved, as before |
 
 ## 4. Mentions
 
