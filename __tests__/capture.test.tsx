@@ -248,13 +248,13 @@ describe("capture screen review step", () => {
     jest.restoreAllMocks();
   });
 
-  test("should say Andy heard a recorded note before showing what it made of it", async () => {
+  test("should open the review with the line every way in shares", async () => {
     (useAction as jest.Mock).mockReturnValue(jest.fn(async () => makeDraft()));
     const handlers = captureListeners();
     await renderRouter("src/app", { initialUrl: "/profile/contact-1/capture" });
     await reachReview(handlers, "Emma is a branding designer.");
 
-    expect(screen.getByText(/Andy heard this\./)).toBeTruthy();
+    expect(screen.getByText(/This is what Andy will remember\./)).toBeTruthy();
   });
 
   test("should show the extracted name, key facts, and mentions for review", async () => {
@@ -1412,9 +1412,9 @@ describe("capture screen review step", () => {
       expect(extract.mock.calls[0]?.[0].text).toBe("Emma is a branding designer."),
     );
     expect(screen.getByText("What you wrote")).toBeTruthy();
-    // Nothing was heard: the note was typed, and the lead says so.
-    expect(screen.getByText(/Andy read what you wrote\./)).toBeTruthy();
-    expect(screen.queryByText(/Andy heard this/)).toBeNull();
+    // Nothing was heard: the note was typed, and the lead must not say it was.
+    expect(screen.getByText(/This is what Andy will remember\./)).toBeTruthy();
+    expect(screen.queryByText(/heard/i)).toBeNull();
 
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Save note" }));
@@ -2646,7 +2646,8 @@ describe("capture screen business card door", () => {
     // fields, only the transcript field's label and content differ.
     expect(screen.getByDisplayValue("Sarah Chen")).toBeTruthy();
     expect(screen.getByText("What the card says")).toBeTruthy();
-    expect(screen.getByText(/Andy read this from the card\./)).toBeTruthy();
+    expect(screen.getByText(/This is what Andy will remember\./)).toBeTruthy();
+    expect(screen.queryByText(/heard/i)).toBeNull();
     expect(screen.getByDisplayValue(cardText)).toBeTruthy();
 
     await act(async () => {
@@ -2658,6 +2659,42 @@ describe("capture screen business card door", () => {
     expect(call.source).toBe("business_card");
     expect(call.transcript).toBe(cardText);
     expect(call.draft.primary.name).toBe("Sarah Chen");
+  });
+
+  // Found on the simulator 2026-10-01: while a card was being read, the
+  // screen behind it still said "Tap record and say what you want to
+  // remember", an instruction to do something else entirely.
+  test("should say it is reading the card while the card is being read", async () => {
+    const { draft, cardText } = makeCardDraft();
+    let finish: (value: { draft: Draft; cardText: string }) => void = () => {};
+    const readCard = jest.fn(
+      () => new Promise<{ draft: Draft; cardText: string }>((resolve) => { finish = resolve; }),
+    );
+    mockActions({ readCard });
+    mockAlert("Take a photo");
+    (ImagePicker.requestCameraPermissionsAsync as jest.Mock).mockResolvedValueOnce({
+      granted: true,
+    });
+    (ImagePicker.launchCameraAsync as jest.Mock).mockResolvedValueOnce({
+      canceled: false,
+      assets: [{ base64: "fake-base64-jpeg-data" }],
+    });
+
+    const result = renderRouter("src/app", { initialUrl: "/profile/contact-1/capture" });
+    await result;
+
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Scan a business card" }));
+    });
+    await waitFor(() => expect(readCard).toHaveBeenCalledTimes(1));
+
+    expect(screen.getByText("Reading the card…")).toBeTruthy();
+    expect(screen.queryByText(/Tap record/)).toBeNull();
+
+    await act(async () => {
+      finish({ draft, cardText });
+    });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Save note" })).toBeTruthy());
   });
 
   test("should name the door it came through when asking about a changed card", async () => {

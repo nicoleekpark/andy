@@ -764,6 +764,11 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
         return;
       }
 
+      // Set before the read, not after it: the waiting screen says what it is
+      // reading, and it can only do that if it already knows it is a card.
+      // Recording and typing each set their own source, so a failed read
+      // leaves nothing stale behind.
+      setSource("business_card");
       setPhase("extracting");
       try {
         // `base64` is documented as the image's JPEG data regardless of the
@@ -773,7 +778,6 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
         setDraft(result.draft);
         setTranscript(result.cardText);
         setReadTranscript(result.cardText);
-        setSource("business_card");
         setPhase("review");
       } catch (e) {
         setError(
@@ -1240,15 +1244,14 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
           contentContainerStyle={styles.reviewContent}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Says how the words came in. "Heard" on a note somebody typed
-              reads as Andy claiming a microphone it never used. */}
+          {/* One line for every way in — voice, typing, a card, whatever comes
+              next. "Andy heard this" was wrong for two of the three, and "fix
+              anything that isn't right" cast Andy as error-prone and the user
+              as its proofreader. This frames checking as keeping: it is their
+              memory, and nothing is kept until they say (decided 2026-10-01). */}
           <Text style={styles.lead}>
-            {source === "business_card"
-              ? "Andy read this from the card."
-              : source === "manual"
-                ? "Andy read what you wrote."
-                : "Andy heard this."}{" "}
-            Fix anything that isn&apos;t right before it&apos;s saved.
+            This is what Andy will remember. Change anything before it&apos;s
+            kept.
           </Text>
 
           <Field label="Name">
@@ -1829,6 +1832,12 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
             <Text style={styles.empty}>
               {listening
                 ? "Listening — say what's new."
+                : phase === "extracting"
+                  ? // A card is read from this screen, so without this the
+                    // invitation to record sat behind the whole wait.
+                    source === "business_card"
+                    ? "Reading the card…"
+                    : "Reading it back…"
                 : scopeMissing
                   ? "Andy doesn't have anyone by that link."
                   : scopeLoading
