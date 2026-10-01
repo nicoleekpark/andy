@@ -85,6 +85,21 @@ export default function SearchScreen() {
   // reach it. So "retrieved something, cited none" is a common shape, and the
   // label must not point at marks that are not there.
   const cited = results?.some((result) => result.used) ?? false;
+  /**
+   * Once the answer cites something, the notes it did not use are folded
+   * behind one line rather than listed under it. Listed, a climbing gym sat
+   * under an answer about a pottery studio and read as part of the answer.
+   * Folded, not hidden: "here is everything near your question" is still
+   * there for whoever wants to check the answer did not miss one.
+   */
+  const [showOthers, setShowOthers] = useState(false);
+  const shown = (results ?? []).filter((result) => !cited || result.used);
+  const others = (results ?? []).filter((result) => cited && !result.used);
+  const othersLabel = showOthers
+    ? "Hide the other notes"
+    : others.length === 1
+      ? "1 other note came up"
+      : `${others.length} other notes came up`;
 
   async function ask() {
     // Submit only. An embedding is a paid call on somebody else's meter, so a
@@ -98,6 +113,7 @@ export default function SearchScreen() {
     // answer is on screen while the next one is in flight. It costs nothing and
     // stops that from being the only thing standing in the way.
     setAnswer("");
+    setShowOthers(false);
     try {
       const response = await recall({ query: question.trim() });
       setAnswer(response.answer);
@@ -246,7 +262,7 @@ export default function SearchScreen() {
           ) : null
         ) : (
           <FlatList
-            data={results}
+            data={shown}
             keyExtractor={(item) => item.noteId}
             contentContainerStyle={styles.list}
             keyboardShouldPersistTaps="handled"
@@ -275,6 +291,26 @@ export default function SearchScreen() {
                   Nothing saved about that yet — try other words, or record it.
                 </Text>
               </View>
+            }
+            ListFooterComponent={
+              others.length === 0 ? null : (
+                <View testID="other-notes">
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={othersLabel}
+                    accessibilityState={{ expanded: showOthers }}
+                    onPress={() => setShowOthers((open) => !open)}
+                    style={styles.othersToggle}
+                  >
+                    <Text style={styles.othersLabel}>{othersLabel}</Text>
+                  </Pressable>
+                  {showOthers
+                    ? others.map((result) => (
+                        <ResultCard key={result.noteId} result={result} />
+                      ))
+                    : null}
+                </View>
+              )
             }
             renderItem={({ item }) => <ResultCard result={item} />}
           />
@@ -390,6 +426,8 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     marginHorizontal: 24,
   },
+  othersToggle: { paddingVertical: 12 },
+  othersLabel: { color: colors.moss, fontSize: 14 },
   personRow: {
     paddingVertical: 10,
     paddingHorizontal: 24,

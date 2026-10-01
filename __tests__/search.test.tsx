@@ -590,6 +590,57 @@ describe("search screen", () => {
     expect(screen.queryByText(/used in the answer/)).toBeNull();
   });
 
+  test("should fold the notes the answer did not use behind one line once it cites any", async () => {
+    recall.mockResolvedValue({
+      query: "pottery studio",
+      answer: "Amy is opening a pottery studio in October.",
+      results: [
+        buildResult({
+          noteId: "note-amy",
+          used: true,
+          keyFacts: ["Opening a pottery studio in October 2026"],
+          profile: { profileId: "p-amy", name: "Amy", entityType: "person" },
+        }),
+        buildResult({ noteId: "note-marcus", used: false }),
+      ],
+    });
+    await renderSearch();
+
+    await ask("pottery studio");
+
+    // What the answer rests on is in view; what it does not is not, so a
+    // climbing gym cannot read as part of an answer about pottery.
+    expect(screen.getByText("Opening a pottery studio in October 2026")).toBeTruthy();
+    expect(screen.queryByText("Runs a climbing gym in Oakland")).toBeNull();
+
+    // Folded, not dropped: one tap shows it.
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "1 other note came up" }));
+    });
+    expect(screen.getByText("Runs a climbing gym in Oakland")).toBeTruthy();
+
+    // A new question starts folded again.
+    await ask("pottery studio again");
+    expect(screen.queryByText("Runs a climbing gym in Oakland")).toBeNull();
+  });
+
+  test("should count the folded notes when there is more than one", async () => {
+    recall.mockResolvedValue({
+      query: "pottery studio",
+      answer: "Amy is opening a pottery studio in October.",
+      results: [
+        buildResult({ noteId: "note-amy", used: true }),
+        buildResult({ noteId: "note-2", used: false }),
+        buildResult({ noteId: "note-3", used: false }),
+      ],
+    });
+    await renderSearch();
+
+    await ask("pottery studio");
+
+    expect(screen.getByRole("button", { name: "2 other notes came up" })).toBeTruthy();
+  });
+
   test("should show no answer block at all when the search found nothing to answer from", async () => {
     recall.mockResolvedValue({ query: "the capital of France", answer: "", results: [] });
     await renderSearch();
