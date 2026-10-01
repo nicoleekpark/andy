@@ -1301,32 +1301,12 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
             })()}
           </Field>
 
-          <Field label="Who or what">
-            <View style={styles.row}>
-              {(["person", "animal"] as const).map((kind) => (
-                <Pressable
-                  key={kind}
-                  accessibilityRole="button"
-                  accessibilityLabel={kind === "person" ? "Person" : "Animal"}
-                  onPress={() => editPrimary({ entityType: kind })}
-                  style={[
-                    styles.choice,
-                    draft.primary.entityType === kind && styles.choiceOn,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.choiceLabel,
-                      draft.primary.entityType === kind && styles.choiceLabelOn,
-                    ]}
-                  >
-                    {kind === "person" ? "Person" : "Animal"}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </Field>
-
+          {/*
+            No Person / Animal choice in V1: Andy keeps people only, and
+            extraction already files everything as a person
+            (`peopleOnly`, convex/extractionPrompt.ts). The field comes back
+            with the later person | project | animal type.
+          */}
           <Field label="How you know them">
             <TextInput
               value={draft.primary.relationshipContext ?? ""}
@@ -2023,18 +2003,6 @@ const styles = StyleSheet.create({
   factRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
   factInput: { flex: 1 },
   quiet: { color: colors.ink, fontSize: 14, opacity: 0.55, lineHeight: 21 },
-
-  row: { flexDirection: "row", gap: 8 },
-  choice: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.line,
-    borderRadius: 999,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  choiceOn: { backgroundColor: colors.moss, borderColor: colors.moss },
-  choiceLabel: { color: colors.ink, fontSize: 14 },
-  choiceLabelOn: { color: colors.paper },
 
   candidate: {
     borderWidth: StyleSheet.hairlineWidth,

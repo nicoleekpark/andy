@@ -260,6 +260,84 @@ test("should return a parsed draft with mentions and nullable fields intact when
   expect(createMessage).toHaveBeenCalledTimes(1);
 });
 
+test("should offer no animal for review: a pet in passing is dropped, and the subject is a person", async () => {
+  const t = convexTest(schema, modules);
+  const asAlice = t.withIdentity(IDENTITY);
+
+  // The QA finding: "a second dog called Kiln" came back as a mention and the
+  // review screen offered "Kiln — New person". V1 keeps people only.
+  createMessage.mockResolvedValueOnce(
+    buildAnthropicMessage({
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            primary: {
+              name: "Biscuit",
+              entityType: "animal",
+              relationshipContext: null,
+              tags: [],
+              firstMetDate: null,
+              keyFacts: ["Settling in well"],
+            },
+            mentions: [
+              { name: "Kiln", entityType: "animal", quote: "a second dog called Kiln" },
+              { name: "Priya", entityType: "person", quote: "Priya is fostering" },
+            ],
+          }),
+          citations: null,
+        },
+      ],
+    }),
+  );
+
+  const result = await asAlice.action(api.extraction.fromTranscript, {
+    text: "Biscuit is settling in well. Priya is fostering a second dog called Kiln.",
+    today: "2026-10-01",
+  });
+
+  expect(result.mentions.map((mention) => mention.name)).toEqual(["Priya"]);
+  expect(result.primary.entityType).toBe("person");
+});
+
+test("should file a business card's subject as a person and drop an animal it mentions", async () => {
+  const t = convexTest(schema, modules);
+  const asAlice = t.withIdentity(IDENTITY);
+
+  createMessage.mockResolvedValueOnce(
+    buildAnthropicMessage({
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            draft: {
+              primary: {
+                name: "Paws & Co",
+                entityType: "animal",
+                relationshipContext: null,
+                tags: [],
+                firstMetDate: null,
+                keyFacts: [],
+              },
+              mentions: [{ name: "Rex", entityType: "animal", quote: "Rex" }],
+            },
+            cardText: "Paws & Co\nRex",
+          }),
+          citations: null,
+        },
+      ],
+    }),
+  );
+
+  const result = await asAlice.action(api.extraction.fromBusinessCard, {
+    imageBase64: "ZmFrZS1pbWFnZS1kYXRh",
+    mediaType: "image/jpeg",
+  });
+
+  expect(result.draft.primary.entityType).toBe("person");
+  expect(result.draft.mentions).toEqual([]);
+});
+
 test("should throw a ConvexError instead of a JSON parse crash when stop_reason is refusal", async () => {
   const t = convexTest(schema, modules);
   const asAlice = t.withIdentity(IDENTITY);

@@ -76,6 +76,8 @@ The screen must say which of the two is about to happen, **before** saving.
 | 4.3 | A mention whose name was misheard | Under it: **`New person …`** — this is what makes it fixable before saving |
 | 4.4 | Correct that mention's name | Line changes to `Adding to …` |
 | 4.5 | Edit a mention's quote, then save | Corrected quote appears on **both** profiles |
+| 4.6 | "Had coffee with Priya. She is fostering a second dog called Kiln." | `ALSO CAME UP` lists **nobody** — Kiln is not offered as a new person. "Kiln" is still in the note's own text. V1 keeps people only (2026-10-01) |
+| 4.7 | On the review screen and in a profile's Edit | **No "Who or what" / Person / Animal** choice on either. A profile saved as an animal before this still says `animal` on its page and stays one after an edit |
 
 ## 5. Two people, one name
 

@@ -283,6 +283,28 @@ export const MAX_NAME_CHARS = 120;
 export type Draft = Infer<typeof draftValidator>;
 
 /**
+ * V1 keeps people only (decided 2026-10-01).
+ *
+ * The model still tells people and animals apart — the schema keeps
+ * `animal`, and a later `person | project | animal` turns this back off — but
+ * nothing new is created as an animal, and an animal that only came up in
+ * passing is not offered at all. "a second dog called Kiln" was showing on the
+ * review screen as *Kiln — New person*, a category mistake made in front of
+ * the user; its name still lives in the note's own text.
+ *
+ * Applied to what extraction returns, so the review screen and `saveCapture`
+ * act on the same list — the screen never asks about a name the save then
+ * skips, or the other way round.
+ */
+export function peopleOnly(draft: Draft): Draft {
+  return {
+    ...draft,
+    primary: { ...draft.primary, entityType: "person" },
+    mentions: draft.mentions.filter((mention) => mention.entityType !== "animal"),
+  };
+}
+
+/**
  * The card reader's instructions.
  *
  * A separate prompt from the voice one because the input is a different kind of
