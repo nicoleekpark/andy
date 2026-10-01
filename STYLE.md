@@ -50,6 +50,14 @@ after first paint reflows every name and date on every cold start. A font that
 fails to load falls through to the platform face rather than holding the splash
 forever — an entire screen lost to a typeface is the worse failure.
 
+## Spacing
+
+Added 2026-10-01 (`space` in `src/constants/theme.ts`): **xs 4 · sm 8 · md 12 ·
+lg 16 · xl 24 · xxl 32 · xxxl 48** points. The scale is the one the screens were
+already using most, written down so new layout stops picking numbers. Existing
+screens move onto it as they are touched — not in a sweep, which would be a
+diff nobody can review for the one value that changed.
+
 ## Signature Element — spend the one risk here
 
 The **Briefing card** (pre-meeting digest / post-meeting nudge) is the single place that looks different from everything else — and it survived the day-4 scope cut precisely because it is the app's signature, not despite it: a `brass` left-edge accent stripe and a `brass` timestamp. Every other screen — profile list, search results, settings — stays plain and disciplined. Don't spread this treatment elsewhere or it stops being a signature.
@@ -103,6 +111,26 @@ thing Andy keeps for you. Inside the app the rule is unchanged.
 
 Kept plain on purpose. Yarn balls, spirals, wraps and knit textures were all
 tried on 2026-09-30 and all read as odd; the thread says enough on its own.
+
+## Launch thread — the loop while Andy gets ready
+
+Decided 2026-09-30/10-01, `src/components/launch-thread.tsx`, used by
+`connecting.tsx`. The iOS launch screen is a still image (the loop, fading at
+both ends, on paper). The screen that takes over shows **the same loop in the
+same spot** from its first frame, so launching reads as one surface rather than
+a cut to blank paper. Only if Andy is still connecting after 1.5 s does the
+thread move: it **passes through** — draws in from the left, holds as the whole
+loop for a beat, leaves to the right, and again (~2.4 s a pass). It never rests
+on a finished state, so nobody mistakes it for done. At the 20 s failure screen
+it is gone; Reduce Motion keeps it still, and it does not move until the system
+has said which.
+
+**This reverses the platform spinner**, chosen earlier because it followed
+Reduce Motion for free, spent none of the Briefing card's signature, and
+belonged to the phone. Each is answered rather than dropped: Reduce Motion is
+honoured by hand, brass is the thread before sign-in (Color Tokens), and the
+words under it stay in the system face. Three bouncing dots stay rejected —
+messaging apps taught them to mean someone is typing.
 
 ## One Structural Idea
 
