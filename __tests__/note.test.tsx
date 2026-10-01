@@ -122,6 +122,34 @@ describe("note screen", () => {
     expect(screen.queryByRole("button", { name: "Edit this note" })).toBeNull();
   });
 
+  test("should come back to reading the note after saving an edit started there", async () => {
+    // Only the note answers; search's own name lookup stays quiet.
+    (useQuery as jest.Mock).mockImplementation((reference: unknown) =>
+      getFunctionName(reference as never) === "notes:byId" ? savedNote() : undefined,
+    );
+    const updateNote = jest.fn(async () => null);
+    mockUpdateNote(updateNote);
+
+    // Search underneath, as a Came up in result is reached.
+    const result = renderRouter("src/app", { initialUrl: "/search" });
+    await result;
+    await act(async () => {
+      router.push("/note/note-1");
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Edit this note" }));
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Save changes" }));
+    });
+
+    await waitFor(() => expect(updateNote).toHaveBeenCalledTimes(1));
+    // Still on the note, reading it — not dropped back on search.
+    expect(result.getPathname()).toBe("/note/note-1");
+    expect(screen.getByRole("button", { name: "Edit this note" })).toBeTruthy();
+    expect(screen.queryByLabelText("Fact 1")).toBeNull();
+  });
+
   test("should open straight into editing from the timeline's Edit", async () => {
     (useQuery as jest.Mock).mockImplementation((reference: unknown) =>
       getFunctionName(reference as never) === "notes:byId"

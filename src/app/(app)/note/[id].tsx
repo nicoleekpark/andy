@@ -98,6 +98,17 @@ export default function NoteScreen() {
     try {
       await updateNote({ noteId: id, ...working });
 
+      // Opened to read and switched to editing here: the note is what the
+      // person came for, so saving puts the corrected note back in front of
+      // them. Leaving would drop them on search, a step further back than
+      // where they pressed Edit.
+      if (editParam !== "1") {
+        setEdits(null);
+        setEditRequested(false);
+        setSaving(false);
+        return;
+      }
+
       // Normally this screen was opened from the timeline it edits, so closing
       // it puts the corrected note back in view — Convex queries are live, so
       // what is underneath already shows the change. Opened straight from a
@@ -118,7 +129,7 @@ export default function NoteScreen() {
       );
       setSaving(false);
     }
-  }, [id, working, updateNote, profileId]);
+  }, [id, working, updateNote, profileId, editParam]);
 
   /**
    * Deleting, behind a confirmation, because it cannot be undone.
