@@ -167,6 +167,17 @@ The per-profile **timeline** is genuinely sequential data (notes in time order),
 
 Plain verbs, active voice, no filler. "Remember this," not "Submit." Empty states are invitations, not apologies: "No notes yet — tap record to remember your first person," not "No data available." Errors state what happened and what to do, in the interface's voice, never "Oops!"
 
+**Capitalisation (decided 2026-10-01).** Sentence case everywhere a person
+reads: titles, buttons, labels, placeholders, alerts — only the first word
+capitalised ("Save changes", "Delete this note?"), never Title Case ("Save
+Changes"). Names and "Andy" keep their capitals. Two deliberate exceptions:
+a **meta line** — fragments joined by `·`, such as `friend · 3 notes ·
+2026-09-22` or `also Em` — is all lowercase, because it is a record, not a
+sentence; and section labels are written in sentence case and only *drawn* in
+capitals by `textTransform: "uppercase"`. **One action, one name**: the
+button that does it, the link that starts it and the confirmation that asks
+about it use the same words.
+
 ## Voice — remembering, never collecting
 
 Decided 2026-09-30. Andy holds notes about people who never signed up for it.

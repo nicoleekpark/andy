@@ -101,7 +101,7 @@ export default function AppLayout() {
     >
       <Stack.Screen name="index" options={{ title: "Andy" }} />
       <Stack.Screen name="capture" options={{ title: "New note" }} />
-      <Stack.Screen name="search" options={{ title: "Search" }} />
+      <Stack.Screen name="search" options={{ title: "Ask Andy" }} />
       <Stack.Screen name="settings" options={{ title: "Settings" }} />
       {/* Titled from the note's own profile once it loads, so this is only the
           placeholder shown for the moment before the query lands. */}
