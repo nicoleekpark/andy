@@ -485,6 +485,7 @@ this replaces could not answer `oneill` for `O'Neill`, or `선희` for `지선�
 | 20.2 | Tap a row | Their profile opens | ✅ — simulator, 2026-09-30 |
 | 20.3 | A name only **one** person has | Still a list to tap, not a jump. "There is only one Judy" is itself worth seeing — and this app does not decide who you meant | ✅ — simulator, 2026-09-30: one Judy, still a list |
 | 20.4 | A name **two** people have | Both, best match first, and equal matches in alphabetical order. Each row shows their relationship and note count so you can tell them apart | ✅ — simulator, 2026-09-30: "marcus" → three Marcuses. ⚠ Two rows read identically ("Marcus · 1 note") — see the pass log |
+| 20.4a | **Home**, with two people of the same name who each have a note | Under each name, **their latest remembered fact**, word for word as saved, on one line (cut off with … when long). The two rows no longer read the same. A person whose notes have no facts shows no extra line. Not yet on Search's People rows |
 | 20.5 | `ONEILL`, `oneill`, `o'neill`, `judy o`, `neill` for a `Judy O'Neill` | **All five find her.** Case, spacing and punctuation are ignored | ✅ — simulator, 2026-09-30: all five, including o'neill typed with iOS's curly apostrophe |
 | 20.6 | `judy o` when you keep a `Judy Park` too | **Only O'Neill.** More typed is fewer results, not more | ⬜ |
 | 20.7 | `선희` when you keep `지선희` | Found. A script with no spaces has no mid-word prefix for a tokeniser — this is the case that disqualified the index | ⬜ |

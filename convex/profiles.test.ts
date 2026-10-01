@@ -190,6 +190,55 @@ test("should exclude a profile that exists only because it was mentioned in anot
   expect(result[0]?.profile.name).toBe("Nina");
 });
 
+test("should carry each person's latest saved fact, verbatim, skipping notes that have none", async () => {
+  const t = convexTest(schema, modules);
+  const aliceUserId = await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  await t.run(async (ctx) => {
+    const add = (name: string) =>
+      ctx.db.insert("profiles", {
+        userId: aliceUserId,
+        name,
+        entityType: "person",
+        tags: [],
+        autoCreated: false,
+      });
+    const marcus = await add("Marcus");
+    const nina = await add("Nina");
+    const note = (
+      profileId: typeof marcus,
+      createdAt: number,
+      keyFacts?: string[],
+    ) =>
+      ctx.db.insert("notes", {
+        userId: aliceUserId,
+        profileId,
+        text: "A note.",
+        source: "voice",
+        createdAt,
+        keyFacts,
+      });
+    // Inserted out of date order, so "last inserted" and "latest" differ.
+    await note(marcus, 30, ["Opening a gym in Oakland", "Has a dog"]);
+    await note(marcus, 10, ["Climbs on Sundays"]);
+    // Newer, but nothing remembered in it: not a line worth showing.
+    await note(marcus, 40, ["   "]);
+    await note(marcus, 50);
+    await note(nina, 5);
+  });
+
+  const result = await asAlice.query(api.profiles.people, {});
+  const byName = Object.fromEntries(
+    result.map((row) => [row.profile.name, row.latestFact]),
+  );
+
+  expect(byName).toEqual({
+    Marcus: "Opening a gym in Oakland",
+    Nina: null,
+  });
+});
+
 test("should list people A to Z then 가 to 힣, whatever order they were written about in, and count only each profile's own notes", async () => {
   const t = convexTest(schema, modules);
   const aliceUserId = await ensureUser(t, ALICE);

@@ -43,6 +43,7 @@ function buildPerson(overrides: Partial<Record<string, unknown>> = {}) {
     },
     lastNoteAt: new Date("2026-08-20").getTime(),
     noteCount: 1,
+    latestFact: null,
     ...overrides,
   };
 }
@@ -153,6 +154,29 @@ describe("home screen", () => {
 
     expect(screen.getByText("Nina")).toBeTruthy();
     expect(screen.getByText("Marcus")).toBeTruthy();
+  });
+
+  test("should show the latest saved fact under a name, and nothing when there is none", async () => {
+    mockPeopleQuery([
+      buildPerson({
+        profile: { _id: "p-1", name: "Marcus" },
+        latestFact: "Opening a gym in Oakland",
+      }),
+      buildPerson({ profile: { _id: "p-2", name: "Nina" } }),
+    ]);
+
+    const result = renderRouter("src/app", { initialUrl: "/" });
+    await result;
+
+    const fact = screen.getByText("Opening a gym in Oakland");
+    // One line: the profile is where the rest is.
+    expect(fact.props.numberOfLines).toBe(1);
+    // Nina has none, so her row says nothing rather than an empty line.
+    expect(screen.getAllByText(/Opening a gym/)).toHaveLength(1);
+    expect(
+      screen.getByRole("button", { name: "Marcus, Opening a gym in Oakland" }),
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Nina" })).toBeTruthy();
   });
 
   test("should route to that person's profile when a row is tapped", async () => {
