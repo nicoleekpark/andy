@@ -60,5 +60,8 @@ export function NameMark({ style }: { style?: StyleProp<ViewStyle> }) {
 }
 
 const styles = StyleSheet.create({
-  box: { width: "100%", aspectRatio: WIDTH / HEIGHT },
+  // Stretched, not `width: "100%"`: a percentage is of the parent's content
+  // box, so a caller's negative margins only moved it left and the thread
+  // stopped short of the right edge (seen on the simulator, 2026-09-30).
+  box: { alignSelf: "stretch", aspectRatio: WIDTH / HEIGHT },
 });
