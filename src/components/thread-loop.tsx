@@ -32,7 +32,7 @@ export function ThreadLoop({
   motion: ThreadMotion;
   width?: number;
 }) {
-  const { offset, animated, state } = useThreadMotion(motion, GEOMETRY.length);
+  const { offset, state } = useThreadMotion(motion, GEOMETRY.length);
   // Per instance: SVG gradient ids are document-wide, and two threads on
   // screen at once would otherwise paint with each other's gradient.
   const id = useId().replace(/:/g, "");
@@ -68,7 +68,7 @@ export function ThreadLoop({
         <ThreadPaths
           d={LOOP}
           geometry={GEOMETRY}
-          offset={animated ? offset : null}
+          offset={offset}
           width={6.4}
           stroke={`url(#${fade})`}
           twistWidth={1.4}

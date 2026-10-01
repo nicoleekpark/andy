@@ -35,7 +35,7 @@ const GEOMETRY = threadGeometry(NAME_MARK_PATH, { on: 1.8, off: 2.6 });
  * (STYLE.md → Thread motion). Without it the mark is simply there.
  */
 export function NameMark({ style, draw = false }: { style?: StyleProp<ViewStyle>; draw?: boolean }) {
-  const { offset, animated, state } = useThreadMotion(draw ? "draw" : "still", GEOMETRY.length);
+  const { offset, state } = useThreadMotion(draw ? "draw" : "still", GEOMETRY.length);
   return (
     // One element to assistive tech: the app's name as the screen's heading.
     // The drawing inside says nothing a screen reader could use.
@@ -51,7 +51,7 @@ export function NameMark({ style, draw = false }: { style?: StyleProp<ViewStyle>
         <ThreadPaths
           d={NAME_MARK_PATH}
           geometry={GEOMETRY}
-          offset={animated ? offset : null}
+          offset={offset}
           width={4.4}
           stroke={colors.brass}
           twistWidth={1}

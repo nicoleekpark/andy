@@ -1,10 +1,11 @@
 import { act, fireEvent, screen } from "@testing-library/react-native";
-import { AccessibilityInfo, Animated } from "react-native";
+import { AccessibilityInfo } from "react-native";
 import { useQuery } from "convex/react";
 import { getFunctionName } from "convex/server";
 import { renderRouter } from "expo-router/testing-library";
 import { api } from "@convex/_generated/api";
 import { forgetSession } from "@/lib/use-once-per-session";
+import { drawn } from "../test-support/drawn";
 
 /**
  * src/app/(app)/index.tsx's three branches — loading, empty, populated — are
@@ -80,16 +81,28 @@ describe("home screen", () => {
 
   // The empty home greets you once: the loop draws itself the first time it
   // appears in a run of the app, then rests; after that it is simply there.
+  // Measured by what is drawn over time, not by whether an animation was
+  // asked for (an Animated version passed that while sitting blank).
   test("should draw the loop the first time the empty home appears, and not again", async () => {
+    jest.useFakeTimers();
     mockPeopleQuery([]);
-    const timing = jest.spyOn(Animated, "timing");
 
     const first = renderRouter("src/app", { initialUrl: "/" });
     await first;
     await act(async () => {});
-
     expect(screen.getByTestId("thread-loop-drawing", HIDDEN)).toBeTruthy();
-    expect(timing).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+    const midway = drawn("thread-loop-drawing");
+    await act(async () => {
+      jest.advanceTimersByTime(1_200);
+    });
+    const written = drawn("thread-loop-drawing");
+    // Part-way: more than the bare thread (1 path, nothing of the twist yet)
+    // and less than all of it. Blank-then-whole fails the first half.
+    expect(midway).toBeGreaterThan(1);
+    expect(midway).toBeLessThan(written);
 
     // A second render in the same test is the second appearance: `screen`
     // follows the latest render. Fine here because only the second tree is
@@ -99,20 +112,27 @@ describe("home screen", () => {
     await act(async () => {});
 
     expect(screen.getByTestId("thread-loop-still", HIDDEN)).toBeTruthy();
-    expect(timing).toHaveBeenCalledTimes(1);
+    expect(drawn("thread-loop-still")).toBe(written);
+    jest.useRealTimers();
   });
 
   test("should not draw the loop when Reduce Motion is on", async () => {
+    jest.useFakeTimers();
     (AccessibilityInfo.isReduceMotionEnabled as jest.Mock).mockResolvedValueOnce(true);
     mockPeopleQuery([]);
-    const timing = jest.spyOn(Animated, "timing");
 
     const result = renderRouter("src/app", { initialUrl: "/" });
     await result;
     await act(async () => {});
+    const at = drawn("thread-loop-still");
+    await act(async () => {
+      jest.advanceTimersByTime(800);
+    });
 
     expect(screen.getByTestId("thread-loop-still", HIDDEN)).toBeTruthy();
-    expect(timing).not.toHaveBeenCalled();
+    expect(at).toBeGreaterThan(10);
+    expect(drawn("thread-loop-still")).toBe(at);
+    jest.useRealTimers();
   });
 
   test("should render a row for each person when the query resolves", async () => {

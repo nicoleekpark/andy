@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Animated, Easing } from "react-native";
 import { useReduceMotion } from "@/lib/use-reduce-motion";
 
 /**
@@ -10,48 +9,66 @@ import { useReduceMotion } from "@/lib/use-reduce-motion";
  * - `draw`: writes itself once and stays — a greeting (sign-in, the empty
  *   home), never a loop, so it does not keep pulling at the eye.
  *
- * Returns the dash offset to drive and whether to draw the animated version.
- * Under Reduce Motion everything is `still`. While the system has not said,
- * `pass` shows the still thread, and `draw` keeps the thread hidden (offset
- * at its full length) so it neither flashes in nor starts moving before the
- * answer.
+ * Returns the dash offset to draw with (null = drawn still) and the state.
+ * Under Reduce Motion everything is still. While the system has not said,
+ * `pass` shows the still thread and `draw` keeps the thread hidden, so it
+ * neither flashes in nor starts moving before the answer.
+ *
+ * Driven frame by frame with requestAnimationFrame and plain state, not
+ * Animated: under the new architecture a JS-driven Animated value on an SVG
+ * dash offset committed only its final value, so `draw` sat blank for its
+ * whole duration and then appeared at once (seen on the simulator,
+ * 2026-10-01). Re-rendering a few dozen paths a frame for a second or two is
+ * cheap, and it is the same on every renderer and in tests.
  */
 export type ThreadMotion = "still" | "pass" | "draw";
 
-const DRAW_MS = 1080;
-const HOLD_MS = 240;
-const WRITE_MS = 1500;
+export const DRAW_MS = 1080;
+export const HOLD_MS = 240;
+export const WRITE_MS = 1500;
+
+const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
+
+/** Where the dash sits `elapsed` ms into a motion; `length` = hidden, 0 = drawn. */
+export function offsetAt(motion: "pass" | "draw", elapsed: number, length: number): number {
+  if (motion === "draw") {
+    return length * (1 - ease(Math.min(elapsed / WRITE_MS, 1)));
+  }
+  const t = elapsed % (DRAW_MS + HOLD_MS + DRAW_MS);
+  if (t < DRAW_MS) return length * (1 - ease(t / DRAW_MS));
+  if (t < DRAW_MS + HOLD_MS) return 0;
+  return -length * ease((t - DRAW_MS - HOLD_MS) / DRAW_MS);
+}
 
 export function useThreadMotion(motion: ThreadMotion, length: number) {
   const reduceMotion = useReduceMotion();
-  // One Animated.Value for the component's life. State, not a ref: it is read
-  // while rendering, which the compiler's rules forbid a ref for.
-  const [offset] = useState(() => new Animated.Value(length));
+  const [offset, setOffset] = useState(length);
 
   const animated =
     motion === "pass" ? reduceMotion === false : motion === "draw" ? reduceMotion !== true : false;
   const running = animated && reduceMotion === false;
 
   useEffect(() => {
-    if (!running) {
+    if (!running || motion === "still") {
       return;
     }
-    offset.setValue(length);
-    const ease = Easing.inOut(Easing.cubic);
-    const run =
-      motion === "pass"
-        ? Animated.loop(
-            Animated.sequence([
-              Animated.timing(offset, { toValue: 0, duration: DRAW_MS, easing: ease, useNativeDriver: false }),
-              Animated.delay(HOLD_MS),
-              Animated.timing(offset, { toValue: -length, duration: DRAW_MS, easing: ease, useNativeDriver: false }),
-              Animated.timing(offset, { toValue: length, duration: 0, useNativeDriver: false }),
-            ]),
-          )
-        : Animated.timing(offset, { toValue: 0, duration: WRITE_MS, easing: ease, useNativeDriver: false });
-    run.start();
-    return () => run.stop();
-  }, [running, motion, length, offset]);
+    let frame = 0;
+    let start: number | null = null;
+    const tick = (now: number) => {
+      start ??= now;
+      const elapsed = now - start;
+      setOffset(offsetAt(motion, elapsed, length));
+      // `draw` stops when written; `pass` goes on until unmounted or stilled.
+      if (motion === "pass" || elapsed < WRITE_MS) {
+        frame = requestAnimationFrame(tick);
+      }
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [running, motion, length]);
 
-  return { offset, animated, state: !animated ? "still" : motion === "pass" ? "moving" : "drawing" } as const;
+  return {
+    offset: animated ? offset : null,
+    state: !animated ? "still" : motion === "pass" ? "moving" : "drawing",
+  } as const;
 }

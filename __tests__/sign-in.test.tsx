@@ -5,6 +5,7 @@ import { useAuth } from "@clerk/expo";
 import { useSignInWithApple } from "@clerk/expo/apple";
 import { renderRouter } from "expo-router/testing-library";
 import { STUCK_AFTER_MS } from "@/app/(auth)/sign-in";
+import { drawn } from "../test-support/drawn";
 
 /**
  * src/app/(auth)/sign-in.tsx wires expo-apple-authentication's button to
@@ -45,10 +46,30 @@ describe("sign-in screen", () => {
   // The name writes itself once as the screen appears — a greeting in the
   // launch loop's own motion, then still (STYLE.md → Thread motion).
   test("should write the name mark once as the screen appears", async () => {
+    jest.useFakeTimers();
     await renderSignIn();
     await act(async () => {});
-
     expect(screen.getByTestId("name-mark-drawing")).toBeTruthy();
+
+    // Written gradually, then finished: what is drawn grows, then stops.
+    await act(async () => {
+      jest.advanceTimersByTime(600);
+    });
+    const midway = drawn("name-mark-drawing");
+    await act(async () => {
+      jest.advanceTimersByTime(1_200);
+    });
+    const written = drawn("name-mark-drawing");
+    await act(async () => {
+      jest.advanceTimersByTime(1_000);
+    });
+
+    // Part-way: more than the bare thread (1 path, nothing of the twist yet)
+    // and less than all of it. Blank-then-whole fails the first half.
+    expect(midway).toBeGreaterThan(1);
+    expect(midway).toBeLessThan(written);
+    expect(drawn("name-mark-drawing")).toBe(written);
+    jest.useRealTimers();
   });
 
   test("should show the name mark still when Reduce Motion is on", async () => {
