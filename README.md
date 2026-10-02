@@ -50,6 +50,10 @@ through EAS instead. The reason is in the Commands section.
 
 ### Environment variables
 
+**The full map — every key, which environment it lives in, its restrictions, spend
+limits, and what to do if one leaks — is [`ENVIRONMENTS.md`](ENVIRONMENTS.md).** The short
+version for a fresh machine:
+
 Set in the Convex dashboard (server-side, never in the Expo app):
 
 ```
@@ -141,7 +145,7 @@ permission string, the bundle id. Never for JS changes.
 | `npx convex dev` | While working on backend code | Watches `convex/`, pushes, and regenerates `convex/_generated`. |
 | `npm run db` | Checking what actually got written | Opens the deployment dashboard. Its Data tab updates live as rows are written, which is the only way to see the checks that pass by *nothing* changing — saving a second note about someone must add a `notes` row and leave `profiles` alone. Its Logs tab carries the server-side reason behind a failed save. |
 | `npx convex codegen` | After editing `schema.ts` without `convex dev` running | Regenerates the generated types. It does contact the deployment, so it is not purely local. |
-| `npx convex env set NAME value` | Adding a server-side secret | Deployment env vars — this is the only place `ANTHROPIC_API_KEY` may live. |
+| Dashboard → deployment → Settings → Environment Variables | Adding a server-side **secret** | Deployment env vars are the only place a secret may live. Entered in the dashboard, not `npx convex env set NAME value`, which leaves the value in shell history. `env set` is fine for a non-secret such as the Clerk issuer URL. See `ENVIRONMENTS.md`. |
 | `npx convex env get NAME` | Checking one variable | Use this, **not `npx convex env list`** — the list form prints every value in full, including API keys. |
 
 ### Poking at the running app
@@ -167,9 +171,17 @@ npx expo whoami || npx expo login                                 # the server n
 
 | Command | When | Why |
 | --- | --- | --- |
-| `npx convex deploy` | Shipping backend changes to production | Separate from the app build; the two deploy independently. |
-| `eas build --profile production --platform ios` | Release build | Run the `eas-release-checklist` skill and the `app-store-reviewer` subagent first. |
-| `eas submit --platform ios` | Uploading to App Store Connect | Never without the two checks above. |
+| `npm run deploy:backend` | Shipping backend changes to the Production deployment (`agile-dogfish-759`) — what TestFlight testers use | `convex deploy`. Separate from the app build; the two deploy independently. Production only changes when someone runs this. |
+| `npm run build:ios:testflight` | A TestFlight / release build | `eas build --profile production`. Uses the EAS `production` env (Production backend). Run the `app-store-reviewer` subagent first. 15 iOS builds a month on the free plan — batch fixes. |
+| `npm run submit:ios` | Uploading the latest build to App Store Connect | `eas submit --latest`. Never without the check above. |
+
+### Shipping a QA build to TestFlight
+
+1. `git checkout main && git pull`, then `npm run deploy:backend` — confirm the prompt names `agile-dogfish-759`.
+2. `npm run build:ios:testflight` (about 10–15 min in EAS's cloud).
+3. `npm run submit:ios`. The first time asks for your Apple ID and creates the app in App Store Connect if needed. Apple then processes the build (10–30 min, an email arrives).
+4. App Store Connect → Users and Access: add testers (Developer role). Andy → TestFlight → Internal Testing: a group (e.g. `V1 QA`), the testers, the build, and a **What to Test** note. Internal testers need no Apple review; they install the TestFlight app and accept the email.
+5. Each later round: deploy the backend, build, submit — testers just tap Update.
 
 ## Commit Convention
 
