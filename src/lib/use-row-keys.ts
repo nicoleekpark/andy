@@ -1,5 +1,7 @@
 import { useCallback, useState } from "react";
 
+// One counter for every list in the app. Keys only need to differ among
+// siblings; a shared counter is the simplest way to never hand one out twice.
 let issued = 0;
 
 function issue(): number {
@@ -16,9 +18,11 @@ function issue(): number {
  * only on screen. The list itself stays a plain array of strings, so nothing
  * sent to the server changes.
  *
- * Rows added at the end get a fresh key on their own; rows dropped from the
- * end lose theirs. A removal from the middle has to say which row went, so call
- * `removeKey(index)` in the same handler that removes it from the list.
+ * Rows added at the end get a fresh key on their own. A removal from the
+ * middle has to say which row went, so call `removeKey(index)` in the same
+ * handler that removes it from the list. Without that call, a shorter list is
+ * assumed to have lost its *last* rows — a fallback for a list replaced
+ * wholesale, not a way to remove one.
  */
 export function useRowKeys(length: number): {
   keys: number[];
