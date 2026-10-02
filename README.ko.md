@@ -51,6 +51,9 @@ npx convex dev             # Convex 개발 배포를 시작하고 convex/_genera
 
 ### 환경변수
 
+**전체 지도 — 키마다 어느 환경에 있는지, 어떤 제한과 지출 한도를 걸었는지, 유출되면 어떻게
+하는지 — 는 [`ENVIRONMENTS.md`](ENVIRONMENTS.md) 에 있다.** 새 머신을 위한 요약만:
+
 Convex 대시보드에 설정 (서버사이드, Expo 앱에는 절대 넣지 않음):
 
 ```
@@ -141,7 +144,7 @@ convex/             # schema.ts, functions (queries/mutations/actions), vector i
 | `npx convex dev` | 백엔드 작업 중 | `convex/` 를 감시하며 푸시하고 `convex/_generated` 를 재생성한다. |
 | `npm run db` | 실제로 뭐가 써졌는지 볼 때 | 배포 대시보드를 연다. Data 탭이 행이 써지는 즉시 갱신되는데, **아무것도 안 바뀌는 것이 성공인 검사**는 이걸로만 확인된다 — 같은 사람에 대한 두 번째 노트는 `notes` 를 한 행 늘리고 `profiles` 는 그대로 둬야 한다. Logs 탭에는 저장이 실패했을 때 서버 쪽 이유가 찍힌다. |
 | `npx convex codegen` | `convex dev` 없이 `schema.ts` 를 고쳤을 때 | 생성 타입을 다시 만든다. 배포에 접속하므로 순수 로컬 작업은 아니다. |
-| `npx convex env set NAME value` | 서버 측 비밀을 넣을 때 | 배포 환경변수. `ANTHROPIC_API_KEY` 가 있어도 되는 유일한 장소. |
+| 대시보드 → 배포 → Settings → Environment Variables | 서버 측 **비밀**을 넣을 때 | 비밀이 있어도 되는 유일한 장소. 대시보드에서 입력할 것 — `npx convex env set NAME value` 는 값이 셸 기록에 남는다. Clerk issuer URL 처럼 비밀이 아닌 값은 `env set` 으로 넣어도 된다. `ENVIRONMENTS.md` 참고. |
 | `npx convex env get NAME` | 변수 하나 확인할 때 | 이걸 쓸 것. **`npx convex env list` 는 쓰지 말 것** — 목록 형태는 API 키를 포함해 모든 값을 그대로 출력한다. |
 
 ### 돌아가는 앱 들여다보기
@@ -149,8 +152,8 @@ convex/             # schema.ts, functions (queries/mutations/actions), vector i
 | 명령어 | 언제 | 왜 |
 | --- | --- | --- |
 | `xcrun simctl openurl booted "andy:///search"` | 화면으로 바로 뛰어들 때, 또는 아직 링크가 없는 화면에 들어갈 때 | **슬래시 세 개.** `andy://search` 는 `search` 를 URL 호스트로 해석하므로, `andy://profile/abc` 같은 중첩 경로는 에러 없이 조용히 홈 화면에 머문다. |
-| `npx convex run search:recall '{"query":"…"}' --identity '{"tokenIdentifier":"…","subject":"…","issuer":"…"}'` | **로그인 상태로** 백엔드 함수를 터미널에서 돌릴 때 | Day 5에 찾은 가장 쓸모 있는 것. `--identity` 없이는 인증이 필요한 함수가 전부 `You're signed out.` 만 답하고, 그래서 백엔드를 앱 밖에서 시험할 방법이 없었다. `tokenIdentifier` 는 `npm run db` → Data → `users` 에서 복사. Ask Andy 를 실제 노트로 측정한 것도, "액션의 `ctx.runQuery` 로 인증이 전파된다"를 `convex-test` 가 아니라 **배포**에 대고 증명한 것도 이 명령이다 — 그 목은 이제 두 번이나 배포와 다르게 동작한 것으로 확인됐다. |
 | `xcrun simctl io booted screenshot out.png` | 화면이 실제로 어떻게 보이는지 남길 때 | 말로 설명하는 것보다 빠르다. |
+| `npx convex run search:recall '{"query":"…"}' --identity '{"tokenIdentifier":"…","subject":"…","issuer":"…"}'` | **로그인 상태로** 백엔드 함수를 터미널에서 돌릴 때 | Day 5에 찾은 가장 쓸모 있는 것. `--identity` 없이는 인증이 필요한 함수가 전부 `You're signed out.` 만 답하고, 그래서 백엔드를 앱 밖에서 시험할 방법이 없었다. `tokenIdentifier` 는 `npm run db` → Data → `users` 에서 복사. Ask Andy 를 실제 노트로 측정한 것도, "액션의 `ctx.runQuery` 로 인증이 전파된다"를 `convex-test` 가 아니라 **배포**에 대고 증명한 것도 이 명령이다 — 그 목은 이제 두 번이나 배포와 다르게 동작한 것으로 확인됐다. |
 | `npm run dev:mcp` | Claude Code가 시뮬레이터를 직접 들여다보게 할 때 | `npm run dev` + `EXPO_UNSTABLE_MCP_SERVER=1`. 실행 중인 시뮬레이터(스크린샷, 로그, UI 상태)를 Expo 자체 MCP 서버로 MCP 지원 에이전트에 노출시킴 — 매번 스크린샷 찍어서 설명해줄 필요 없이. Day 9에 앱 잠금의 Face ID 흐름을 스크린샷과 터미널 로그만으로 디버깅하다가 필요해짐. |
 
 **`dev:mcp` 최초 1회 설정** (이 저장소엔 이미 되어 있음, 새 머신 대비용으로 남겨둠):
@@ -167,9 +170,17 @@ npx expo whoami || npx expo login                                 # 서버가 �
 
 | 명령어 | 언제 | 왜 |
 | --- | --- | --- |
-| `npx convex deploy` | 백엔드 변경을 프로덕션에 배포할 때 | 앱 빌드와 별개다. 둘은 독립적으로 배포된다. |
-| `eas build --profile production --platform ios` | 릴리스 빌드 | 먼저 `eas-release-checklist` 스킬과 `app-store-reviewer` 서브에이전트를 돌릴 것. |
-| `eas submit --platform ios` | App Store Connect 업로드 | 위 두 검사 없이는 절대 하지 말 것. |
+| `npm run deploy:backend` | 백엔드 변경을 Production 배포(`agile-dogfish-759`) 에 올릴 때 — TestFlight 테스터가 쓰는 곳 | `convex deploy`. 앱 빌드와 별개로 배포된다. Production 은 누군가 이걸 실행할 때만 바뀐다. |
+| `npm run build:ios:testflight` | TestFlight / 릴리스 빌드 | `eas build --profile production`. EAS `production` 환경(Production 백엔드)을 쓴다. 먼저 `app-store-reviewer` 서브에이전트를 돌릴 것. 무료 플랜은 한 달 iOS 빌드 15번 — 수정은 모아서. |
+| `npm run submit:ios` | 최신 빌드를 App Store Connect 에 올릴 때 | `eas submit --latest`. 위 검사 없이는 하지 말 것. |
+
+### TestFlight 로 QA 빌드 보내기
+
+1. `git checkout main && git pull` 후 `npm run deploy:backend` — 확인 질문에 `agile-dogfish-759` 가 나오는지 볼 것.
+2. `npm run build:ios:testflight` (EAS 클라우드에서 10–15분).
+3. `npm run submit:ios`. 처음 한 번은 Apple ID 로그인을 묻고, App Store Connect 에 앱이 없으면 만든다. 그 뒤 Apple 처리(10–30분, 메일이 온다).
+4. App Store Connect → Users and Access: 테스터 추가 (Developer 역할). Andy → TestFlight → Internal Testing: 그룹(예: `V1 QA`), 테스터, 빌드, **What to Test** 메모. 내부 테스터는 Apple 심사가 없다 — TestFlight 앱을 깔고 메일을 수락하면 된다.
+5. 다음 라운드부터: 백엔드 배포 → 빌드 → 제출. 테스터는 Update 만 누르면 된다.
 
 ## 커밋 컨벤션
 

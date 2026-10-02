@@ -2,6 +2,8 @@
 
 These 7 items came from comparing this project's agent/skill setup against real industry practice. `CLAUDE.md` and the skills encode discipline Claude Code is expected to follow — these make some of that discipline **impossible to bypass**, whether the bypass is Claude Code forgetting a step or a human pushing straight to `main` by habit. Set up once per repo (most are files that travel with the repo; branch protection is a GitHub setting and does not).
 
+Keys, environments and secrets are not here — they have their own reference, [`ENVIRONMENTS.md`](ENVIRONMENTS.md).
+
 ## 1. CI — `.github/workflows/ci.yml`
 
 Already created. Runs `npm run lint` and `npm run test` on every push to `main` and every PR. This is the platform-enforced version of what `small-commit-flow` already does locally — it exists so a step skipped locally (or a push that bypassed the skill entirely) still gets caught before merge.
