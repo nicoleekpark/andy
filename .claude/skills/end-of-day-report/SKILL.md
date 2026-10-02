@@ -26,16 +26,24 @@ If a section doesn't help with that, cut it. If something that would help is mis
 3. **How the pieces fit** — the file-by-file map: what each file is for, what depends on what, where a request enters and where it lands. This is the part a newcomer needs most and the part that is most tempting to skip.
 4. **What was hard, wrong, or surprising** — assumptions that failed, bugs found and how, reviewer catches, dead ends and why they were abandoned. Be specific: name the wrong belief and what corrected it. A report that reads like everything went smoothly is not useful and is usually not true.
 5. **Decisions and their reasons** — choices that constrain tomorrow, especially ones that would look arbitrary without the reason. Include the ones deliberately deferred, and what would trigger revisiting them.
+
+   Design decisions made today live in `docs/design/decisions/`. For each one, link the file and say which option the developer chose and what was left under `## Open disagreements` — the file records the argument, the report records how it ended.
+
 6. **State of the world** — what runs, what's verified how (unit tests vs. actually pressed on a device), what's set up outside the repo (dashboards, deployments), what's known-broken.
 7. **What actually works — a manual QA pass** — everything a person could sit down and test right now, as steps plus the expected result, not a feature list. State the preconditions (a signed-in simulator, a running dev server, a deployment that's had the config pushed) because a test that fails for a missing precondition looks like a bug. Mark which rows were actually performed today and which are inferred from unit tests — a tester needs to know which claims are already proven.
 
    Pair it with **what is deliberately not built yet**, so nobody files a bug against a screen that was always meant to be empty. Without that list, the QA section generates noise instead of signal.
+
 8. **How to get unstuck** — the recovery commands for states that were actually hit: a wedged app, config that won't take, a held port, a simulator that needs wiping, a stale build cache. Carry the previous day's entries forward and add whatever today cost time to work out. This is the companion to the QA section — a tester who breaks a state and can't reset it stops there.
 9. **Where the time actually went** — a rough split between planned work and everything else (debugging, environment, docs), with the day's own estimate of how that compares to the plan. Not self-flagellation: on a fixed deadline, estimate accuracy is the project risk, and a single day's number means little while five days' trend decides whether the scope still fits. Say plainly if the rate implies the plan doesn't hold.
 10. **Known issues and deferred work** — everything being lived with rather than fixed. For each: what it is, why it was left, what makes it safe (or not) for now, and the **trigger** that forces it to be handled. This section is the one most likely to be quietly dropped and the most expensive to lose — a deferred problem with no recorded trigger becomes a surprise. Carry forward every unresolved item from the previous day's report that is still unresolved; do not let it fall off because it wasn't touched today.
+
+    This includes every gate finding marked "worth noting, your call" that was left alone today. It was a decision not to fix something; record it like one.
+
 11. **Tomorrow** — what to start with, what must be true before certain work can begin, known traps, and any external setup needed first.
 
-    **Name the gates tomorrow's work will trigger, before it triggers them.** Walk tomorrow's scope against the review gates this project requires — `app-store-reviewer` for any slice that adds or changes a sensitive permission, contacts, microphone, calendar, photos, or notification permissions; `security-reviewer` for anything touching data access, auth, or an external API; `docs-verifier` for an unfamiliar third-party API — and write down which slice trips which. A gate that only exists in `CLAUDE.md` is a gate the next session has to *remember*; a gate written into this section is one they *read*. The permission strings are the sharpest case: they are written most accurately at the moment the feature is built, and they are an actual App Store rejection reason, so discovering the gate on submission day means rewriting them from memory of what the feature does.
+    **Name the gates tomorrow's work will trigger, before it triggers them.** Walk tomorrow's scope against the review gates this project requires — `app-store-reviewer` for any slice that adds or changes a sensitive permission, contacts, microphone, calendar, photos, or notification permissions; `security-reviewer` for anything touching data access, auth, or an external API; `docs-verifier` for an unfamiliar third-party API; `product-strategist` then `product-designer` for any slice that adds or changes what a person sees or reads, which has to be decided by the developer _before_ the slice is built — and write down which slice trips which. (`code-reviewer`, `silent-failure-hunter` and `design-system-auditor` run by file path in `small-commit-flow` step 6 and need no planning.) A gate that only exists in `CLAUDE.md` is a gate the next session has to _remember_; a gate written into this section is one they _read_. The permission strings are the sharpest case: they are written most accurately at the moment the feature is built, and they are an actual App Store rejection reason, so discovering the gate on submission day means rewriting them from memory of what the feature does.
+
 12. **Open questions** — things genuinely undecided, not rhetorical.
 
 ## Bring the documentation up to date — part of the day, not an extra
@@ -46,8 +54,9 @@ A day isn't finished until the docs describe the repo as it now is. Before writi
 - `CLAUDE.md` / `CLAUDE.ko.md`
 - `PROJECT_SCOPE.md` / `PROJECT_SCOPE.ko.md`
 - `STYLE.md`, `AGENTS.md` (if present)
+- `QA.md` — rows added by today's slices are there, and rows that became automated tests are gone
 
-Look for: commands that no longer exist or no longer work, setup steps that are already done or now wrong, a plan or schema block that reality has diverged from, a constraint discovered today that belongs in `PROJECT_SCOPE.md`'s Reality Checks, and decisions that were made in-session but live nowhere durable.
+Look for: commands that no longer exist or no longer work, setup steps that are already done or now wrong, a plan or schema block that reality has diverged from, a constraint discovered today that belongs in `PROJECT_SCOPE.md`'s Reality Checks, and decisions that were made in-session but live nowhere durable. A token or a Voice rule accepted in a design decision today belongs in `STYLE.md`, not only in the decision file.
 
 **Every one of these files is a pair, if this project keeps bilingual docs.** Editing one language without its twin leaves the project with two documents that disagree, and the next reader can't tell which is right. Update both in the same pass, then check they still line up (section counts, the command column of any table, code-block counts).
 
