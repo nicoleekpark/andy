@@ -61,7 +61,7 @@ Check the app against **[`STYLE.md`](https://github.com/nicoleekpark/andy/blob/m
   - It passes through while connecting.
   - It stays still with **Reduce Motion** on.
 - [ ] **Icon and launch:** the icon in light, dark and tinted home-screen modes; the launch screen has no grey fade.
-- [ ] **Copy:** sentence case everywhere, one name per action. Andy *remembers*, it never *collects*.
+- [ ] **Copy:** sentence case everywhere, one name per action. Andy *remembers*, it never *collects*. Every sentence in the app is in one table, [`docs/copy-deck.md`](https://github.com/nicoleekpark/andy/blob/main/docs/copy-deck.md), with where it lives and what the new terminology will change it to. Read it top to bottom.
 - [ ] Anything that feels off, crowded, or unclear.
 
 ---
