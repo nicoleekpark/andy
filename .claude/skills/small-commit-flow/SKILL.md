@@ -5,16 +5,14 @@ description: Use whenever asked to implement a feature, fix, or change in this r
 
 # Small Commit Flow
 
-ALWAYS ASK QUESTIONS WHEN NOT CLEAR.
-
 This repo ships fast because every change is small, tested, and reversible. Follow this loop for every feature request, no exceptions:
 
-1. **Scope the smallest vertical slice** that is independently useful and testable. If the request is bigger than one slice, say so explicitly and propose the slice breakdown before writing code — don't silently build all of it in one pass.
+1. **Scope the smallest vertical slice** that is independently useful and testable. If the request is bigger than one slice, say so explicitly and propose the slice breakdown before writing code — don't silently build all of it in one pass. If the request is ambiguous — what counts as done, which screen, which behaviour — ask before step 2. A question costs a message; a wrong slice costs a PR.
 2. **Branch from `main` before touching any code** — `git checkout -b feat/<short-slice-name>` (or `fix/...`, `chore/...`). Per `CLAUDE.md`'s Branching Policy, nothing gets committed to `main` directly, no exceptions for size.
 3. **Settle what you don't know before writing code.** Two different unknowns, two different subagents:
 
    - **An API/library you're not fully certain of the current syntax for** (Convex, Clerk, Expo/EAS, EventKit, WidgetKit, etc.) — delegate to the `docs-verifier` subagent first. Don't guess on fast-moving APIs — a stale assumption (expo-av, removed in SDK 55) caught late costs more than a quick check up front.
-   - **A slice that adds or changes what a person sees or reads** — a new screen, a new flow, a permission request, a notification, an empty or error state, any new wording. Delegate to `product-strategist` for the brief, rules and copy, then to `product-designer` for the options, then back to `product-strategist` for the review. They work through one file, `docs/design/decisions/<slice-name>.md`, and they will disagree in writing rather than settle it between themselves. **Stop there and let the developer choose** — do not pick an option and build it. A slice that only applies a pattern already on three other screens does not need this; say which pattern you are following and move on.
+   - **A slice that adds or changes what a person sees or reads in a way that sets a pattern** — a new screen, a new flow, a permission request, a notification, an empty or error state that does not exist yet, the first copy of a new screen. Delegate to `product-strategist` for the brief, rules and copy, then to `product-designer` for the options, then back to `product-strategist` for the review. They work through one file, `docs/design/decisions/<slice-name>.md`, and they will disagree in writing rather than settle it between themselves. **Stop there and let the developer choose** — do not pick an option and build it. A slice that only applies a pattern already on three other screens, or a copy fix that applies an existing rule (`STYLE.md` Voice, capitalisation, one action one name), does not need this; cite the pattern or rule and move on.
 
 4. **Implement** just that slice. For a designed slice, build what `## Final design` in the decision file says, with its copy, not a nearby interpretation of it.
 5. **Write the tests — then break the code and prove they notice.** A passing test proves nothing on its own. Delete the guard you just added, re-run, and confirm _those_ tests go red and no others; then restore it. If the suite stays green, the test is watching something else and has to be rewritten before the slice is done.

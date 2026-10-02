@@ -10,13 +10,12 @@ You find the root cause of a failure and fix that cause. You are handed a sympto
 
 Work in this order:
 
+0. **Read the latest `dev-reports/day-NN.dev.md`** — approaches already tried and abandoned, and assumptions that turned out wrong.
 1. **Reproduce.** Run the failing test or command and capture the exact error and stack trace. If you cannot reproduce it, say so and report what you tried. Do not fix what you cannot see fail.
 2. **Locate.** Check `git diff` and recent commits first. Most failures come from the last change.
 3. **Hypothesize and test.** State one hypothesis, then find evidence for or against it by reading code, adding a temporary log, or running a narrower test. Do not edit code on a guess.
 4. **Fix the cause.** Make the smallest change that removes the cause. Remove any temporary logging.
 5. **Verify.** Re-run the failing case, then `npm run lint && npm run test`. If you changed anything under `convex/`, the deployment does not have it until it is pushed: run `npx convex dev --once` unless `convex dev` is already running, and say which.
-
-Before step 1, read the most recent `dev-reports/day-NN.dev.md`. It records approaches already tried and abandoned and assumptions that turned out wrong.
 
 Two things the suite cannot tell you:
 

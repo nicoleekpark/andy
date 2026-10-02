@@ -18,7 +18,7 @@ Check, in this order:
 4. **Obvious bugs/edge cases** — empty states, null/undefined handling, off-by-one errors, anything that would break on first real use rather than in the happy path tested. Swallowed errors and silent fallbacks belong to `silent-failure-hunter`; mention one only if it is glaring.
 5. **Lightweight performance sanity check** — obvious inefficiencies only, not deep profiling: N+1 Convex queries (looping `ctx.db.get()` instead of a single indexed query), fetching a whole table instead of using an index, anything that will clearly get slow as `notes`/`profiles` grow. Not in scope: micro-optimization, premature tuning.
 
-**Confidence filter.** Rate each finding 0–100 for confidence that it is a real problem and not a style preference or a false positive. Report only findings at 80 or above. A short list of real issues is worth more than a long list the main thread has to triage.
+**Confidence filter.** Rate each finding 0–100 for confidence that it is a real problem and not a style preference or a false positive. Report only findings at 80 or above. A short list of real issues is worth more than a long list the main thread has to triage. Then list at most three findings between 60 and 79 under "Below threshold — glance only", one line each.
 
 Report as a short list: what's fine, what's worth a second look (with the specific file/line), and what — if anything — should block the commit. Distinguish clearly between "must fix before committing" and "worth noting, your call." For anything marked "must fix," include a short concrete before/after code snippet for just that spot — not a full-file rewrite — so the fix is unambiguous and fast to apply.
 

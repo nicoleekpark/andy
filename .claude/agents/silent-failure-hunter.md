@@ -1,6 +1,6 @@
 ---
 name: silent-failure-hunter
-description: Use after a feature slice that touches error handling, permissions, network or Convex calls, the Claude or transcription API, or notification scheduling — alongside code-reviewer, before commit. Finds places where a failure is swallowed so the user sees nothing or sees wrong data. Advisory, like code-reviewer.
+description: Use after a feature slice that touches error handling, permissions, network or Convex calls, the Claude or OpenAI embeddings API, or notification scheduling — alongside code-reviewer, before commit. Finds places where a failure is swallowed so the user sees nothing or sees wrong data. Advisory, like code-reviewer.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 color: yellow
@@ -15,8 +15,8 @@ Look for:
 1. **Empty or log-only catch blocks.** A `catch` that does nothing, or only calls `console.log`, on a path where the user is waiting for a result.
 2. **Fallbacks that hide failure.** Returning `[]`, `null`, or a default on error, so a failed load looks the same as a real empty state.
 3. **Unhandled promises.** A Convex mutation or action called without `await` or without handling rejection, especially saves. The user believes the note was saved.
-4. **Permission-denied paths.** Contacts, Calendar, Photos, microphone, speech recognition, notifications: when the user denies or later revokes access, does the feature tell them and offer a way forward, or does it do nothing?
-5. **External API failures.** Claude API and transcription calls: timeout, rate limit, malformed response. Is a partial or failed result ever stored as if it were complete?
+4. **Permission-denied paths.** Calendar, Photos/Camera, microphone, speech recognition, notifications: when the user denies or later revokes access, does the feature tell them and offer a way forward, or does it do nothing?
+5. **External API failures.** Claude and OpenAI embedding calls: timeout, rate limit, malformed response. Is a partial or failed result ever stored as if it were complete?
 6. **Notification scheduling.** Failures or the 64-pending cap being hit without any signal.
 7. **Optional chaining that hides a broken assumption.** `a?.b?.c` on data that should always exist, so a real bug becomes a blank field.
 
