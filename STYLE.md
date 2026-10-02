@@ -178,6 +178,27 @@ capitals by `textTransform: "uppercase"`. **One action, one name**: the
 button that does it, the link that starts it and the confirmation that asks
 about it use the same words.
 
+**Terminology (decided 2026-10-02).** One word per concept, so the same thing is never called two names. Recommended by `product-strategist` against the Voice rules below, and approved by the developer. The table is the rule from now on. Until the copy PR lands, some screens still use the old words ("fact", "somebody", "keep" for people).
+
+| Concept | Say | Don't say | Example |
+|---|---|---|---|
+| A specific person in Andy | person, people | profile, contact, entry, record | "Delete this person" |
+| Anyone not yet specific | someone, no one, anyone, everyone | somebody, nobody | "Someone new — no one by this name yet." |
+| A person being in Andy | in Andy | keep someone, have on file, saved contact | "Someone by this name is already in Andy. Is this them?" |
+| What Andy does | remembers; keeps *notes* (never people) | collects, stores, tracks, saves data | "Remember this" |
+| A record of any kind (voice, typed, card) | note | entry, memo, log, capture, record | "Delete this note?" |
+| A note's own words | What you said / What you wrote / What the card said; "the wording" | transcript, raw text, original, input | "The details above still come from the old wording." |
+| One item Andy picked out of a note | detail | fact, data, info, attribute, field | "Add a detail" |
+| The list of those items | What to remember (the section label) | Facts, Details, Info, About them | "What to remember" |
+| A person appearing in someone else's note | came up (in a note) | mentioned, mention, tagged, linked | "Anyone who only ever came up in those notes goes too." |
+| Keeping the user's own changes to a draft | my edits | my details, my facts | "Keep my edits" |
+
+Why:
+- **"detail", not "fact".** "Fact" claims something is true about a third party, so "fix any fact Andy got wrong" contradicts itself, and it leans toward a file on someone. "Detail" makes no truth claim, and the label "What to remember" keeps it warm.
+- **"Keep my edits", not "Keep my details".** "My details" reads as the user's own personal information.
+- **"In Andy", not "keep someone".** A person is not a possession. Andy keeps notes; people are *in* Andy.
+- **Code names stay as they are.** `keyFacts`, `noteMentions` and `profiles` are not on screen, so renaming them would be a schema migration for nothing.
+
 ## Voice — remembering, never collecting
 
 Decided 2026-09-30. Andy holds notes about people who never signed up for it.
