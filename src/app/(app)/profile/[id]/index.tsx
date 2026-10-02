@@ -462,6 +462,9 @@ export default function ProfileScreen() {
                       {note.keyFacts && note.keyFacts.length > 0 ? (
                         <>
                           {note.keyFacts.map((fact, index) => (
+                            // Position is the identity here: read-only and never
+                            // reordered (src/lib/use-row-keys.ts is for lists
+                            // that are edited).
                             <Text key={index} style={styles.fact}>
                               {fact}
                             </Text>

@@ -672,6 +672,44 @@ describe("capture screen review step", () => {
     expect(JSON.stringify(extract.mock.calls[0])).not.toContain("umm no wait");
   });
 
+  test("should keep each row's own field when an earlier fact, tag or mention is removed", async () => {
+    // Keyed by position, removing row 1 shifts row 3 into slot 2 and React
+    // tears down the field that was being typed in — the keyboard closes
+    // mid-sentence (#82's review). The same field must survive, holding the
+    // same text, in each of the three lists.
+    (useAction as jest.Mock).mockReturnValue(
+      jest.fn(async () =>
+        makeDraft(
+          { keyFacts: ["Fact A", "Fact B", "Fact C"], tags: ["tag-a", "tag-b", "tag-c"] },
+          [
+            { name: "Ann", entityType: "person", quote: "Ann was there" },
+            { name: "Ben", entityType: "person", quote: "Ben was there" },
+            { name: "Cal", entityType: "person", quote: "Cal was there" },
+          ],
+        ),
+      ),
+    );
+    const handlers = captureListeners();
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+    await reachReview(handlers, "Met Nina with Ann, Ben and Cal.");
+
+    for (const [row, remove, kept] of [
+      ["Fact", "Remove fact 1", "Fact C"],
+      ["Tag", "Remove tag 1", "tag-c"],
+      ["Mentioned name", "Remove mention 1", "Cal"],
+    ] as const) {
+      const before = screen.getByLabelText(`${row} 3`);
+      await act(async () => {
+        fireEvent.press(screen.getByLabelText(remove));
+      });
+      const after = screen.getByLabelText(`${row} 2`);
+      expect(after.props.value).toBe(kept);
+      // The same field, not a new one in its place.
+      expect(after).toBe(before);
+    }
+  });
+
   test("should save a corrected mention name, the field transcription actually gets wrong", async () => {
     const draft = makeDraft();
     (useAction as jest.Mock).mockReturnValue(jest.fn(async () => draft));
