@@ -46,6 +46,8 @@ function buildAnthropicMessage(
     id: "msg_test",
     container: null,
     content: [{ type: "text", text: "{}", citations: null }],
+    // Required from @anthropic-ai/sdk 0.129. Null on an ordinary response.
+    diagnostics: null,
     model: "claude-haiku-4-5",
     role: "assistant",
     stop_details: null,
