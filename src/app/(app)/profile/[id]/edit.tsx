@@ -12,6 +12,7 @@ import {
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { useJustAdded } from "@/lib/use-just-added";
+import { useRowKeys } from "@/lib/use-row-keys";
 import { colors } from "@/constants/theme";
 
 /**
@@ -62,6 +63,10 @@ export default function EditProfileScreen() {
           aliases: result.profile.aliases ?? [],
         };
   const working = edits ?? saved;
+  // Lines are only ever added at the end here (clearing one removes it on
+  // save), so the keys stay with their lines without a removal call.
+  const aliasKeys = useRowKeys(working?.aliases.length ?? 0);
+  const tagKeys = useRowKeys(working?.tags.length ?? 0);
 
   function edit(patch: Partial<Draft>) {
     if (working === null) {
@@ -204,7 +209,7 @@ export default function EditProfileScreen() {
           <Text style={styles.fieldLabel}>Also known as</Text>
           {working.aliases.map((alias, index) => (
             <TextInput
-              key={index}
+              key={aliasKeys.keys[index]}
               value={alias}
               onChangeText={(value) =>
                 edit({
@@ -279,7 +284,7 @@ export default function EditProfileScreen() {
           <Text style={styles.fieldLabel}>Tags</Text>
           {working.tags.map((tag, index) => (
             <TextInput
-              key={index}
+              key={tagKeys.keys[index]}
               value={tag}
               onChangeText={(value) =>
                 edit({

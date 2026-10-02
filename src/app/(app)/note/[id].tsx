@@ -12,6 +12,7 @@ import {
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { useJustAdded } from "@/lib/use-just-added";
+import { useRowKeys } from "@/lib/use-row-keys";
 import { colors } from "@/constants/theme";
 
 /**
@@ -74,6 +75,9 @@ export default function NoteScreen() {
       ? null
       : { keyFacts: result.note.keyFacts ?? [] };
   const working = edits ?? saved;
+  // Lines are only ever added at the end here (clearing one removes it on
+  // save), so the keys stay with their lines without a removal call.
+  const factKeys = useRowKeys(working?.keyFacts.length ?? 0);
 
   /**
    * Every edit writes the whole working copy, so the first keystroke on any
@@ -222,6 +226,9 @@ export default function NoteScreen() {
             <Text style={styles.fieldLabel}>What to remember</Text>
             {saved !== null && saved.keyFacts.length > 0 ? (
               saved.keyFacts.map((fact, index) => (
+                // Position is the identity here: a read-only list that is never
+                // reordered, and nothing to add or remove (src/lib/use-row-keys.ts
+                // is for lists that are edited).
                 <Text key={index} style={styles.fact}>
                   {fact}
                 </Text>
@@ -240,7 +247,7 @@ export default function NoteScreen() {
             {working !== null && working.keyFacts.length > 0 ? (
               working.keyFacts.map((fact, index) => (
                 <TextInput
-                  key={index}
+                  key={factKeys.keys[index]}
                   value={fact}
                   onChangeText={(value) =>
                     edit({

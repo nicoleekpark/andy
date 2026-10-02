@@ -19,6 +19,7 @@ import { api } from "@convex/_generated/api";
 import type { Draft } from "@convex/extractionPrompt";
 import { matchKey } from "@convex/naming";
 import { useJustAdded } from "@/lib/use-just-added";
+import { useRowKeys } from "@/lib/use-row-keys";
 import { colors } from "@/constants/theme";
 
 /**
@@ -418,6 +419,12 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
    * gets forgotten is the one that silently throws work away.
    */
   const [extracted, setExtracted] = useState<Draft | null>(null);
+
+  // Keys that follow each row, so removing one from the middle does not tear
+  // down the field being typed in below it (src/lib/use-row-keys.ts).
+  const factKeys = useRowKeys(draft?.primary.keyFacts.length ?? 0);
+  const tagKeys = useRowKeys(draft?.primary.tags.length ?? 0);
+  const mentionKeys = useRowKeys(draft?.mentions.length ?? 0);
 
   // Memoised because `save` depends on it: a fresh array every render would
   // rebuild the callback constantly for no reason.
@@ -1443,7 +1450,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
               <Text style={styles.quiet}>Nothing pulled out of this one.</Text>
             ) : (
               draft.primary.keyFacts.map((fact, index) => (
-                <View key={index} style={styles.factRow}>
+                <View key={factKeys.keys[index]} style={styles.factRow}>
                   <TextInput
                     value={fact}
                     onChangeText={(next) =>
@@ -1461,13 +1468,14 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={`Remove fact ${index + 1}`}
-                    onPress={() =>
+                    onPress={() => {
+                      factKeys.removeKey(index);
                       editPrimary({
                         keyFacts: draft.primary.keyFacts.filter(
                           (_, i) => i !== index,
                         ),
-                      })
-                    }
+                      });
+                    }}
                     style={styles.remove}
                   >
                     <Text style={styles.removeLabel}>×</Text>
@@ -1496,7 +1504,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
           {draft.primary.tags.length > 0 ? (
             <Field label="Tags">
               {draft.primary.tags.map((tag, index) => (
-                <View key={index} style={styles.factRow}>
+                <View key={tagKeys.keys[index]} style={styles.factRow}>
                   <TextInput
                     value={tag}
                     onChangeText={(next) =>
@@ -1512,11 +1520,12 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={`Remove tag ${index + 1}`}
-                    onPress={() =>
+                    onPress={() => {
+                      tagKeys.removeKey(index);
                       editPrimary({
                         tags: draft.primary.tags.filter((_, i) => i !== index),
-                      })
-                    }
+                      });
+                    }}
                     style={styles.remove}
                   >
                     <Text style={styles.removeLabel}>×</Text>
@@ -1529,7 +1538,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
           {draft.mentions.length > 0 ? (
             <Field label="Also came up">
               {draft.mentions.map((mention, index) => (
-                <View key={index} style={styles.mentionBlock}>
+                <View key={mentionKeys.keys[index]} style={styles.mentionBlock}>
                   <View style={styles.factRow}>
                     <TextInput
                       value={mention.name}
@@ -1540,14 +1549,15 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
                     <Pressable
                       accessibilityRole="button"
                       accessibilityLabel={`Remove mention ${index + 1}`}
-                      onPress={() =>
+                      onPress={() => {
+                        mentionKeys.removeKey(index);
                         setDraft({
                           ...draft,
                           mentions: draft.mentions.filter(
                             (_, i) => i !== index,
                           ),
-                        })
-                      }
+                        });
+                      }}
                       style={styles.remove}
                     >
                       <Text style={styles.removeLabel}>×</Text>
