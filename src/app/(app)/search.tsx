@@ -14,6 +14,7 @@ import type { FunctionReturnType } from "convex/server";
 import { ConvexError } from "convex/values";
 import { api } from "@convex/_generated/api";
 import { colors, fonts } from "@/constants/theme";
+import { formatDate } from "@/lib/dates";
 
 /**
  * Ask Andy — recall across every note, not only the ones filed under a name.
@@ -346,7 +347,7 @@ function ResultCard({ result }: { result: Results[number] }) {
           // like the only thing there was.
           result.used ? "used in the answer" : null,
           result.profile.relationshipContext,
-          new Date(result.createdAt).toLocaleDateString("en-CA"),
+          formatDate(result.createdAt),
         ]
           .filter(Boolean)
           .join(" · ")}
