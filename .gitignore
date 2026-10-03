@@ -56,3 +56,6 @@ credentials.json
 # decisions, and the app's data is about real people — see the agents' rule.
 .claude/agent-memory/
 .claude/agent-memory-local/
+
+# Jest compile cache (package.json → jest.cacheDirectory), also cached in CI.
+.jest-cache/

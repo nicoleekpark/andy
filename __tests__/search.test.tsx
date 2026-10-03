@@ -4,6 +4,7 @@ import { ConvexError } from "convex/values";
 import { getFunctionName } from "convex/server";
 import { renderRouter } from "expo-router/testing-library";
 import { api } from "@convex/_generated/api";
+import { answerByName, nameOf, quietCall } from "../test-support/convex-mocks";
 
 /**
  * src/app/(app)/search.tsx is the first screen in this app driven by an action
@@ -21,11 +22,7 @@ import { api } from "@convex/_generated/api";
 const recall = jest.fn();
 
 function mockRecall() {
-  (useAction as jest.Mock).mockImplementation((reference: unknown) =>
-    getFunctionName(reference as never) === getFunctionName(api.search.recall)
-      ? recall
-      : jest.fn(async () => undefined),
-  );
+  answerByName(useAction, { [nameOf(api.search.recall)]: recall }, quietCall);
 }
 
 /**
@@ -35,11 +32,7 @@ function mockRecall() {
  * screen were rewired to call something else.
  */
 function mockPeople(answer: unknown) {
-  (useQuery as jest.Mock).mockImplementation((reference: unknown) =>
-    getFunctionName(reference as never) === getFunctionName(api.people.search)
-      ? answer
-      : undefined,
-  );
+  answerByName(useQuery, { [nameOf(api.people.search)]: answer });
 }
 
 function buildResult(overrides: Record<string, unknown> = {}) {
@@ -110,7 +103,6 @@ describe("search screen", () => {
     jest.clearAllMocks();
     recall.mockReset();
   });
-
 
   // -------------------------------------------------------------------------
   // Finding a person by name — free, live, above the paid answer
@@ -312,7 +304,6 @@ describe("search screen", () => {
     expect(screen.queryByTestId("people-results")).toBeNull();
     expect(screen.queryByTestId("mention-results")).toBeNull();
   });
-
 
   test("should invite a question rather than apologise for having no results yet", async () => {
     await renderSearch();
