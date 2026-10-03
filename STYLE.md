@@ -178,6 +178,28 @@ capitals by `textTransform: "uppercase"`. **One action, one name**: the
 button that does it, the link that starts it and the confirmation that asks
 about it use the same words.
 
+**Terminology (decided 2026-10-02).** One word per concept, so the same thing is never called two names. Recommended by `product-strategist` against the Voice rules below, and approved by the developer. The table is the rule from now on. Until the copy PR lands, some screens still use the old words ("fact", "somebody", "keep" for people).
+
+| Concept | Say | Don't say | Example |
+|---|---|---|---|
+| A specific person in Andy | person, people | profile, contact, entry, record | "Delete this person" |
+| Anyone not yet specific | someone, no one, anyone, everyone | somebody, nobody | "Someone new — no one by this name yet." |
+| Choosing a person (which one is this?) | you've written about | keep someone, have on file, saved contact, you know | "You've written about someone by this name. Is this them?" |
+| People in the app as a whole | in Andy | everyone you keep, your contacts | "Everyone in Andy, every note and every photo will be deleted" |
+| What Andy does | remembers; keeps *notes* (never people) | collects, stores, tracks, saves data | "Remember this" |
+| A record of any kind (voice, typed, card) | note | entry, memo, log, capture, record | "Delete this note?" |
+| A note's own words | What you said / What you wrote / What the card said; "the wording" | transcript, raw text, original, input | "The details above still come from the old wording." |
+| One item Andy picked out of a note | detail | fact, data, info, attribute, field | "Add a detail" |
+| The list of those items | What to remember (the section label) | Facts, Details, Info, About them | "What to remember" |
+| A person appearing in someone else's note | came up (in a note) | mentioned, mention, tagged, linked | "Anyone who only ever came up in those notes goes too." |
+| Keeping the user's own changes to a draft | my edits | my details, my facts | "Keep my edits" |
+
+Why:
+- **"detail", not "fact".** "Fact" claims something is true about a third party, so "fix any fact Andy got wrong" contradicts itself, and it leans toward a file on someone. "Detail" makes no truth claim, and the label "What to remember" keeps it warm.
+- **"Keep my edits", not "Keep my details".** "My details" reads as the user's own personal information.
+- **"You've written about", not "keep someone".** A person is not a possession, and what Andy actually holds is notes. So when choosing a person, say what is true: you wrote about them. Use "in Andy" only for the app as a whole (deleting your account). Not "you know", which Andy cannot know; not "Andy remembers", which sounds like Andy knows them (decided 2026-10-02).
+- **Code names stay as they are.** `keyFacts`, `noteMentions` and `profiles` are not on screen, so renaming them would be a schema migration for nothing.
+
 ## Voice — remembering, never collecting
 
 Decided 2026-09-30. Andy holds notes about people who never signed up for it.
