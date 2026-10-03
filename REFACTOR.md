@@ -29,9 +29,15 @@ Written 2026-10-02, while the designer and QA test build 1.0.0 (3) on their phon
 | **F** | The same text styles ("quiet", "error"…) are defined separately on each screen, and drift | ~10 files | Medium | High | With E |
 | **I** | `profile/[id]/index.tsx` is 824 lines | 1 → 3–4 files | Medium | Medium | After the QA round |
 | **J3** | Every sentence moves into one copy file | ~15 screens + server | Medium | High | After the QA round |
+| **K** | Errors are turned into on-screen messages two different ways; one way can show a raw technical error | 3 screens, 7 places | **High** (what a person sees when something fails) | Low | **Soon**, after one check against the deployment |
+| **L** | The "is this row the caller's?" check is written by hand ~10 times in Convex | ~5 backend files | **High** (security: one forgotten copy is a data leak) | Low | After the QA round, with `security-reviewer` |
+| **M** | `saveCapture` is one 396-line function | 1 file | Medium | Medium | After L |
+| **N** | The "are you sure? Delete" confirmation is written 7 times | 5 files | Low–medium | Low | With F |
 | **J4** | A real translation system | J3 + a library | — | — | When Korean returns (V1.1) |
 
-Recommended order: **Now:** B → J1 → J2 → A → H → G. **After QA:** C → D → J3 → E + F → I. **V1.1:** J4.
+Recommended order: **Now:** B → J1 → J2 → A → H → G, then **K** (after its check). **After QA:** L → M → C → D → J3 → E + F (+ N) → I. **V1.1:** J4.
+
+**Done:** B (#90), J1 (#92), J2 (#93).
 
 ---
 
@@ -166,6 +172,20 @@ Two screens meant to look the same end up a couple of points apart. A designer c
 
 **Tests.** design-system-auditor, plus one before/after screenshot comparison per screen on the simulator. **Wait for the designer's review:** their feedback may change the values, and doing it twice is waste.
 
+**Measured 2026-10-02: the same element, different values on different screens.** The developer saw this on the phone during QA. It is drift, not design: only colour and font are tokens.
+
+| Element | Values found |
+|---|---|
+| Gap between sections | 16 (home, capture, profile, search) · 24 (profile edit, note) · 20 (capture review) |
+| Quiet secondary text | 14 pt at 55% (capture) · 15 pt at 60% (note, edit, others) |
+| Field labels | system 12 pt (most) · **Lora** 12 pt (Ask Andy) · 11 pt at 45% (Ask Andy, elsewhere) |
+| Main moss button | 18 tall padding (home) · 16 (edit, note) · a different pill (Ask Andy) |
+| Lead line under a title | 15 pt at 75% (capture) · 14 pt at 60% (note) |
+| Error text | line height 21 / 20 / none |
+| Tap slop around small buttons | 8 (×8) · 12 (×5) |
+
+The designer marks which value is right (TESTERS.md → Design), and E applies the choice everywhere in one pass.
+
 ---
 
 ## F — The same text styles defined separately on each screen
@@ -177,7 +197,10 @@ Two screens meant to look the same end up a couple of points apart. A designer c
 
 "Error" text has 7 copies. The same kind of text looks slightly different from screen to screen.
 
-**The fix.** Shared text styles (`quiet`, `error`, `hint`, `fieldLabel`) built from E's tokens, used everywhere.
+**The fix.** Shared text styles (`quiet`, `error`, `hint`, `fieldLabel`) built from E's tokens, used everywhere. Plus three shared components, because the same piece is built by hand on each screen:
+- **`Button`**: the main moss button and the quiet text button. Today it is rebuilt with different heights per screen.
+- **`FieldLabel`**: one font. Ask Andy's labels use Lora, every other screen's don't.
+- **`ScreenStatus`**: the centred "Loading…" and "Andy doesn't have a … by that link." states, written separately on four screens.
 
 **Tests.** As E. Do it together with E.
 
@@ -190,6 +213,60 @@ Two screens meant to look the same end up a couple of points apart. A designer c
 **The fix.** Split it into section components, a pure move as in C.
 
 **Tests.** `profile.test.tsx` passes unchanged. **After the QA round.**
+
+---
+
+## K — Two ways of turning an error into a message
+
+**The problem.** When something fails, a screen shows a message. Two patterns exist side by side:
+- **Ask Andy (`search.tsx`)** shows the server's words only for a `ConvexError`, the errors written for a person, and a plain fallback otherwise. Its comment says why: "Never the raw error — it can carry the question back."
+- **The note editor, profile editor and capture** (7 places) show `e.message` for **any** `Error`. A network failure or an unexpected server error can then put a technical message on screen, such as a request ID or a function name.
+
+**What a person might see.** On a bad connection, saving a note shows something like "[CONVEX M(notes:updateNote)] Server Error…" instead of "Andy couldn't save that change. Try again."
+
+**First, check against the deployment**, not convex-test. CLAUDE.md: backend behaviour has to be proven on the real thing. What exactly does the client receive as `e.message` for a `ConvexError`, for a thrown `Error`, and for a dropped connection?
+
+**The fix.** One helper, `userMessage(error, fallback)`: the server's words for a `ConvexError`, the fallback for anything else. Used in all 8 places.
+
+**Tests.** A unit test per case. Screen tests that throw a plain `Error` will now expect the fallback, so those **edits are intended** and named in the PR. This one is a behaviour change, not a pure refactor.
+
+---
+
+## L — The ownership check, written once
+
+**The problem.** Convex has no row-level security, so every function checks by hand that a row belongs to the caller: normalise the id, load the row, compare `userId`. That sequence is written out about 10 times across the backend. Each copy is a chance to forget one step, and a forgotten copy is someone else's note on your screen. `security-reviewer`'s first check exists because of this.
+
+**The fix.** One helper per table, for example `ownedProfile(ctx, user, id)` and `ownedNote(ctx, user, id)`, that returns the row or `null`. Every function uses it instead of repeating the steps.
+
+**Tests.** The existing isolation tests ("another user cannot read this") must pass unedited. Plus `security-reviewer`, which is blocking. After the QA round.
+
+---
+
+## M — `saveCapture` is one 396-line function
+
+**The problem.** The mutation that saves a note does everything in one function:
+- check the input
+- work out who the note is about
+- update the person
+- create the people who came up
+- write the note and its links
+- schedule the search index
+
+It is the most important write in the app and the hardest one to read.
+
+**The fix.** Split it into named steps inside the same file, keeping the same order and the same single transaction. No behaviour change.
+
+**Tests.** `convex/notes.test.ts` (60 tests) passes unedited. After L, since L changes the ownership lookups this function uses.
+
+---
+
+## N — The destructive confirmation, written 7 times
+
+**The problem.** "Delete this note?", "Delete this person?", "Remove this photo?", "Delete your account?", "Read it again?" and others each build the same `Alert.alert` with Cancel plus a red action by hand. One copy getting the button order or the Cancel style wrong goes unnoticed.
+
+**The fix.** One `confirmDestructive({ title, message, action, onConfirm })` helper.
+
+**Tests.** The existing confirmation tests pass unedited. Do it with F.
 
 ---
 
