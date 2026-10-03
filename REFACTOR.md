@@ -73,6 +73,25 @@ Recommended order: **Now:** B → J1 → J2 → A → H → G, then **K** (after
 
 **Tests.** None (documentation). `design-system-auditor` and `product-strategist` already read STYLE.md, so they enforce it from then on.
 
+**Status (2026-10-02).** The table is in STYLE.md → Copy Tone → Terminology. **Applying it is a separate copy PR**, which goes into the next build with the QA fixes. It changes what people read and some test labels, so it is not a refactor. The strings to change:
+
+| Now | After |
+|---|---|
+| "New person — nobody by this name yet." | "Someone new — no one by this name yet." |
+| "A different {name}, kept separately" | "A different {name}, with their own notes" |
+| "You already keep somebody by this name. Is this them?" | "You've written about someone by this name. Is this them?" |
+| "This note goes to whoever you pick — or to somebody new." | "This note goes to whoever you pick — or to someone new." |
+| "Andy heard a name that might belong to somebody you already keep. Pick them, or keep it as a new person." | "Andy heard a name that might belong to someone you've written about. Pick them, or choose someone new." |
+| "Everyone you keep in Andy, every note and every photo will be deleted…" | "Everyone in Andy, every note and every photo will be deleted…" |
+| "Anyone who only ever came up inside those notes goes too." | "Anyone who only ever came up in those notes goes too." |
+| "Add a fact" / "Remove fact N" / "Fact N" (accessibility label) | "Add a detail" / "Remove detail N" / "Detail N" |
+| "· fix any fact Andy got wrong." | "· fix any detail Andy got wrong." |
+| "Keep my facts" | "Keep my edits" |
+| "The facts above still come from the old wording…" | "The details above still come from the old wording…" |
+| Server: "That's longer than a fact. Try splitting it up." | "That's too long for one detail. Try splitting it in two." (`convex/notes.ts`, so push the backend) |
+
+Before starting, search `src/` and `convex/` for `fact`, `somebody`, `nobody`, `mention`, `transcript` and `keep` in user-facing strings, to catch any this list missed.
+
 ---
 
 ## J2 — No way to see every sentence in the app at once

@@ -70,6 +70,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "db": "convex dashboard",
+    "copy-deck": "node scripts/copy-deck.mjs",
     "lint": "expo lint convex src && tsc --noEmit && tsc --noEmit -p convex/tsconfig.json",
     "test": "jest && vitest run",
     "test:watch": "jest --watchAll",

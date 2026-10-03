@@ -340,6 +340,10 @@ test("should say it cannot tell which person rather than pick one", async () => 
   // Filed as "Judy", so the card says Judy — not the lowercase key the
   // matching compares by.
   expect(screen.getByText(/“Judy”/)).toBeTruthy();
+  // People are written about, never "kept" (STYLE.md → Terminology).
+  // The apostrophe is written &apos; in the JSX; on screen it is a plain '.
+  expect(screen.getByText(/You've written about 2 people called “Judy”/)).toBeTruthy();
+  expect(screen.queryByText(/You keep/)).toBeNull();
 });
 
 test("should skip the meetings that are about nobody and show the one that is not", async () => {
