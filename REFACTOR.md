@@ -37,7 +37,7 @@ Written 2026-10-02, while the designer and QA test build 1.0.0 (3) on their phon
 
 Recommended order: **Now:** B → J1 → J2 → A → H → G, then **K** (after its check). **After QA:** L → M → C → D → J3 → E + F (+ N) → I. **V1.1:** J4.
 
-**Done:** B (#90), J1 (#92), J2 (#93).
+**Done:** B (#90). **In review:** J1 (#92), J2 (#93).
 
 ---
 
