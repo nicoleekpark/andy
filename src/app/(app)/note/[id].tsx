@@ -14,6 +14,7 @@ import { api } from "@convex/_generated/api";
 import { useJustAdded } from "@/lib/use-just-added";
 import { useRowKeys } from "@/lib/use-row-keys";
 import { colors } from "@/constants/theme";
+import { userMessage } from "@/lib/user-message";
 
 /**
  * Correcting a note after it is saved.
@@ -129,9 +130,7 @@ export default function NoteScreen() {
       // The mutation's ConvexError messages are written for this screen, so
       // they are shown as they are; anything else gets a plain line.
       setError(
-        e instanceof Error && e.message
-          ? e.message
-          : "Andy couldn't save that change. Try again.",
+        userMessage(e, "Andy couldn't save that change. Try again."),
       );
       setSaving(false);
     }
@@ -165,9 +164,7 @@ export default function NoteScreen() {
                 router.replace(`/profile/${leftBehind}`);
               } catch (e) {
                 setError(
-                  e instanceof Error && e.message
-                    ? e.message
-                    : "Andy couldn't delete that note. Try again.",
+                  userMessage(e, "Andy couldn't delete that note. Try again."),
                 );
               }
             })();

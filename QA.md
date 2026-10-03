@@ -219,6 +219,8 @@ live here rather than in §7 because that is the screen they happen on.
 | 11.3 | Home list | Names in **serif** (Lora), dates in **monospace** (Plex Mono) |
 | 11.4 | `xcrun simctl openurl booted "andy:///profile/zzz"` | Not-found line **centred**, not pinned to the top |
 | 11.5 | Sign out, sign in as another account | No trace of the first account's people, not even for a frame |
+| 11.6 | Turn on Airplane mode, then save a note edit, delete a note, or read a business card | A plain sentence such as *"Andy couldn't save that change. Try again."* — **never** "[Request ID: …] Server Error" or "fetch failed". Before 2026-10-02 prod showed exactly that line (REFACTOR.md → K) |
+| 11.7 | Record a name two people share and try to save without choosing (or rename someone to a name already taken) | The server's own sentence, e.g. *"You've written about more than one …"* — not "Server Error" |
 
 ## 12. Search indexing
 
