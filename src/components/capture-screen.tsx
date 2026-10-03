@@ -176,7 +176,7 @@ function NamePicker({
               // the note is filed — it decides who the name links to — and
               // this line is shared by both since the mention case stopped
               // joining silently.
-              "You keep more than one. Whichever you pick is who this name links to."
+              "You've written about more than one person by this name. Whichever you pick is who this name links to."
             : required
               ? // One person answers to this name, which is not the same
                 // as this being them. Somebody kept months ago is easy to

@@ -1216,6 +1216,10 @@ describe("capture screen review step", () => {
 
     // Shown where the whole block used to live, above Save.
     await waitFor(() => expect(screen.getByText("Which Ghost?")).toBeTruthy());
+    // People are written about, never "kept" (STYLE.md → Terminology).
+    expect(
+      screen.getByText(/You.ve written about more than one person by this name/),
+    ).toBeTruthy();
   });
 
   test("should ask before inventing somebody whose name is a possessive of one you keep", async () => {

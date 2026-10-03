@@ -1666,7 +1666,7 @@ test("should ask which Maisie a saved note is about, rather than silently choosi
       draft: buildDraft({ primaryName: "Maisie", mentions: [] }),
       source: "voice",
     }),
-  ).rejects.toThrow(/more than one Maisie/);
+  ).rejects.toThrow(/You've written about more than one Maisie/);
 
   // And the picked one is filed correctly once an answer is given.
   const saved = await t.withIdentity(ALICE).mutation(api.notes.saveCapture, {
