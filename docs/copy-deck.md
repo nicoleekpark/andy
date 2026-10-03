@@ -54,7 +54,7 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 | Remind me before meetings | VoiceOver | `src/components/briefing-card.tsx:153` |  |
 | Remind me 20 minutes before › | text | `src/components/briefing-card.tsx:158` |  |
 | Notifications are off, so Andy can't remind you before this. Turn them on in Settings › Andy. | text | `src/components/briefing-card.tsx:168` |  |
-| You keep {…}people called “{…}”, so Andy can't tell which one this is. | text | `src/components/briefing-card.tsx:177` | *(review: people are "in Andy", not kept)* |
+| You keep {…}people called “{…}”, so Andy can't tell which one this is. | text | `src/components/briefing-card.tsx:177` | *(review: people are "written about", not kept)* |
 | Andy can't reach the server. | text | `src/components/connecting.tsx:115` |  |
 | Try again | VoiceOver | `src/components/connecting.tsx:118` |  |
 | Try again | text | `src/components/connecting.tsx:122` |  |
@@ -70,9 +70,9 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 | Is “{…}” one of these? | label | `src/components/capture-screen.tsx:157` |  |
 | Which {…}? | label | `src/components/capture-screen.tsx:159` |  |
 | This {…}? | label | `src/components/capture-screen.tsx:160` |  |
-| Andy heard a name that might belong to somebody you already keep. Pick them, or keep it as a new person. | text | `src/components/capture-screen.tsx:172` | Andy heard a name that might belong to someone already in Andy. Pick them, or choose someone new. |
-| You keep more than one. Whichever you pick is who this name links to. | text | `src/components/capture-screen.tsx:179` | *(review: people are "in Andy", not kept)* |
-| You already keep somebody by this name. Is this them? | text | `src/components/capture-screen.tsx:186` | Someone by this name is already in Andy. Is this them? |
+| Andy heard a name that might belong to somebody you already keep. Pick them, or keep it as a new person. | text | `src/components/capture-screen.tsx:172` | Andy heard a name that might belong to someone you've written about. Pick them, or choose someone new. |
+| You keep more than one. Whichever you pick is who this name links to. | text | `src/components/capture-screen.tsx:179` | *(review: people are "written about", not kept)* |
+| You already keep somebody by this name. Is this them? | text | `src/components/capture-screen.tsx:186` | You've written about someone by this name. Is this them? |
 | This note goes to whoever you pick — or to somebody new. | text | `src/components/capture-screen.tsx:187` | This note goes to whoever you pick — or to someone new. |
 | View {…}, {…} | VoiceOver | `src/components/capture-screen.tsx:221` |  |
 | View | text | `src/components/capture-screen.tsx:231` |  |
@@ -420,7 +420,7 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 | There's more detail in that note than Andy can save at once. Try splitting it into two. | server error | `convex/notes.ts:125` |  |
 | That note names too many people at once. Try splitting it into two. | server error | `convex/notes.ts:135` |  |
 | That note mentions too many people at once. Try splitting it into two. | server error | `convex/notes.ts:141` |  |
-| You keep more than one {…}. Say which one this note is about. | server error | `convex/notes.ts:242` | *(review: people are "in Andy", not kept)* |
+| You keep more than one {…}. Say which one this note is about. | server error | `convex/notes.ts:242` | *(review: people are "written about", not kept)* |
 | Andy couldn't find that note. | server error | `convex/notes.ts:517` |  |
 | That's longer than a fact. Try splitting it up. | server error | `convex/notes.ts:539` | That's too long for one detail. Try splitting it in two. |
 | Andy couldn't use that photo. | server error | `convex/photos.ts:88` |  |

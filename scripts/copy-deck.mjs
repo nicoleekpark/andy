@@ -54,9 +54,9 @@ const SHOWN_SETTERS = /^set(Error|Status|Message|Notice|Warning)$/;
 const EXACT = new Map([
   ["New person — nobody by this name yet.", "Someone new — no one by this name yet."],
   ["A different {…}, kept separately", "A different {…}, with their own notes"],
-  ["You already keep somebody by this name. Is this them?", "Someone by this name is already in Andy. Is this them?"],
+  ["You already keep somebody by this name. Is this them?", "You've written about someone by this name. Is this them?"],
   ["This note goes to whoever you pick — or to somebody new.", "This note goes to whoever you pick — or to someone new."],
-  ["Andy heard a name that might belong to somebody you already keep. Pick them, or keep it as a new person.", "Andy heard a name that might belong to someone already in Andy. Pick them, or choose someone new."],
+  ["Andy heard a name that might belong to somebody you already keep. Pick them, or keep it as a new person.", "Andy heard a name that might belong to someone you've written about. Pick them, or choose someone new."],
   ["Anyone who only ever came up inside those notes goes too. People with notes of their own stay.", "Anyone who only ever came up in those notes goes too. People with notes of their own stay."],
   ["Keep my facts", "Keep my edits"],
   ["That's longer than a fact. Try splitting it up.", "That's too long for one detail. Try splitting it in two."],
@@ -74,13 +74,14 @@ const RULES = [
 ];
 
 /** "Keep" said of people, not notes — the Terminology rule has no mechanical fix for it. */
+// Fixed by hand: the three "you keep" strings (copy/people-written-about-not-kept).
 const KEEPS_PEOPLE = /\b[Yy]ou (already )?keep (more than one|somebody|someone|people|\{…\})/;
 
 function planned(text) {
   if (EXACT.has(text)) return EXACT.get(text);
   let next = text;
   for (const [pattern, replacement] of RULES) next = next.replace(pattern, replacement);
-  const review = KEEPS_PEOPLE.test(next) ? " *(review: people are \"in Andy\", not kept)*" : "";
+  const review = KEEPS_PEOPLE.test(next) ? " *(review: people are \"written about\", not kept)*" : "";
   if (next === text) return review.trim();
   return `${next} *(by rule)*${review}`;
 }
