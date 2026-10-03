@@ -20,6 +20,7 @@ import { ConvexError } from "convex/values";
 import { getFunctionName } from "convex/server";
 import { renderRouter } from "expo-router/testing-library";
 import { api } from "@convex/_generated/api";
+import { answerByName, nameOf, quietCall } from "../test-support/convex-mocks";
 
 /**
  * src/app/(app)/profile/[id]/index.tsx's three branches — loading, not-found,
@@ -187,11 +188,7 @@ describe("profile screen", () => {
     ]);
     // The note screen the button opens reads its own query; left loading so
     // this test is about the way in, not that screen.
-    (useQuery as jest.Mock).mockImplementation((reference: unknown) =>
-      getFunctionName(reference as never) === getFunctionName(api.notes.byId)
-        ? undefined
-        : profile,
-    );
+    answerByName(useQuery, { [nameOf(api.notes.byId)]: undefined }, () => profile);
 
     const result = renderRouter("src/app", { initialUrl: "/profile/contact-1" });
     await result;
@@ -349,11 +346,7 @@ describe("profile screen", () => {
     // screen, which also asks `profiles.resolveNames` which names in the draft
     // more than one person answers to. A blanket mock hands that a profile
     // where it expects a list of questions.
-    (useQuery as jest.Mock).mockImplementation((reference: unknown) =>
-      getFunctionName(reference as never) === "profiles:resolveNames"
-        ? []
-        : withNotes([]),
-    );
+    answerByName(useQuery, { "profiles:resolveNames": [] }, () => withNotes([]));
 
     const result = renderRouter("src/app", { initialUrl: "/profile/contact-1" });
     await result;
@@ -439,11 +432,7 @@ describe("follow-up email", () => {
    * would keep passing if the button were rewired to call something else.
    */
   function mockDraft(draft: jest.Mock) {
-    (useAction as jest.Mock).mockImplementation((reference: unknown) =>
-      getFunctionName(reference as never) === getFunctionName(api.followUp.draft)
-        ? draft
-        : jest.fn(async () => undefined),
-    );
+    answerByName(useAction, { [nameOf(api.followUp.draft)]: draft }, quietCall);
   }
 
   afterEach(() => {

@@ -82,6 +82,7 @@
     "preset": "jest-expo",
     "restoreMocks": true,
     "testTimeout": 20000,
+    "cacheDirectory": "<rootDir>/.jest-cache",
     "setupFilesAfterEnv": [
       "<rootDir>/jest.setup.ts"
     ],
