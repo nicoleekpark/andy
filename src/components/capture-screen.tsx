@@ -335,7 +335,6 @@ function Fate({
   );
 }
 
-
 export function CaptureScreen({ profileId }: { profileId?: string }) {
   /**
    * Who this note is about, when the route already said.
