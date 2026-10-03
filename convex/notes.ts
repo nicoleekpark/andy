@@ -239,7 +239,7 @@ export const saveCapture = mutation({
         return matches[0] ?? null;
       }
       throw new ConvexError(
-        `You keep more than one ${name.trim()}. Say which one this note is about.`,
+        `You've written about more than one ${name.trim()}. Say which one this note is about.`,
       );
     }
 

@@ -175,8 +175,8 @@ export function BriefingCard(props: Props) {
             // app does not know which one you are meeting — picking the one
             // with more notes would be it pretending to know.
             <Text key={name.name} style={styles.body}>
-              You keep {name.count} people called “{name.name}”, so Andy
-              can&apos;t tell which one this is.
+              You&apos;ve written about {name.count} people called “{name.name}”,
+              so Andy can&apos;t tell which one this is.
             </Text>
           ))}
         </>
