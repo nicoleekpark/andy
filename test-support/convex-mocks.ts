@@ -54,7 +54,7 @@ export const quietCall = () => jest.fn(async () => undefined);
  * (`{ update?, remove? }`) and leave the missing ones to `otherwise`.
  */
 export function given(
-  handlers: Record<string, unknown | undefined>,
+  handlers: Record<string, unknown>,
 ): Record<string, unknown> {
   return Object.fromEntries(
     Object.entries(handlers).filter(([, handler]) => handler !== undefined),
