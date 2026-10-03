@@ -341,7 +341,8 @@ test("should say it cannot tell which person rather than pick one", async () => 
   // matching compares by.
   expect(screen.getByText(/“Judy”/)).toBeTruthy();
   // People are written about, never "kept" (STYLE.md → Terminology).
-  expect(screen.getByText(/You.ve written about 2 people called/)).toBeTruthy();
+  // The apostrophe is written &apos; in the JSX; on screen it is a plain '.
+  expect(screen.getByText(/You've written about 2 people called “Judy”/)).toBeTruthy();
   expect(screen.queryByText(/You keep/)).toBeNull();
 });
 
