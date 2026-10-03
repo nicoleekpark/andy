@@ -137,7 +137,7 @@ Before starting, search `src/` and `convex/` for `fact`, `somebody`, `nobody`, `
 - the `profiles.search_name` index, which `schema.ts` itself marks **"Unused"**
 - `metrics` and `profiles.contactId`, kept for features cut to V1.1
 
-**The fix.** Run a dead-code finder (`knip` or `ts-prune`) and write a report. **Delete nothing until each item is decided.** Schema changes follow CLAUDE.md: removing an index is safe; removing a field needs the migration steps.
+**The fix.** Run a dead-code finder (`knip` or `ts-prune`) and write a report. **Report written:** [`docs/dead-code-report.md`](docs/dead-code-report.md) (2026-10-02). Four decisions are waiting there. **Delete nothing until each item is decided.** Schema changes follow CLAUDE.md: removing an index is safe; removing a field needs the migration steps.
 
 **Tests.** None for the report.
 
