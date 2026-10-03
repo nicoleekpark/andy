@@ -73,9 +73,9 @@ Recommended order: **Now:** B → J1 → J2 → A → H → G. **After QA:** C �
 |---|---|
 | "New person — nobody by this name yet." | "Someone new — no one by this name yet." |
 | "A different {name}, kept separately" | "A different {name}, with their own notes" |
-| "You already keep somebody by this name. Is this them?" | "Someone by this name is already in Andy. Is this them?" |
+| "You already keep somebody by this name. Is this them?" | "You've written about someone by this name. Is this them?" |
 | "This note goes to whoever you pick — or to somebody new." | "This note goes to whoever you pick — or to someone new." |
-| "Andy heard a name that might belong to somebody you already keep. Pick them, or keep it as a new person." | "Andy heard a name that might belong to someone already in Andy. Pick them, or choose someone new." |
+| "Andy heard a name that might belong to somebody you already keep. Pick them, or keep it as a new person." | "Andy heard a name that might belong to someone you've written about. Pick them, or choose someone new." |
 | "Everyone you keep in Andy, every note and every photo will be deleted…" | "Everyone in Andy, every note and every photo will be deleted…" |
 | "Anyone who only ever came up inside those notes goes too." | "Anyone who only ever came up in those notes goes too." |
 | "Add a fact" / "Remove fact N" / "Fact N" (accessibility label) | "Add a detail" / "Remove detail N" / "Detail N" |
