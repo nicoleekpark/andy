@@ -7,13 +7,13 @@ import {
 } from "@testing-library/react-native";
 import { Alert, StyleSheet } from "react-native";
 import { useAction, useMutation, useQuery } from "convex/react";
-import { getFunctionName } from "convex/server";
 import { useSpeechRecognitionEvent } from "expo-speech-recognition";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { renderRouter } from "expo-router/testing-library";
 import { api } from "@convex/_generated/api";
 import type { Draft } from "@convex/extractionPrompt";
+import { answerByName, given, nameOf, pressAlertButton, quietCall } from "../test-support/convex-mocks";
 
 /**
  * src/app/(app)/profile/[id]/capture.tsx's whole reason to exist is the
@@ -68,11 +68,7 @@ function captureListeners(): Record<string, Listener> {
  * reference, only the same resolved name via `getFunctionName`.
  */
 function mockSaveCapture(saveCapture: jest.Mock) {
-  (useMutation as jest.Mock).mockImplementation((fn: unknown) =>
-    getFunctionName(fn as never) === getFunctionName(api.notes.saveCapture)
-      ? saveCapture
-      : jest.fn(async () => undefined),
-  );
+  answerByName(useMutation, { [nameOf(api.notes.saveCapture)]: saveCapture }, quietCall);
 }
 
 /**
@@ -93,15 +89,14 @@ function mockActions({
   extract?: jest.Mock;
   readCard?: jest.Mock;
 }) {
-  (useAction as jest.Mock).mockImplementation((fn: unknown) => {
-    if (readCard && getFunctionName(fn as never) === getFunctionName(api.extraction.fromBusinessCard)) {
-      return readCard;
-    }
-    if (extract && getFunctionName(fn as never) === getFunctionName(api.extraction.fromTranscript)) {
-      return extract;
-    }
-    return jest.fn(async () => undefined);
-  });
+  answerByName(
+    useAction,
+    given({
+      [nameOf(api.extraction.fromBusinessCard)]: readCard,
+      [nameOf(api.extraction.fromTranscript)]: extract,
+    }),
+    quietCall,
+  );
 }
 
 /**
@@ -117,11 +112,7 @@ function mockActions({
 function mockAlert(buttonText = "Take a photo") {
   // Returns the spy so a test can assert the alert was *not* raised, which is
   // the whole of "nothing was edited, so nothing was asked".
-  return jest
-    .spyOn(Alert, "alert")
-    .mockImplementation((_title, _message, buttons) => {
-      buttons?.find((b) => b.text === buttonText)?.onPress?.();
-    });
+  return pressAlertButton(buttonText);
 }
 
 function makeCardDraft(): { draft: Draft; cardText: string } {
@@ -188,10 +179,7 @@ function scopeTo(name: string, ambiguous: unknown[] = []) {
   // `profiles.resolveNames` which of the user's people answer to each name in
   // the draft, and one `mockReturnValue` hands it a profile where it expects a
   // list of questions.
-  (useQuery as jest.Mock).mockImplementation((reference: unknown) =>
-    getFunctionName(reference as never) === "profiles:resolveNames"
-      ? ambiguous
-      : {
+  answerByName(useQuery, { "profiles:resolveNames": ambiguous }, () => ({
           profile: {
             _id: "contact-1",
             name,
@@ -202,8 +190,7 @@ function scopeTo(name: string, ambiguous: unknown[] = []) {
           notes: [],
           mentionedIn: [],
           mentionedInTotal: 0,
-        },
-  );
+        }));
 }
 
 async function reachReview(handlers: Record<string, Listener>, spoken: string) {
@@ -1933,7 +1920,6 @@ describe("capture screen review step", () => {
       { name: "Marcus", profileId: "profile-marcus" },
     ]);
   });
-
 
   test("should offer a new person alongside the candidates when a name is shared", async () => {
     (useAction as jest.Mock).mockReturnValue(

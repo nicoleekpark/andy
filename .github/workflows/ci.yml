@@ -17,6 +17,18 @@ jobs:
       - run: npm ci
       - name: Lint & typecheck
         run: npm run lint
+      # Jest's compile cache, kept between runs. Every run used to compile the
+      # whole route tree from scratch, which is what pushed a cold first test
+      # past jest's old 5 s limit (runs 180/181, REFACTOR.md → H). Entries are
+      # keyed by file content, so a stale one is never used; the key only
+      # decides which cache to start from.
+      - name: Restore jest cache
+        uses: actions/cache@v4
+        with:
+          path: .jest-cache
+          key: jest-${{ runner.os }}-${{ hashFiles('package-lock.json', 'babel.config.js') }}-${{ github.sha }}
+          restore-keys: |
+            jest-${{ runner.os }}-${{ hashFiles('package-lock.json', 'babel.config.js') }}-
       - name: Test (RN + Convex)
         run: npm run test
 

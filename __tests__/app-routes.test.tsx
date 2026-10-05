@@ -1,8 +1,9 @@
 import { screen } from "@testing-library/react-native";
 import { renderRouter } from "expo-router/testing-library";
 import { useQuery } from "convex/react";
-import { getFunctionName } from "convex/server";
+
 import { api } from "@convex/_generated/api";
+import { answerByName } from "../test-support/convex-mocks";
 
 /**
  * The route tree in src/app is deliberately made of placeholder screens with
@@ -21,11 +22,7 @@ import { api } from "@convex/_generated/api";
  * a list of questions.
  */
 function mockCaptureQueries(scoped: unknown) {
-  (useQuery as jest.Mock).mockImplementation((reference: unknown) =>
-    getFunctionName(reference as never) === "profiles:resolveNames"
-      ? []
-      : scoped,
-  );
+  answerByName(useQuery, { "profiles:resolveNames": [] }, () => scoped);
 }
 
 describe("app route tree", () => {

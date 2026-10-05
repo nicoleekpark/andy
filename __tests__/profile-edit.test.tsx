@@ -1,10 +1,10 @@
 import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
-import { Alert } from "react-native";
 import { useMutation, useQuery } from "convex/react";
-import { getFunctionName } from "convex/server";
+
 import { router } from "expo-router";
 import { renderRouter } from "expo-router/testing-library";
 import { api } from "@convex/_generated/api";
+import { answerByName, given, nameOf, pressAlertButton, quietCall } from "../test-support/convex-mocks";
 
 /**
  * src/app/(app)/profile/[id]/edit.tsx — correcting the person rather than a
@@ -38,16 +38,11 @@ function mockProfileMutations(handlers: {
   update?: jest.Mock;
   remove?: jest.Mock;
 }) {
-  (useMutation as jest.Mock).mockImplementation((reference: unknown) => {
-    const name = getFunctionName(reference as never);
-    if (name === "profiles:updateProfile" && handlers.update !== undefined) {
-      return handlers.update;
-    }
-    if (name === "profiles:remove" && handlers.remove !== undefined) {
-      return handlers.remove;
-    }
-    return jest.fn(async () => undefined);
-  });
+  answerByName(
+    useMutation,
+    given({ "profiles:updateProfile": handlers.update, "profiles:remove": handlers.remove }),
+    quietCall,
+  );
 }
 
 function mockUpdateProfile(updateProfile: jest.Mock) {
@@ -62,11 +57,7 @@ function mockUpdateProfile(updateProfile: jest.Mock) {
  * empty row and deleting four years of notes.
  */
 function mockDeleteAlert(press: "Delete" | "Cancel") {
-  return jest
-    .spyOn(Alert, "alert")
-    .mockImplementation((_title, _message, buttons) => {
-      buttons?.find((b) => b.text === press)?.onPress?.();
-    });
+  return pressAlertButton(press);
 }
 
 type Args = {
@@ -260,11 +251,7 @@ describe("edit profile screen", () => {
   // Found on the simulator on 2026-09-30.
   test("should leave no way back to the person once they are deleted", async () => {
     const withNotes = profile({ name: "Emma" });
-    (useQuery as jest.Mock).mockImplementation((reference: unknown) =>
-      getFunctionName(reference as never) === getFunctionName(api.profiles.withNotes)
-        ? withNotes
-        : undefined,
-    );
+    answerByName(useQuery, { [nameOf(api.profiles.withNotes)]: withNotes });
     mockProfileMutations({
       remove: jest.fn(async () => ({ removedNoteCount: 0, removedAutoCreatedCount: 0 })),
     });
