@@ -14,34 +14,11 @@ import { DraftSheet } from "../../../../components/draft-sheet";
 import * as FileSystem from "expo-file-system/legacy";
 import { imageContentType } from "../../../../lib/media";
 import type { Draft } from "../../../../components/draft-sheet";
-import type { Doc, Id } from "@convex/_generated/dataModel";
+import type { Id } from "@convex/_generated/dataModel";
 import { colors, fonts } from "@/constants/theme";
+import { formatDate, localToday } from "@/lib/dates";
+import { sourceLabel } from "@/lib/note-source";
 import { userMessage } from "@/lib/user-message";
-
-/**
- * What to call a note's body, given the door the note came through.
- *
- * "What you said" is simply untrue on a note captured from a business card —
- * nobody said it, it was read off a card — and being able to check a fact
- * against its source is the entire reason the body stays reachable. A label
- * that misnames the source defeats the control it opens.
- *
- * `source` is already on every note (`notes.source`, required since the table
- * was defined), so this needs nothing new from the backend. A voice note and a
- * calendar nudge are both spoken into the app, so they share a label; anything
- * added later lands on that same default until it earns wording of its own,
- * which is the safe direction to be wrong in.
- */
-function bodyLabel(source: Doc<"notes">["source"]): string {
-  switch (source) {
-    case "business_card":
-      return "What the card said";
-    case "manual":
-      return "What you wrote";
-    default:
-      return "What you said";
-  }
-}
 
 /**
  * A person, and everything recorded about them, newest first.
@@ -281,7 +258,7 @@ export default function ProfileScreen() {
         // The device's date, not the server's. A follow-up that says "September"
         // to somebody for whom it is already October reads as inattentive, and
         // the deployment has no idea what day it is where the user is.
-        today: new Date().toLocaleDateString("en-CA"),
+        today: localToday(),
       });
 
       // Counted rather than compared. A rewrite can legitimately come back
@@ -321,7 +298,7 @@ export default function ProfileScreen() {
   const editNote = (note: { _id: string; createdAt: number }) => (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Edit the note from ${new Date(note.createdAt).toLocaleDateString("en-CA")}`}
+      accessibilityLabel={`Edit the note from ${formatDate(note.createdAt)}`}
       onPress={() => router.push(`/note/${note._id}?edit=1`)}
       hitSlop={8}
     >
@@ -454,7 +431,7 @@ export default function ProfileScreen() {
                     </View>
                     <View style={styles.entryBody}>
                       <Text style={styles.date}>
-                        {new Date(note.createdAt).toLocaleDateString("en-CA")}
+                        {formatDate(note.createdAt)}
                       </Text>
                       {note.keyFacts && note.keyFacts.length > 0 ? (
                         <>
@@ -473,7 +450,7 @@ export default function ProfileScreen() {
                                 openTranscripts.includes(note._id)
                                   ? "Hide"
                                   : "Show"
-                              } ${bodyLabel(note.source).toLowerCase()} on ${new Date(note.createdAt).toLocaleDateString("en-CA")}`}
+                              } ${sourceLabel(note.source).toLowerCase()} on ${formatDate(note.createdAt)}`}
                               onPress={() => toggleTranscript(note._id)}
                               hitSlop={8}
                             >
@@ -482,7 +459,7 @@ export default function ProfileScreen() {
                                     stay put — a control whose text and meaning
                                     both change reads as two different controls. */}
                                 {openTranscripts.includes(note._id) ? "▾" : "▸"}{" "}
-                                {bodyLabel(note.source)}
+                                {sourceLabel(note.source)}
                               </Text>
                             </Pressable>
                             {/* Its own control rather than making the whole
@@ -586,7 +563,7 @@ export default function ProfileScreen() {
                   >
                     <Text style={styles.rowMeta}>
                       {entry.aboutName} ·{" "}
-                      {new Date(entry.createdAt).toLocaleDateString("en-CA")}
+                      {formatDate(entry.createdAt)}
                     </Text>
                     {entry.quote ? (
                       <Text style={styles.transcript}>{entry.quote}</Text>

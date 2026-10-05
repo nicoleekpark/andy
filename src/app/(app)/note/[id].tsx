@@ -14,6 +14,8 @@ import { api } from "@convex/_generated/api";
 import { useJustAdded } from "@/lib/use-just-added";
 import { useRowKeys } from "@/lib/use-row-keys";
 import { colors } from "@/constants/theme";
+import { formatDate } from "@/lib/dates";
+import { sourceLabel } from "@/lib/note-source";
 import { userMessage } from "@/lib/user-message";
 
 /**
@@ -214,7 +216,7 @@ export default function NoteScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.lead}>
-          {new Date(result.note.createdAt).toLocaleDateString("en-CA")}
+          {formatDate(result.note.createdAt)}
           {editing ? " · fix any fact Andy got wrong." : ""}
         </Text>
 
@@ -292,11 +294,7 @@ export default function NoteScreen() {
 
         <View style={styles.field}>
           <Text style={styles.fieldLabel}>
-            {result.note.source === "business_card"
-              ? "What the card said"
-              : result.note.source === "manual"
-                ? "What you wrote"
-                : "What you said"}
+            {sourceLabel(result.note.source)}
           </Text>
           {/*
             Read, not edited. A record you can rewrite is not a record — and the

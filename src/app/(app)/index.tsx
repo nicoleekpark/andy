@@ -7,6 +7,7 @@ import { ThreadLoop } from "@/components/thread-loop";
 import { useBriefing } from "@/lib/use-briefing";
 import { colors, fonts, space } from "@/constants/theme";
 import { useOncePerSession } from "@/lib/use-once-per-session";
+import { formatDate } from "@/lib/dates";
 
 /**
  * Home: the people you keep, and the way in to everything else.
@@ -147,7 +148,7 @@ export default function HomeScreen() {
                   {[
                     item.profile.relationshipContext,
                     `${item.noteCount} ${item.noteCount === 1 ? "note" : "notes"}`,
-                    new Date(item.lastNoteAt).toLocaleDateString("en-CA"),
+                    formatDate(item.lastNoteAt),
                   ]
                     .filter(Boolean)
                     .join(" · ")}

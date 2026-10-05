@@ -20,6 +20,8 @@ import type { Draft } from "@convex/extractionPrompt";
 import { matchKey } from "@convex/naming";
 import { useJustAdded } from "@/lib/use-just-added";
 import { useRowKeys } from "@/lib/use-row-keys";
+import { formatDate, localToday } from "@/lib/dates";
+import { sourceLabel } from "@/lib/note-source";
 import { colors } from "@/constants/theme";
 import { userMessage } from "@/lib/user-message";
 
@@ -91,7 +93,7 @@ function describe(candidate: {
     `${candidate.noteCount} ${candidate.noteCount === 1 ? "note" : "notes"}`,
     candidate.lastNoteAt === null
       ? "never written about"
-      : `last ${new Date(candidate.lastNoteAt).toLocaleDateString("en-CA")}`,
+      : `last ${formatDate(candidate.lastNoteAt)}`,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -332,13 +334,6 @@ function Fate({
       )}
     </View>
   );
-}
-
-/** The user's own calendar date, not the server's — "오늘" means their today. */
-function localToday(): string {
-  // en-CA formats as YYYY-MM-DD, which is the shape the extraction prompt
-  // expects, while still resolving in the device's timezone.
-  return new Date().toLocaleDateString("en-CA");
 }
 
 export function CaptureScreen({ profileId }: { profileId?: string }) {
@@ -1629,11 +1624,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
 
           <Field
             label={
-              source === "business_card"
-                ? "What the card says"
-                : source === "manual"
-                  ? "What you wrote"
-                  : "What you said"
+              sourceLabel(source, { draft: true })
             }
           >
             <Text style={styles.quiet}>
@@ -1646,11 +1637,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
               style={[styles.input, styles.transcriptInput]}
               multiline
               accessibilityLabel={
-                source === "business_card"
-                  ? "What the card says"
-                  : source === "manual"
-                    ? "What you wrote"
-                    : "What you said"
+                sourceLabel(source, { draft: true })
               }
             />
             {/*

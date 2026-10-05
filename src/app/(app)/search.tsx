@@ -13,6 +13,7 @@ import { useAction, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "@convex/_generated/api";
 import { colors, fonts } from "@/constants/theme";
+import { formatDate } from "@/lib/dates";
 import { userMessage } from "@/lib/user-message";
 
 /**
@@ -344,7 +345,7 @@ function ResultCard({ result }: { result: Results[number] }) {
           // like the only thing there was.
           result.used ? "used in the answer" : null,
           result.profile.relationshipContext,
-          new Date(result.createdAt).toLocaleDateString("en-CA"),
+          formatDate(result.createdAt),
         ]
           .filter(Boolean)
           .join(" · ")}
