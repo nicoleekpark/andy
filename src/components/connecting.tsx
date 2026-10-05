@@ -25,7 +25,7 @@ import { colors, space } from "@/constants/theme";
  */
 export const RetryConnectionContext = createContext<() => void>(() => {});
 
-export function useRetryConnection(): () => void {
+function useRetryConnection(): () => void {
   return useContext(RetryConnectionContext);
 }
 
