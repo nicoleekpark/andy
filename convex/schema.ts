@@ -65,18 +65,12 @@ export default defineSchema({
     // can ask "is this file already somebody's?" in one read. Without it that
     // question costs a scan of every profile in the deployment, which is why
     // the check that needs it was missing rather than slow.
-    .index("by_photo", ["photoStorageId"])
-    /**
-     * **Unused.** Measured on day 7 against the deployment and found to be the
-     * wrong tool for looking a person up: it tokenises, so `oneill` does not
-     * match `O'Neill`, and `선희` does not match `지선희` — a script with no
-     * spaces has no mid-word prefix for it to find. One user's own people are
-     * few enough to fold and substring-match directly.
-     */
-    .searchIndex("search_name", {
-      searchField: "name",
-      filterFields: ["userId"],
-    }),
+    // No full-text index on `name`. One, `search_name`, was declared on day 1,
+    // measured on day 7 as the wrong tool for finding a person (it tokenises:
+    // `oneill` misses `O'Neill`, `선희` misses `지선희`), never queried, and
+    // removed on 2026-10-04 — it only cost an index write on every profile
+    // save. `convex/peopleSearch.ts` folds and substring-matches instead.
+    .index("by_photo", ["photoStorageId"]),
 
   // Indexed per-note, never collapsed into a per-profile blob — that is what
   // makes cross-profile mention search possible (CLAUDE.md, a Must-have).

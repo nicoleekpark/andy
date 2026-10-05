@@ -14,9 +14,9 @@ import { matchKey } from "./naming";
  * Both files must keep their own rule. Unifying them would have to break one,
  * and the one it would break is the silent one.
  *
- * The measurement behind the shape: `profiles` carries a `search_name` full-text
- * index, declared on day 1 and never used, and day 7 measured it against the
- * deployment rather than assuming:
+ * The measurement behind the shape: `profiles` carried a `search_name` full-text
+ * index, declared on day 1 and never used (removed 2026-10-04), and day 7
+ * measured it against the deployment rather than assuming:
  *
  *     query     search index              fold + substring
  *     judy      Judy Park, Judy O'Neill   Judy O'Neill, Judy Park
