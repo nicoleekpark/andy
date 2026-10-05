@@ -94,9 +94,9 @@ export const MAX_EMBEDDING_CHARS = 8_000;
  * ever, silently, which is a worse failure than an imprecise match. So when there
  * are no facts, the transcript is used — it is the only text the note has.
  *
- * **The subject's own name is deliberately not prepended.** `profiles` already
- * carries a `search_name` full-text index for looking a person up by name —
- * a better tool for that job than a vector. Prepending it would make every note
+ * **The subject's own name is deliberately not prepended.** Looking a person up
+ * by name is `people.search`'s job (`convex/peopleSearch.ts`), a better tool for
+ * it than a vector. Prepending it would make every note
  * about Priya retrievable by the token "Priya" and crowd out the nameless
  * queries this index exists for ("the person who runs a climbing gym").
  */
