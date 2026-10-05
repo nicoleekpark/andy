@@ -1,11 +1,11 @@
 import { useAuth } from "@clerk/expo";
 import { useAction } from "convex/react";
-import { ConvexError } from "convex/values";
 import { useCallback, useRef, useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { api } from "@convex/_generated/api";
 import { ScreenPlaceholder } from "@/components/screen-placeholder";
 import { colors } from "@/constants/theme";
+import { userMessage } from "@/lib/user-message";
 
 export default function SettingsScreen() {
   const { signOut } = useAuth();
@@ -26,9 +26,7 @@ export default function SettingsScreen() {
       await signOut();
     } catch (thrown) {
       setError(
-        thrown instanceof ConvexError
-          ? String(thrown.data)
-          : "Andy couldn't delete your account. Check your connection and try again.",
+        userMessage(thrown, "Andy couldn't delete your account. Check your connection and try again."),
       );
     } finally {
       running.current = false;

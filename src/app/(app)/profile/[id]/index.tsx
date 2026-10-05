@@ -16,6 +16,7 @@ import { imageContentType } from "../../../../lib/media";
 import type { Draft } from "../../../../components/draft-sheet";
 import type { Doc, Id } from "@convex/_generated/dataModel";
 import { colors, fonts } from "@/constants/theme";
+import { userMessage } from "@/lib/user-message";
 
 /**
  * What to call a note's body, given the door the note came through.
@@ -232,9 +233,7 @@ export default function ProfileScreen() {
           ? ` (${thrown instanceof Error ? thrown.message : String(thrown)})`
           : "";
       setError(
-        thrown instanceof ConvexError
-          ? String(thrown.data)
-          : `Andy couldn't save that photo. Try again.${detail}`,
+        userMessage(thrown, `Andy couldn't save that photo. Try again.${detail}`),
       );
     } finally {
       setPhotoBusy(false);
@@ -304,9 +303,7 @@ export default function ProfileScreen() {
       // doesn't remember anything about them yet" is the common one. Never the
       // raw error.
       setError(
-        thrown instanceof ConvexError
-          ? String(thrown.data)
-          : "Andy couldn't reach that just now. Try again.",
+        userMessage(thrown, "Andy couldn't reach that just now. Try again."),
       );
     } finally {
       inFlight.current = false;

@@ -14,6 +14,7 @@ import { renderRouter } from "expo-router/testing-library";
 import { api } from "@convex/_generated/api";
 import type { Draft } from "@convex/extractionPrompt";
 import { answerByName, given, nameOf, pressAlertButton, quietCall } from "../test-support/convex-mocks";
+import { ConvexError } from "convex/values";
 
 /**
  * src/app/(app)/profile/[id]/capture.tsx's whole reason to exist is the
@@ -1506,7 +1507,7 @@ describe("capture screen review step", () => {
       if (reads === 1) {
         return makeDraft({ name: "Emma" });
       }
-      throw new Error("Andy couldn't make sense of that one.");
+      throw new ConvexError("Andy couldn't make sense of that one.");
     });
     (useAction as jest.Mock).mockReturnValue(extract);
     scopeTo("Emma");

@@ -5,6 +5,7 @@ import { router } from "expo-router";
 import { renderRouter } from "expo-router/testing-library";
 import { api } from "@convex/_generated/api";
 import { answerByName, given, nameOf, pressAlertButton, quietCall } from "../test-support/convex-mocks";
+import { ConvexError } from "convex/values";
 
 /**
  * src/app/(app)/profile/[id]/edit.tsx — correcting the person rather than a
@@ -157,7 +158,7 @@ describe("edit profile screen", () => {
     (useQuery as jest.Mock).mockReturnValue(profile());
     mockUpdateProfile(
       jest.fn(async () => {
-        throw new Error("You already have someone called Marcus.");
+        throw new ConvexError("You already have someone called Marcus.");
       }),
     );
 
@@ -300,7 +301,7 @@ describe("edit profile screen", () => {
     (useQuery as jest.Mock).mockReturnValue(profile());
     mockProfileMutations({
       remove: jest.fn(async () => {
-        throw new Error("Andy couldn't find that person.");
+        throw new ConvexError("Andy couldn't find that person.");
       }),
     });
     mockDeleteAlert("Delete");
