@@ -11,25 +11,29 @@ To rerun: `npx knip@5 --reporter compact`.
 
 ---
 
-## 1. Packages nobody uses — recommend removing (4)
+## 1. Packages nobody uses — removed (2)
 
 Leftovers from the `create-expo-app` template. Nothing in `src/`, `convex/`, `__tests__/` or `app.json` imports them, and no other package depends on them.
 
-| Package | What it is | Why remove |
-|---|---|---|
-| `expo-device` | Device information | Unused |
-| `expo-glass-effect` | iOS glass material | Unused. V1 has no glass design |
-| `expo-symbols` | SF Symbols | Unused |
-| `expo-status-bar` | Status bar control | Unused: nothing sets the status bar today, so the system default is what ships either way |
+| Package | What it is |
+|---|---|
+| `expo-device` | Device information |
+| `expo-status-bar` | Status bar control. Nothing sets the status bar, so the system default ships either way |
 
-These are **native modules**. Removing them makes the app smaller and leaves less code shipped that nobody reads. It also **needs a new build**, so it should ride along with the next TestFlight build, not get one of its own.
+**Decided 2026-10-04: removed** in the PR "remove expo-device and expo-status-bar", going into the next build.
 
-## 2. Looks unused, but keep or check first (2)
+## 2. Looks unused, but needed — keep (4)
 
-| Package | Finding | Verdict |
-|---|---|---|
-| `@expo/ui` | No imports | **Probably remove, but check first**: it pulls in `react-native-worklets`. Remove it in the same change as §1 and confirm the build still runs |
-| `react-native-worklets` | No imports | **Keep.** `react-native-reanimated` needs it, and `expo-router` (its drawer) needs reanimated. knip can't see a peer dependency |
+knip calls these unused because the app's own code doesn't import them. Checked with each package's `package.json`, which is what decides:
+
+| Package | Who needs it |
+|---|---|
+| `@expo/ui` | `expo-router` (a dependency) |
+| `expo-glass-effect` | `expo-router` (a dependency) |
+| `expo-symbols` | `expo-router` (a dependency) |
+| `react-native-worklets` | `react-native-reanimated`, which `expo-router`'s drawer needs |
+
+Removing any of them from `package.json` would not remove it: the router would still install it. It would only lose the declaration that keeps its version pinned to the SDK, the same reason `expo-file-system` was declared (§4).
 
 ## 3. False positives — no action (5)
 
@@ -72,7 +76,7 @@ The 8 unused exported **types** (`BriefingState`, `LockState` and others) are ha
 
 ## Decisions needed
 
-1. **§1 + §2:** remove the four template packages, plus `@expo/ui`, in one PR that goes into the next build?
-2. **§4:** declare `expo-file-system`?
-3. **§5:** un-export the six names now, or only when those files are next touched?
-4. **§6:** remove the `search_name` index?
+1. ~~§1 + §2~~ **Decided:** remove `expo-device` and `expo-status-bar`; keep the three `expo-router` needs.
+2. ~~§4~~ **Decided:** declared (#100).
+3. ~~§5~~ **Decided:** un-export now, in one small PR.
+4. ~~§6~~ **Decided:** remove it.
