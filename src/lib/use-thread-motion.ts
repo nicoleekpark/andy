@@ -23,8 +23,8 @@ import { useReduceMotion } from "@/lib/use-reduce-motion";
  */
 export type ThreadMotion = "still" | "pass" | "draw";
 
-export const DRAW_MS = 1080;
-export const HOLD_MS = 240;
+const DRAW_MS = 1080;
+const HOLD_MS = 240;
 /**
  * Writing the name once: 4 s, so it reads as written rather than flashed
  * (developer, 2026-10-01). The default for `draw`; shorter lines pass their own.
@@ -35,7 +35,7 @@ const ease = (t: number) =>
   t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
 
 /** Where the dash sits `elapsed` ms into a motion; `length` = hidden, 0 = drawn. */
-export function offsetAt(
+function offsetAt(
   motion: "pass" | "draw",
   elapsed: number,
   length: number,

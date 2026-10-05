@@ -20,7 +20,7 @@ const LOOP =
 
 /** The launch image is this crop of the loop at 432×280 (3× of 144pt). */
 const VIEW = { x: -4, y: 14, width: 108, height: 70 };
-export const LAUNCH_THREAD_WIDTH = 144;
+const LAUNCH_THREAD_WIDTH = 144;
 
 /**
  * Drawing the loop once (the empty home): ~1.2 s, the pace the developer
