@@ -11,10 +11,10 @@ import {
 } from "react-native";
 import { useAction, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { ConvexError } from "convex/values";
 import { api } from "@convex/_generated/api";
 import { colors, fonts } from "@/constants/theme";
 import { formatDate } from "@/lib/dates";
+import { userMessage } from "@/lib/user-message";
 
 /**
  * Ask Andy — recall across every note, not only the ones filed under a name.
@@ -123,9 +123,7 @@ export default function SearchScreen() {
       // The server's own words when it wrote them for a person to read; a plain
       // line otherwise. Never the raw error — it can carry the question back.
       setError(
-        thrown instanceof ConvexError
-          ? String(thrown.data)
-          : "Andy couldn't reach that just now. Try again.",
+        userMessage(thrown, "Andy couldn't reach that just now. Try again."),
       );
       setResults(null);
       setAnswer("");

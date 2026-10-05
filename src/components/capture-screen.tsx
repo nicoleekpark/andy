@@ -23,6 +23,7 @@ import { useRowKeys } from "@/lib/use-row-keys";
 import { formatDate, localToday } from "@/lib/dates";
 import { sourceLabel } from "@/lib/note-source";
 import { colors } from "@/constants/theme";
+import { userMessage } from "@/lib/user-message";
 
 /**
  * Voice capture, end to end: speak → transcript → draft → confirm → saved.
@@ -747,9 +748,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
         // they are shown as-is; anything else gets a plain line rather than a
         // stack trace.
         setError(
-          e instanceof Error && e.message
-            ? e.message
-            : "Andy couldn't make sense of that one. Try again.",
+          userMessage(e, "Andy couldn't make sense of that one. Try again."),
         );
         setPhase(keepDraft ? "review" : "idle");
       }
@@ -817,9 +816,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
         setPhase("review");
       } catch (e) {
         setError(
-          e instanceof Error && e.message
-            ? e.message
-            : "Andy couldn't read that card. Try again.",
+          userMessage(e, "Andy couldn't read that card. Try again."),
         );
         setPhase("idle");
       }
@@ -1176,9 +1173,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
       router.replace(`/profile/${saved.profileId}`);
     } catch (e) {
       setError(
-        e instanceof Error && e.message
-          ? e.message
-          : "Andy couldn't save that one. Try again.",
+        userMessage(e, "Andy couldn't save that one. Try again."),
       );
       setPhase("review");
     }

@@ -14,6 +14,7 @@ import { api } from "@convex/_generated/api";
 import { useJustAdded } from "@/lib/use-just-added";
 import { useRowKeys } from "@/lib/use-row-keys";
 import { colors } from "@/constants/theme";
+import { userMessage } from "@/lib/user-message";
 
 /**
  * Correcting the person, as opposed to correcting a note about them.
@@ -97,9 +98,7 @@ export default function EditProfileScreen() {
       // The mutation's ConvexError messages name the clashing person and the
       // date format, so they are shown as they are.
       setError(
-        e instanceof Error && e.message
-          ? e.message
-          : "Andy couldn't save that change. Try again.",
+        userMessage(e, "Andy couldn't save that change. Try again."),
       );
       setSaving(false);
     }
@@ -156,9 +155,7 @@ export default function EditProfileScreen() {
                 router.dismissTo("/");
               } catch (e) {
                 setError(
-                  e instanceof Error && e.message
-                    ? e.message
-                    : "Andy couldn't delete them. Try again.",
+                  userMessage(e, "Andy couldn't delete them. Try again."),
                 );
               }
             })();

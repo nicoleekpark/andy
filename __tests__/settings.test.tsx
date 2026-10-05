@@ -2,10 +2,11 @@ import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 import { useAuth } from "@clerk/expo";
 import { useAction } from "convex/react";
 import { ConvexError } from "convex/values";
-import { getFunctionName } from "convex/server";
+
 import { renderRouter } from "expo-router/testing-library";
 import { Alert } from "react-native";
 import { api } from "@convex/_generated/api";
+import { answerByName, nameOf, quietCall } from "../test-support/convex-mocks";
 
 /**
  * src/app/(app)/settings.tsx reads `signOut` off Clerk's `useAuth` and wires
@@ -39,11 +40,7 @@ describe("settings screen", () => {
   /** Pinned to the account action by name, so a rewire can't pass by accident. */
   function mockDelete(impl: () => Promise<null>) {
     const deleteMyAccount = jest.fn(impl);
-    (useAction as jest.Mock).mockImplementation((fn: unknown) =>
-      getFunctionName(fn as never) === getFunctionName(api.account.deleteMyAccount)
-        ? deleteMyAccount
-        : jest.fn(async () => undefined),
-    );
+    answerByName(useAction, { [nameOf(api.account.deleteMyAccount)]: deleteMyAccount }, quietCall);
     return deleteMyAccount;
   }
 

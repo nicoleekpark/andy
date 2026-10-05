@@ -1,10 +1,10 @@
 import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
-import { Alert } from "react-native";
 import { useMutation, useQuery } from "convex/react";
 import { getFunctionName } from "convex/server";
 import { router } from "expo-router";
 import { renderRouter } from "expo-router/testing-library";
-import { api } from "@convex/_generated/api";
+import { answerByName, given, pressAlertButton, quietCall } from "../test-support/convex-mocks";
+import { ConvexError } from "convex/values";
 
 /**
  * src/app/(app)/note/[id].tsx — correcting a note that is already saved.
@@ -25,16 +25,11 @@ function mockNoteMutations(handlers: {
   update?: jest.Mock;
   remove?: jest.Mock;
 }) {
-  (useMutation as jest.Mock).mockImplementation((reference: unknown) => {
-    const name = getFunctionName(reference as never);
-    if (name === "notes:updateNote" && handlers.update !== undefined) {
-      return handlers.update;
-    }
-    if (name === "notes:remove" && handlers.remove !== undefined) {
-      return handlers.remove;
-    }
-    return jest.fn(async () => undefined);
-  });
+  answerByName(
+    useMutation,
+    given({ "notes:updateNote": handlers.update, "notes:remove": handlers.remove }),
+    quietCall,
+  );
 }
 
 function mockUpdateNote(updateNote: jest.Mock) {
@@ -47,9 +42,7 @@ function mockUpdateNote(updateNote: jest.Mock) {
  * can be asserted at all, which is the half of a confirmation that matters.
  */
 function mockDeleteAlert(press: "Delete" | "Cancel") {
-  jest.spyOn(Alert, "alert").mockImplementation((_title, _message, buttons) => {
-    buttons?.find((b) => b.text === press)?.onPress?.();
-  });
+  pressAlertButton(press);
 }
 
 /**
@@ -59,10 +52,7 @@ function mockDeleteAlert(press: "Delete" | "Cancel") {
  * and the profile screen then reads `result.profile.name` off a note.
  */
 function mockQueries(note: ReturnType<typeof savedNote> | null) {
-  (useQuery as jest.Mock).mockImplementation((reference: unknown) =>
-    getFunctionName(reference as never) === "notes:byId"
-      ? note
-      : {
+  answerByName(useQuery, { "notes:byId": note }, () => ({
           profile: {
             _id: "contact-1",
             name: "Emma",
@@ -73,8 +63,7 @@ function mockQueries(note: ReturnType<typeof savedNote> | null) {
           notes: [],
           mentionedIn: [],
           mentionedInTotal: 0,
-        },
-  );
+        }));
 }
 
 function savedNote(overrides: Record<string, unknown> = {}) {
@@ -297,7 +286,8 @@ describe("note screen", () => {
     (useQuery as jest.Mock).mockReturnValue(savedNote());
     mockUpdateNote(
       jest.fn(async () => {
-        throw new Error("Something went wrong upstream.");
+        // Not written for a person: a dropped connection, a server fault.
+        throw new Error("[Request ID: 1a2b3c] Server Error");
       }),
     );
 
@@ -310,9 +300,11 @@ describe("note screen", () => {
 
     // Navigating away on a failed save would lose the correction the user just
     // typed, which is worse than the error it was reporting.
+    // Its own plain sentence, never the transport text (REFACTOR.md → K).
     await waitFor(() =>
-      expect(screen.getByText("Something went wrong upstream.")).toBeTruthy(),
+      expect(screen.getByText("Andy couldn't save that change. Try again.")).toBeTruthy(),
     );
+    expect(screen.queryByText(/Request ID|Server Error/)).toBeNull();
     expect(screen.getByTestId("note-record")).toBeTruthy();
   });
 
@@ -381,7 +373,7 @@ describe("note screen", () => {
     mockQueries(savedNote());
     mockNoteMutations({
       remove: jest.fn(async () => {
-        throw new Error("Andy couldn't find that note.");
+        throw new ConvexError("Andy couldn't find that note.");
       }),
     });
     mockDeleteAlert("Delete");

@@ -1,12 +1,12 @@
 import { act, fireEvent, screen } from "@testing-library/react-native";
 import { AccessibilityInfo } from "react-native";
 import { useQuery } from "convex/react";
-import { getFunctionName } from "convex/server";
 import { renderRouter } from "expo-router/testing-library";
 import { api } from "@convex/_generated/api";
 import { forgetSession } from "@/lib/use-once-per-session";
 import { drawn } from "../test-support/drawn";
 import { LOOP_WRITE_MS } from "@/components/thread-loop";
+import { answerByName, nameOf } from "../test-support/convex-mocks";
 
 /**
  * src/app/(app)/index.tsx's three branches — loading, empty, populated — are
@@ -24,11 +24,7 @@ import { LOOP_WRITE_MS } from "@/components/thread-loop";
  */
 
 function mockPeopleQuery(value: unknown) {
-  (useQuery as jest.Mock).mockImplementation((fn: unknown) =>
-    getFunctionName(fn as never) === getFunctionName(api.profiles.people)
-      ? value
-      : undefined,
-  );
+  answerByName(useQuery, { [nameOf(api.profiles.people)]: value });
 }
 
 function buildPerson(overrides: Partial<Record<string, unknown>> = {}) {
