@@ -23,3 +23,7 @@ Check, in this order:
 Report as a short list: what's fine, what's worth a second look (with the specific file/line), and what — if anything — should block the commit. Distinguish clearly between "must fix before committing" and "worth noting, your call." For anything marked "must fix," include a short concrete before/after code snippet for just that spot — not a full-file rewrite — so the fix is unambiguous and fast to apply.
 
 If nothing reaches the threshold, say so in one line.
+
+## Naming UI
+
+Refer to every screen and every part of one by its name in `docs/design/component-names.md` (`profile-row`, `nav-bar-back`, `remember-button--disabled`), in English, in everything you write — findings, options, QA rows, reports. If a part has no name there yet, propose one under that file's rules and say it is new, rather than describing it in loose words.

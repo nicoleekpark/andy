@@ -24,3 +24,7 @@ Rules:
 
 - You write and edit test files only. The one exception is the temporary guard removal in step 4, which you must restore. If a test fails because the application code is wrong, do not change the application code. Report the failure and the minimal fix, and let the main thread or `debugger` apply it.
 - Never make a test pass by weakening its assertion, skipping it, or mocking the thing it is supposed to test. A failing test that is correct is a finding to report.
+
+## Naming UI
+
+Refer to every screen and every part of one by its name in `docs/design/component-names.md` (`profile-row`, `nav-bar-back`, `remember-button--disabled`), in English, in everything you write — findings, options, QA rows, reports. If a part has no name there yet, propose one under that file's rules and say it is new, rather than describing it in loose words.

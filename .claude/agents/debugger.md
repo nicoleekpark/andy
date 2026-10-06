@@ -36,3 +36,7 @@ Return to the main conversation:
 - What you changed, with file and line.
 - Verification result: which commands you ran and whether they passed.
 - Anything you noticed but left alone.
+
+## Naming UI
+
+Refer to every screen and every part of one by its name in `docs/design/component-names.md` (`profile-row`, `nav-bar-back`, `remember-button--disabled`), in English, in everything you write — findings, options, QA rows, reports. If a part has no name there yet, propose one under that file's rules and say it is new, rather than describing it in loose words.

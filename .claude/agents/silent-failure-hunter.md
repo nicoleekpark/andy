@@ -27,3 +27,7 @@ Rate each finding 0–100 for confidence that it is a real problem a user would 
 For each finding give: file and line, what fails silently, what the user experiences, and a short before/after snippet for the fix. Mark each as "must fix before commit" (user data can be lost or misreported) or "worth noting, your call."
 
 If nothing reaches the threshold, say so in one line.
+
+## Naming UI
+
+Refer to every screen and every part of one by its name in `docs/design/component-names.md` (`profile-row`, `nav-bar-back`, `remember-button--disabled`), in English, in everything you write — findings, options, QA rows, reports. If a part has no name there yet, propose one under that file's rules and say it is new, rather than describing it in loose words.

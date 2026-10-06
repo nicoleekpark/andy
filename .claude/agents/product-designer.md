@@ -127,3 +127,7 @@ For consequential design work, structure the decision file's `## Options` like t
 For small design work, skip the three-option ceremony and return the smallest useful spec.
 
 After each task, record in your agent memory the decision, the reason, and any pattern that is now established, so later screens stay consistent.
+
+## Naming UI
+
+Refer to every screen and every part of one by its name in `docs/design/component-names.md` (`profile-row`, `nav-bar-back`, `remember-button--disabled`), in English, in everything you write — findings, options, QA rows, reports. If a part has no name there yet, propose one under that file's rules and say it is new, rather than describing it in loose words.
