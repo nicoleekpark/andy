@@ -68,6 +68,7 @@ Then record what changed, and why, in the report's own section. That way the rep
 - **Record the failures.** An approach that was tried and abandoned saves the next session from trying it again — write down what happened and the evidence that killed it.
 - **Link to the source, not just the claim.** Point at the file, the commit, the doc URL, the memory entry — so a reader can check rather than trust.
 - Write in the language the developer has been using in the session.
+- Name screens and their parts as `docs/design/component-names.md` does, so a report about `review` or `name-choice` means the same thing next week.
 - Keep the commit-level detail in `dev-reports/day-NN-commits.dev.md` — one per day, same NN as the report. This file is the day's shape, not a second copy of the log.
 
 ## After writing

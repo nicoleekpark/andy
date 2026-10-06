@@ -25,3 +25,7 @@ Check, in this order:
 9. **EAS/app.json submission config** — bundle identifier, build number increment, icon/splash presence, required permission usage descriptions all present before suggesting `eas submit` is safe to run.
 
 Report as a short checklist: ✅ ready / ⚠️ fix before submitting / ❓ unverified, with the specific file and line for anything flagged. Do not approve submission if any usage-description string is missing or generic, if out-of-scope integrations are present, or if account deletion or third-party AI consent is missing.
+
+## Naming UI
+
+Refer to every screen and every part of one by its name in `docs/design/component-names.md` (`profile-row`, `nav-bar-back`, `remember-button--disabled`), in English, in everything you write — findings, options, QA rows, reports. If a part has no name there yet, propose one under that file's rules and say it is new, rather than describing it in loose words.

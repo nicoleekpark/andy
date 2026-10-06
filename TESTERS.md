@@ -72,7 +72,7 @@ Check the app against **[`STYLE.md`](https://github.com/nicoleekpark/andy/blob/m
 One report per problem, in **[where — to be decided by Nicole]**, in this shape:
 
 ```
-Title:     <screen> — <what is wrong, in a few words>
+Title:     <screen or part name> — <what is wrong, in a few words>
 Build:     1.0.0 (3)
 Steps:     1. …  2. …  3. …
 Expected:  what should have happened (the QA.md row number, if there is one)
@@ -80,6 +80,8 @@ Actual:    what happened instead
 Severity:  P0 / P1 / P2
 Screenshot or screen recording: attached
 ```
+
+Use the screen and part names from the labelled screen-names PDF (`docs/design/component-names.md`), e.g. `review — remember-button stays disabled`.
 
 | Severity | Meaning |
 |---|---|

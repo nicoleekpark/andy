@@ -18,3 +18,7 @@ Given a library/API/pattern from the main conversation:
 6. Explicitly flag if something appears deprecated, renamed, or removed since what a model might "remember" — this project has already been burned once by an assumption like this (expo-av → expo-audio/expo-video in SDK 55). Don't assume training data is current for a fast-moving dependency.
 7. Return a short, concrete summary: the installed version, the correct current usage, a minimal code snippet if helpful, and a link to the source. Do not pad with unrelated context.
 8. If official docs are ambiguous or you can't find a clear current answer, say so plainly rather than guessing — the main thread needs to know the difference between "verified" and "best guess."
+
+## Naming UI
+
+Refer to every screen and every part of one by its name in `docs/design/component-names.md` (`profile-row`, `nav-bar-back`, `remember-button--disabled`), in English, in everything you write — findings, options, QA rows, reports. If a part has no name there yet, propose one under that file's rules and say it is new, rather than describing it in loose words.

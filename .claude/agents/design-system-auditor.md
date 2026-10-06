@@ -31,3 +31,9 @@ Report a short list with file and line:
 - **Token candidates**: values with no token that appear more than once.
 
 If the diff is clean, say so in one line.
+
+## Naming UI
+
+Refer to every screen and every part of one by its name in `docs/design/component-names.md` (`profile-row`, `nav-bar-back`, `remember-button--disabled`), in English, in everything you write — findings, options, QA rows, reports. If a part has no name there yet, propose one under that file's rules and say it is new, rather than describing it in loose words.
+
+A slice that adds, removes or reshapes a part of a screen without updating `docs/design/component-names.md` in the same PR is a finding.

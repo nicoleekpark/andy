@@ -65,6 +65,8 @@ Internally model the core entity generically (not hardcoded to "contact") — th
 
 Check `STYLE.md` before building any screen — color tokens, type roles, and the one signature element (the Briefing card) are decided there. Don't invent ad hoc colors/fonts per screen. Its **Voice** section governs every word a person reads (screens, store listing, README, the privacy page): Andy *remembers*, it never *collects*, and "Andy's promises" only ever list what the code already guarantees.
 
+Refer to every screen and every part of one by its name in `docs/design/component-names.md` — in chat, PRs, `QA.md`, dev reports and agent output. A slice that adds, removes or reshapes a part of a screen updates its rows there in the same PR; a new part gets a name there before it is talked about.
+
 ## Scope Discipline
 
 `PROJECT_SCOPE.md`'s MoSCoW list is the agreed boundary of V1. If a request during a session would add anything beyond what's already in Must/Should Have — a new integration, a new channel, a new screen not in the User Flow — flag it and ask before implementing, don't silently build it. Good scope creep still costs the deadline.

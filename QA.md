@@ -15,6 +15,8 @@ delete the row.
 Run the whole thing before a release. Run the section you touched before
 merging a PR.
 
+Rows name screens and their parts as `docs/design/component-names.md` does (`review`, `remember-button--disabled`), so a failing row points at one thing.
+
 ---
 
 ## Preconditions

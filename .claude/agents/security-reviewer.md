@@ -22,3 +22,7 @@ Data flow (V1): speech is transcribed **on the device** by Apple's speech recogn
 8. **Auth wiring.** Confirm Convex functions requiring auth are called from within the `<Authenticated>` boundary (per the Clerk+Convex integration pattern) rather than assumed. Token expiry/rotation itself is Clerk's responsibility, not something to hand-roll here.
 
 Report format: same as `app-store-reviewer` — a clear ✅ ready / 🛑 block list with specific file:line citations. Don't approve if item 1 or 2 fails, regardless of anything else. Lint, typecheck and test status are `test-writer`'s job; do not re-run them here.
+
+## Naming UI
+
+Refer to every screen and every part of one by its name in `docs/design/component-names.md` (`profile-row`, `nav-bar-back`, `remember-button--disabled`), in English, in everything you write — findings, options, QA rows, reports. If a part has no name there yet, propose one under that file's rules and say it is new, rather than describing it in loose words.
