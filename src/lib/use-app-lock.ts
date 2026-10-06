@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AppState } from "react-native";
+import { AppState, Keyboard } from "react-native";
 import { lockAvailability, unlock } from "./app-lock";
 
 /**
@@ -108,6 +108,12 @@ export function useAppLock(enabled: boolean): {
       // saw "active" and re-armed the gate on the spot, showing a second
       // Face ID prompt seconds after the first one succeeded.
       if (phase === "background") {
+        // The lock now covers the screens rather than replacing them, so a
+        // focused field keeps its focus underneath — and the keyboard is its
+        // own window, above any cover. Left up, it would float over the lock
+        // screen and type into a field nobody can see. Dismissing keeps the
+        // text; only the focus goes.
+        Keyboard.dismiss();
         setState((prev) => (prev.phase === "unlocked" ? { phase: "checking" } : prev));
         return;
       }

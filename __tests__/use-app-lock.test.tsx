@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
-import { AppState } from "react-native";
+import { AppState, Keyboard } from "react-native";
 import { lockAvailability, unlock } from "../src/lib/app-lock";
 import { useAppLock } from "../src/lib/use-app-lock";
 
@@ -310,4 +310,17 @@ test("should start gating once enabled flips true, having done nothing while fal
 
   await waitFor(() => expect(lockAvailability).toHaveBeenCalledTimes(1));
   await waitFor(() => expect(result.current.state.phase).toBe("unlocked"));
+});
+
+test("should dismiss the keyboard on going to the background, so it cannot float over the lock", async () => {
+  const dismiss = jest.spyOn(Keyboard, "dismiss");
+  const { result, unmount } = await renderHook(() => useAppLock(true));
+  cleanup = unmount;
+  await waitFor(() => expect(result.current.state.phase).toBe("unlocked"));
+
+  await fireAppStateChange("inactive");
+  expect(dismiss).not.toHaveBeenCalled();
+
+  await fireAppStateChange("background");
+  expect(dismiss).toHaveBeenCalledTimes(1);
 });

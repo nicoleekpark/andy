@@ -11,6 +11,7 @@ import {
   StyleSheet,
 } from "react-native";
 import { colors, fonts } from "../constants/theme";
+import { useLocked } from "../lib/lock-context";
 import { hasNativeModule } from "../lib/native";
 
 /**
@@ -106,6 +107,7 @@ export function DraftSheet({
   rewriting,
   error,
 }: Props) {
+  const locked = useLocked();
   const [subject, setSubject] = useState(draft.subject);
   const [body, setBody] = useState(draft.body);
   /**
@@ -185,7 +187,11 @@ export function DraftSheet({
 
   return (
     <Modal
-      visible
+      // Hidden, not unmounted, while the app lock is up: a native modal sits
+      // above the lock's cover, so leaving it visible would show the draft to
+      // whoever is holding a locked phone. The text survives — this component
+      // stays mounted — and the sheet comes back on unlock.
+      visible={!locked}
       animationType="slide"
       presentationStyle="pageSheet"
       onRequestClose={onClose}

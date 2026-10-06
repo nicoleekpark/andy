@@ -6,6 +6,7 @@ import { api } from "@convex/_generated/api";
 import { Connecting } from "@/components/connecting";
 import { LockScreen } from "@/components/lock-screen";
 import { colors } from "@/constants/theme";
+import { LockedContext } from "@/lib/lock-context";
 import { useAppLock } from "@/lib/use-app-lock";
 import { onNudgeOpened } from "@/lib/notifications";
 
@@ -74,44 +75,66 @@ export default function AppLayout() {
   // binary) fails open: `lock.state.phase` goes straight to "unlocked" for it,
   // since there would be nothing to unlock.
   //
-  // "checking" gates too, not just "locked" — it is the state between a
+  // "checking" covers too, not just "locked" — it is the state between a
   // return to the foreground and `lockAvailability`/`authenticateAsync`
-  // resolving. Falling through to <Stack> during it would render one frame
-  // of real content before the prompt appears, which is exactly the leak
-  // this whole feature exists to close.
-  if (lock.state.phase !== "unlocked") {
-    return lock.state.phase === "locked" ? (
-      <LockScreen
-        kind={lock.state.kind}
-        authenticating={lock.state.authenticating}
-        onUnlock={lock.retry}
-      />
-    ) : (
-      <View style={styles.checking} />
-    );
-  }
+  // resolving. Uncovering during it would show real content before the
+  // prompt appears, which is exactly the leak this whole feature exists to
+  // close.
+  //
+  // The lock is drawn *over* the <Stack>, never in place of it. Returning the
+  // lock screen instead unmounted every screen, so a trip to another app threw
+  // away a half-checked note or a typed question and landed on home (device QA,
+  // 2026-10-06). Underneath the cover the app is hidden from VoiceOver and
+  // takes no touches; native modals, which sit above any overlay, hide
+  // themselves through `LockedContext`.
+  const covered = lock.state.phase !== "unlocked";
 
   return (
-    <Stack
-      screenOptions={{
-        headerStyle: { backgroundColor: colors.paper },
-        headerTintColor: colors.ink,
-        contentStyle: { backgroundColor: colors.paper },
-      }}
-    >
-      <Stack.Screen name="index" options={{ title: "Andy" }} />
-      <Stack.Screen name="capture" options={{ title: "New note" }} />
-      <Stack.Screen name="search" options={{ title: "Ask Andy" }} />
-      <Stack.Screen name="settings" options={{ title: "Settings" }} />
-      {/* Titled from the note's own profile once it loads, so this is only the
-          placeholder shown for the moment before the query lands. */}
-      <Stack.Screen name="note/[id]" options={{ title: "Note" }} />
-    </Stack>
+    <LockedContext.Provider value={covered}>
+      <View style={styles.fill}>
+        <View
+          style={styles.fill}
+          pointerEvents={covered ? "none" : "auto"}
+          accessibilityElementsHidden={covered}
+          importantForAccessibility={covered ? "no-hide-descendants" : "auto"}
+        >
+          <Stack
+            screenOptions={{
+              headerStyle: { backgroundColor: colors.paper },
+              headerTintColor: colors.ink,
+              contentStyle: { backgroundColor: colors.paper },
+            }}
+          >
+            <Stack.Screen name="index" options={{ title: "Andy" }} />
+            <Stack.Screen name="capture" options={{ title: "New note" }} />
+            <Stack.Screen name="search" options={{ title: "Ask Andy" }} />
+            <Stack.Screen name="settings" options={{ title: "Settings" }} />
+            {/* Titled from the note's own profile once it loads, so this is only the
+                placeholder shown for the moment before the query lands. */}
+            <Stack.Screen name="note/[id]" options={{ title: "Note" }} />
+          </Stack>
+        </View>
+
+        {lock.state.phase === "locked" ? (
+          <View style={styles.cover}>
+            <LockScreen
+              kind={lock.state.kind}
+              authenticating={lock.state.authenticating}
+              onUnlock={lock.retry}
+            />
+          </View>
+        ) : covered ? (
+          <View style={styles.cover} testID="lock-cover" />
+        ) : null}
+      </View>
+    </LockedContext.Provider>
   );
 }
 
 const styles = StyleSheet.create({
-  // Same paper ground the splash/connecting screens use, so the brief gap
-  // while `useAppLock` decides reads as one surface rather than a flash.
-  checking: { flex: 1, backgroundColor: colors.paper },
+  fill: { flex: 1 },
+  // Opaque, on top of everything, and the same paper ground the
+  // splash/connecting screens use, so the brief gap while `useAppLock`
+  // decides reads as one surface rather than a flash.
+  cover: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, backgroundColor: colors.paper },
 });
