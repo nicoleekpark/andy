@@ -8,6 +8,7 @@ import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { Stack } from "expo-router";
 import { RetryConnectionContext } from "@/components/connecting";
+import { useReconnectOnForeground } from "@/lib/use-reconnect-on-foreground";
 
 /**
  * Missing config would otherwise surface much later as "signed out forever" or as
@@ -77,6 +78,9 @@ void SplashScreen.preventAutoHideAsync().catch(() => {});
  */
 function ConvexSession({ children }: { children: React.ReactNode }) {
   const [client] = useState(() => new ConvexReactClient(convexUrl));
+  // Reconnect the moment Andy comes back to the foreground — React Native gives
+  // Convex no other signal that the network returned.
+  useReconnectOnForeground(client);
 
   useEffect(() => {
     return () => {

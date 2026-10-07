@@ -4,6 +4,7 @@ import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { resourceCache } from "@clerk/expo/resource-cache";
 import { useFonts } from "expo-font";
 import { renderRouter } from "expo-router/testing-library";
+import { useReconnectOnForeground } from "../src/lib/use-reconnect-on-foreground";
 
 /**
  * src/app/_layout.tsx wires ClerkProvider and ConvexProviderWithClerk around
@@ -22,6 +23,7 @@ import { renderRouter } from "expo-router/testing-library";
  * useAuth hook plus a Convex client, not stand-ins.
  */
 jest.mock("expo-font", () => ({ useFonts: jest.fn() }));
+jest.mock("../src/lib/use-reconnect-on-foreground", () => ({ useReconnectOnForeground: jest.fn() }));
 
 describe("root layout provider wiring", () => {
   beforeEach(() => {
@@ -62,6 +64,18 @@ describe("root layout provider wiring", () => {
 
     expect(props.publishableKey).toBe(process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY);
     expect(props.tokenCache).toBeDefined();
+  });
+
+  // React Native gives Convex no network-came-back event; coming back to the
+  // app is the nudge (device QA, 2026-10-06: Ask and saves hung after
+  // reconnecting).
+  test("should nudge the same Convex client it provides when Andy returns to the foreground", async () => {
+    const result = renderRouter("src/app", { initialUrl: "/" });
+    await result;
+
+    const props = (ConvexProviderWithClerk as jest.Mock).mock.calls[0][0];
+
+    expect(useReconnectOnForeground).toHaveBeenCalledWith(props.client);
   });
 
   // Without it Clerk's first load has no retry: offline at launch it never
