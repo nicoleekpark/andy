@@ -9,7 +9,7 @@ import { colors, fonts, space } from "@/constants/theme";
 import { useOncePerSession } from "@/lib/use-once-per-session";
 import { formatDate } from "@/lib/dates";
 import { useOutbox } from "@/lib/outbox";
-import { useLiveOrCopy } from "@/lib/offline-copy";
+import { NOTHING_KEPT_OFFLINE, useLiveOrCopy, useNothingKeptOffline } from "@/lib/offline-copy";
 import { peopleView } from "@convex/offlineViews";
 import { OfflineCopyLine } from "@/components/offline-copy-line";
 
@@ -96,6 +96,7 @@ const EMPTY_THREAD_WIDTH = 112;
 
 export default function HomeScreen() {
   // Offline, the same list built from the phone's copy (`offline-copy.tsx`).
+  const nothingKept = useNothingKeptOffline();
   const { data: people, takenAt } = useLiveOrCopy(useQuery(api.profiles.people), (copy) =>
     peopleView(copy.profiles, copy.notes),
   );
@@ -169,7 +170,7 @@ export default function HomeScreen() {
             // grows to that space, so the wrapper only has to say where in it.
             <View style={styles.emptyState}>
               {people === undefined ? (
-                <Text style={styles.quiet}>Loading…</Text>
+                <Text style={styles.quiet}>{nothingKept ? NOTHING_KEPT_OFFLINE : "Loading…"}</Text>
               ) : (
                 <EmptyHome />
               )}

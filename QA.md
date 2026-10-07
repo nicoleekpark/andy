@@ -249,6 +249,8 @@ live here rather than in §7 because that is the screen they happen on.
 | 11.29 | Offline, open someone you **haven't opened this session** | Their page opens from the copy: details, notes, *came up in*. No photo (not kept yet). **Draft a follow-up** is replaced by *"Drafting a follow-up needs a connection."* |
 | 11.30 | Offline, open one of their notes | It opens to read, with `offline-copy-line` |
 | 11.31 | Offline, `ask` → type part of a name | **People** and **Came up in** fill from the copy. `ask-offline-hint` shows and **Ask** is disabled |
+| 11.31a | Offline, on someone's page | No **Edit** at the top and no **Edit** under their notes. Opening a note (even from an old *Edit* link) shows it read-only, with no Save or Delete. Reaching *Edit person* anyway says *"Editing needs a connection."* |
+| 11.31b | Offline on a phone where Andy has **never** been online with this account | `home`, a page or Ask say *"You're offline, and nothing has been kept on this phone yet — …"* instead of *Loading…*, and Ask does **not** claim name search works |
 | 11.32 | Offline, from someone's page → **Add a note** → type → Keep this note | The note is kept for **that person** (the screen says *"This note goes to …"*) |
 | 11.33 | Back online | `offline-copy-line` disappears everywhere; Ask and Draft a follow-up work again |
 

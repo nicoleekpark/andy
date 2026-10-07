@@ -5,7 +5,7 @@ import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { withNotesView } from "@convex/offlineViews";
-import { useLiveOrCopy, useOnline } from "@/lib/offline-copy";
+import { NOTHING_KEPT_OFFLINE, useLiveOrCopy, useNothingKeptOffline, useOnline } from "@/lib/offline-copy";
 import { OfflineCopyLine } from "@/components/offline-copy-line";
 import { ConvexError } from "convex/values";
 import { api } from "@convex/_generated/api";
@@ -69,6 +69,7 @@ export default function ProfileScreen() {
   // Drafting is a Claude call: offline the button gives way to a line saying
   // so, rather than a draft that waits with no answer.
   const online = useOnline();
+  const nothingKept = useNothingKeptOffline();
   const followUpBlock = useMemo(() => {
     if (result === null || result === undefined) return null;
     if (!online) return "Drafting a follow-up needs a connection.";
@@ -307,7 +308,10 @@ export default function ProfileScreen() {
     );
   }, []);
 
-  const editNote = (note: { _id: string; createdAt: number }) => (
+  // Changing things offline is a later decision (PROJECT_SCOPE.md): offline,
+  // a page read from the phone's copy offers nothing that would only wait.
+  const editNote = (note: { _id: string; createdAt: number }) =>
+    !online ? null : (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`Edit the note from ${formatDate(note.createdAt)}`}
@@ -328,7 +332,7 @@ export default function ProfileScreen() {
           headerRight: () =>
             // Only once there is somebody to edit. Offering it over a
             // not-found screen would be a button that can only fail.
-            result === undefined || result === null ? null : (
+            result === undefined || result === null || !online ? null : (
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Edit this person"
@@ -351,7 +355,7 @@ export default function ProfileScreen() {
         {result === undefined ? (
           // `undefined` is Convex's "still loading", distinct from the `null`
           // the query returns for a profile that isn't there or isn't yours.
-          <Text style={styles.quiet}>Loading…</Text>
+          <Text style={styles.quiet}>{nothingKept ? NOTHING_KEPT_OFFLINE : "Loading…"}</Text>
         ) : result === null ? (
           <Text style={styles.quiet}>
             Andy doesn&apos;t have anyone by that link.

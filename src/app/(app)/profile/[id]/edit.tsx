@@ -15,6 +15,7 @@ import { useJustAdded } from "@/lib/use-just-added";
 import { useRowKeys } from "@/lib/use-row-keys";
 import { colors } from "@/constants/theme";
 import { userMessage } from "@/lib/user-message";
+import { useOnline } from "@/lib/offline-copy";
 
 /**
  * Correcting the person, as opposed to correcting a note about them.
@@ -33,6 +34,9 @@ import { userMessage } from "@/lib/user-message";
 export default function EditProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const result = useQuery(api.profiles.withNotes, { profileId: id });
+  // Changing things offline is a later decision (PROJECT_SCOPE.md): offline,
+  // this screen says so instead of waiting on an answer that cannot come.
+  const online = useOnline();
   const updateProfile = useMutation(api.profiles.updateProfile);
   const removeProfile = useMutation(api.profiles.remove);
 
@@ -172,7 +176,9 @@ export default function EditProfileScreen() {
         <View style={[styles.container, styles.onlyStatus]}>
           <Text style={styles.quiet}>
             {result === undefined
-              ? "Loading…"
+              ? online
+                ? "Loading…"
+                : "Editing needs a connection."
               : "Andy doesn't have anyone by that link."}
           </Text>
         </View>
@@ -313,13 +319,18 @@ export default function EditProfileScreen() {
         </View>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
+        {!online ? (
+          <Text testID="edit-offline-hint" style={styles.quiet}>
+            You&apos;re offline. Editing needs a connection — nothing here can be saved right now.
+          </Text>
+        ) : null}
 
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Save changes"
           onPress={() => void save()}
-          disabled={saving}
-          style={[styles.save, saving && styles.disabled]}
+          disabled={saving || !online}
+          style={[styles.save, (saving || !online) && styles.disabled]}
         >
           <Text style={styles.saveLabel}>
             {saving ? "Saving…" : "Save changes"}
@@ -330,7 +341,7 @@ export default function EditProfileScreen() {
           accessibilityRole="button"
           accessibilityLabel="Delete this person"
           onPress={confirmDelete}
-          disabled={saving}
+          disabled={saving || !online}
           style={styles.delete}
         >
           <Text style={styles.deleteLabel}>

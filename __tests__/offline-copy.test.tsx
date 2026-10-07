@@ -217,4 +217,50 @@ describe("reading offline", () => {
 
     expect(screen.getByText("Tap record. This note goes to Nina, whoever else comes up.")).toBeTruthy();
   });
+
+  test("should offer no way to edit offline — changing things offline is a later decision", async () => {
+    onDisk(copyFor("user_default"));
+    online(false);
+
+    await renderRouter("src/app", { initialUrl: "/profile/p-nina" });
+    expect(screen.queryByRole("button", { name: "Edit this person" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Edit the note from/ })).toBeNull();
+  });
+
+  test("should open a note read-only offline, even when asked to edit it", async () => {
+    onDisk(copyFor("user_default"));
+    online(false);
+
+    await renderRouter("src/app", { initialUrl: "/note/n-1?edit=1" });
+
+    expect(screen.getByText(/Nina fosters two greyhounds/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Delete this note" })).toBeNull();
+  });
+
+  test("should say editing needs a connection, not load forever, if the edit screen is reached offline", async () => {
+    onDisk(copyFor("user_default"));
+    online(false);
+
+    await renderRouter("src/app", { initialUrl: "/profile/p-nina/edit" });
+
+    expect(screen.getByText("Editing needs a connection.")).toBeTruthy();
+  });
+
+  test("should say nothing is kept yet, not 'Loading…' or 'search still works', offline with no copy", async () => {
+    online(false);
+
+    await renderRouter("src/app", { initialUrl: "/" });
+    expect(screen.getByText(/nothing has been kept on this phone yet/)).toBeTruthy();
+    expect(screen.queryByText("Loading…")).toBeNull();
+  });
+
+  test("should not promise name search offline when there is nothing on the phone to search", async () => {
+    online(false);
+
+    await renderRouter("src/app", { initialUrl: "/search" });
+
+    expect(screen.getByText(/nothing has been kept on this phone yet/)).toBeTruthy();
+    expect(screen.queryByText(/finding someone by name still works/)).toBeNull();
+  });
 });

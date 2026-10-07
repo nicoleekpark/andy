@@ -16,7 +16,7 @@ import { colors, fonts, space } from "@/constants/theme";
 import { formatDate } from "@/lib/dates";
 import { userMessage } from "@/lib/user-message";
 import { searchView } from "@convex/offlineViews";
-import { useLiveOrCopy, useOnline } from "@/lib/offline-copy";
+import { NOTHING_KEPT_OFFLINE, useLiveOrCopy, useNothingKeptOffline, useOnline } from "@/lib/offline-copy";
 import { OfflineCopyLine } from "@/components/offline-copy-line";
 
 /**
@@ -89,6 +89,7 @@ export default function SearchScreen() {
   // Asking in your own words is a Claude call; offline there is nothing to
   // answer it with, and sending it now would wait with no answer.
   const online = useOnline();
+  const nothingKept = useNothingKeptOffline();
 
   const ready = question.trim() !== "" && !busy && online;
   // Whether anything below is actually marked. The answer's source line claims
@@ -178,8 +179,9 @@ export default function SearchScreen() {
         {error !== null && <Text style={styles.error}>{error}</Text>}
         {!online ? (
           <Text testID="ask-offline-hint" style={styles.offlineHint}>
-            You&apos;re offline. Asking in your own words needs a connection —
-            finding someone by name still works.
+            {nothingKept
+              ? NOTHING_KEPT_OFFLINE
+              : "You're offline. Asking in your own words needs a connection — finding someone by name still works."}
           </Text>
         ) : null}
         <OfflineCopyLine takenAt={takenAt} />

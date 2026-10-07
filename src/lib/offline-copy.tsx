@@ -126,3 +126,17 @@ export function useLiveOrCopy<T>(
 export function useOnline(): boolean {
   return useContext(OfflineCopyContext).online;
 }
+
+/**
+ * Offline with nothing kept on the phone yet — a first session, or a fresh
+ * install — so a screen has nothing to show and must say why rather than
+ * wait on "Loading…" for an answer that cannot come.
+ */
+export function useNothingKeptOffline(): boolean {
+  const { copy, online } = useContext(OfflineCopyContext);
+  return !online && copy === null;
+}
+
+/** What a screen says in that case. */
+export const NOTHING_KEPT_OFFLINE =
+  "You're offline, and nothing has been kept on this phone yet — Andy keeps a copy the next time you're online.";

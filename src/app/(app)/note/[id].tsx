@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { useMutation, useQuery } from "convex/react";
 import { noteView } from "@convex/offlineViews";
-import { useLiveOrCopy } from "@/lib/offline-copy";
+import { NOTHING_KEPT_OFFLINE, useLiveOrCopy, useNothingKeptOffline, useOnline } from "@/lib/offline-copy";
 import { OfflineCopyLine } from "@/components/offline-copy-line";
 import { api } from "@convex/_generated/api";
 import { useJustAdded } from "@/lib/use-just-added";
@@ -55,7 +55,11 @@ export default function NoteScreen() {
     edit?: string;
   }>();
   const [editRequested, setEditRequested] = useState(false);
-  const editing = editParam === "1" || editRequested;
+  // Read-only offline: saving or deleting would wait with no answer, and
+  // changing things offline is a later decision (PROJECT_SCOPE.md).
+  const online = useOnline();
+  const nothingKept = useNothingKeptOffline();
+  const editing = (editParam === "1" || editRequested) && online;
   // Offline, the same note from the phone's copy.
   const { data: result, takenAt } = useLiveOrCopy(
     useQuery(api.notes.byId, { noteId: id }),
@@ -190,7 +194,9 @@ export default function NoteScreen() {
         <View style={[styles.container, styles.onlyStatus]}>
           <Text style={styles.quiet}>
             {result === undefined
-              ? "Loading…"
+              ? nothingKept
+                ? NOTHING_KEPT_OFFLINE
+                : "Loading…"
               : "Andy doesn't have a note by that link."}
           </Text>
         </View>
@@ -203,7 +209,7 @@ export default function NoteScreen() {
       <Stack.Screen
         options={{
           title: result.profileName || "Note",
-          headerRight: editing
+          headerRight: editing || !online
             ? undefined
             : () => (
                 <Pressable
