@@ -103,7 +103,8 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `profile-row-name` | 프로필 이름 |
 | `profile-row-detail` | 그 프로필의 최근 기억할 내용 한 줄 (detail) |
 | `profile-row-meta` | 노트 수 · 마지막 날짜 |
-| `outbox-line` | 오프라인에서 폰에 보관한 노트 수 — "2 notes kept on this phone, waiting for Andy to read them." (없으면 안 보임) |
+| `outbox-line` | 오프라인에서 폰에 보관한 노트 수. 오프라인: "2 notes kept on this phone, waiting for Andy to read them." 온라인: "2 notes kept on this phone." + `outbox-line-action` (없으면 안 보임) |
+| `outbox-line-action` | 온라인일 때 `outbox-line` 옆 초록 글자 — "Read the first now" / "Read it now". 가장 오래된 노트를 열어 바로 읽음 |
 | `ask-button` | Ask Andy 화면을 여는 버튼 |
 | `record-button` | 새 노트를 기록하는 초록 버튼 |
 

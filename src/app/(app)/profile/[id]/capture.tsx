@@ -12,7 +12,7 @@ import { CaptureScreen } from "@/components/capture-screen";
  * rests on it. Recording here *is* the answer to "which one of them is this".
  */
 export default function ProfileCaptureRoute() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, outbox } = useLocalSearchParams<{ id: string; outbox?: string }>();
 
-  return <CaptureScreen profileId={id} />;
+  return <CaptureScreen profileId={id} outboxId={outbox} />;
 }

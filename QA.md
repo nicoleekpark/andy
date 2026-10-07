@@ -237,6 +237,13 @@ live here rather than in §7 because that is the screen they happen on.
 | 11.17 | Same as 11.15 but **record** (speak), check the words, press **Keep this note** | Kept the same way. (Reading it later is the next slice — until then it stays waiting)<br>**Result:** ✅ — simulator, 2026-10-07 |
 | 11.18 | With notes waiting, **close Andy completely** and reopen it (Wi-Fi back on) | `outbox-line` still shows the same count — the notes are on the phone, not in memory<br>**Result:** ✅ — simulator, 2026-10-07 |
 | 11.19 | With notes waiting, **Settings → Sign out** | `sign-out-alert`: *"1 note on this phone hasn't been read by Andy yet. Signing out deletes it."* **Cancel** keeps you signed in with the notes; **Sign out** signs out, and after signing back in `outbox-line` is gone<br>**Result:** ✅ — simulator, 2026-10-07: Sign out deleted the waiting notes, as the alert says |
+| 11.20 | With notes waiting and Wi-Fi **on**, look at `home` | `outbox-line` reads *"2 notes kept on this phone."* followed by green **Read the first now** (one note: **Read it now**). Wi-Fi off → back to the plain *"… waiting for Andy to read them."* |
+| 11.21 | Tap **Read the first now** | The oldest note opens and Andy reads it straight away — no Read it to press — then **Check this over**. A note typed offline says *What you wrote*; a spoken one *What you said* |
+| 11.22 | Keep a note offline that says *"met Rowan **yesterday**"*; the next day, read it | Dates Andy works out from it (e.g. first met) are the day **before the note was kept**, not the day before today |
+| 11.23 | Press **Remember this** | Saved like any note (on the person's page, findable in Ask). Back on `home`, the count is one lower; the last one makes `outbox-line` disappear |
+| 11.24 | Open a waiting note, then press **Discard and start over** (or back) instead of saving | The note is **still waiting** on `home` — only saving removes it |
+| 11.25 | Open a waiting note, press **Record again**, record something **different**, and save that | The new note is saved; the **original waiting note is still waiting** on `home` (it was put away, not saved) |
+| 11.26 | Open a waiting note's link after it has already been saved (e.g. tap **Read the first now** twice quickly, save on the first) | The second screen says *"That note isn't waiting on this phone any more — it may already be saved."* — not a blank new note |
 
 ## 12. Search indexing
 

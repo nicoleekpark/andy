@@ -337,7 +337,18 @@ function Fate({
   );
 }
 
-export function CaptureScreen({ profileId }: { profileId?: string }) {
+export function CaptureScreen({
+  profileId,
+  outboxId,
+}: {
+  profileId?: string;
+  /**
+   * A note kept on this phone while offline (`src/lib/outbox.tsx`), opened
+   * from home to be read now. Its words go straight to reading, against the
+   * day they were said; saving it drops the phone's copy.
+   */
+  outboxId?: string;
+}) {
   /**
    * Who this note is about, when the route already said.
    *
@@ -405,6 +416,30 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
   const connection = useConvexConnectionState();
   const outbox = useOutbox();
   const offline = !connection.isWebSocketConnected && outbox.available;
+  const waiting =
+    outboxId === undefined ? undefined : outbox.notes.find((note) => note.id === outboxId);
+  /**
+   * Opened for a waiting note that is no longer here — saved from another
+   * screen, or never this account's. Said, rather than quietly becoming a
+   * blank new note, which would read as the note having been lost.
+   */
+  const waitingGone = outboxId !== undefined && waiting === undefined;
+  const doneWaiting = outbox.done;
+  /** `waiting.today`, for every reading of it. */
+  const saidOnRef = useRef<string | null>(waiting?.today ?? null);
+  /**
+   * The waiting note this screen is still about. Let go the moment its words
+   * leave the screen (Record again, Stop typing): whatever is saved after that
+   * is a different note, and must neither take the waiting note's place on the
+   * phone — that would drop it unsaved — nor be read against its day.
+   * Discard is not one of them: it returns to the editor with the same words,
+   * and saving those (corrected or not) is still saving this note.
+   */
+  const linkedRef = useRef(outboxId);
+  const letGoOfWaiting = useCallback(() => {
+    linkedRef.current = undefined;
+    saidOnRef.current = null;
+  }, []);
   const readCard = useAction(api.extraction.fromBusinessCard);
   const saveCapture = useMutation(api.notes.saveCapture);
 
@@ -672,7 +707,8 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
    * screen and what `notes.source` records.
    */
   const [source, setSource] = useState<"voice" | "business_card" | "manual">(
-    "voice",
+    // A waiting note says how it was made; anything else starts as voice.
+    () => (waiting?.kind === "typed" ? "manual" : "voice"),
   );
 
   /**
@@ -688,7 +724,8 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
    * `source`, which decides whether the body is called "What you said" or
    * "What you wrote".
    */
-  const [typing, setTyping] = useState<string | null>(null);
+  // A waiting note opens with its words already here, from the first render.
+  const [typing, setTyping] = useState<string | null>(() => waiting?.text ?? null);
 
   const [locale, setLocale] = useState(DEFAULT_LOCALE);
   const [preferOnDevice, setPreferOnDevice] = useState(true);
@@ -732,13 +769,16 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
      * away the one it was asked to replace.
      */
     async (spoken: string, keepDraft = false) => {
+      // The day the words were said, when that was not today — a waiting note
+      // read later still means *its* "yesterday", re-reads included.
+      const today = saidOnRef.current ?? localToday();
       setPhase("extracting");
       setError(null);
       setTranscript(spoken);
       try {
         const result = await extract({
           text: spoken,
-          today: localToday(),
+          today,
           aboutName,
         });
         setDraft(result);
@@ -764,6 +804,22 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
     },
     [extract, aboutName],
   );
+
+  /**
+   * A waiting note opened from home: its words are put in the editor and read
+   * at once, exactly as if Read it had been pressed on them — so a failure
+   * leaves them on screen with Read it to try again. Read once, and only
+   * online.
+   */
+  const openedRef = useRef(false);
+  useEffect(() => {
+    // Offline the words wait on screen (they are there from the first render,
+    // see `typing`), marked as still kept, and are read the moment the
+    // connection comes back.
+    if (waiting === undefined || offline || openedRef.current) return;
+    openedRef.current = true;
+    void runExtraction(waiting.text);
+  }, [waiting, offline, runExtraction]);
 
   const scanCard = useCallback(
     async (from: "camera" | "library") => {
@@ -1158,6 +1214,9 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
         })(),
       });
 
+      // Andy has it for good now; the phone's copy can go.
+      if (linkedRef.current !== undefined) doneWaiting(linkedRef.current);
+
       // Never `push`: the capture is finished, and backing into a draft that
       // has already been written would invite saving it twice.
       //
@@ -1198,6 +1257,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
     scoped,
     aboutName,
     subjectKept,
+    doneWaiting,
   ]);
 
   /**
@@ -1793,12 +1853,13 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
 
           {offline ? (
             <Text style={[styles.quiet, styles.offlineHint]}>
-              You&apos;re offline. Andy will keep this note on this phone and
-              read it when you&apos;re back online.
+              {waiting !== undefined
+                ? "You're offline. This note is still kept on this phone — Andy will read it when you're back online."
+                : "You're offline. Andy will keep this note on this phone and read it when you're back online."}
             </Text>
           ) : null}
 
-          {offline ? (
+          {offline && waiting !== undefined ? null : offline ? (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Keep this note"
@@ -1850,6 +1911,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
               accessibilityRole="button"
               accessibilityLabel="Record again"
               onPress={() => {
+                letGoOfWaiting();
                 setTyping(null);
                 void start();
               }}
@@ -1863,6 +1925,7 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
               accessibilityRole="button"
               accessibilityLabel="Stop typing"
               onPress={() => {
+                letGoOfWaiting();
                 setTyping(null);
                 // Back to the door this screen opens on, or a later recording
                 // would be filed as something the user wrote.
@@ -1917,6 +1980,8 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
                     source === "business_card"
                     ? "Reading the card…"
                     : "Reading…"
+                : waitingGone
+                  ? "That note isn't waiting on this phone any more — it may already be saved. Tap record to start a new one."
                 : scopeMissing
                   ? "Andy doesn't have anyone by that link."
                   : scopeLoading

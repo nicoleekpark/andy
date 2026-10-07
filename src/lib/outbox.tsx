@@ -179,6 +179,8 @@ export function loadOutbox(store: OutboxStore, ownerId: string): OutboxNote[] {
 type Outbox = {
   notes: OutboxNote[];
   keep: (note: Omit<OutboxNote, "id" | "ownerId" | "keptAt">) => OutboxNote;
+  /** Drop one note — once Andy has it for good. */
+  done: (id: string) => void;
 };
 
 const OutboxContext = createContext<Outbox | null>(null);
@@ -212,7 +214,23 @@ export function OutboxProvider({
     [ownerId, store],
   );
 
-  const value = useMemo(() => ({ notes, keep }), [notes, keep]);
+  const done = useCallback<Outbox["done"]>(
+    (id) => {
+      const next = loadOutbox(store, ownerId).filter((note) => note.id !== id);
+      try {
+        if (next.length === 0) store.remove();
+        else store.write(JSON.stringify(next));
+      } catch {
+        // The note is saved on the server already; failing to drop the copy
+        // here only means it is offered again, and a second save would be a
+        // duplicate the person can see and delete — not a loss.
+      }
+      setNotes(next);
+    },
+    [ownerId, store],
+  );
+
+  const value = useMemo(() => ({ notes, keep, done }), [notes, keep, done]);
   return <OutboxContext.Provider value={value}>{children}</OutboxContext.Provider>;
 }
 
@@ -229,6 +247,7 @@ export function useOutbox(): Outbox & { available: boolean } {
       keep: () => {
         throw new Error("No outbox: OutboxProvider is missing above this screen");
       },
+      done: () => {},
       available: false,
     };
   }

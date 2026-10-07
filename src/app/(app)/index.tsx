@@ -1,6 +1,6 @@
 import { Stack, router } from "expo-router";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
-import { useQuery } from "convex/react";
+import { useConvexConnectionState, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { BriefingCard } from "@/components/briefing-card";
 import { ThreadLoop } from "@/components/thread-loop";
@@ -45,16 +45,46 @@ function EmptyHome() {
 /**
  * Notes kept on this phone while offline, not yet read (`src/lib/outbox.tsx`).
  * Said on home so nothing someone told you seems lost: the note is here, it
- * just has not been read. Nothing when there are none.
+ * just has not been read. Online, it opens the oldest one to be read and
+ * checked — one at a time, the same check every note gets. Nothing when there
+ * are none.
  */
 function OutboxLine() {
   const { notes } = useOutbox();
+  const online = useConvexConnectionState().isWebSocketConnected;
   if (notes.length === 0) return null;
+  const count = notes.length === 1 ? "1 note" : `${notes.length} notes`;
+  if (!online) {
+    return (
+      <Text testID="outbox-line" style={styles.outboxLine}>
+        {count} kept on this phone, waiting for Andy to read{" "}
+        {notes.length === 1 ? "it" : "them"}.
+      </Text>
+    );
+  }
+  const oldest = notes[0];
   return (
-    <Text testID="outbox-line" style={styles.outboxLine}>
-      {notes.length === 1 ? "1 note" : `${notes.length} notes`} kept on this phone,
-      waiting for Andy to read {notes.length === 1 ? "it" : "them"}.
-    </Text>
+    <Pressable
+      testID="outbox-line"
+      accessibilityRole="button"
+      accessibilityLabel={`${count} kept on this phone. Read ${notes.length === 1 ? "it" : "the first"} now`}
+      onPress={() =>
+        router.push(
+          oldest.aboutProfileId === undefined
+            ? `/capture?outbox=${oldest.id}`
+            : `/profile/${oldest.aboutProfileId}/capture?outbox=${oldest.id}`,
+        )
+      }
+    >
+      {/* Two pieces side by side, not nested: a nested Text inherits the
+          line's faded opacity, and the action would read as faded too. */}
+      <View style={styles.outboxRow}>
+        <Text style={styles.outboxText}>{count} kept on this phone.</Text>
+        <Text style={styles.outboxAction}>
+          Read {notes.length === 1 ? "it" : "the first"} now
+        </Text>
+      </View>
+    </Pressable>
   );
 }
 
@@ -204,6 +234,9 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   outboxLine: { color: colors.ink, fontSize: 14, opacity: 0.55, lineHeight: 21, marginBottom: space.lg },
+  outboxRow: { flexDirection: "row", flexWrap: "wrap", columnGap: space.xs, marginBottom: space.lg },
+  outboxText: { color: colors.ink, fontSize: 14, opacity: 0.55, lineHeight: 21 },
+  outboxAction: { color: colors.moss, fontSize: 14, lineHeight: 21 },
   container: { flex: 1, backgroundColor: colors.paper, padding: 24, gap: 16 },
   headerAction: { color: colors.ink, fontSize: 15 },
 
