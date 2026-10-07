@@ -1,6 +1,7 @@
 import { screen, within } from "@testing-library/react-native";
 import { ClerkProvider, useAuth } from "@clerk/expo";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { resourceCache } from "@clerk/expo/resource-cache";
 import { useFonts } from "expo-font";
 import { renderRouter } from "expo-router/testing-library";
 
@@ -61,6 +62,17 @@ describe("root layout provider wiring", () => {
 
     expect(props.publishableKey).toBe(process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY);
     expect(props.tokenCache).toBeDefined();
+  });
+
+  // Without it Clerk's first load has no retry: offline at launch it never
+  // finishes, and only relaunching the app recovers (device QA, 2026-10-06).
+  test("should give ClerkProvider its offline resource cache", async () => {
+    const result = renderRouter("src/app", { initialUrl: "/" });
+    await result;
+
+    const props = (ClerkProvider as jest.Mock).mock.calls[0][0];
+
+    expect(props.__experimental_resourceCache).toBe(resourceCache);
   });
 
   test("should render the app anyway when a typeface fails to load", async () => {

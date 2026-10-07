@@ -1,5 +1,6 @@
 import React from "react";
 import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { useAuth } from "@clerk/expo";
 import { useConvexAuth, useMutation } from "convex/react";
 import { renderRouter } from "expo-router/testing-library";
 import { type LockState, useAppLock } from "../src/lib/use-app-lock";
@@ -17,6 +18,13 @@ import { type LockState, useAppLock } from "../src/lib/use-app-lock";
 jest.mock("../src/lib/use-app-lock", () => ({ useAppLock: jest.fn() }));
 
 function authed() {
+  (useAuth as jest.Mock).mockReturnValue({
+    isLoaded: true,
+    isSignedIn: true,
+    userId: "user_a",
+    getToken: jest.fn(async () => null),
+    signOut: jest.fn(async () => undefined),
+  });
   (useConvexAuth as jest.Mock).mockReturnValue({ isLoading: false, isAuthenticated: true });
   (useMutation as jest.Mock).mockReturnValue(jest.fn(async () => undefined));
 }
@@ -93,6 +101,7 @@ test("should say which unlock method it wants, by kind", async () => {
 });
 
 test("should not gate on the sign-in screen — a signed-out visitor has nothing to lock yet", async () => {
+  (useAuth as jest.Mock).mockReturnValue({ isLoaded: true, isSignedIn: false, userId: undefined });
   (useConvexAuth as jest.Mock).mockReturnValue({ isLoading: false, isAuthenticated: false });
   (useMutation as jest.Mock).mockReturnValue(jest.fn(async () => undefined));
   // Not called at all when signed out — (app)/_layout.tsx redirects before

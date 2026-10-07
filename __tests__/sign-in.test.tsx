@@ -17,13 +17,19 @@ import { WRITE_MS } from "@/lib/use-thread-motion";
  * failure, and a flow that resolves without a session.
  *
  * Rendered via the real (auth)/_layout route rather than the bare component
- * so useConvexAuth must be forced to signed-out first — its jest.setup.ts
- * default is signed-in, which would redirect this route to "/" before any
+ * so Clerk and useConvexAuth must be forced to signed-out first — their
+ * jest.setup.ts defaults are signed-in, which would redirect this route to "/" before any
  * of these assertions ran.
  */
 describe("sign-in screen", () => {
   beforeEach(() => {
     (useConvexAuth as jest.Mock).mockReturnValue({ isLoading: false, isAuthenticated: false });
+    (useAuth as jest.Mock).mockReturnValue({
+      isLoaded: true,
+      isSignedIn: false,
+      userId: undefined,
+      signOut: jest.fn(async () => undefined),
+    });
   });
 
   afterEach(() => {
@@ -186,6 +192,7 @@ describe("sign-in screen", () => {
 
     test("should show neither the stuck copy nor the waiting copy when signed out", async () => {
       (useAuth as jest.Mock).mockReturnValue({
+        isLoaded: true,
         isSignedIn: false,
         signOut: jest.fn(async () => undefined),
       });
@@ -203,6 +210,7 @@ describe("sign-in screen", () => {
 
     test("should show only the waiting copy when signed in before the stuck timer fires", async () => {
       (useAuth as jest.Mock).mockReturnValue({
+        isLoaded: true,
         isSignedIn: true,
         signOut: jest.fn(async () => undefined),
       });
@@ -220,6 +228,7 @@ describe("sign-in screen", () => {
 
     test("should show the stuck copy and a Sign out button once the stuck timer fires", async () => {
       (useAuth as jest.Mock).mockReturnValue({
+        isLoaded: true,
         isSignedIn: true,
         signOut: jest.fn(async () => undefined),
       });
@@ -240,7 +249,7 @@ describe("sign-in screen", () => {
 
     test("should call signOut once when the Sign out button is pressed after the stuck timer fires", async () => {
       const signOut = jest.fn(async () => undefined);
-      (useAuth as jest.Mock).mockReturnValue({ isSignedIn: true, signOut });
+      (useAuth as jest.Mock).mockReturnValue({ isLoaded: true, isSignedIn: true, signOut });
 
       await renderSignIn();
       await act(async () => {
@@ -255,7 +264,7 @@ describe("sign-in screen", () => {
       const signOut = jest.fn(async () => {
         throw new Error("network down");
       });
-      (useAuth as jest.Mock).mockReturnValue({ isSignedIn: true, signOut });
+      (useAuth as jest.Mock).mockReturnValue({ isLoaded: true, isSignedIn: true, signOut });
 
       await renderSignIn();
       await act(async () => {

@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Redirect, Stack, router } from "expo-router";
+import { useAuth } from "@clerk/expo";
 import { useConvexAuth, useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { Connecting } from "@/components/connecting";
@@ -13,19 +14,47 @@ import { onNudgeOpened } from "@/lib/notifications";
 /**
  * The gate for everything that reads user data.
  *
- * It keys on Convex's auth state, not Clerk's. "Signed in to Clerk" is not the
- * same as "Convex accepts this token" — if the JWT template or issuer is
- * misconfigured, Clerk reports a session while every Convex query quietly
- * returns nothing. Gating on Convex means that state can't get past this screen.
+ * Two questions, asked of two different parties:
+ *
+ * - **Who is signed in** is Clerk's answer, and only Clerk's "signed out" sends
+ *   anyone to sign-in. Clerk can answer offline (its resource cache — see
+ *   `src/app/_layout.tsx`); Convex cannot.
+ * - **Whether the server has accepted that session** is Convex's answer, and
+ *   nothing that reads user data shows until it has said yes once. "Signed in to
+ *   Clerk" is not the same as "Convex accepts this token" — a misconfigured JWT
+ *   template leaves Clerk reporting a session while every query returns nothing
+ *   — so that state waits on <Connecting />, which offers sign-out once it gives
+ *   up, rather than getting through.
+ *
+ * This used to gate on Convex alone and send anything unconfirmed to sign-in.
+ * Offline, Convex's token refresh fails and reports "not authenticated", so a
+ * signed-in person who lost their connection mid-use was thrown out to the
+ * sign-in screen and lost whatever they were doing (device QA, 2026-10-06; the
+ * path traced through convex 1.46.0's authentication_manager.js).
  */
 export default function AppLayout() {
-  const { isLoading, isAuthenticated } = useConvexAuth();
+  const { isLoaded: clerkLoaded, isSignedIn, signOut } = useAuth();
+  const { isAuthenticated } = useConvexAuth();
+
+  // Once the server has accepted this session, a later "not authenticated" is
+  // a dropped connection, not a different person: identity changes remount this
+  // whole tree (`ConvexScopedToIdentity` keys on the Clerk user id), and signing
+  // out is caught by the Clerk check below. So the screens stay up, keeping
+  // their state, instead of being swapped for a waiting screen. Set during
+  // render rather than in an effect, so there is never a frame that unmounts
+  // them first.
+  const [confirmed, setConfirmed] = useState(false);
+  if (isAuthenticated && !confirmed) {
+    setConfirmed(true);
+  }
+  const inApp = isSignedIn === true && (isAuthenticated || confirmed);
+
   const ensureUser = useMutation(api.users.ensureUser);
-  // `isAuthenticated`, not unconditionally: `useAppLock`'s effect fires
-  // whether or not this component's *render output* was the lock screen,
-  // and a signed-out visitor must never see a biometric prompt for a
-  // session that doesn't exist yet.
-  const lock = useAppLock(isAuthenticated);
+  // `inApp`, not unconditionally: `useAppLock`'s effect fires whether or not
+  // this component's *render output* was the lock screen, and a signed-out
+  // visitor must never see a biometric prompt for a session that doesn't exist
+  // yet.
+  const lock = useAppLock(inApp);
 
   // Bootstrapping here rather than in a sign-in callback: a user who is signed
   // in but has no users row — interrupted first launch, cleared data — repairs
@@ -47,26 +76,27 @@ export default function AppLayout() {
   // person's page to whoever is holding a locked phone. A person deleted since
   // the nudge was scheduled lands on the capture screen's own "doesn't have
   // anyone by that link".
-  const unlocked = isAuthenticated && lock.state.phase === "unlocked";
+  const unlocked = inApp && lock.state.phase === "unlocked";
   useEffect(() => {
     if (!unlocked) return;
     return onNudgeOpened((profileId) => router.push(`/profile/${profileId}/capture`));
   }, [unlocked]);
 
-  // Restoring the session from the keychain takes a moment. Rendering the
-  // signed-out branch during it would flash the sign-in screen on every launch.
-  //
-  // Known cost of gating on Convex rather than Clerk: offline, isLoading never
-  // resolves, because the flag only flips once the server confirms the token.
-  // A signed-in user offline sits here rather than reaching the app. That fails
-  // closed, which is the right direction — but it is why <Connecting /> escalates
-  // to an explanation and a way out instead of spinning indefinitely.
-  if (isLoading) {
+  // Restoring the session takes a moment. Rendering the signed-out branch
+  // during it would flash the sign-in screen on every launch.
+  if (!clerkLoaded) {
     return <Connecting />;
   }
 
-  if (!isAuthenticated) {
+  if (!isSignedIn) {
     return <Redirect href="/sign-in" />;
+  }
+
+  // Signed in, not yet accepted by the server: still connecting, or offline
+  // since launch. Fails closed — nothing of the user's shows — and <Connecting />
+  // escalates to an explanation, a retry and a way out.
+  if (!inApp) {
+    return <Connecting onSignOut={() => void signOut().catch(() => {})} />;
   }
 
   // A device with Face ID / Touch ID / a passcode gates the notes behind it,
