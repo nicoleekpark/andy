@@ -215,6 +215,8 @@ live here rather than in §7 because that is the screen they happen on.
 
 ## 11. Connection and shell
 
+**Offline rows on the simulator (11.8–11.11):** the simulator has no airplane mode — turn off the **Mac's** Wi-Fi. But first start Metro with `npx expo start --dev-client --localhost` and open `http://localhost:8081` from the dev client's launcher (**Enter URL manually**). The default LAN address (`http://192.168.…:8081`) disappears with the Wi-Fi, and the dev client stops at its own launcher before Andy's code ever runs — which looks like a failure of the row and is not (found 2026-10-07). `convex dev` can stay off: these rows change no backend code, and its `Retrying request` lines while offline are the CLI, not the app.
+
 | # | Do this | Expect |
 |---|---|---|
 | 11.1 | Turn off Wi-Fi, relaunch the app, then turn it back on and press `Try again` | Reaches home. The wait states themselves — the 1.5s/8s/20s thresholds and their wording — are `__tests__/connecting.test.tsx`'s job, with fake timers; what needs a person is that retrying over a real socket actually reconnects, which that test mocks away |
