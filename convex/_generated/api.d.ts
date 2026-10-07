@@ -25,6 +25,8 @@ import type * as followUp from "../followUp.js";
 import type * as followUpScope from "../followUpScope.js";
 import type * as naming from "../naming.js";
 import type * as notes from "../notes.js";
+import type * as offline from "../offline.js";
+import type * as offlineViews from "../offlineViews.js";
 import type * as people from "../people.js";
 import type * as peopleSearch from "../peopleSearch.js";
 import type * as photos from "../photos.js";
@@ -58,6 +60,8 @@ declare const fullApi: ApiFromModules<{
   followUpScope: typeof followUpScope;
   naming: typeof naming;
   notes: typeof notes;
+  offline: typeof offline;
+  offlineViews: typeof offlineViews;
   people: typeof people;
   peopleSearch: typeof peopleSearch;
   photos: typeof photos;
