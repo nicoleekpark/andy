@@ -236,7 +236,23 @@ jest.mock("convex/react", () => {
    */
   const useQuery = jest.fn(() => undefined);
 
-  return { ...actual, useConvexAuth, useMutation, useAction, useQuery };
+  /**
+   * Connected by default, like `useConvexAuth` above: only tests about being
+   * offline set it otherwise. The real hook needs a client in context, which
+   * the `convex/react-clerk` mock deliberately does not supply.
+   */
+  const useConvexConnectionState = jest.fn(() => ({
+    hasInflightRequests: false,
+    isWebSocketConnected: true,
+    timeOfOldestInflightRequest: null,
+    hasEverConnected: true,
+    connectionCount: 1,
+    connectionRetries: 0,
+    inflightMutations: 0,
+    inflightActions: 0,
+  }));
+
+  return { ...actual, useConvexAuth, useMutation, useAction, useQuery, useConvexConnectionState };
 });
 
 /**
@@ -300,3 +316,77 @@ jest.mock("expo-image-picker", () => ({
   launchCameraAsync: jest.fn(async () => ({ canceled: true, assets: null })),
   launchImageLibraryAsync: jest.fn(async () => ({ canceled: true, assets: null })),
 }));
+
+/**
+ * expo-file-system's `File`/`Paths`, backed by memory. The outbox
+ * (`src/lib/outbox.tsx`) is the only user of this surface; tests read and seed
+ * what is "on disk" through `__files`, and it is emptied before every test so
+ * no note leaks from one test into the next.
+ */
+jest.mock("expo-file-system", () => {
+  const files = new Map<string, string>();
+  const folders = new Set<string>();
+  const join = (parts: (string | { uri: string })[]) =>
+    parts.map((p) => (typeof p === "string" ? p : p.uri)).join("/");
+  class File {
+    uri: string;
+    constructor(...parts: (string | { uri: string })[]) {
+      this.uri = join(parts);
+    }
+    get name() {
+      return this.uri.slice(this.uri.lastIndexOf("/") + 1);
+    }
+    get exists() {
+      return files.has(this.uri);
+    }
+    textSync() {
+      const value = files.get(this.uri);
+      if (value === undefined) throw new Error(`No such file: ${this.uri}`);
+      return value;
+    }
+    write(contents: string) {
+      files.set(this.uri, contents);
+    }
+    delete() {
+      files.delete(this.uri);
+    }
+    rename(newName: string) {
+      const value = this.textSync();
+      files.delete(this.uri);
+      this.uri = `${this.uri.slice(0, this.uri.lastIndexOf("/"))}/${newName}`;
+      files.set(this.uri, value);
+    }
+  }
+  class Directory {
+    uri: string;
+    constructor(...parts: (string | { uri: string })[]) {
+      this.uri = join(parts);
+    }
+    get exists() {
+      return folders.has(this.uri) || [...files.keys()].some((k) => k.startsWith(`${this.uri}/`));
+    }
+    create() {
+      folders.add(this.uri);
+    }
+    delete() {
+      folders.delete(this.uri);
+      for (const key of [...files.keys()]) if (key.startsWith(`${this.uri}/`)) files.delete(key);
+    }
+  }
+  return {
+    File,
+    Directory,
+    Paths: { document: { uri: "file:///documents" } },
+    __files: files,
+    __folders: folders,
+  };
+});
+
+beforeEach(() => {
+  const fs = jest.requireMock("expo-file-system") as {
+    __files: Map<string, string>;
+    __folders: Set<string>;
+  };
+  fs.__files.clear();
+  fs.__folders.clear();
+});

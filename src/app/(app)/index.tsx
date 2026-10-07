@@ -8,6 +8,7 @@ import { useBriefing } from "@/lib/use-briefing";
 import { colors, fonts, space } from "@/constants/theme";
 import { useOncePerSession } from "@/lib/use-once-per-session";
 import { formatDate } from "@/lib/dates";
+import { useOutbox } from "@/lib/outbox";
 
 /**
  * Home: the people you keep, and the way in to everything else.
@@ -38,6 +39,22 @@ function EmptyHome() {
         No one yet — tap record to remember your first person.
       </Text>
     </View>
+  );
+}
+
+/**
+ * Notes kept on this phone while offline, not yet read (`src/lib/outbox.tsx`).
+ * Said on home so nothing someone told you seems lost: the note is here, it
+ * just has not been read. Nothing when there are none.
+ */
+function OutboxLine() {
+  const { notes } = useOutbox();
+  if (notes.length === 0) return null;
+  return (
+    <Text testID="outbox-line" style={styles.outboxLine}>
+      {notes.length === 1 ? "1 note" : `${notes.length} notes`} kept on this phone,
+      waiting for Andy to read {notes.length === 1 ? "it" : "them"}.
+    </Text>
   );
 }
 
@@ -90,22 +107,25 @@ export default function HomeScreen() {
             the same scroll, in that order, is the whole hierarchy.
           */
           ListHeaderComponent={
-            briefing.state === "loading" ? null : briefing.state === "ask" ? (
-              <BriefingCard
-                state="ask"
-                onAsk={() => void ask()}
-                asking={briefing.asking}
-              />
-            ) : briefing.state === "ready" ? (
-              <BriefingCard
-                state="ready"
-                briefing={briefing.briefing}
-                alerts={alerts}
-                onEnableAlerts={() => void askForAlerts()}
-              />
-            ) : (
-              <BriefingCard state={briefing.state} />
-            )
+            <>
+              <OutboxLine />
+              {briefing.state === "loading" ? null : briefing.state === "ask" ? (
+                <BriefingCard
+                  state="ask"
+                  onAsk={() => void ask()}
+                  asking={briefing.asking}
+                />
+              ) : briefing.state === "ready" ? (
+                <BriefingCard
+                  state="ready"
+                  briefing={briefing.briefing}
+                  alerts={alerts}
+                  onEnableAlerts={() => void askForAlerts()}
+                />
+              ) : (
+                <BriefingCard state={briefing.state} />
+              )}
+            </>
           }
           ListEmptyComponent={
             // Centred in the space the list would have filled. `list` already
@@ -183,6 +203,7 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  outboxLine: { color: colors.ink, fontSize: 14, opacity: 0.55, lineHeight: 21, marginBottom: space.lg },
   container: { flex: 1, backgroundColor: colors.paper, padding: 24, gap: 16 },
   headerAction: { color: colors.ink, fontSize: 15 },
 

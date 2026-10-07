@@ -6,7 +6,7 @@ import {
   within,
 } from "@testing-library/react-native";
 import { Alert, StyleSheet } from "react-native";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useAction, useConvexConnectionState, useMutation, useQuery } from "convex/react";
 import { useSpeechRecognitionEvent } from "expo-speech-recognition";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
@@ -2952,5 +2952,109 @@ describe("capture screen business card door", () => {
     expect(screen.queryByText(/didn't come through/)).toBeNull();
     expect(screen.queryByText(/couldn't read that card/)).toBeNull();
     expect(screen.queryByText(/needs the camera/)).toBeNull();
+  });
+});
+
+/**
+ * Offline, a note is kept on this phone instead of read (`src/lib/outbox.tsx`),
+ * so nothing someone told you is lost when the hall has no signal (device QA,
+ * 2026-10-07). "On disk" is jest.setup.ts's in-memory `expo-file-system`.
+ */
+describe("capture screen offline", () => {
+  const files = () =>
+    (jest.requireMock("expo-file-system") as { __files: Map<string, string> }).__files;
+  const kept = () => {
+    const raw = [...files().values()][0];
+    return raw === undefined ? [] : (JSON.parse(raw) as { text: string; kind: string; today: string; ownerId: string }[]);
+  };
+
+  function connected(isWebSocketConnected: boolean) {
+    (useConvexConnectionState as jest.Mock).mockReturnValue({
+      hasInflightRequests: false,
+      isWebSocketConnected,
+      timeOfOldestInflightRequest: null,
+      hasEverConnected: true,
+      connectionCount: 1,
+      connectionRetries: 0,
+      inflightMutations: 0,
+      inflightActions: 0,
+    });
+  }
+
+  async function typeNote(text: string) {
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Type it instead" }));
+    });
+    await act(async () => {
+      fireEvent.changeText(screen.getByLabelText("Type a note"), text);
+    });
+    // Wrapped: an async function returning the router result directly would
+    // await it, and what came back would no longer have `getPathname`.
+    return { result };
+  }
+
+  beforeEach(() => {
+    captureListeners();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    connected(true);
+  });
+
+  test("should keep the note on this phone instead of reading it when offline", async () => {
+    connected(false);
+    const extract = jest.fn();
+    (useAction as jest.Mock).mockReturnValue(extract);
+
+    await typeNote("Met Rowan at the booth, fosters two greyhounds.");
+
+    expect(screen.queryByRole("button", { name: "Read it" })).toBeNull();
+    expect(screen.getByText(/You're offline\. Andy will keep this note on this phone/)).toBeTruthy();
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Keep this note" }));
+    });
+
+    expect(extract).not.toHaveBeenCalled();
+    // Left for home, which says the note is waiting.
+    await waitFor(() => expect(screen.getByTestId("outbox-line")).toBeTruthy());
+    expect(screen.getByText(/1 note kept on this phone, waiting for Andy to read it\./)).toBeTruthy();
+    expect(kept()).toEqual([
+      expect.objectContaining({
+        text: "Met Rowan at the booth, fosters two greyhounds.",
+        kind: "typed",
+        ownerId: "user_default",
+        today: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      }),
+    ]);
+  });
+
+  test("should read the note as before when online, keeping nothing on the phone", async () => {
+    connected(true);
+
+    await typeNote("Met Rowan at the booth.");
+
+    expect(screen.getByRole("button", { name: "Read it" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Keep this note" })).toBeNull();
+    expect(files().size).toBe(0);
+  });
+
+  test("should stay, words intact, and say so when the phone cannot keep the note", async () => {
+    connected(false);
+    const { File } = jest.requireMock("expo-file-system") as { File: { prototype: { write: () => void } } };
+    jest.spyOn(File.prototype, "write").mockImplementation(() => {
+      throw new Error("No space left on device");
+    });
+
+    const { result } = await typeNote("Met Rowan at the booth.");
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Keep this note" }));
+    });
+
+    expect(screen.getByText(/Andy couldn't keep this note on the phone/)).toBeTruthy();
+    expect(screen.getByLabelText("Type a note").props.value).toBe("Met Rowan at the booth.");
+    expect(result.getPathname()).toBe("/capture");
   });
 });

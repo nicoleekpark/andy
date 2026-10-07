@@ -6,6 +6,7 @@ import { api } from "@convex/_generated/api";
 import { ScreenPlaceholder } from "@/components/screen-placeholder";
 import { colors } from "@/constants/theme";
 import { userMessage } from "@/lib/user-message";
+import { forgetOutbox, useOutbox } from "@/lib/outbox";
 
 export default function SettingsScreen() {
   const { signOut } = useAuth();
@@ -22,7 +23,9 @@ export default function SettingsScreen() {
     setError(null);
     try {
       await deleteMyAccount({});
-      // The account is gone; the session that named it goes with it.
+      // The account is gone; the session that named it goes with it, and so
+      // do any notes it kept on this phone.
+      forgetOutbox();
       await signOut();
     } catch (thrown) {
       setError(
@@ -33,6 +36,34 @@ export default function SettingsScreen() {
       setDeleting(false);
     }
   }, [deleteMyAccount, signOut]);
+
+  /**
+   * Signing out removes notes kept on this phone while offline (`forgetOutbox`)
+   * — they belong to whoever wrote them, and the next person to sign in must
+   * not inherit them.
+   * Asked first when any are still waiting, because those words exist nowhere
+   * else yet.
+   */
+  const { notes: waiting } = useOutbox();
+  const confirmSignOut = useCallback(() => {
+    const signOutAndForget = () => {
+      forgetOutbox();
+      void signOut();
+    };
+    if (waiting.length === 0) {
+      signOutAndForget();
+      return;
+    }
+    const count = waiting.length === 1 ? "1 note" : `${waiting.length} notes`;
+    Alert.alert(
+      "Sign out?",
+      `${count} on this phone ${waiting.length === 1 ? "hasn't" : "haven't"} been read by Andy yet. Signing out deletes ${waiting.length === 1 ? "it" : "them"}.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Sign out", style: "destructive", onPress: signOutAndForget },
+      ],
+    );
+  }, [waiting.length, signOut]);
 
   /**
    * App Store Guideline 5.1.1(v): deletion has to be in the app, not a support
@@ -55,7 +86,7 @@ export default function SettingsScreen() {
 
       <Pressable
         style={styles.signOut}
-        onPress={() => signOut()}
+        onPress={confirmSignOut}
         disabled={deleting}
         accessibilityRole="button"
       >

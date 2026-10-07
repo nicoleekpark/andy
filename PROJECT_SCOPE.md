@@ -153,6 +153,7 @@ Researched directly rather than assumed:
 - [ ] **Passcode/biometric app lock** (expo-local-authentication) — this app stores notes about other people without their consent; a lock screen is table stakes for trust, cheap to add
 - [ ] Realtime sync across the user's own devices
 - [ ] **iPad support, free** — don't restrict device family in `app.json`; the iPhone UI runs in scaled/compatibility mode on iPad automatically. No dedicated iPad layout in V1, but full functionality.
+- [ ] **Offline notes — added 2026-10-07 after device QA.** At a convention there is often no signal, and that is exactly when someone tells you something worth remembering. With no connection, a recorded, typed (and later, card) note is **kept on this phone, word for word**, and home says how many are waiting. Back online, Andy reads them by itself; each then waits for one tap of "Remember this" in the usual check step, because names clash most where you meet the most people. Kept in Andy's own app storage, tagged with the account that wrote it, and removed when you sign out (asked first) or delete your account — not when a session merely expires, and never shown to another account. **Out of scope until decided separately:** reading existing notes offline — that means keeping a copy of everyone on the phone. Built in slices (`dev-reports/qa-device-build-4.dev.md` → PR plan).
 
 ### Should Have
 
