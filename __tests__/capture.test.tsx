@@ -3072,7 +3072,7 @@ describe("capture screen offline", () => {
     waiting("Met Rowan yesterday at the booth.");
     const extract = jest.fn(async () => makeDraft({ name: "Rowan" }));
     (useAction as jest.Mock).mockReturnValue(extract);
-    const saveCapture = jest.fn(async (_args: { source: string }) => ({
+    const saveCapture = jest.fn(async (_args: { source: string; keptAt?: number }) => ({
       profileId: "profile-1",
       noteId: "note-1",
       createdProfile: true,
@@ -3097,7 +3097,8 @@ describe("capture screen offline", () => {
     });
 
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
-    expect(saveCapture.mock.calls[0]?.[0]).toEqual(expect.objectContaining({ source: "manual" }));
+    // Filed under the moment it was kept, not now.
+    expect(saveCapture.mock.calls[0]?.[0]).toEqual(expect.objectContaining({ source: "manual", keptAt: 1 }));
     expect(kept()).toEqual([]);
   });
 
@@ -3150,7 +3151,7 @@ describe("capture screen offline", () => {
     const handlers = captureListeners();
     const extract = jest.fn(async (_args: { text: string; today: string }) => makeDraft({ name: "Rowan" }));
     (useAction as jest.Mock).mockReturnValue(extract);
-    const saveCapture = jest.fn(async () => ({
+    const saveCapture = jest.fn(async (_args: { keptAt?: number }) => ({
       profileId: "profile-1",
       noteId: "note-1",
       createdProfile: true,
@@ -3177,6 +3178,8 @@ describe("capture screen offline", () => {
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
     // The new note was read against today, not the waiting note's day…
     expect(extract.mock.calls[1]?.[0].today).not.toBe("2026-10-01");
+    // …nor filed under its day…
+    expect(saveCapture.mock.calls[0]?.[0]).toEqual(expect.objectContaining({ keptAt: undefined }));
     // …and the waiting note is still on the phone, unsaved and not lost.
     expect(kept().map((n) => n.text)).toEqual(["Met Rowan yesterday at the booth."]);
   });

@@ -436,9 +436,12 @@ export function CaptureScreen({
    * and saving those (corrected or not) is still saving this note.
    */
   const linkedRef = useRef(outboxId);
+  /** When it was kept, so the saved note is filed under that day. */
+  const keptAtRef = useRef<number | undefined>(waiting?.keptAt);
   const letGoOfWaiting = useCallback(() => {
     linkedRef.current = undefined;
     saidOnRef.current = null;
+    keptAtRef.current = undefined;
   }, []);
   const readCard = useAction(api.extraction.fromBusinessCard);
   const saveCapture = useMutation(api.notes.saveCapture);
@@ -1154,6 +1157,9 @@ export function CaptureScreen({
     try {
       const saved = await saveCapture({
         transcript,
+        // A waiting note is filed under the day it was kept, not today (the
+        // server checks it is believable).
+        keptAt: keptAtRef.current,
         // Not shown for somebody already kept, so not sent either: a hidden
         // field must not fill their profile behind the user's back.
         draft:

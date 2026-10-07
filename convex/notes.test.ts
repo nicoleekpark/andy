@@ -1809,3 +1809,54 @@ test("should refuse a profile that is neither the name nor what it possesses", a
     }),
   ).rejects.toThrow(/couldn't tell who that note was about/);
 });
+
+/**
+ * A note kept on the phone while offline and saved later is filed under the
+ * day it was kept (`keptAt`), within reason — `noteDate` in notes.ts.
+ */
+test("should file a note kept offline under the moment it was kept", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const keptAt = Date.now() - 2 * 24 * 60 * 60 * 1000;
+
+  const result = await t.withIdentity(ALICE).mutation(api.notes.saveCapture, {
+    transcript: "Met Nina at the booth.",
+    draft: buildDraft({ primaryName: "Nina" }),
+    source: "manual",
+    keptAt,
+  });
+
+  await t.run(async (ctx) => {
+    expect((await ctx.db.get(result.noteId))?.createdAt).toBe(keptAt);
+  });
+});
+
+test("should file a note under the save time when its kept time is in the future or too old", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  for (const keptAt of [Date.now() + 60 * 60 * 1000, Date.now() - 31 * 24 * 60 * 60 * 1000, Number.NaN]) {
+    const before = Date.now();
+    const result = await asAlice.mutation(api.notes.saveCapture, {
+      transcript: "Met Nina at the booth.",
+      draft: buildDraft({ primaryName: "Nina" }),
+      source: "manual",
+      keptAt,
+    });
+    await t.run(async (ctx) => {
+      const createdAt = (await ctx.db.get(result.noteId))?.createdAt ?? 0;
+      expect(createdAt).toBeGreaterThanOrEqual(before);
+      expect(createdAt).toBeLessThanOrEqual(Date.now());
+    });
+  }
+});
+
+test("should accept a kept time exactly 30 days old, and not a millisecond older", async () => {
+  const { noteDate, MAX_KEPT_AGE_MS } = await import("./notes");
+  const now = 1_800_000_000_000;
+
+  expect(noteDate(now - MAX_KEPT_AGE_MS, now)).toBe(now - MAX_KEPT_AGE_MS);
+  expect(noteDate(now - MAX_KEPT_AGE_MS - 1, now)).toBe(now);
+  expect(noteDate(now, now)).toBe(now);
+});
