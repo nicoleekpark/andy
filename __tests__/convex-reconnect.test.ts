@@ -112,6 +112,16 @@ test("should do nothing, not throw, when the client no longer has that shape —
   expect(warn).toHaveBeenCalledTimes(1);
 });
 
+test("should do nothing, not throw, for a client that has already been closed", () => {
+  const closed = {
+    get sync(): never {
+      throw new Error("ConvexReactClient has already been closed.");
+    },
+  } as unknown as ConvexReactClient;
+
+  expect(nudgeReconnect(closed, { suspect: true })).toBe("nothing-to-do");
+});
+
 test("should not throw out of the foreground listener when Convex's own method throws", () => {
   const manager = managerOf(client);
   manager.socket.state = "disconnected";

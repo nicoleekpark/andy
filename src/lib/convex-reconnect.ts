@@ -31,8 +31,16 @@ type SocketManager = {
 
 export type ReconnectNudge = "reconnecting" | "restarting" | "nothing-to-do" | "unsupported";
 
-function managerOf(client: ConvexReactClient): SocketManager | null {
-  const sync = (client as unknown as { sync?: { webSocketManager?: SocketManager } }).sync;
+function managerOf(client: ConvexReactClient): SocketManager | null | "closed" {
+  let sync: { webSocketManager?: SocketManager } | undefined;
+  try {
+    sync = (client as unknown as { sync?: { webSocketManager?: SocketManager } }).sync;
+  } catch {
+    // `sync` throws "ConvexReactClient has already been closed." once the
+    // client is closed — which a listener can briefly outlive (seen under
+    // Fast Refresh, 2026-10-07). A closed client has nothing to reconnect.
+    return "closed";
+  }
   const manager = sync?.webSocketManager;
   if (
     !manager ||
@@ -56,6 +64,7 @@ export function nudgeReconnect(
   { suspect }: { suspect: boolean },
 ): ReconnectNudge {
   const manager = managerOf(client);
+  if (manager === "closed") return "nothing-to-do";
   if (manager === null) {
     // Said out loud in development: otherwise a Convex upgrade that moves these
     // internals looks exactly like the original bug coming back.
