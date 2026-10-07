@@ -17,7 +17,7 @@ One name for every screen and every part of one, so that a bug report, a design 
 5. **States after two dashes**, on screens and on parts: `briefing-card--empty`, `remember-button--disabled`, `mic-button--listening`.
 6. **Role, not look.** `-button` does something (`note-delete-button`, even when drawn as text); `-link` is a name inside content that opens a profile or a note; `-toggle` opens and closes; `-field` takes typing. Style names (`button-primary`) belong to the design system, not here.
 7. **Not ours, say so**: `ios-` for the system (`ios-status-bar`, `ios-apple-sheet`), `expo-` for development-only tools (`expo-dev-menu`).
-8. **Screens by what the person does there**: `sign-in`, `lock`, `home`, `record`, `review`, `profile`, `profile-edit`, `note`, `ask`, `draft`, `settings`.
+8. **Screens by what the person does there**: `sign-in`, `lock`, `connecting`, `home`, `record`, `review`, `profile`, `profile-edit`, `note`, `ask`, `draft`, `settings`.
 9. **One name for every kind: `profile`**, never `person-`. Add a kind only where the screen really differs: `profile--person` has Draft a follow-up; `profile--animal` says "animal" and has none. The code knows `person` and `animal` (`entityType`); there is no `project`.
 10. **Copy follows Terminology; names follow the code's model.** People read "person", "detail"; names use `profile`, `note`, `detail`, and `subject` *only* for who a note is about — so the email subject on the draft is `draft-email-subject-field`.
 
@@ -71,6 +71,21 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `lock-body` | Face ID로 열라는 안내 |
 | `unlock-button` | Face ID 다시 요청 |
 | `lock-cover` | 잠겨 있거나 확인 중일 때 하던 화면 위를 덮는 종이색 판 — 그 아래 화면은 그대로 남아 있음 (`lock`은 이 판 위에 그려짐) |
+
+### `connecting`
+
+| Capture | State | 설명 |
+|---|---|---|
+| — | `connecting` | 서버 확인을 기다리는 화면. 처음 1.5초는 실 고리만 (글자 없음), 그다음 "Connecting…" |
+| — | `connecting--slow` | 8초 후 — "Still connecting. Check your internet connection." |
+| — | `connecting--failed` | 20초 후 — 실 없이 "Andy can't reach the server." |
+
+| Name | 설명 |
+|---|---|
+| `connecting-thread` | 실 고리 (멈춤 → 지나감) |
+| `connecting-retry-button` | Try again — 연결을 처음부터 다시 |
+| `connecting-hint` | 앱을 완전히 껐다 켜라는 안내 |
+| `connecting-sign-out-button` | Sign out — 로그인은 됐는데 서버가 끝내 받아주지 않을 때의 출구 (`connecting--failed`에만) |
 
 ### `home`
 

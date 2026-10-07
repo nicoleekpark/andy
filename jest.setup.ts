@@ -52,13 +52,19 @@ jest.mock("@clerk/expo", () => {
   // different mock instance than the one actually invoked.
   const signOut = jest.fn(async () => undefined);
 
+  // Signed in by default, matching `useConvexAuth`'s default below: the
+  // (app) gate now asks Clerk who is signed in and Convex whether the server
+  // accepted it, so a default where the two disagree renders neither the app
+  // nor sign-in. The same warning applies as there — a convenience for tests
+  // that are not about auth, never the state under test. Anything about being
+  // signed out sets it itself.
   const useAuth = jest.fn(() => ({
     isLoaded: true,
-    isSignedIn: false,
+    isSignedIn: true,
     // The root layout keys the Convex client on this, so a test that changes
     // identity must change `userId` — that is the whole trigger for throwing
     // away the previous account's query cache.
-    userId: undefined as string | undefined,
+    userId: "user_default" as string | undefined,
     getToken: jest.fn(async () => null),
     signOut,
     orgId: undefined,

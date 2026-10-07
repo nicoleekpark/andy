@@ -215,6 +215,8 @@ live here rather than in §7 because that is the screen they happen on.
 
 ## 11. Connection and shell
 
+**Offline rows on the simulator (11.8–11.11):** the simulator has no airplane mode — turn off the **Mac's** Wi-Fi. Start Metro with `npm run start:offline` and, while still online, open Andy at `http://127.0.0.1:8081` (README → Poking at the running app has the one-line command). The default LAN address (`http://192.168.…:8081`) disappears with the Wi-Fi and the dev client stops at its own launcher before Andy's code runs — which looks like a failure of the row and is not. `convex dev` can stay off; its `Retrying request` lines offline are the CLI, not the app.
+
 | # | Do this | Expect |
 |---|---|---|
 | 11.1 | Turn off Wi-Fi, relaunch the app, then turn it back on and press `Try again` | Reaches home. The wait states themselves — the 1.5s/8s/20s thresholds and their wording — are `__tests__/connecting.test.tsx`'s job, with fake timers; what needs a person is that retrying over a real socket actually reconnects, which that test mocks away |
@@ -223,6 +225,10 @@ live here rather than in §7 because that is the screen they happen on.
 | 11.5 | Sign out, sign in as another account | No trace of the first account's people, not even for a frame |
 | 11.6 | Turn on Airplane mode, then save a note edit, delete a note, or read a business card | A plain sentence such as *"Andy couldn't save that change. Try again."* — **never** "[Request ID: …] Server Error" or "fetch failed". Before 2026-10-02 prod showed exactly that line (REFACTOR.md → K) |
 | 11.7 | Record a name two people share and try to save without choosing (or rename someone to a name already taken) | The server's own sentence, e.g. *"You've written about more than one …"* — not "Server Error" |
+| 11.8 | Signed in, turn on Airplane mode (simulator: turn off the Mac's Wi-Fi), **kill** Andy and open it | Never the `sign-in` screen. Waits on `connecting`; after ~20 s, `connecting--failed` with **Try again**, the close-the-app hint and **Sign out**<br>**Result:** ✅ — simulator, 2026-10-07 |
+| 11.9 | From 11.8, turn the connection back on and wait about 30 s **without** touching anything, then press **Try again** if it is still waiting | Reaches `home` **without killing the app**. Before 2026-10-07 nothing short of relaunching recovered (Clerk's first load never retried)<br>**Result:** ✅ — simulator, 2026-10-07: reached `home` from `connecting--failed` without relaunching |
+| 11.10 | Use the app normally, turn on Airplane mode, keep using it for a few minutes (open a profile, go back, type in `ask`) | **Never** thrown out to `sign-in`, and the screen you are on stays. Saves and answers may wait — the message for that is the next fix (`fix/offline-errors`)<br>**Result:** ✅ — simulator, 2026-10-07: never sent to `sign-in`, screens kept. `follow-up-button` and `ask` hung offline as expected (PR 4) |
+| 11.11 | On `connecting--failed`, press **Sign out** | Lands on `sign-in`. Signing back in works once the connection is back<br>**Result:** ✅ — simulator, 2026-10-07. Note: signing in **right after** Wi-Fi came back failed once ("Couldn't reach Apple"); after leaving and returning to the app it worked — likely Clerk's retry not yet fired |
 
 ## 12. Search indexing
 

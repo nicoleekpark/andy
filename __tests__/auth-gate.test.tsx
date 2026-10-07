@@ -1,11 +1,16 @@
-import { screen, waitFor } from "@testing-library/react-native";
+import React from "react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { useAuth } from "@clerk/expo";
 import { useConvexAuth, useMutation } from "convex/react";
 import { renderRouter } from "expo-router/testing-library";
 
 /**
- * src/app/(app)/_layout.tsx and src/app/(auth)/_layout.tsx both key off
- * Convex's own auth state (useConvexAuth), not Clerk's, and (app) also fires
- * `ensureUser` once auth resolves to signed-in. `useConvexAuth` and
+ * src/app/(app)/_layout.tsx and src/app/(auth)/_layout.tsx ask Clerk who is
+ * signed in and Convex whether the server has accepted it; (app) also fires
+ * `ensureUser` once the server has. Only Clerk's "signed out" sends anyone to
+ * sign-in — a session the server has not accepted waits on the connecting
+ * screen (offline at launch), and one it already accepted keeps its screens
+ * through a later drop (offline mid-use). Device QA, 2026-10-06. `useConvexAuth` and
  * `useMutation` are mocked in jest.setup.ts as controllable jest.fn()s (see
  * that file for why a passthrough provider mock can't do this job) — every
  * test below sets its own return value, so a mock can't be quietly stubbed
@@ -16,8 +21,33 @@ import { renderRouter } from "expo-router/testing-library";
  * that resolves to the right pathname but still leaves the previous
  * screen's content mounted underneath would pass a pathname-only check.
  */
+function signedOut() {
+  (useAuth as jest.Mock).mockReturnValue({
+    isLoaded: true,
+    isSignedIn: false,
+    userId: undefined,
+    signOut: jest.fn(async () => undefined),
+  });
+}
+
+function signedIn(signOut = jest.fn(async () => undefined)) {
+  (useAuth as jest.Mock).mockReturnValue({
+    isLoaded: true,
+    isSignedIn: true,
+    userId: "user_a",
+    getToken: jest.fn(async () => null),
+    signOut,
+  });
+  return signOut;
+}
+
 describe("auth gate", () => {
+  beforeEach(() => {
+    signedIn();
+  });
+
   test("should not render profile content and should land on /sign-in when signed out", async () => {
+    signedOut();
     (useConvexAuth as jest.Mock).mockReturnValue({ isLoading: false, isAuthenticated: false });
     (useMutation as jest.Mock).mockReturnValue(jest.fn(async () => undefined));
 
@@ -84,6 +114,7 @@ describe("auth gate", () => {
 
   test("should not call ensureUser when signed out", async () => {
     const ensureUserSpy = jest.fn(async () => "user-id");
+    signedOut();
     (useConvexAuth as jest.Mock).mockReturnValue({ isLoading: false, isAuthenticated: false });
     (useMutation as jest.Mock).mockReturnValue(ensureUserSpy);
 
@@ -123,5 +154,89 @@ describe("auth gate", () => {
     // gate letting a signed-in caller through, and pinning wording would make
     // it fail every time home is rewritten — as it just was.
     expect(screen.getByRole("button", { name: "Record" })).toBeTruthy();
+  });
+
+  test("should wait on the connecting screen, not send to sign-in, when signed in but the server has not accepted the session — offline at launch", async () => {
+    (useConvexAuth as jest.Mock).mockReturnValue({ isLoading: false, isAuthenticated: false });
+    (useMutation as jest.Mock).mockReturnValue(jest.fn(async () => undefined));
+
+    const result = renderRouter("src/app", { initialUrl: "/" });
+    await result;
+
+    expect(result.getPathname()).not.toBe("/sign-in");
+    expect(screen.queryByRole("button", { name: "Continue with Apple" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Record" })).toBeNull();
+  });
+
+  test("should wait, not render sign-in, while Clerk itself is still loading", async () => {
+    (useAuth as jest.Mock).mockReturnValue({ isLoaded: false, isSignedIn: undefined, userId: undefined });
+    (useConvexAuth as jest.Mock).mockReturnValue({ isLoading: true, isAuthenticated: false });
+
+    const result = renderRouter("src/app", { initialUrl: "/" });
+    await result;
+
+    expect(result.getPathname()).not.toBe("/sign-in");
+    expect(screen.queryByRole("button", { name: "Record" })).toBeNull();
+  });
+
+  test("should offer sign-out once the connecting screen gives up, so a session the server never accepts is not a dead end", async () => {
+    jest.useFakeTimers();
+    try {
+      const signOut = signedIn();
+      (useConvexAuth as jest.Mock).mockReturnValue({ isLoading: false, isAuthenticated: false });
+
+      const result = renderRouter("src/app", { initialUrl: "/" });
+      await result;
+      await act(async () => {
+        jest.advanceTimersByTime(20_000);
+      });
+      await fireEvent.press(screen.getByRole("button", { name: "Sign out" }));
+
+      expect(signOut).toHaveBeenCalledTimes(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  test("should keep the screens up when the server drops a session it already accepted — offline mid-use", async () => {
+    (useMutation as jest.Mock).mockReturnValue(jest.fn(async () => undefined));
+    // A shared store, so the layout re-renders when the test changes what
+    // Convex reports — the way the real hook does when a token refresh fails.
+    let convex = { isLoading: false, isAuthenticated: true };
+    const listeners = new Set<() => void>();
+    (useConvexAuth as jest.Mock).mockImplementation(() =>
+      React.useSyncExternalStore(
+        (listener) => {
+          listeners.add(listener);
+          return () => listeners.delete(listener);
+        },
+        () => convex,
+      ),
+    );
+
+    const result = renderRouter("src/app", { initialUrl: "/search" });
+    await result;
+    await fireEvent.changeText(screen.getByPlaceholderText("Who are you thinking of?"), "who knows clint");
+
+    // Convex's token refresh failing offline reports exactly this.
+    await act(async () => {
+      convex = { isLoading: false, isAuthenticated: false };
+      listeners.forEach((listener) => listener());
+    });
+
+    await waitFor(() => expect(result.getPathname()).toBe("/search"));
+    expect(screen.getByPlaceholderText("Who are you thinking of?").props.value).toBe("who knows clint");
+  });
+
+  test("should land on sign-in, not bounce between the gates, in the moment Clerk has signed out and Convex has not caught up", async () => {
+    signedOut();
+    (useConvexAuth as jest.Mock).mockReturnValue({ isLoading: false, isAuthenticated: true });
+    (useMutation as jest.Mock).mockReturnValue(jest.fn(async () => undefined));
+
+    const result = renderRouter("src/app", { initialUrl: "/" });
+    await result;
+
+    expect(result.getPathname()).toBe("/sign-in");
+    expect(screen.getByRole("button", { name: "Continue with Apple" })).toBeTruthy();
   });
 });

@@ -92,7 +92,17 @@ function useConnectionPhase(): Phase {
  * system face and the words under it still do. Three bouncing dots stay
  * rejected: messaging apps taught them to mean someone is typing.
  */
-export function Connecting() {
+export function Connecting({
+  onSignOut,
+}: {
+  /**
+   * Offered only once the screen has given up, and only by the signed-in
+   * gate. A token the server never accepts (a misconfigured JWT template) keeps
+   * a signed-in person here for good, and sign-out otherwise lives behind this
+   * screen — without it the only remedy is deleting the app.
+   */
+  onSignOut?: () => void;
+} = {}) {
   const phase = useConnectionPhase();
   const retry = useRetryConnection();
 
@@ -127,6 +137,16 @@ export function Connecting() {
         <Text style={styles.quiet}>
           If that doesn&apos;t help, close the app completely and open it again.
         </Text>
+        {onSignOut ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Sign out"
+            onPress={onSignOut}
+            hitSlop={12}
+          >
+            <Text style={styles.quiet}>Sign out</Text>
+          </Pressable>
+        ) : null}
       </View>
     );
   }

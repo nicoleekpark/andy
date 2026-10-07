@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ClerkProvider, useAuth } from "@clerk/expo";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
+import { resourceCache } from "@clerk/expo/resource-cache";
 import { tokenCache } from "@clerk/expo/token-cache";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
@@ -149,8 +150,8 @@ function ConvexScopedToIdentity({ children }: { children: React.ReactNode }) {
  * already be readable when it asks for a token.
  *
  * The two groups gate each other: (app) redirects a signed-out caller to
- * sign-in, (auth) redirects a signed-in one back. Both decide on Convex's auth
- * state, not Clerk's — see (app)/_layout.tsx.
+ * sign-in, (auth) redirects a signed-in one back. Both ask Clerk who is signed
+ * in and Convex whether the server accepted it — see (app)/_layout.tsx.
  */
 export default function RootLayout() {
   /**
@@ -177,7 +178,19 @@ export default function RootLayout() {
   }
 
   return (
-    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+    // `__experimental_resourceCache`: Clerk keeps what it needs to start on the
+    // phone (SecureStore, the same storage as the token cache), so a signed-in
+    // launch with no connection still knows who is signed in. Without it Clerk's
+    // first load has no retry at all — offline at launch it never finishes, and
+    // nothing short of relaunching the app recovers (device QA, 2026-10-06; read
+    // from @clerk/expo 4.6.8's createClerkInstance.js). With it, Clerk retries
+    // its own load with backoff until the connection returns. Marked
+    // experimental by Clerk; the installed version is pinned.
+    <ClerkProvider
+      publishableKey={publishableKey}
+      tokenCache={tokenCache}
+      __experimental_resourceCache={resourceCache}
+    >
       <ConvexScopedToIdentity>
         <Stack>
           <Stack.Screen name="(app)" options={{ headerShown: false }} />
