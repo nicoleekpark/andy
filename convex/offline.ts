@@ -38,6 +38,8 @@ export const snapshot = query({
       }),
     ),
     links: v.array(schema.doc("noteMentions")),
+    /** When this answer was built — for "Offline — showing what Andy had at…". */
+    takenAt: v.number(),
   }),
   handler: async (ctx) => {
     const user = await getAuthenticatedUser(ctx);
@@ -55,6 +57,6 @@ export const snapshot = query({
         .withIndex("by_user", (q) => q.eq("userId", user._id))
         .collect(),
     ]);
-    return { profiles, notes: notes.map(withoutEmbedding), links };
+    return { profiles, notes: notes.map(withoutEmbedding), links, takenAt: Date.now() };
   },
 });

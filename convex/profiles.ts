@@ -121,22 +121,37 @@ export const withNotes = query({
       return null;
     }
 
-    // Every row read is this user's own, through `by_user`; the page itself
-    // is built by the function the phone's offline copy uses too.
-    const [profiles, notes, links] = await Promise.all([
+    // Only this person's notes, through the narrow index — not the whole
+    // account's (security-reviewer, 2026-10-07: reading everything on every
+    // page open grows with the account). Plus the few notes of someone else's
+    // they came up in, fetched one by one from this user's own links. The page
+    // itself is built by the function the phone's offline copy uses too.
+    const [profiles, links, theirNotes] = await Promise.all([
       ctx.db
         .query("profiles")
-        .withIndex("by_user", (q) => q.eq("userId", user._id))
-        .collect(),
-      ctx.db
-        .query("notes")
         .withIndex("by_user", (q) => q.eq("userId", user._id))
         .collect(),
       ctx.db
         .query("noteMentions")
         .withIndex("by_user", (q) => q.eq("userId", user._id))
         .collect(),
+      ctx.db
+        .query("notes")
+        .withIndex("by_user_and_profile_and_createdAt", (q) =>
+          q.eq("userId", user._id).eq("profileId", profileId),
+        )
+        .order("desc")
+        .collect(),
     ]);
+    const sources = [];
+    for (const link of links) {
+      if (link.profileId !== profileId) continue;
+      const source = await ctx.db.get("notes", link.noteId);
+      if (source !== null && source.userId === user._id && source.profileId !== profileId) {
+        sources.push(source);
+      }
+    }
+    const notes = [...theirNotes, ...sources];
 
     return withNotesView(
       profileId,
