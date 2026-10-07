@@ -103,6 +103,7 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `profile-row-name` | 프로필 이름 |
 | `profile-row-detail` | 그 프로필의 최근 기억할 내용 한 줄 (detail) |
 | `profile-row-meta` | 노트 수 · 마지막 날짜 |
+| `outbox-line` | 오프라인에서 폰에 보관한 노트 수 — "2 notes kept on this phone, waiting for Andy to read them." (없으면 안 보임) |
 | `ask-button` | Ask Andy 화면을 여는 버튼 |
 | `record-button` | 새 노트를 기록하는 초록 버튼 |
 
@@ -129,6 +130,8 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `note-source-field` | 원문 — 여기선 고칠 수 있음 |
 | `read-button` | Read it — Andy가 읽고 review로 |
 | `record-again-button` | 다시 녹음 |
+| `offline-hint` | 오프라인일 때 Read it 자리 위의 안내 — 폰에 보관했다가 온라인이 되면 읽는다 |
+| `keep-note-button` | 오프라인일 때 Read it 대신 — Keep this note (폰에 보관하고 돌아감) |
 | `record-prompt--scoped` | "This note goes to <name>…" — 누구에게 갈지 미리 말함 |
 
 ### `review`
@@ -278,6 +281,7 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `settings-placeholder` | 임시 컴포넌트의 두 번째 제목 — 지울 예정 |
 | `sign-out-button` | Sign out |
 | `account-delete-button` | Delete account (확인 창) |
+| `sign-out-alert` | 폰에 아직 안 읽힌 노트가 있을 때 Sign out 전에 묻는 iOS 알림 — 로그아웃하면 지워진다 |
 
 ### `draft`
 

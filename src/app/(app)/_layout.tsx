@@ -8,6 +8,7 @@ import { Connecting } from "@/components/connecting";
 import { LockScreen } from "@/components/lock-screen";
 import { colors } from "@/constants/theme";
 import { LockedContext } from "@/lib/lock-context";
+import { OutboxProvider, forgetOutbox, outboxStore } from "@/lib/outbox";
 import { useAppLock } from "@/lib/use-app-lock";
 import { onNudgeOpened } from "@/lib/notifications";
 
@@ -33,7 +34,7 @@ import { onNudgeOpened } from "@/lib/notifications";
  * path traced through convex 1.46.0's authentication_manager.js).
  */
 export default function AppLayout() {
-  const { isLoaded: clerkLoaded, isSignedIn, signOut } = useAuth();
+  const { isLoaded: clerkLoaded, isSignedIn, userId, signOut } = useAuth();
   const { isAuthenticated } = useConvexAuth();
 
   // Once the server has accepted this session, a later "not authenticated" is
@@ -96,7 +97,15 @@ export default function AppLayout() {
   // since launch. Fails closed — nothing of the user's shows — and <Connecting />
   // escalates to an explanation, a retry and a way out.
   if (!inApp) {
-    return <Connecting onSignOut={() => void signOut().catch(() => {})} />;
+    return (
+      <Connecting
+        onSignOut={() => {
+          // A sign-out the person chose: notes kept on this phone go with it.
+          forgetOutbox();
+          void signOut().catch(() => {});
+        }}
+      />
+    );
   }
 
   // A device with Face ID / Touch ID / a passcode gates the notes behind it,
@@ -121,42 +130,44 @@ export default function AppLayout() {
 
   return (
     <LockedContext.Provider value={covered}>
-      <View style={styles.fill}>
-        <View
-          style={styles.fill}
-          pointerEvents={covered ? "none" : "auto"}
-          accessibilityElementsHidden={covered}
-          importantForAccessibility={covered ? "no-hide-descendants" : "auto"}
-        >
-          <Stack
-            screenOptions={{
-              headerStyle: { backgroundColor: colors.paper },
-              headerTintColor: colors.ink,
-              contentStyle: { backgroundColor: colors.paper },
-            }}
+      <OutboxProvider ownerId={userId!} store={outboxStore}>
+        <View style={styles.fill}>
+          <View
+            style={styles.fill}
+            pointerEvents={covered ? "none" : "auto"}
+            accessibilityElementsHidden={covered}
+            importantForAccessibility={covered ? "no-hide-descendants" : "auto"}
           >
-            <Stack.Screen name="index" options={{ title: "Andy" }} />
-            <Stack.Screen name="capture" options={{ title: "New note" }} />
-            <Stack.Screen name="search" options={{ title: "Ask Andy" }} />
-            <Stack.Screen name="settings" options={{ title: "Settings" }} />
-            {/* Titled from the note's own profile once it loads, so this is only the
+            <Stack
+              screenOptions={{
+                headerStyle: { backgroundColor: colors.paper },
+                headerTintColor: colors.ink,
+                contentStyle: { backgroundColor: colors.paper },
+              }}
+            >
+              <Stack.Screen name="index" options={{ title: "Andy" }} />
+              <Stack.Screen name="capture" options={{ title: "New note" }} />
+              <Stack.Screen name="search" options={{ title: "Ask Andy" }} />
+              <Stack.Screen name="settings" options={{ title: "Settings" }} />
+              {/* Titled from the note's own profile once it loads, so this is only the
                 placeholder shown for the moment before the query lands. */}
-            <Stack.Screen name="note/[id]" options={{ title: "Note" }} />
-          </Stack>
-        </View>
-
-        {lock.state.phase === "locked" ? (
-          <View style={styles.cover}>
-            <LockScreen
-              kind={lock.state.kind}
-              authenticating={lock.state.authenticating}
-              onUnlock={lock.retry}
-            />
+              <Stack.Screen name="note/[id]" options={{ title: "Note" }} />
+            </Stack>
           </View>
-        ) : covered ? (
-          <View style={styles.cover} testID="lock-cover" />
-        ) : null}
-      </View>
+
+          {lock.state.phase === "locked" ? (
+            <View style={styles.cover}>
+              <LockScreen
+                kind={lock.state.kind}
+                authenticating={lock.state.authenticating}
+                onUnlock={lock.retry}
+              />
+            </View>
+          ) : covered ? (
+            <View style={styles.cover} testID="lock-cover" />
+          ) : null}
+        </View>
+      </OutboxProvider>
     </LockedContext.Provider>
   );
 }
@@ -166,5 +177,12 @@ const styles = StyleSheet.create({
   // Opaque, on top of everything, and the same paper ground the
   // splash/connecting screens use, so the brief gap while `useAppLock`
   // decides reads as one surface rather than a flash.
-  cover: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, backgroundColor: colors.paper },
+  cover: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: colors.paper,
+  },
 });

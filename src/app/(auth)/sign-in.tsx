@@ -4,6 +4,7 @@ import * as AppleAuthentication from "expo-apple-authentication";
 import { useSignInWithApple } from "@clerk/expo/apple";
 import { useAuth } from "@clerk/expo";
 import { NameMark } from "@/components/name-mark";
+import { forgetOutbox } from "@/lib/outbox";
 import { colors, fonts } from "@/constants/theme";
 
 /**
@@ -110,6 +111,7 @@ export default function SignInScreen() {
                   // network or config problem — and clearing optimistically
                   // would hide the button while leaving isSignedIn true, which
                   // strands the user on "Finishing sign-in…" with no way back.
+                  forgetOutbox();
                   void signOut().catch(() => {});
                 }}
                 accessibilityRole="button"

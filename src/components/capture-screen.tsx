@@ -14,7 +14,7 @@ import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
 } from "expo-speech-recognition";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useAction, useConvexConnectionState, useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import type { Draft } from "@convex/extractionPrompt";
 import { matchKey } from "@convex/naming";
@@ -22,8 +22,9 @@ import { useJustAdded } from "@/lib/use-just-added";
 import { useRowKeys } from "@/lib/use-row-keys";
 import { formatDate, localToday } from "@/lib/dates";
 import { sourceLabel } from "@/lib/note-source";
-import { colors } from "@/constants/theme";
+import { colors, space } from "@/constants/theme";
 import { userMessage } from "@/lib/user-message";
+import { useOutbox } from "@/lib/outbox";
 
 /**
  * Voice capture, end to end: speak → transcript → draft → confirm → saved.
@@ -396,6 +397,14 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
   }, []);
 
   const extract = useAction(api.extraction.fromTranscript);
+  // Reading a note is a server call; with no connection there is nothing to
+  // read it with, and an action sent now would wait with no answer. So offline,
+  // the note is kept on this phone instead and read once Andy is back online
+  // (`src/lib/outbox.tsx`). Judged at the moment of pressing, from the socket
+  // itself.
+  const connection = useConvexConnectionState();
+  const outbox = useOutbox();
+  const offline = !connection.isWebSocketConnected && outbox.available;
   const readCard = useAction(api.extraction.fromBusinessCard);
   const saveCapture = useMutation(api.notes.saveCapture);
 
@@ -1782,19 +1791,59 @@ export function CaptureScreen({ profileId }: { profileId?: string }) {
               space a tap lands on to put the keyboard away. */}
           <View style={styles.editorSpacer} />
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Read it"
-            onPress={() => void runExtraction(typing)}
-            disabled={empty || busy}
-            style={[styles.primaryButton, (empty || busy) && styles.disabled]}
-          >
-            <Text style={styles.primaryLabel}>
-              {/* The same words the wait is labelled with, so pressing it
-                  shows the sentence continuing rather than a new one. */}
-              {phase === "extracting" ? "Reading…" : "Read it"}
+          {offline ? (
+            <Text style={[styles.quiet, styles.offlineHint]}>
+              You&apos;re offline. Andy will keep this note on this phone and
+              read it when you&apos;re back online.
             </Text>
-          </Pressable>
+          ) : null}
+
+          {offline ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Keep this note"
+              onPress={() => {
+                try {
+                  outbox.keep({
+                    today: localToday(),
+                    text: typing.trim(),
+                    kind: heard ? "spoken" : "typed",
+                    aboutProfileId: profileId,
+                  });
+                } catch {
+                  // The words are still on screen; leaving now would lose
+                  // them. Say so and stay — usually a full phone.
+                  setError(
+                    "Andy couldn't keep this note on the phone. Copy it somewhere before leaving.",
+                  );
+                  return;
+                }
+                // Back to wherever the note was started — home says it is
+                // waiting. Home when there is nothing to go back to (opened
+                // from a link).
+                if (router.canGoBack()) router.back();
+                else router.replace("/");
+              }}
+              disabled={empty}
+              style={[styles.primaryButton, empty && styles.disabled]}
+            >
+              <Text style={styles.primaryLabel}>Keep this note</Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Read it"
+              onPress={() => void runExtraction(typing)}
+              disabled={empty || busy}
+              style={[styles.primaryButton, (empty || busy) && styles.disabled]}
+            >
+              <Text style={styles.primaryLabel}>
+                {/* The same words the wait is labelled with, so pressing it
+                    shows the sentence continuing rather than a new one. */}
+                {phase === "extracting" ? "Reading…" : "Read it"}
+              </Text>
+            </Pressable>
+          )}
 
           {heard ? (
             <Pressable
@@ -2013,6 +2062,8 @@ function Field({
 }
 
 const styles = StyleSheet.create({
+  // On top of `quiet`: room before the button it explains.
+  offlineHint: { marginBottom: space.md },
   container: { flex: 1, backgroundColor: colors.paper, padding: 24, gap: 16 },
   reviewContent: { paddingBottom: 48, gap: 20 },
   lead: { color: colors.ink, fontSize: 15, opacity: 0.75, lineHeight: 22 },
