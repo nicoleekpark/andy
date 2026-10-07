@@ -99,3 +99,23 @@ test("should build the same screens from the phone's copy as the server sends on
     await asAlice.query(api.people.search, { query: "nin" }),
   );
 });
+
+test("should order two notes saved at the same moment the same way online and offline", async () => {
+  const { t, nina } = await twoAccounts();
+  const asAlice = t.withIdentity(ALICE);
+  const { withNotesView } = await import("./offlineViews");
+  await t.run(async (ctx) => {
+    const alice = (await ctx.db.query("users").collect()).find((u) => u.tokenIdentifier.includes("alice"))!;
+    for (const text of ["first saved", "second saved"]) {
+      await ctx.db.insert("notes", { userId: alice._id, profileId: nina, text, source: "manual", createdAt: 5 });
+    }
+  });
+
+  const online = await asAlice.query(api.profiles.withNotes, { profileId: nina });
+  const copy = await asAlice.query(api.offline.snapshot, {});
+  const offline = withNotesView(nina, copy.profiles, copy.notes, copy.links, null);
+
+  // The later of the two comes first — and the same either way.
+  expect(online?.notes.map((n) => n.note.text).slice(0, 2)).toEqual(["second saved", "first saved"]);
+  expect(offline?.notes.map((n) => n.note.text)).toEqual(online?.notes.map((n) => n.note.text));
+});

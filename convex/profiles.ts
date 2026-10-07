@@ -143,14 +143,16 @@ export const withNotes = query({
         .order("desc")
         .collect(),
     ]);
-    const sources = [];
-    for (const link of links) {
-      if (link.profileId !== profileId) continue;
-      const source = await ctx.db.get("notes", link.noteId);
-      if (source !== null && source.userId === user._id && source.profileId !== profileId) {
-        sources.push(source);
-      }
-    }
+    const sources = (
+      await Promise.all(
+        links
+          .filter((link) => link.profileId === profileId)
+          .map((link) => ctx.db.get("notes", link.noteId)),
+      )
+    ).filter(
+      (source): source is NonNullable<typeof source> =>
+        source !== null && source.userId === user._id && source.profileId !== profileId,
+    );
     const notes = [...theirNotes, ...sources];
 
     return withNotesView(

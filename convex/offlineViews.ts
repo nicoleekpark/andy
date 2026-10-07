@@ -26,6 +26,20 @@ export function withoutEmbedding(note: Doc<"notes">): NoteRow {
   return rest;
 }
 
+/**
+ * Newest first, and the same order whoever hands the rows in: on an equal
+ * `createdAt` (two notes saved from the phone together, say) the one created
+ * later comes first — the order the narrow index used to guarantee. Without
+ * the second key the server and the phone's copy, which collect rows in
+ * different orders, could show the same two notes in opposite order.
+ */
+export function newestFirst(
+  a: { createdAt: number; _creationTime?: number },
+  b: { createdAt: number; _creationTime?: number },
+): number {
+  return b.createdAt - a.createdAt || (b._creationTime ?? 0) - (a._creationTime ?? 0);
+}
+
 /** How many "mentioned in" rows a profile shows before "and N more". */
 export const MENTIONED_IN_SHOWN = 5;
 
@@ -97,7 +111,7 @@ export function withNotesView(
 
   const mine = notes
     .filter((note) => note.profileId === profile._id)
-    .sort((a, b) => b.createdAt - a.createdAt);
+    .sort(newestFirst);
   const noteById = new Map(notes.map((note) => [note._id as string, note]));
   const mineById = new Set(mine.map((note) => note._id as string));
 
@@ -114,6 +128,7 @@ export function withNotesView(
         mentionedIn.push({
           noteId: link.noteId,
           createdAt: source.createdAt,
+          _creationTime: source._creationTime,
           quote: link.quote,
           aboutProfileId: source.profileId,
           aboutName: names.get(source.profileId) ?? "",
@@ -136,7 +151,7 @@ export function withNotesView(
     }
   }
 
-  mentionedIn.sort((a, b) => b.createdAt - a.createdAt);
+  mentionedIn.sort(newestFirst);
 
   return {
     profile,
@@ -145,7 +160,9 @@ export function withNotesView(
       note,
       mentions: byNote.get(note._id) ?? [],
     })),
-    mentionedIn: mentionedIn.slice(0, MENTIONED_IN_SHOWN),
+    mentionedIn: mentionedIn
+      .slice(0, MENTIONED_IN_SHOWN)
+      .map(({ _creationTime: _c, ...entry }) => entry),
     mentionedInTotal: mentionedIn.length,
   };
 }
@@ -240,6 +257,7 @@ export function searchView(
       continue;
     }
     mentions.push({
+      _creationTime: source._creationTime,
       noteId: link.noteId,
       aboutProfileId: source.profileId,
       aboutName: names.get(source.profileId) ?? "",
@@ -249,7 +267,10 @@ export function searchView(
       createdAt: source.createdAt,
     });
   }
-  mentions.sort((a, b) => b.createdAt - a.createdAt);
+  mentions.sort(newestFirst);
 
-  return { people, mentions: mentions.slice(0, MAX_MENTIONS) };
+  return {
+    people,
+    mentions: mentions.slice(0, MAX_MENTIONS).map(({ _creationTime: _c, ...entry }) => entry),
+  };
 }
