@@ -59,6 +59,7 @@
     "dev": "concurrently -k -i --default-input-target expo -n convex,expo -c blue,green \"convex dev\" \"expo start --dev-client --ios\"",
     "dev:mcp": "EXPO_UNSTABLE_MCP_SERVER=1 npm run dev",
     "start": "expo start --dev-client",
+    "start:offline": "expo start --dev-client --localhost",
     "build:ios": "eas build --profile development --platform ios",
     "build:ios:device": "eas build --profile development-device --platform ios",
     "ios:install": "eas build:run --platform ios --latest",
