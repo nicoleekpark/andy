@@ -1,6 +1,7 @@
 import { Stack, router } from "expo-router";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
-import { useConvexConnectionState, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
+import { useOffline } from "@/lib/connection";
 import { api } from "@convex/_generated/api";
 import { BriefingCard } from "@/components/briefing-card";
 import { ThreadLoop } from "@/components/thread-loop";
@@ -54,7 +55,7 @@ function EmptyHome() {
  */
 function OutboxLine() {
   const { notes } = useOutbox();
-  const online = useConvexConnectionState().isWebSocketConnected;
+  const online = !useOffline();
   if (notes.length === 0) return null;
   const count = notes.length === 1 ? "1 note" : `${notes.length} notes`;
   if (!online) {

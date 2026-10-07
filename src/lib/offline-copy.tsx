@@ -1,4 +1,5 @@
-import { useConvexConnectionState, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
+import { useOffline } from "./connection";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { api } from "@convex/_generated/api";
 import type { Doc } from "@convex/_generated/dataModel";
@@ -78,7 +79,7 @@ export function OfflineCopyProvider({
   store?: PhoneStore;
   children: React.ReactNode;
 }) {
-  const online = useConvexConnectionState().isWebSocketConnected;
+  const online = !useOffline();
   // What was on the phone when Andy opened — read once.
   const [onDisk] = useState<OfflineCopy | null>(() => loadOfflineCopy(store, ownerId));
   const fresh = useQuery(api.offline.snapshot);

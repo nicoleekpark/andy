@@ -245,7 +245,7 @@ live here rather than in §7 because that is the screen they happen on.
 | 11.25 | Open a waiting note, press **Record again**, record something **different**, and save that | The new note is saved; the **original waiting note is still waiting** on `home` (it was put away, not saved) |
 | 11.26 | Open a waiting note's link after it has already been saved (e.g. tap **Read the first now** twice quickly, save on the first) | The second screen says *"That note isn't waiting on this phone any more — it may already be saved."* — not a blank new note |
 | 11.27 | Keep a note offline, wait at least a day (or change the simulator's date forward), then read it and **Remember this** | On the person's page and the note itself, the note's date is **the day it was kept**, not today — and it sits in the right place among their other notes. A note kept more than 30 days ago is dated the day it was saved |
-| 11.28 | Online, open `home` once and wait a few seconds (the copy is taken). Wi-Fi **off**, close Andy completely, reopen *(once slice C lands; until then, just turn Wi-Fi off with Andy open)* | `home` lists everyone, with `offline-copy-line`: *"Offline — showing what Andy had at …"* |
+| 11.28 | Online, open `home` once and wait a few seconds (the copy is taken). Wi-Fi **off**, close Andy completely, reopen | `home` lists everyone, with `offline-copy-line`: *"Offline — showing what Andy had at …"* |
 | 11.29 | Offline, open someone you **haven't opened this session** | Their page opens from the copy: details, notes, *came up in*. No photo (not kept yet). **Draft a follow-up** is replaced by *"Drafting a follow-up needs a connection."* |
 | 11.30 | Offline, open one of their notes | It opens to read, with `offline-copy-line` |
 | 11.31 | Offline, `ask` → type part of a name | **People** and **Came up in** fill from the copy. `ask-offline-hint` shows and **Ask** is disabled |
@@ -253,6 +253,12 @@ live here rather than in §7 because that is the screen they happen on.
 | 11.31b | Offline on a phone where Andy has **never** been online with this account | `home`, a page or Ask say *"You're offline, and nothing has been kept on this phone yet — …"* instead of *Loading…*, and Ask does **not** claim name search works |
 | 11.32 | Offline, from someone's page → **Add a note** → type → Keep this note | The note is kept for **that person** (the screen says *"This note goes to …"*) |
 | 11.33 | Back online | `offline-copy-line` disappears everywhere; Ask and Draft a follow-up work again |
+| 11.34 | Online once (so the copy is taken). Wi-Fi **off**, **close Andy completely**, open it | **Face ID first**, then `home` with everyone from the copy and `offline-copy-line` — **not** `connecting`. Record and Type it instead work; notes are kept on the phone |
+| 11.35 | Same, but on a phone/simulator that has **never** been online with this account (fresh install, signed in once, then offline) | `home` opens with nobody listed (there is no copy yet) — Record and Type still work |
+| 11.36 | Offline from cold, press **Record** on a phone whose language has no on-device speech model (e.g. set the simulator's language to one without it) | *"Speech needs a connection for this language — type it instead."* — no recording starts. In English on a recent iPhone, recording works offline |
+| 11.37 | Ordinary online launch | No "Offline — showing …" flash; `home` loads as before |
+| 11.38 | Offline from cold (11.34), then turn Wi-Fi **on** while using Andy (e.g. typing a note) | **Stays on the same screen**, no second Face ID, the typed words intact; the freshness line goes away once the server answers |
+| 11.39 | Join a Wi-Fi **with no internet** (a phone hotspot with mobile data off — the convention-hall case), close Andy, open it | Note how long `connecting` shows before Andy opens offline. Airplane mode fails at once; a dead Wi-Fi can take longer, because the phone itself has to give up first. If it is long, file it — a shorter wait is a separate fix |
 
 ## 12. Search indexing
 

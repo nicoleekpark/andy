@@ -1,7 +1,7 @@
 import React from "react";
 import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 import { useAuth } from "@clerk/expo";
-import { useConvexAuth, useMutation } from "convex/react";
+import { useConvexAuth, useConvexConnectionState, useMutation } from "convex/react";
 import { renderRouter } from "expo-router/testing-library";
 
 /**
@@ -238,5 +238,81 @@ describe("auth gate", () => {
 
     expect(result.getPathname()).toBe("/sign-in");
     expect(screen.getByRole("button", { name: "Continue with Apple" })).toBeTruthy();
+  });
+
+  function connection(state: { isWebSocketConnected: boolean; hasEverConnected: boolean; connectionRetries: number }) {
+    (useConvexConnectionState as jest.Mock).mockReturnValue({
+      hasInflightRequests: false,
+      timeOfOldestInflightRequest: null,
+      connectionCount: 0,
+      inflightMutations: 0,
+      inflightActions: 0,
+      ...state,
+    });
+  }
+
+  test("should let a signed-in person in when Andy is opened with no connection at all", async () => {
+    // Clerk's saved session, no server to ask: the first attempt to connect failed.
+    (useConvexAuth as jest.Mock).mockReturnValue({ isLoading: true, isAuthenticated: false });
+    (useMutation as jest.Mock).mockReturnValue(jest.fn(async () => undefined));
+    connection({ isWebSocketConnected: false, hasEverConnected: false, connectionRetries: 1 });
+    try {
+      await renderRouter("src/app", { initialUrl: "/" });
+
+      expect(screen.getByRole("button", { name: "Record" })).toBeTruthy();
+    } finally {
+      connection({ isWebSocketConnected: true, hasEverConnected: true, connectionRetries: 0 });
+    }
+  });
+
+  test("should still wait, not let anyone in, in the first moment of an ordinary launch", async () => {
+    // Not connected *yet*, and nothing has failed: that is starting, not offline.
+    (useConvexAuth as jest.Mock).mockReturnValue({ isLoading: true, isAuthenticated: false });
+    connection({ isWebSocketConnected: false, hasEverConnected: false, connectionRetries: 0 });
+    try {
+      await renderRouter("src/app", { initialUrl: "/" });
+
+      expect(screen.queryByRole("button", { name: "Record" })).toBeNull();
+    } finally {
+      connection({ isWebSocketConnected: true, hasEverConnected: true, connectionRetries: 0 });
+    }
+  });
+
+  test("should keep a session let in offline on screen while the server confirms it after the connection returns — and not forever", async () => {
+    jest.useFakeTimers();
+    (useConvexAuth as jest.Mock).mockReturnValue({ isLoading: false, isAuthenticated: false });
+    (useMutation as jest.Mock).mockReturnValue(jest.fn(async () => undefined));
+    // A shared store, so the gate re-renders when the connection changes.
+    let state = { isWebSocketConnected: false, hasEverConnected: false, connectionRetries: 1 };
+    const listeners = new Set<() => void>();
+    (useConvexConnectionState as jest.Mock).mockImplementation(() =>
+      React.useSyncExternalStore(
+        (listener) => {
+          listeners.add(listener);
+          return () => listeners.delete(listener);
+        },
+        () => state,
+      ),
+    );
+    try {
+      await renderRouter("src/app", { initialUrl: "/" });
+      expect(screen.getByRole("button", { name: "Record" })).toBeTruthy();
+
+      // The socket opens a moment before the server has said yes.
+      await act(async () => {
+        state = { isWebSocketConnected: true, hasEverConnected: true, connectionRetries: 1 };
+        listeners.forEach((listener) => listener());
+      });
+      expect(screen.getByRole("button", { name: "Record" })).toBeTruthy();
+
+      // It never does: after the grace period, back to waiting (with Sign out).
+      await act(async () => {
+        jest.advanceTimersByTime(20_000);
+      });
+      expect(screen.queryByRole("button", { name: "Record" })).toBeNull();
+    } finally {
+      jest.useRealTimers();
+      connection({ isWebSocketConnected: true, hasEverConnected: true, connectionRetries: 0 });
+    }
   });
 });

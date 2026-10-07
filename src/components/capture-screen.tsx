@@ -14,7 +14,8 @@ import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
 } from "expo-speech-recognition";
-import { useAction, useConvexConnectionState, useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
+import { useOffline } from "@/lib/connection";
 import { api } from "@convex/_generated/api";
 import type { Draft } from "@convex/extractionPrompt";
 import { matchKey } from "@convex/naming";
@@ -419,10 +420,9 @@ export function CaptureScreen({
   // read it with, and an action sent now would wait with no answer. So offline,
   // the note is kept on this phone instead and read once Andy is back online
   // (`src/lib/outbox.tsx`). Judged at the moment of pressing, from the socket
-  // itself.
-  const connection = useConvexConnectionState();
+  // itself (`connection.ts`).
   const outbox = useOutbox();
-  const offline = !connection.isWebSocketConnected && outbox.available;
+  const offline = useOffline() && outbox.available;
   const waiting =
     outboxId === undefined ? undefined : outbox.notes.find((note) => note.id === outboxId);
   /**
@@ -995,6 +995,15 @@ export function CaptureScreen({
     const onDeviceAvailable =
       ExpoSpeechRecognitionModule.supportsOnDeviceRecognition();
 
+    // Offline, only the phone itself can turn speech into words. Where it has
+    // no model for this language, recognition would go to Apple's servers and
+    // fail — so say so before recording, rather than after someone has spoken.
+    if (offline && !onDeviceAvailable) {
+      setError("Speech needs a connection for this language — type it instead.");
+      setPhase("idle");
+      return;
+    }
+
     // Asking the device directly, because Apple does not document which
     // locales have an on-device model and the community answer for Korean is
     // contradictory. `installedLocales` is documented as Android-oriented, so
@@ -1041,7 +1050,7 @@ export function CaptureScreen({
       // for it when it can't is the case that silently goes to the network.
       requiresOnDeviceRecognition: preferOnDevice && onDeviceAvailable,
     });
-  }, [locale, preferOnDevice]);
+  }, [locale, preferOnDevice, offline]);
 
   const stop = useCallback(() => {
     ExpoSpeechRecognitionModule.stop();

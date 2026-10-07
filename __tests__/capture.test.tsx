@@ -7,7 +7,7 @@ import {
 } from "@testing-library/react-native";
 import { Alert, StyleSheet } from "react-native";
 import { useAction, useConvexConnectionState, useMutation, useQuery } from "convex/react";
-import { useSpeechRecognitionEvent } from "expo-speech-recognition";
+import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from "expo-speech-recognition";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { renderRouter } from "expo-router/testing-library";
@@ -3184,5 +3184,38 @@ describe("capture screen offline", () => {
     expect(saveCapture.mock.calls[0]?.[0]).toEqual(expect.objectContaining({ keptAt: undefined }));
     // …and the waiting note is still on the phone, unsaved and not lost.
     expect(kept().map((n) => n.text)).toEqual(["Met Rowan yesterday at the booth."]);
+  });
+
+  test("should say speech needs a connection, offline, where this phone has no model for the language", async () => {
+    (ExpoSpeechRecognitionModule.start as jest.Mock).mockClear();
+    connected(false);
+    (ExpoSpeechRecognitionModule.requestPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
+    (ExpoSpeechRecognitionModule.supportsOnDeviceRecognition as jest.Mock).mockReturnValue(false);
+
+    await renderRouter("src/app", { initialUrl: "/capture" });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Start recording" }));
+    });
+
+    expect(screen.getByText("Speech needs a connection for this language — type it instead.")).toBeTruthy();
+    expect(ExpoSpeechRecognitionModule.start).not.toHaveBeenCalled();
+  });
+
+  test("should record offline when the phone can turn speech into words itself", async () => {
+    connected(false);
+    (ExpoSpeechRecognitionModule.requestPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
+    (ExpoSpeechRecognitionModule.supportsOnDeviceRecognition as jest.Mock).mockReturnValue(true);
+    try {
+      await renderRouter("src/app", { initialUrl: "/capture" });
+      await act(async () => {
+        fireEvent.press(screen.getByRole("button", { name: "Start recording" }));
+      });
+
+      expect(ExpoSpeechRecognitionModule.start).toHaveBeenCalledWith(
+        expect.objectContaining({ requiresOnDeviceRecognition: true }),
+      );
+    } finally {
+      (ExpoSpeechRecognitionModule.supportsOnDeviceRecognition as jest.Mock).mockReturnValue(false);
+    }
   });
 });
