@@ -4,6 +4,9 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useAction, useMutation, useQuery } from "convex/react";
+import { withNotesView } from "@convex/offlineViews";
+import { useLiveOrCopy, useOnline } from "@/lib/offline-copy";
+import { OfflineCopyLine } from "@/components/offline-copy-line";
 import { ConvexError } from "convex/values";
 import { api } from "@convex/_generated/api";
 import {
@@ -37,7 +40,12 @@ export default function ProfileScreen() {
   // useLocalSearchParams, not useGlobalSearchParams: this only re-renders while
   // the screen is focused, instead of on every global URL change.
   const { id } = useLocalSearchParams<{ id: string }>();
-  const result = useQuery(api.profiles.withNotes, { profileId: id });
+  // Offline, the same page built from the phone's copy — without the photo,
+  // which is not kept yet.
+  const { data: result, takenAt } = useLiveOrCopy(
+    useQuery(api.profiles.withNotes, { profileId: id }),
+    (copy) => withNotesView(id, copy.profiles, copy.notes, copy.links, null),
+  );
 
   /**
    * Which notes are showing what was actually said.
@@ -58,8 +66,12 @@ export default function ProfileScreen() {
    * rather than a page of them — so this costs no round trip, and by the same
    * function the action uses, so the button and the refusal cannot drift apart.
    */
+  // Drafting is a Claude call: offline the button gives way to a line saying
+  // so, rather than a draft that waits with no answer.
+  const online = useOnline();
   const followUpBlock = useMemo(() => {
     if (result === null || result === undefined) return null;
+    if (!online) return "Drafting a follow-up needs a connection.";
     return followUpRefusal({
       name: result.profile.name,
       entityType: result.profile.entityType,
@@ -67,7 +79,7 @@ export default function ProfileScreen() {
       factNoteCount: countFactNotes(result.notes.map((entry) => entry.note)),
       hasMentions: result.mentionedInTotal > 0,
     });
-  }, [result]);
+  }, [result, online]);
 
   const requestDraft = useAction(api.followUp.draft);
   /**
@@ -335,6 +347,7 @@ export default function ProfileScreen() {
             result === undefined || result === null ? styles.contentOnlyStatus : null,
           ]}
         >
+        <OfflineCopyLine takenAt={takenAt} />
         {result === undefined ? (
           // `undefined` is Convex's "still loading", distinct from the `null`
           // the query returns for a profile that isn't there or isn't yours.

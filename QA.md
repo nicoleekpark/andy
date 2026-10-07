@@ -245,6 +245,12 @@ live here rather than in §7 because that is the screen they happen on.
 | 11.25 | Open a waiting note, press **Record again**, record something **different**, and save that | The new note is saved; the **original waiting note is still waiting** on `home` (it was put away, not saved) |
 | 11.26 | Open a waiting note's link after it has already been saved (e.g. tap **Read the first now** twice quickly, save on the first) | The second screen says *"That note isn't waiting on this phone any more — it may already be saved."* — not a blank new note |
 | 11.27 | Keep a note offline, wait at least a day (or change the simulator's date forward), then read it and **Remember this** | On the person's page and the note itself, the note's date is **the day it was kept**, not today — and it sits in the right place among their other notes. A note kept more than 30 days ago is dated the day it was saved |
+| 11.28 | Online, open `home` once and wait a few seconds (the copy is taken). Wi-Fi **off**, close Andy completely, reopen *(once slice C lands; until then, just turn Wi-Fi off with Andy open)* | `home` lists everyone, with `offline-copy-line`: *"Offline — showing what Andy had at …"* |
+| 11.29 | Offline, open someone you **haven't opened this session** | Their page opens from the copy: details, notes, *came up in*. No photo (not kept yet). **Draft a follow-up** is replaced by *"Drafting a follow-up needs a connection."* |
+| 11.30 | Offline, open one of their notes | It opens to read, with `offline-copy-line` |
+| 11.31 | Offline, `ask` → type part of a name | **People** and **Came up in** fill from the copy. `ask-offline-hint` shows and **Ask** is disabled |
+| 11.32 | Offline, from someone's page → **Add a note** → type → Keep this note | The note is kept for **that person** (the screen says *"This note goes to …"*) |
+| 11.33 | Back online | `offline-copy-line` disappears everywhere; Ask and Draft a follow-up work again |
 
 ## 12. Search indexing
 

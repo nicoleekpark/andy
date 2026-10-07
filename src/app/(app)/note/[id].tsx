@@ -10,6 +10,9 @@ import {
   View,
 } from "react-native";
 import { useMutation, useQuery } from "convex/react";
+import { noteView } from "@convex/offlineViews";
+import { useLiveOrCopy } from "@/lib/offline-copy";
+import { OfflineCopyLine } from "@/components/offline-copy-line";
 import { api } from "@convex/_generated/api";
 import { useJustAdded } from "@/lib/use-just-added";
 import { useRowKeys } from "@/lib/use-row-keys";
@@ -53,7 +56,11 @@ export default function NoteScreen() {
   }>();
   const [editRequested, setEditRequested] = useState(false);
   const editing = editParam === "1" || editRequested;
-  const result = useQuery(api.notes.byId, { noteId: id });
+  // Offline, the same note from the phone's copy.
+  const { data: result, takenAt } = useLiveOrCopy(
+    useQuery(api.notes.byId, { noteId: id }),
+    (copy) => noteView(id, copy.profiles, copy.notes),
+  );
   const updateNote = useMutation(api.notes.updateNote);
   const removeNote = useMutation(api.notes.remove);
 
@@ -215,6 +222,7 @@ export default function NoteScreen() {
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
+        <OfflineCopyLine takenAt={takenAt} />
         <Text style={styles.lead}>
           {formatDate(result.note.createdAt)}
           {editing ? " · fix any fact Andy got wrong." : ""}

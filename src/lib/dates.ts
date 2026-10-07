@@ -19,3 +19,12 @@ export function formatDate(ms: number): string {
 export function localToday(): string {
   return new Date().toLocaleDateString("en-CA");
 }
+
+/**
+ * A moment as "3:40 PM" when it was today, "2026-10-05 3:40 PM" otherwise —
+ * for saying how fresh something is, where the date alone is too coarse.
+ */
+export function formatMoment(ms: number, now: number = Date.now()): string {
+  const time = new Date(ms).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  return formatDate(ms) === formatDate(now) ? time : `${formatDate(ms)} ${time}`;
+}

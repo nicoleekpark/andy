@@ -2963,8 +2963,10 @@ describe("capture screen business card door", () => {
 describe("capture screen offline", () => {
   const files = () =>
     (jest.requireMock("expo-file-system") as { __files: Map<string, string> }).__files;
+  const OUTBOX = "file:///documents/outbox/notes.json";
   const kept = () => {
-    const raw = [...files().values()][0];
+    // The outbox file itself: the phone also keeps a copy for reading offline.
+    const raw = files().get(OUTBOX);
     return raw === undefined ? [] : (JSON.parse(raw) as { text: string; kind: string; today: string; ownerId: string }[]);
   };
 
@@ -3038,7 +3040,7 @@ describe("capture screen offline", () => {
 
     expect(screen.getByRole("button", { name: "Read it" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Keep this note" })).toBeNull();
-    expect(files().size).toBe(0);
+    expect(files().has(OUTBOX)).toBe(false);
   });
 
   test("should stay, words intact, and say so when the phone cannot keep the note", async () => {
