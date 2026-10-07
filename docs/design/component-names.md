@@ -70,6 +70,7 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `lock-title` | Andy is locked. |
 | `lock-body` | Face ID로 열라는 안내 |
 | `unlock-button` | Face ID 다시 요청 |
+| `lock-cover` | 잠겨 있거나 확인 중일 때 하던 화면 위를 덮는 종이색 판 — 그 아래 화면은 그대로 남아 있음 (`lock`은 이 판 위에 그려짐) |
 
 ### `home`
 

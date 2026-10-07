@@ -1,7 +1,8 @@
-import { fireEvent, screen } from "@testing-library/react-native";
+import React from "react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 import { useConvexAuth, useMutation } from "convex/react";
 import { renderRouter } from "expo-router/testing-library";
-import { useAppLock } from "../src/lib/use-app-lock";
+import { type LockState, useAppLock } from "../src/lib/use-app-lock";
 
 /**
  * `src/app/(app)/_layout.tsx`'s lock gate, the piece inserted between the
@@ -107,4 +108,42 @@ test("should not gate on the sign-in screen — a signed-out visitor has nothing
 
   expect(result.getPathname()).toBe("/sign-in");
   expect(screen.queryByText("Andy is locked.")).toBeNull();
+});
+
+test("should keep the screen and what was typed underneath a lock — the lock covers, it does not reset", async () => {
+  authed();
+  // A hook whose phase this test can change after the first render, the way
+  // the real one does when the app goes to the background and comes back.
+  // An external store rather than `useState` inside the mock: every
+  // instance of the layout reads the same phase, as with the real AppState.
+  let phase: LockState = { phase: "unlocked" };
+  const listeners = new Set<() => void>();
+  const setPhase = (next: LockState) => {
+    phase = next;
+    listeners.forEach((listener) => listener());
+  };
+  (useAppLock as jest.Mock).mockImplementation(() => {
+    const state = React.useSyncExternalStore(
+      (listener) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+      () => phase,
+    );
+    return { state, retry: jest.fn() };
+  });
+
+  const result = renderRouter("src/app", { initialUrl: "/search" });
+  await result;
+  await fireEvent.changeText(screen.getByPlaceholderText("Who are you thinking of?"), "who knows clint");
+
+  await act(async () => setPhase({ phase: "locked", kind: "face", authenticating: false }));
+  await waitFor(() => expect(screen.getByText("Andy is locked.")).toBeTruthy());
+  // Covered: nothing underneath is reachable while locked.
+  expect(screen.queryByPlaceholderText("Who are you thinking of?")).toBeNull();
+
+  await act(async () => setPhase({ phase: "unlocked" }));
+  await waitFor(() => expect(screen.queryByText("Andy is locked.")).toBeNull());
+  expect(result.getPathname()).toBe("/search");
+  expect(screen.getByPlaceholderText("Who are you thinking of?").props.value).toBe("who knows clint");
 });
