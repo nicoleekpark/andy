@@ -28,6 +28,16 @@ module.exports = defineConfig([
         { selector: `Literal[value=${RAW_COLOUR}]`, message: RAW_COLOUR_MESSAGE },
         { selector: `TemplateElement[value.raw=${RAW_COLOUR}]`, message: RAW_COLOUR_MESSAGE },
       ],
+      // iOS draws a native alert above the whole app, where the app lock
+      // cannot cover it (device QA build 4 #51). Ask with `useConfirm`.
+      "no-restricted-properties": [
+        "error",
+        {
+          object: "Alert",
+          property: "alert",
+          message: "Use useConfirm() from src/components/confirm-dialog.tsx: a native alert sits above the app lock.",
+        },
+      ],
     },
   },
 ]);

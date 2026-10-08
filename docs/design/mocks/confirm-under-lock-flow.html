@@ -8,7 +8,7 @@
   across a trip to another app sits above the app lock, because iOS presents
   it above the React tree and RN cannot dismiss it. Option A: Andy draws its
   own confirmation inside the tree, so the lock covers it and it returns on
-  unlock. Approved 2026-10-08; built by the first confirm-dialog PR (the three deletions), the rest follow. Not production code.
+  unlock. Approved 2026-10-08; built by #121 (the three deletions) and the second PR (every other question, including inside the draft sheet). Not production code.
   Example people only. Hosted copy: https://claude.ai/artifact/Nbg9h55o98S4yQ4uVeXZ3f
 -->
 <title>Confirmations under the lock</title>
@@ -148,7 +148,7 @@ section.flow{display:grid;gap:16px}
 <div class="wrap">
   <header>
     <h1>잠금 화면 위의 확인 창: 고치기 전과 후</h1>
-    <p>확인 창을 띄운 채로 다른 앱에 갔다 오면, 잠긴 Andy 위에 그 창이 그대로 떠 있어요. A안은 확인 창을 Andy가 직접 그려서 잠금 화면이 창까지 덮게 하는 거예요. 첫 PR에서 지우기 세 곳에 적용했고, 나머지는 두 번째 PR이에요. 내용은 예시예요. QA #51.</p>
+    <p>확인 창을 띄운 채로 다른 앱에 갔다 오면, 잠긴 Andy 위에 그 창이 그대로 떠 있어요. A안은 확인 창을 Andy가 직접 그려서 잠금 화면이 창까지 덮게 하는 거예요. 첫 PR에서 지우기 세 곳, 두 번째 PR에서 나머지 9곳(초안 시트 안 포함)에 적용했어요. 내용은 예시예요. QA #51.</p>
     <div class="legend">
       <span><i class="dot off"></i> 지금 (iPhone이 그리는 창)</span>
       <span><i class="dot on"></i> A안 (Andy가 그리는 창)</span>
@@ -283,8 +283,8 @@ section.flow{display:grid;gap:16px}
     <div class="card2">
       <h3>바뀌는 곳 12개, PR 2개</h3>
       <ul>
-        <li><b>PR ①</b> 창 만들기 + 지우기 3곳: Delete this note?, Delete {이름}?, Delete your account?</li>
-        <li><b>PR ②</b> 나머지: Sign out?, Remove this photo?, Read it again?, Replace what you wrote?, You changed what you wrote, Scan a business card, Sync 관련 3개</li>
+        <li><b>PR ① #121</b> 창 만들기 + 지우기 3곳: Delete this note?, Delete {이름}?, Delete your account?</li>
+        <li><b>PR ②</b> 나머지 (초안 시트 안의 질문은 시트 위에 그림, Andy 화면 전체에서 <code>Alert.alert</code>는 lint가 막음): Sign out?, Remove this photo?, Read it again?, Replace what you wrote?, You changed what you wrote, Scan a business card, Sync 관련 3개</li>
         <li>문구는 그대로예요. 모양과 위치만 바뀌어요.</li>
       </ul>
     </div>

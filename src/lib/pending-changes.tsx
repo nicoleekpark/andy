@@ -1,6 +1,6 @@
 import { useConvex } from "convex/react";
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
-import { Alert } from "react-native";
+import { useConfirm } from "@/components/confirm-dialog";
 import { api } from "@convex/_generated/api";
 import type { OfflineCopy } from "./offline-copy";
 import { cleanAliases, mergeTags } from "@convex/naming";
@@ -241,6 +241,7 @@ export function PendingProvider({
   children: React.ReactNode;
 }) {
   const convex = useConvex();
+  const confirm = useConfirm();
   const [changes, setChanges] = useState<PendingChange[]>(() => loadPending(store, ownerId));
   const [syncing, setSyncing] = useState(false);
   // A lock, not state: two presses can land before `syncing` re-renders, and
@@ -381,7 +382,7 @@ export function PendingProvider({
       inFlight.current = false;
       setSyncing(false);
       if (failed > 0) {
-        Alert.alert(
+        confirm(
           "Some changes didn't sync",
           `${failed === 1 ? "1 change is" : `${failed} changes are`} still on this phone.${
             reason ? ` ${reason}` : " Try Sync again in a moment."
@@ -391,22 +392,21 @@ export function PendingProvider({
       return;
     }
 
-    // One alert, not two: iOS can drop a second one presented while the
-    // first is still appearing, and this one needs an answer. Failures are
-    // said inside it. Still syncing until it is answered.
+    // One question, not two: this one needs an answer, so failures are said
+    // inside it rather than queued behind it. No Cancel — one of the two has
+    // to be chosen. Still syncing until it is answered.
     const count =
       conflicts.length === 1 ? "Something you changed here was" : `${conflicts.length} things you changed here were`;
     const finish = () => {
       inFlight.current = false;
       setSyncing(false);
     };
-    Alert.alert(
+    confirm(
       "Changed somewhere else",
       `${count} also changed on another device. Which should Andy keep?${stillWaiting}`,
       [
         {
           text: "Keep theirs",
-          style: "destructive",
           onPress: () => {
             write(loadPending(store, ownerId).filter((c) => !conflicts.some((x) => x.id === c.id)));
             finish();
@@ -428,7 +428,7 @@ export function PendingProvider({
               settle(kept);
               finish();
               if (kept.size < conflicts.length) {
-                Alert.alert(
+                confirm(
                   "Didn't save",
                   "Andy couldn't save your version just now. It's still on this phone — try Sync again.",
                 );
@@ -437,11 +437,8 @@ export function PendingProvider({
           },
         },
       ],
-      // Dismissed without an answer: the changes stay waiting, asked again
-      // on the next Sync.
-      { cancelable: true, onDismiss: finish },
     );
-  }, [current, ownerId, send, settle, store, write]);
+  }, [confirm, current, ownerId, send, settle, store, write]);
 
   const value = useMemo(
     () => ({ changes, add, touches, sync, syncing, available: true }),

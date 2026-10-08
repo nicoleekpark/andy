@@ -1,6 +1,7 @@
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useConfirm } from "@/components/confirm-dialog";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useAction, useMutation, useQuery } from "convex/react";
@@ -37,6 +38,7 @@ import { userMessage } from "@/lib/user-message";
  * them carries information rather than decoration.
  */
 export default function ProfileScreen() {
+  const confirm = useConfirm();
   // useLocalSearchParams, not useGlobalSearchParams: this only re-renders while
   // the screen is focused, instead of on every global URL change.
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -231,14 +233,13 @@ export default function ProfileScreen() {
   }, [photoBusy, generateUploadUrl, attachPhoto, id]);
 
   const confirmRemovePhoto = useCallback(() => {
-    Alert.alert(
+    confirm(
       "Remove this photo?",
       "The photo is deleted. Their notes stay exactly as they are.",
       [
         { text: "Cancel", style: "cancel" },
         {
           text: "Remove",
-          style: "destructive",
           onPress: () => {
             void (async () => {
               setError(null);
@@ -252,7 +253,7 @@ export default function ProfileScreen() {
         },
       ],
     );
-  }, [removePhoto, id]);
+  }, [confirm, removePhoto, id]);
 
   /**
    * Write a follow-up and put it on screen.
@@ -283,7 +284,7 @@ export default function ProfileScreen() {
       }));
     } catch (thrown) {
       // Inline, not an alert. Every other error in this app is an inline line
-      // in `colors.alert`; every `Alert` in it is a confirmation or a choice,
+      // in `colors.alert`; every dialog in it is a confirmation or a choice,
       // never a report. Nothing has navigated anywhere on either failure path,
       // so they are still looking at this screen — with the actions bar pinned
       // outside the scroll view, or the sheet open in front of it, so the line

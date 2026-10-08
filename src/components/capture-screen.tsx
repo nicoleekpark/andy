@@ -1,7 +1,6 @@
 import { Stack, router } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,6 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useConfirm } from "@/components/confirm-dialog";
 import * as ImagePicker from "expo-image-picker";
 import {
   ExpoSpeechRecognitionModule,
@@ -353,6 +353,7 @@ export function CaptureScreen({
    */
   outboxId?: string;
 }) {
+  const confirm = useConfirm();
   /**
    * Who this note is about, when the route already said.
    *
@@ -908,12 +909,12 @@ export function CaptureScreen({
   );
 
   const chooseCardSource = useCallback(() => {
-    Alert.alert("Scan a business card", undefined, [
+    confirm("Scan a business card", undefined, [
       { text: "Take a photo", onPress: () => void scanCard("camera") },
       { text: "Choose from library", onPress: () => void scanCard("library") },
       { text: "Cancel", style: "cancel" },
     ]);
-  }, [scanCard]);
+  }, [confirm, scanCard]);
 
   useSpeechRecognitionEvent("start", () => {
     recordingRef.current = true;
@@ -1156,15 +1157,15 @@ export function CaptureScreen({
       return;
     }
 
-    Alert.alert(
+    confirm(
       "Read it again?",
       "Andy will read the note from scratch. Anything you changed above goes back to what it finds.",
       [
         { text: "Cancel", style: "cancel" },
-        { text: "Read it again", style: "destructive", onPress: run },
+        { text: "Read it again", onPress: run },
       ],
     );
-  }, [transcript, draft, extracted, rereadNow]);
+  }, [confirm, transcript, draft, extracted, rereadNow]);
 
   /**
    * Whether the words on screen have moved on from the words the facts came out
@@ -1314,7 +1315,7 @@ export function CaptureScreen({
       return;
     }
 
-    Alert.alert(
+    confirm(
       // Branched by door, like the two labels on the review screen already are.
       // A scanned card told somebody they changed what they *said* otherwise.
       source === "business_card"
@@ -1332,10 +1333,10 @@ export function CaptureScreen({
         // Worded exactly like the link on the review screen and the button in
         // its own confirmation. Three names for one action on one screen is
         // three things to learn.
-        { text: "Read it again", style: "destructive", onPress: rereadNow },
+        { text: "Read it again", onPress: rereadNow },
       ],
     );
-  }, [draft, source, transcriptEdited, commit, rereadNow]);
+  }, [confirm, draft, source, transcriptEdited, commit, rereadNow]);
 
   /** Edit one field of the draft's primary person. */
   const editPrimary = useCallback((patch: Partial<Draft["primary"]>) => {

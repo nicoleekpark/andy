@@ -5,7 +5,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react-native";
-import { Alert, StyleSheet } from "react-native";
+import { StyleSheet } from "react-native";
 import { useAction, useConvexConnectionState, useMutation, useQuery } from "convex/react";
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from "expo-speech-recognition";
 import * as ImagePicker from "expo-image-picker";
@@ -13,9 +13,10 @@ import { router } from "expo-router";
 import { renderRouter } from "expo-router/testing-library";
 import { api } from "@convex/_generated/api";
 import type { Draft } from "@convex/extractionPrompt";
-import { answerByName, given, nameOf, pressAlertButton, quietCall } from "../test-support/convex-mocks";
+import { answerByName, given, nameOf, quietCall } from "../test-support/convex-mocks";
 import { ConvexError } from "convex/values";
 import { scrollViewAround, scrollsAboveKeyboard } from "../test-support/keyboard";
+import { pressConfirmButton, spyOnConfirm } from "../test-support/dialog";
 
 /**
  * src/app/(app)/profile/[id]/capture.tsx's whole reason to exist is the
@@ -102,7 +103,7 @@ function mockActions({
 }
 
 /**
- * `Alert.alert` backs three things now: the "Scan a business card"
+ * `confirm` (`useConfirm`) backs three things now: the "Scan a business card"
  * camera-vs-library choice, the confirmation before a re-read throws away
  * edits, and the question at save time when the transcript and the facts have
  * come apart. Spied rather than left to whatever jest-expo's RN preset
@@ -114,7 +115,7 @@ function mockActions({
 function mockAlert(buttonText = "Take a photo") {
   // Returns the spy so a test can assert the alert was *not* raised, which is
   // the whole of "nothing was edited, so nothing was asked".
-  return pressAlertButton(buttonText);
+  return pressConfirmButton(buttonText);
 }
 
 function makeCardDraft(): { draft: Draft; cardText: string } {
@@ -2165,6 +2166,7 @@ describe("capture screen review step", () => {
   });
 
   test("should let a candidate be opened and come back to the draft untouched", async () => {
+    mockAlert("Keep my facts");
     (useAction as jest.Mock).mockReturnValue(
       jest.fn(async () => makeDraft({ name: "Emma" })),
     );
@@ -2244,7 +2246,6 @@ describe("capture screen review step", () => {
     });
     // This test edits the transcript, so saving meets the question about it on
     // the way out. Not what this test is about — it keeps its facts and goes.
-    mockAlert("Keep my facts");
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
@@ -2524,6 +2525,7 @@ describe("capture screen review step", () => {
   }
 
   test("should ask which version it should keep when the transcript no longer matches the facts", async () => {
+    const alert = spyOnConfirm().mockImplementation(() => {});
     const draft = makeDraft();
     const extract = jest.fn(async () => draft);
     (useAction as jest.Mock).mockReturnValue(extract);
@@ -2533,7 +2535,6 @@ describe("capture screen review step", () => {
     await reachReviewAndEditTranscript(handlers, "heard wrongly", "heard correctly");
 
     // Nothing pressed: the alert is raised and no button answered.
-    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
@@ -2552,6 +2553,7 @@ describe("capture screen review step", () => {
   });
 
   test("should keep the facts as they are and save the corrected transcript when asked to", async () => {
+    mockAlert("Keep my facts");
     const draft = makeDraft();
     const extract = jest.fn(async () => draft);
     (useAction as jest.Mock).mockReturnValue(extract);
@@ -2567,7 +2569,6 @@ describe("capture screen review step", () => {
     const handlers = captureListeners();
     await reachReviewAndEditTranscript(handlers, "heard wrongly", "heard correctly");
 
-    mockAlert("Keep my facts");
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
@@ -2580,6 +2581,7 @@ describe("capture screen review step", () => {
   });
 
   test("should read the corrected transcript again when asked to, without a second dialog on top", async () => {
+    const alert = mockAlert("Read it again");
     const draft = makeDraft();
     const extract = jest.fn(async (_args: { text: string }) => draft);
     (useAction as jest.Mock).mockReturnValue(extract);
@@ -2599,7 +2601,6 @@ describe("capture screen review step", () => {
       fireEvent.changeText(screen.getByLabelText("Fact 1"), "an edited fact");
     });
 
-    const alert = mockAlert("Read it again");
     alert.mockClear();
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
@@ -2615,6 +2616,7 @@ describe("capture screen review step", () => {
   });
 
   test("should keep asking after a re-read that failed, since the facts on screen are still the old ones", async () => {
+    mockAlert("Read it again");
     const draft = makeDraft();
     const extract = jest
       .fn(async (_args: { text: string }) => draft)
@@ -2626,7 +2628,6 @@ describe("capture screen review step", () => {
     const handlers = captureListeners();
     await reachReviewAndEditTranscript(handlers, "heard wrongly", "heard correctly");
 
-    mockAlert("Read it again");
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
@@ -2637,7 +2638,7 @@ describe("capture screen review step", () => {
     // baseline before the call succeeded made this go quiet instead, and the
     // error banner sits directly above Save, so pressing Save again is the
     // natural next move. It would have written the mismatch permanently.
-    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const alert = spyOnConfirm().mockImplementation(() => {});
     alert.mockClear();
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
@@ -2648,6 +2649,7 @@ describe("capture screen review step", () => {
   });
 
   test("should stop asking once the transcript and the facts agree again", async () => {
+    mockAlert("Read it again");
     const draft = makeDraft();
     const extract = jest.fn(async () => draft);
     (useAction as jest.Mock).mockReturnValue(extract);
@@ -2664,7 +2666,6 @@ describe("capture screen review step", () => {
     await reachReviewAndEditTranscript(handlers, "heard wrongly", "heard correctly");
 
     // Read it again, which rebuilds the facts from the corrected words.
-    mockAlert("Read it again");
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
@@ -2677,7 +2678,7 @@ describe("capture screen review step", () => {
     // `mockClear` first: `jest.spyOn` hands back the *same* mock when the method
     // is already spied, so without it this counts the re-read's own dialog and
     // fails against working code.
-    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const alert = spyOnConfirm().mockImplementation(() => {});
     alert.mockClear();
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
@@ -2706,7 +2707,7 @@ describe("capture screen review step", () => {
       "  heard correctly  ",
     );
 
-    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const alert = spyOnConfirm().mockImplementation(() => {});
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
@@ -2738,7 +2739,7 @@ describe("capture screen review step", () => {
     await result;
     await reachReview(handlers, "heard correctly");
 
-    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const alert = spyOnConfirm().mockImplementation(() => {});
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
@@ -2898,10 +2899,10 @@ describe("capture screen business card door", () => {
   });
 
   test("should name the door it came through when asking about a changed card", async () => {
+    mockAlert("Take a photo");
     const { draft, cardText } = makeCardDraft();
     mockActions({ readCard: jest.fn(async () => ({ draft, cardText })) });
     mockSaveCapture(jest.fn());
-    mockAlert("Take a photo");
     (ImagePicker.requestCameraPermissionsAsync as jest.Mock).mockResolvedValueOnce({
       granted: true,
     });
@@ -2930,7 +2931,7 @@ describe("capture screen business card door", () => {
       );
     });
 
-    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const alert = spyOnConfirm().mockImplementation(() => {});
     alert.mockClear();
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Remember this" }));

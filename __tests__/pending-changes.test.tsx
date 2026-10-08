@@ -1,5 +1,4 @@
 import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
-import { Alert } from "react-native";
 import { useConvex, useConvexConnectionState } from "convex/react";
 import { renderRouter } from "expo-router/testing-library";
 import { nameOf } from "../test-support/convex-mocks";
@@ -11,7 +10,7 @@ import {
   loadPending,
   type PendingChange,
 } from "../src/lib/pending-changes";
-import { answerDialog } from "../test-support/dialog";
+import { answerDialog, spyOnConfirm } from "../test-support/dialog";
 
 /**
  * Changes made offline, kept on the phone until Sync (`pending-changes.tsx`,
@@ -245,7 +244,7 @@ describe("Sync", () => {
   test("should ask, not overwrite, when the note was changed somewhere else since", async () => {
     waiting([edit(["Fosters three greyhounds"])]);
     const { mutation } = server({ note: { ...note, keyFacts: ["Changed on the iPad"] }, profileName: "Nina" });
-    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const alert = spyOnConfirm().mockImplementation(() => {});
 
     await pressSync();
 
@@ -254,7 +253,6 @@ describe("Sync", () => {
       "Changed somewhere else",
       expect.any(String),
       expect.any(Array),
-      expect.objectContaining({ cancelable: true }),
     );
     // Still waiting until they choose.
     expect(files().has(PENDING)).toBe(true);
@@ -263,7 +261,7 @@ describe("Sync", () => {
   test("should save theirs over mine only when asked: Keep mine", async () => {
     waiting([edit(["Fosters three greyhounds"])]);
     const { mutation } = server({ note: { ...note, keyFacts: ["Changed on the iPad"] }, profileName: "Nina" });
-    jest.spyOn(Alert, "alert").mockImplementation((_t, _m, buttons) => {
+    spyOnConfirm().mockImplementation((_t, _m, buttons) => {
       buttons?.find((b) => b.text === "Keep mine")?.onPress?.();
     });
 
@@ -304,7 +302,7 @@ describe("Sync", () => {
         : { note: { ...note, _id: "n-2", keyFacts: [] }, profileName: "Nina" },
     );
     (useConvex as jest.Mock).mockReturnValue({ query, mutation, action: jest.fn() });
-    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const alert = spyOnConfirm().mockImplementation(() => {});
 
     await renderRouter("src/app", { initialUrl: "/" });
     await act(async () => {
@@ -361,7 +359,7 @@ describe("Sync", () => {
     });
     const query = jest.fn(async () => ({ note: { ...note, keyFacts: ["Changed on the iPad"] }, profileName: "Nina" }));
     (useConvex as jest.Mock).mockReturnValue({ query, mutation, action: jest.fn() });
-    const alert = jest.spyOn(Alert, "alert").mockImplementation((title, _m, buttons) => {
+    const alert = spyOnConfirm().mockImplementation((title, _m, buttons) => {
       if (title === "Changed somewhere else") buttons?.find((b) => b.text === "Keep mine")?.onPress?.();
     });
 
@@ -453,7 +451,7 @@ describe("a person, offline", () => {
       mentionedInTotal: 0,
       photoUrl: null,
     });
-    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const alert = spyOnConfirm().mockImplementation(() => {});
 
     await renderRouter("src/app", { initialUrl: "/" });
     await act(async () => {
@@ -461,7 +459,7 @@ describe("a person, offline", () => {
     });
 
     await waitFor(() =>
-      expect(alert).toHaveBeenCalledWith("Changed somewhere else", expect.any(String), expect.any(Array), expect.anything()),
+      expect(alert).toHaveBeenCalledWith("Changed somewhere else", expect.any(String), expect.any(Array)),
     );
     expect(mutation).not.toHaveBeenCalled();
   });
@@ -474,7 +472,7 @@ describe("a person, offline", () => {
     });
     const query = jest.fn(async () => ({ profile: { ...nina, aliases: [] }, notes: [], mentionedIn: [], mentionedInTotal: 0, photoUrl: null }));
     (useConvex as jest.Mock).mockReturnValue({ query, mutation, action: jest.fn() });
-    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const alert = spyOnConfirm().mockImplementation(() => {});
 
     await renderRouter("src/app", { initialUrl: "/" });
     await act(async () => {

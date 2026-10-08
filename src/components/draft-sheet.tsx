@@ -1,7 +1,6 @@
 import { useCallback, useState } from "react";
 import {
   AccessibilityInfo,
-  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -10,6 +9,7 @@ import {
   View,
   StyleSheet,
 } from "react-native";
+import { ConfirmHost, useConfirm } from "@/components/confirm-dialog";
 import { colors, fonts } from "../constants/theme";
 import { useLocked } from "../lib/lock-context";
 import { hasNativeModule } from "../lib/native";
@@ -108,6 +108,7 @@ export function DraftSheet({
   error,
 }: Props) {
   const locked = useLocked();
+  const confirm = useConfirm();
   const [subject, setSubject] = useState(draft.subject);
   const [body, setBody] = useState(draft.body);
   /**
@@ -171,19 +172,18 @@ export function DraftSheet({
     // screen follows when the transcript and the facts disagree: the ordinary
     // path stays one tap, and the question exists because there is no wrong
     // answer, only two a person has to pick between.
-    Alert.alert(
+    confirm(
       "Replace what you wrote?",
       "Andy will write a new draft from the same notes. Your edits go with the old one.",
       [
         { text: "Cancel", style: "cancel" },
         {
           text: "Write another",
-          style: "destructive",
           onPress: onRewrite,
         },
       ],
     );
-  }, [edited, onRewrite]);
+  }, [confirm, edited, onRewrite]);
 
   return (
     <Modal
@@ -320,6 +320,11 @@ export function DraftSheet({
             Nothing is sent by Andy. Copy this into whatever you use.
           </Text>
         </ScrollView>
+        {/*
+          iOS draws this sheet above the whole app, so "Replace what you
+          wrote?" has to be drawn in here, or it would open behind the sheet.
+        */}
+        <ConfirmHost inModal />
       </View>
     </Modal>
   );
