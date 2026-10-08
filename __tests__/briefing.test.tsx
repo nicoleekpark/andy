@@ -44,8 +44,13 @@ import { useConvex } from "convex/react";
 import { BriefingCard } from "../src/components/briefing-card";
 import { hasNativeModule } from "../src/lib/native";
 import { useBriefing } from "../src/lib/use-briefing";
+import { useReadingCopy } from "../src/lib/offline-copy";
+import * as calendarMatch from "@convex/calendarMatch";
 
 jest.mock("convex/react", () => ({ useConvex: jest.fn() }));
+// The phone's copy, which matching reads. Mocked so these tests need no
+// providers; `useReadingCopy` itself is the offline-copy suite's business.
+jest.mock("../src/lib/offline-copy", () => ({ useReadingCopy: jest.fn() }));
 jest.mock("expo-router", () => ({ router: { push: jest.fn() } }));
 
 const AT = new Date("2026-09-22T09:30:00Z").getTime();
@@ -62,18 +67,23 @@ function calendarSays(events: Record<string, unknown>[]) {
   (Calendar.listEvents as jest.Mock).mockResolvedValue(events);
 }
 
+/**
+ * What matching the events against the person's people comes out with.
+ *
+ * Matching runs on the phone (`matchEventsIn`, against the phone's copy), so
+ * this spies on that function rather than a server: tests about what the
+ * *card* does with an answer set the answer here; `calendarMatch` has its own
+ * tests for how names are found. Returns the spy, so a test can read back
+ * which events were matched — `mock.calls[n][2]`.
+ */
 function backendSays(matched: Record<string, unknown>[]) {
-  // Typed arguments, so a test can read back what was sent. `jest.fn()` with
-  // no parameters infers an empty tuple and indexing it is a type error.
-  const query = jest.fn(
-    async (
-      _reference: unknown,
-      _args: { events: { eventId: string; attendeeNames: string[] }[] },
-    ) => matched,
-  );
-  (useConvex as jest.Mock).mockReturnValue({ query });
-  return query;
+  return jest
+    .spyOn(calendarMatch, "matchEventsIn")
+    .mockImplementation(() => matched as ReturnType<typeof calendarMatch.matchEventsIn>);
 }
+
+/** A copy with nobody in it — enough for the briefing to start matching. */
+const EMPTY_COPY = { ownerId: "user_a", takenAt: 0, profiles: [], notes: [], links: [] };
 
 /**
  * `render` is awaited everywhere below, and that is not a style choice.
@@ -123,6 +133,7 @@ beforeEach(() => {
   (Notifications.getAllScheduledNotificationsAsync as jest.Mock).mockResolvedValue([]);
   (Notifications.cancelScheduledNotificationAsync as jest.Mock).mockResolvedValue(undefined);
   (Notifications.scheduleNotificationAsync as jest.Mock).mockResolvedValue("id");
+  (useReadingCopy as jest.Mock).mockReturnValue(EMPTY_COPY);
   backendSays([]);
   calendarSays([]);
   grant(true);
@@ -461,9 +472,79 @@ test("should say the day is clear rather than show an empty card body", async ()
   await render(<Harness />);
 
   await waitFor(() => expect(screen.getByText("Nothing coming up")).toBeTruthy());
-  // No backend round trip for a day with no events — the query costs a request
-  // per foreground, and there is nothing to ask about.
-  expect((useConvex as jest.Mock).mock.results[0]?.value.query).not.toHaveBeenCalled();
+  // Nothing to match for a day with no events.
+  expect(calendarMatch.matchEventsIn).not.toHaveBeenCalled();
+});
+
+// ---------------------------------------------------------------------------
+// On the phone (docs/design/decisions/calendar-connection.md #5)
+// ---------------------------------------------------------------------------
+
+test("should find the person on the phone, and send the calendar nowhere", async () => {
+  (calendarMatch.matchEventsIn as jest.Mock).mockRestore();
+  const soon = Date.now() + 2 * 3600_000;
+  (useReadingCopy as jest.Mock).mockReturnValue({
+    ...EMPTY_COPY,
+    profiles: [{ _id: "p-marcus", _creationTime: 0, userId: "u", name: "Marcus", entityType: "person", tags: [], autoCreated: false }],
+    notes: [{ _id: "n1", _creationTime: 0, userId: "u", profileId: "p-marcus", text: "", source: "manual", createdAt: 1 }],
+  });
+  calendarSays([
+    { id: "e1", title: "Coffee with Marcus", startDate: new Date(soon), endDate: new Date(soon + 3600_000), allDay: false },
+  ]);
+
+  await render(<Harness />);
+
+  await waitFor(() => expect(screen.getByText("Coffee with Marcus")).toBeTruthy());
+  // Found from the copy: the person, with their note count from it too.
+  expect(screen.getByLabelText("Open Marcus")).toBeTruthy();
+  expect(screen.getByText("1 note")).toBeTruthy();
+  // The point of matching here: no title and no attendee name reaches a
+  // server. Nothing in the briefing so much as opens the Convex client.
+  expect(useConvex).not.toHaveBeenCalled();
+});
+
+test("should not re-read the calendar every time a note changes", async () => {
+  const { rerender } = await render(<Harness />);
+  await waitFor(() => expect(Calendar.listEvents).toHaveBeenCalledTimes(1));
+
+  // The copy is a new object after any note is edited, anywhere in the app.
+  // Each refresh re-reads the calendar and reschedules every reminder, so
+  // that must not follow every edit — foreground is the cadence.
+  (useReadingCopy as jest.Mock).mockReturnValue({ ...EMPTY_COPY, takenAt: 1 });
+  await rerender(<Harness />);
+  (useReadingCopy as jest.Mock).mockReturnValue({ ...EMPTY_COPY, takenAt: 2 });
+  await rerender(<Harness />);
+  await act(async () => {});
+
+  expect(Calendar.listEvents).toHaveBeenCalledTimes(1);
+});
+
+test("should wait for the phone's copy, then match as soon as it arrives", async () => {
+  (useReadingCopy as jest.Mock).mockReturnValue(null);
+  const soon = Date.now() + 2 * 3600_000;
+  calendarSays([
+    { id: "e1", title: "Coffee with Marcus", startDate: new Date(soon), endDate: new Date(soon + 3600_000), allDay: false },
+  ]);
+  backendSays([
+    {
+      eventId: "e1",
+      title: "Coffee with Marcus",
+      startsAt: soon,
+      endsAt: soon + 3600_000,
+      people: [{ profileId: "p1", name: "Marcus", noteCount: 1 }],
+      ambiguous: [],
+    },
+  ]);
+
+  const { rerender } = await render(<Harness />);
+  // A first session: nothing to match against yet, so no card rather than a
+  // wrong "Nothing coming up".
+  await act(async () => {});
+  expect(screen.queryByTestId("briefing-card")).toBeNull();
+
+  (useReadingCopy as jest.Mock).mockReturnValue(EMPTY_COPY);
+  await rerender(<Harness />);
+  await waitFor(() => expect(screen.getByText("Coffee with Marcus")).toBeTruthy());
 });
 
 // ---------------------------------------------------------------------------
@@ -641,7 +722,7 @@ test("should send the names on the invitation, dropping the blanks", async () =>
   // The stronger of the two signals the matcher distinguishes — an attendee
   // beats a title — and every fixture in this file omitted `getAttendees`, so
   // the whole path shipped with zero coverage until `code-reviewer` said so.
-  expect(query.mock.calls[0]?.[1].events[0]?.attendeeNames).toEqual(["Marcus"]);
+  expect(query.mock.calls[0]?.[2][0]?.attendeeNames).toEqual(["Marcus"]);
 });
 
 test("should still brief you when the guest list cannot be read", async () => {
@@ -665,7 +746,7 @@ test("should still brief you when the guest list cannot be read", async () => {
   // Marcus" is still a briefing worth showing, so losing the event would throw
   // away the common case to be strict about the rare one.
   await waitFor(() => expect(query).toHaveBeenCalledTimes(1));
-  expect(query.mock.calls[0]?.[1].events[0]?.attendeeNames).toEqual([]);
+  expect(query.mock.calls[0]?.[2][0]?.attendeeNames).toEqual([]);
 });
 
 test("should send the events in time order, earliest first", async () => {
@@ -680,8 +761,8 @@ test("should send the events in time order, earliest first", async () => {
   // The backend answers in the order asked, and the card takes the first match
   // — so "next" is decided here, by sorting, not by whatever order EventKit
   // happened to return.
-  const sent = query.mock.calls[0]?.[1] as { events: { eventId: string }[] };
-  expect(sent.events.map((e) => e.eventId)).toEqual(["soon", "late"]);
+  const sent = query.mock.calls[0]?.[2] ?? [];
+  expect(sent.map((e) => e.eventId)).toEqual(["soon", "late"]);
 });
 
 // ---------------------------------------------------------------------------

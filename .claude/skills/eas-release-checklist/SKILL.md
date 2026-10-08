@@ -17,6 +17,6 @@ Run through in order. Don't run `eas submit` until every box is actually checked
    The widget and the Siri Shortcut are cut from V1 (`PROJECT_SCOPE.md`, "The V1 scope cut"). When they are built, they join this walk-through.
 
 7. **Submit**: `eas submit --platform ios`
-8. **App Store Connect**: fill in App Privacy questionnaire to match what `app-store-reviewer` confirmed the app actually collects — don't under- or over-declare.
+8. **App Store Connect**: fill in App Privacy questionnaire to match what `app-store-reviewer` confirmed the app actually collects — don't under- or over-declare. Calendar is **Not Collected** since build 5: names are matched on the phone (`docs/design/decisions/calendar-connection.md` #5) — correct any earlier answer that says otherwise.
 
 If any step surfaces a new permission or data-collection change, re-run the `app-store-reviewer` subagent before continuing.

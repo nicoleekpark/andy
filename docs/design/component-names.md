@@ -103,6 +103,8 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `briefing-card` | 금색 세로선이 있는 카드 — 다가오는 만남 (여기선 비어 있는 상태) |
 | `briefing-card-title` | 카드 제목 — 지금은 "Nothing coming up" |
 | `briefing-card-body` | 카드 설명 문장 |
+| `briefing-card--ask` | 캘린더 연결 전 상태 — "Before you walk in" + 캘린더가 폰을 떠나지 않는다는 설명 |
+| `briefing-card-connect-button` | Read my calendar — 누르면 iOS 권한 창 (누르는 중엔 "Asking…") |
 | `profile-list` | 프로필 목록 전체 (알파벳순) |
 | `profile-row` | 목록의 한 프로필 (탭하면 그 프로필 페이지) |
 | `profile-row-name` | 프로필 이름 |

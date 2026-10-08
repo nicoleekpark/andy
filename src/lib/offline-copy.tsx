@@ -135,6 +135,22 @@ export function useLiveOrCopy<T>(
   return { data: undefined, takenAt: null };
 }
 
+/**
+ * The phone's copy of this account, with changes waiting for Sync applied —
+ * what a feature that must work on the phone alone reads (the calendar
+ * briefing matches names against it, so the calendar never leaves the
+ * phone). `null` until a copy exists: a first session before the server has
+ * answered once.
+ */
+export function useReadingCopy(): OfflineCopy | null {
+  const { copy } = useContext(OfflineCopyContext);
+  const { changes } = usePending();
+  return useMemo(
+    () => (copy !== null && changes.length > 0 ? applyPending(copy, changes) : copy),
+    [copy, changes],
+  );
+}
+
 /** Whether Andy can reach the server right now. */
 export function useOnline(): boolean {
   return useContext(OfflineCopyContext).online;

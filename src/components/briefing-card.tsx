@@ -73,7 +73,8 @@ export function BriefingCard(props: Props) {
           <Text style={styles.heading}>Before you walk in</Text>
           <Text style={styles.body}>
             Andy can read today&apos;s events and show what you already wrote
-            about whoever you are meeting. Nothing is added to your calendar.
+            about whoever you are meeting. Your calendar stays on this phone,
+            and nothing is added to it.
           </Text>
           <Pressable
             accessibilityRole="button"

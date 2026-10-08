@@ -1,7 +1,7 @@
-import { useConvex } from "convex/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
-import { api } from "@convex/_generated/api";
+import { matchEventsIn } from "@convex/calendarMatch";
+import { useReadingCopy } from "./offline-copy";
 import {
   askForCalendar,
   calendarAccess,
@@ -20,12 +20,15 @@ import {
 /**
  * The next meeting today that is about somebody you keep notes on.
  *
- * Three things have to happen in order and none of them can be a React query:
- * the permission is checked on the device, the events are read from the device,
- * and only then can the backend say who they are about. So this is a hook that
- * calls the Convex query imperatively through `useConvex` rather than
- * `useQuery` — `useQuery` would have to fire before the events exist, and would
- * re-fire on every render with a new array.
+ * Three things happen in order, all on the phone: the permission is checked,
+ * the events are read, and they are matched against the people in the phone's
+ * own copy (`useReadingCopy`, with the same `matchEventsIn` the server used).
+ * **The calendar never leaves the phone** — no title or attendee name is sent
+ * anywhere (`docs/design/decisions/calendar-connection.md` #5). Matched on
+ * the same cadence as before — on foreground, and once when the copy first
+ * arrives — not on every change to the copy: each match re-reads the calendar
+ * and reschedules every reminder, and the copy changes with any note edited
+ * anywhere.
  *
  * Refreshed when the app comes back to the foreground, which is the one moment
  * a calendar reliably changes without the app knowing: `CLAUDE.md` already
@@ -96,7 +99,10 @@ export function useBriefing(
   alerts: AlertState;
   askForAlerts: () => Promise<void>;
 } {
-  const convex = useConvex();
+  const copy = useReadingCopy();
+  /** The newest copy, read when a refresh runs rather than tying the refresh to it. */
+  const copyNow = useRef(copy);
+  const hasCopy = copy !== null;
   const [state, setState] = useState<BriefingState>({ state: "loading" });
   const [alerts, setAlerts] = useState<AlertState>("unavailable");
   /** A latch, not a second copy of state — each ask is a system prompt. */
@@ -158,7 +164,11 @@ export function useBriefing(
       );
       if (events.length === 0) return { state: "empty" };
 
-      const matched = await convex.query(api.calendar.matchEvents, { events });
+      // Nothing to match against yet — a first session, before the server
+      // has answered once. The effect runs again when the copy arrives.
+      const known = copyNow.current;
+      if (known === null) return { state: "loading" };
+      const matched = matchEventsIn(known.profiles, known.notes, events);
 
       // Scheduled from the same answer the card is drawn from, so what the
       // phone will say and what the screen says cannot disagree. Silent to the
@@ -205,7 +215,7 @@ export function useBriefing(
             },
           };
     },
-    [convex],
+    [],
   );
 
   const refresh = useCallback(async (): Promise<BriefingState> => {
@@ -219,6 +229,12 @@ export function useBriefing(
       return { state: "unavailable" };
     }
   }, [load]);
+
+  // Declared before the effect below, so it has run by the time a refresh
+  // reads the copy.
+  useEffect(() => {
+    copyNow.current = copy;
+  }, [copy]);
 
   useEffect(() => {
     // Cancelled on unmount rather than left to resolve into a dead component.
@@ -261,7 +277,9 @@ export function useBriefing(
       mounted.current = false;
       subscription.remove();
     };
-  }, [enabled, refresh]);
+    // `hasCopy`, not `copy`: run again when the copy first arrives, not on
+    // every edit to it.
+  }, [enabled, refresh, hasCopy]);
 
   const askForAlerts = useCallback(async () => {
     if (askingAlerts.current) return;
