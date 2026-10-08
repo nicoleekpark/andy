@@ -164,7 +164,7 @@ export function ConfirmHost() {
               accessibilityRole="button"
               accessibilityLabel={cancel.text}
               onPress={() => answer(cancel)}
-              hitSlop={8}
+              hitSlop={space.sm}
               style={styles.plain}
             >
               <Text style={styles.plainLabel}>{cancel.text}</Text>
