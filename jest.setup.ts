@@ -252,7 +252,27 @@ jest.mock("convex/react", () => {
     inflightActions: 0,
   }));
 
-  return { ...actual, useConvexAuth, useMutation, useAction, useQuery, useConvexConnectionState };
+  /**
+   * The client itself, for code that calls Convex imperatively (Sync in
+   * `pending-changes.tsx`, the briefing). Answers nothing by default; a test
+   * about it says what comes back.
+   */
+  const convexClient = {
+    query: jest.fn(async () => undefined),
+    mutation: jest.fn(async () => undefined),
+    action: jest.fn(async () => undefined),
+  };
+  const useConvex = jest.fn(() => convexClient);
+
+  return {
+    ...actual,
+    useConvexAuth,
+    useMutation,
+    useAction,
+    useQuery,
+    useConvexConnectionState,
+    useConvex,
+  };
 });
 
 /**

@@ -10,6 +10,7 @@ import { colors, fonts, space } from "@/constants/theme";
 import { useOncePerSession } from "@/lib/use-once-per-session";
 import { formatDate } from "@/lib/dates";
 import { useOutbox } from "@/lib/outbox";
+import { usePending } from "@/lib/pending-changes";
 import { NOTHING_KEPT_OFFLINE, useLiveOrCopy, useNothingKeptOffline } from "@/lib/offline-copy";
 import { peopleView } from "@convex/offlineViews";
 import { OfflineCopyLine } from "@/components/offline-copy-line";
@@ -92,6 +93,36 @@ function OutboxLine() {
   );
 }
 
+/**
+ * Changes made offline, waiting to be saved for good (`pending-changes.tsx`).
+ * Offline it only says how many; online it offers Sync — pressed by the
+ * person, as asked, so they know when their changes reach Andy.
+ */
+function PendingLine() {
+  const { changes, sync, syncing } = usePending();
+  const online = !useOffline();
+  if (changes.length === 0) return null;
+  const count = changes.length === 1 ? "1 change" : `${changes.length} changes`;
+  return (
+    <View testID="pending-line" style={styles.outboxRow}>
+      <Text style={styles.outboxText}>{count} made offline, not saved yet.</Text>
+      {online ? (
+        <Pressable
+          accessibilityRole="button"
+          testID="pending-line-sync"
+          accessibilityLabel="Sync"
+          accessibilityState={{ disabled: syncing }}
+          disabled={syncing}
+          onPress={() => void sync()}
+          hitSlop={8}
+        >
+          <Text style={styles.outboxAction}>{syncing ? "Syncing…" : "Sync"}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
 /** Smaller than the launch loop: here it sits beside words, not alone. */
 const EMPTY_THREAD_WIDTH = 112;
 
@@ -148,6 +179,7 @@ export default function HomeScreen() {
             <>
               <OfflineCopyLine takenAt={takenAt} />
               <OutboxLine />
+              <PendingLine />
               {briefing.state === "loading" ? null : briefing.state === "ask" ? (
                 <BriefingCard
                   state="ask"

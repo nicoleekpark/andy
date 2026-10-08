@@ -1,5 +1,5 @@
 import { Stack, router, useLocalSearchParams } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -12,6 +12,7 @@ import {
 import { useMutation, useQuery } from "convex/react";
 import { noteView } from "@convex/offlineViews";
 import { NOTHING_KEPT_OFFLINE, useLiveOrCopy, useNothingKeptOffline, useOnline } from "@/lib/offline-copy";
+import { usePending } from "@/lib/pending-changes";
 import { OfflineCopyLine } from "@/components/offline-copy-line";
 import { api } from "@convex/_generated/api";
 import { useJustAdded } from "@/lib/use-just-added";
@@ -55,11 +56,19 @@ export default function NoteScreen() {
     edit?: string;
   }>();
   const [editRequested, setEditRequested] = useState(false);
-  // Read-only offline: saving or deleting would wait with no answer, and
-  // changing things offline is a later decision (PROJECT_SCOPE.md).
+  // Offline, a change is kept on this phone and saved for good on Sync
+  // (`pending-changes.tsx`, decided 2026-10-08) — so editing works with no
+  // connection too.
   const online = useOnline();
+  const pending = usePending();
   const nothingKept = useNothingKeptOffline();
-  const editing = (editParam === "1" || editRequested) && online;
+  const editing = editParam === "1" || editRequested;
+  /**
+   * Whether a change goes to the phone rather than straight to the server:
+   * offline, or when this note already has a change waiting — sending a
+   * second one directly would race the first on Sync.
+   */
+  const keepOnPhone = pending.available && (!online || pending.touches(id));
   // Offline, the same note from the phone's copy.
   const { data: result, takenAt } = useLiveOrCopy(
     useQuery(api.notes.byId, { noteId: id }),
@@ -89,6 +98,11 @@ export default function NoteScreen() {
       ? null
       : { keyFacts: result.note.keyFacts ?? [] };
   const working = edits ?? saved;
+  /** What the note says before this edit — what Sync compares against. */
+  const baseFacts = useMemo(
+    () => (result === undefined || result === null ? [] : (result.note.keyFacts ?? [])),
+    [result],
+  );
   // Lines are only ever added at the end here (clearing one removes it on
   // save), so the keys stay with their lines without a removal call.
   const factKeys = useRowKeys(working?.keyFacts.length ?? 0);
@@ -116,7 +130,16 @@ export default function NoteScreen() {
     setSaving(true);
     setError(null);
     try {
-      await updateNote({ noteId: id, ...working });
+      if (keepOnPhone) {
+        pending.add({
+          kind: "updateNote",
+          noteId: id,
+          keyFacts: working.keyFacts,
+          base: { keyFacts: baseFacts },
+        });
+      } else {
+        await updateNote({ noteId: id, ...working });
+      }
 
       // Opened to read and switched to editing here: the note is what the
       // person came for, so saving puts the corrected note back in front of
@@ -147,7 +170,7 @@ export default function NoteScreen() {
       );
       setSaving(false);
     }
-  }, [id, working, updateNote, profileId, editParam]);
+  }, [id, working, updateNote, profileId, editParam, keepOnPhone, pending, baseFacts]);
 
   /**
    * Deleting, behind a confirmation, because it cannot be undone.
@@ -171,6 +194,15 @@ export default function NoteScreen() {
             void (async () => {
               setError(null);
               try {
+                if (keepOnPhone) {
+                  pending.add({
+                    kind: "removeNote",
+                    noteId: id,
+                    base: { keyFacts: baseFacts },
+                  });
+                  router.replace(`/profile/${profileId}`);
+                  return;
+                }
                 const { profileId: leftBehind } = await removeNote({
                   noteId: id,
                 });
@@ -185,7 +217,7 @@ export default function NoteScreen() {
         },
       ],
     );
-  }, [id, removeNote]);
+  }, [id, removeNote, keepOnPhone, pending, baseFacts, profileId]);
 
   if (result === undefined || result === null) {
     return (
@@ -209,7 +241,7 @@ export default function NoteScreen() {
       <Stack.Screen
         options={{
           title: result.profileName || "Note",
-          headerRight: editing || !online
+          headerRight: editing
             ? undefined
             : () => (
                 <Pressable

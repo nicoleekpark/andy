@@ -3,10 +3,11 @@ import { Directory, File, Paths } from "expo-file-system";
 /**
  * What Andy keeps on this phone, and how it is written.
  *
- * Two things live here, each in a folder of its own inside Andy's documents
+ * Three things live here, each in a folder of its own inside Andy's documents
  * folder (private to Andy, encrypted at rest by iOS): notes kept while offline
- * (`outbox.tsx`) and the copy of everyone and every note for reading offline
- * (`offline-copy.tsx`). Both are owner-tagged by their own code and both go on
+ * (`outbox.tsx`), the copy of everyone and every note for reading offline
+ * (`offline-copy.tsx`), and changes made offline waiting for Sync
+ * (`pending-changes.tsx`). Both are owner-tagged by their own code and both go on
  * a sign-out the person chose (`forgetOnThisPhone`).
  */
 
@@ -71,6 +72,8 @@ export function jsonFileStore(folderName: string, fileName: string): PhoneStore 
 export const outboxStore = jsonFileStore("outbox", "notes.json");
 /** The copy of everyone and every note, for reading offline. */
 export const offlineCopyStore = jsonFileStore("offline-copy", "copy.json");
+/** Changes made offline, waiting for Sync. */
+export const pendingStore = jsonFileStore("pending", "changes.json");
 
 /**
  * Remove everything Andy keeps on this phone. Called on a sign-out the person
@@ -82,7 +85,7 @@ export const offlineCopyStore = jsonFileStore("offline-copy", "copy.json");
  * Best effort: a failure to delete must not stop the sign-out itself.
  */
 export function forgetOnThisPhone(): void {
-  for (const store of [outboxStore, offlineCopyStore]) {
+  for (const store of [outboxStore, offlineCopyStore, pendingStore]) {
     try {
       store.remove();
     } catch {

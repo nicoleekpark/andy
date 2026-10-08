@@ -308,10 +308,9 @@ export default function ProfileScreen() {
     );
   }, []);
 
-  // Changing things offline is a later decision (PROJECT_SCOPE.md): offline,
-  // a page read from the phone's copy offers nothing that would only wait.
-  const editNote = (note: { _id: string; createdAt: number }) =>
-    !online ? null : (
+  // A note can be edited offline (kept on the phone until Sync); editing the
+  // person themselves cannot yet, so the header's Edit stays online-only.
+  const editNote = (note: { _id: string; createdAt: number }) => (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`Edit the note from ${formatDate(note.createdAt)}`}

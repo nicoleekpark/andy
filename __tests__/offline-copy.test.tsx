@@ -218,24 +218,14 @@ describe("reading offline", () => {
     expect(screen.getByText("Tap record. This note goes to Nina, whoever else comes up.")).toBeTruthy();
   });
 
-  test("should offer no way to edit offline — changing things offline is a later decision", async () => {
+  test("should not offer editing a person offline yet — notes, yes", async () => {
     onDisk(copyFor("user_default"));
     online(false);
 
     await renderRouter("src/app", { initialUrl: "/profile/p-nina" });
     expect(screen.queryByRole("button", { name: "Edit this person" })).toBeNull();
-    expect(screen.queryByRole("button", { name: /Edit the note from/ })).toBeNull();
-  });
-
-  test("should open a note read-only offline, even when asked to edit it", async () => {
-    onDisk(copyFor("user_default"));
-    online(false);
-
-    await renderRouter("src/app", { initialUrl: "/note/n-1?edit=1" });
-
-    expect(screen.getByText(/Nina fosters two greyhounds/)).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Delete this note" })).toBeNull();
+    // A note's details can be changed offline and synced later.
+    expect(screen.getByRole("button", { name: /Edit the note from/ })).toBeTruthy();
   });
 
   test("should say editing needs a connection, not load forever, if the edit screen is reached offline", async () => {

@@ -5,6 +5,7 @@ import { api } from "@convex/_generated/api";
 import type { Doc } from "@convex/_generated/dataModel";
 import type { NoteRow } from "@convex/offlineViews";
 import { offlineCopyStore, type PhoneStore } from "./on-phone";
+import { applyPending, usePending } from "./pending-changes";
 
 /**
  * A copy of everyone and every note, kept on this phone so they can still be
@@ -110,7 +111,8 @@ export function OfflineCopyProvider({
 
 /**
  * The live answer when there is one; offline, the same screen built from the
- * phone's copy. `takenAt` is set only when the copy is what is showing, for
+ * phone's copy — and, while changes made offline wait for Sync, the copy with
+ * them applied. `takenAt` is set only when the copy is what is showing, for
  * the "Offline — showing what Andy had at…" line.
  */
 export function useLiveOrCopy<T>(
@@ -118,6 +120,16 @@ export function useLiveOrCopy<T>(
   fromCopy: (copy: OfflineCopy) => T,
 ): { data: T | undefined; takenAt: number | null } {
   const { copy, online } = useContext(OfflineCopyContext);
+  const { changes } = usePending();
+  // Changes made offline and not yet synced: the copy with them applied wins,
+  // online too, so an edit never seems to vanish because the connection came
+  // back before Sync was pressed (`pending-changes.tsx`).
+  if (changes.length > 0 && copy !== null) {
+    return {
+      data: fromCopy(applyPending(copy, changes)),
+      takenAt: online ? null : copy.takenAt,
+    };
+  }
   if (live !== undefined) return { data: live, takenAt: null };
   if (!online && copy !== null) return { data: fromCopy(copy), takenAt: copy.takenAt };
   return { data: undefined, takenAt: null };

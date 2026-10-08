@@ -106,6 +106,9 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `profile-row-meta` | 노트 수 · 마지막 날짜 |
 | `outbox-line` | 오프라인에서 폰에 보관한 노트 수. 오프라인: "2 notes kept on this phone, waiting for Andy to read them." 온라인: "2 notes kept on this phone." + `outbox-line-action` (없으면 안 보임) |
 | `outbox-line-action` | 온라인일 때 `outbox-line` 옆 초록 글자 — "Read the first now" / "Read it now". 가장 오래된 노트를 열어 바로 읽음 |
+| `pending-line` | 오프라인에서 바꾼 것(노트 수정·삭제)이 아직 저장 안 됐을 때 — "1 change made offline, not saved yet." |
+| `pending-line-sync` | 온라인일 때 `pending-line` 옆 초록 **Sync** — 누르면 모두 저장 (Syncing…) |
+| `sync-conflict-alert` | Sync 중 그 노트가 다른 기기에서 바뀌었을 때 묻는 iOS 알림 — Keep theirs / Keep mine |
 | `ask-button` | Ask Andy 화면을 여는 버튼 |
 | `record-button` | 새 노트를 기록하는 초록 버튼 |
 
