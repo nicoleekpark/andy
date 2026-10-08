@@ -10,7 +10,7 @@ jest.mock("expo-file-system/legacy", () => ({
 }));
 
 import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
-import { AccessibilityInfo, Alert, Linking } from "react-native";
+import { AccessibilityInfo, Linking } from "react-native";
 import { useAction, useMutation, useQuery } from "convex/react";
 import * as Clipboard from "expo-clipboard";
 import { hasNativeModule } from "../src/lib/native";
@@ -21,6 +21,7 @@ import { getFunctionName } from "convex/server";
 import { renderRouter } from "expo-router/testing-library";
 import { api } from "@convex/_generated/api";
 import { answerByName, nameOf, quietCall } from "../test-support/convex-mocks";
+import { spyOnConfirm } from "../test-support/dialog";
 
 /**
  * src/app/(app)/profile/[id]/index.tsx's three branches — loading, not-found,
@@ -754,7 +755,7 @@ describe("follow-up email", () => {
   });
 
   test("should write another straight away when there is nothing of the user's to lose", async () => {
-    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const alert = spyOnConfirm().mockImplementation(() => {});
     const draft = jest.fn(async () => NINA);
     await draftAndOpen(draft);
 
@@ -767,7 +768,7 @@ describe("follow-up email", () => {
   });
 
   test("should ask before throwing away an edit for a new draft", async () => {
-    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const alert = spyOnConfirm().mockImplementation(() => {});
     const draft = jest.fn(async () => NINA);
     await draftAndOpen(draft);
 
@@ -794,7 +795,7 @@ describe("follow-up email", () => {
   });
 
   test("should replace the fields when a new draft lands, even an identical one", async () => {
-    jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const confirm = spyOnConfirm().mockImplementation(() => {});
     const draft = jest.fn(async () => NINA);
     await draftAndOpen(draft);
 
@@ -804,7 +805,7 @@ describe("follow-up email", () => {
     await act(async () => {
       fireEvent.press(screen.getByLabelText("Write another draft"));
     });
-    const [, , buttons] = (Alert.alert as jest.Mock).mock.calls[0] ?? [];
+    const [, , buttons] = confirm.mock.calls[0] ?? [];
     await act(async () => {
       (buttons as { text: string; onPress?: () => void }[])
         .find((button) => button.text === "Write another")
@@ -1229,9 +1230,7 @@ describe("profile photo", () => {
   test("should ask before removing a photo, and remove it when the answer is yes", async () => {
     const remove = jest.fn(async (_args: { profileId: string }) => null);
     mockPhotoMutations({ remove });
-    jest
-      .spyOn(Alert, "alert")
-      .mockImplementation((_title, _message, buttons) => {
+    spyOnConfirm().mockImplementation((_title, _message, buttons) => {
         buttons?.find((b) => b.text === "Remove")?.onPress?.();
       });
     await reachProfile("https://files/photo.jpg");
@@ -1247,9 +1246,7 @@ describe("profile photo", () => {
   test("should remove nothing when the confirmation is dismissed", async () => {
     const remove = jest.fn(async () => null);
     mockPhotoMutations({ remove });
-    jest
-      .spyOn(Alert, "alert")
-      .mockImplementation((_title, _message, buttons) => {
+    spyOnConfirm().mockImplementation((_title, _message, buttons) => {
         buttons?.find((b) => b.text === "Cancel")?.onPress?.();
       });
     await reachProfile("https://files/photo.jpg");
@@ -1263,7 +1260,7 @@ describe("profile photo", () => {
 
   test("should not offer to remove a photo that is not there", async () => {
     mockPhotoMutations({});
-    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const alert = spyOnConfirm().mockImplementation(() => {});
     await reachProfile(null);
 
     await act(async () => {

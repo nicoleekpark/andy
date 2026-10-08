@@ -1,7 +1,7 @@
 import { useAuth } from "@clerk/expo";
 import { useAction } from "convex/react";
 import { useCallback, useRef, useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useConfirm } from "@/components/confirm-dialog";
 import { api } from "@convex/_generated/api";
 import { ScreenPlaceholder } from "@/components/screen-placeholder";
@@ -68,17 +68,17 @@ export default function SettingsScreen() {
         ? null
         : `${changes.length === 1 ? "1 change" : `${changes.length} changes`} made offline and not synced`,
     ].filter((part): part is string => part !== null);
-    Alert.alert(
+    confirm(
       "Sign out?",
       `This phone has ${lost.join(" and ")}. Signing out deletes ${
         waiting.length + changes.length === 1 ? "it" : "them"
       }.`,
       [
         { text: "Cancel", style: "cancel" },
-        { text: "Sign out", style: "destructive", onPress: signOutAndForget },
+        { text: "Sign out", onPress: signOutAndForget },
       ],
     );
-  }, [waiting.length, changes.length, signOut]);
+  }, [confirm, waiting.length, changes.length, signOut]);
 
   /**
    * App Store Guideline 5.1.1(v): deletion has to be in the app, not a support

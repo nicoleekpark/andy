@@ -1,5 +1,4 @@
 import { getFunctionName } from "convex/server";
-import { Alert } from "react-native";
 
 /**
  * Shared ways to stand in for Convex and for the confirmation dialog in
@@ -59,20 +58,4 @@ export function given(
   return Object.fromEntries(
     Object.entries(handlers).filter(([, handler]) => handler !== undefined),
   );
-}
-
-/**
- * `Alert.alert` presses the button called `text` as soon as it is raised.
- *
- * Spied rather than left to the RN preset, so a test drives the exact button
- * it means to — and so "Cancel does nothing" can be asserted at all, which is
- * the half of a confirmation that matters. Returns the spy, so a test can read
- * the message or assert the alert was never raised.
- */
-export function pressAlertButton(text: string) {
-  return jest
-    .spyOn(Alert, "alert")
-    .mockImplementation((_title, _message, buttons) => {
-      buttons?.find((button) => button.text === text)?.onPress?.();
-    });
 }

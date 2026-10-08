@@ -1,10 +1,9 @@
 import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
-import { Alert } from "react-native";
 import { useAuth } from "@clerk/expo";
 import { useAction, useConvexAuth, useConvexConnectionState } from "convex/react";
 import { renderRouter } from "expo-router/testing-library";
 import { fileStore, loadOutbox, type OutboxNote, type OutboxStore } from "../src/lib/outbox";
-import { answerDialog } from "../test-support/dialog";
+import { answerDialog, spyOnConfirm } from "../test-support/dialog";
 
 /**
  * Notes kept on this phone while offline (`src/lib/outbox.tsx`): what is kept,
@@ -204,7 +203,7 @@ describe("outbox in the app", () => {
   test("should forget the notes kept on this phone when its owner chooses to sign out", async () => {
     files().set(OUTBOX, JSON.stringify([note("user_default", "one")]));
     const signOut = signedInAs("user_default");
-    jest.spyOn(Alert, "alert").mockImplementation((_title, _message, buttons) => {
+    spyOnConfirm().mockImplementation((_title, _message, buttons) => {
       buttons?.find((b) => b.text === "Sign out")?.onPress?.();
     });
 
@@ -220,7 +219,7 @@ describe("outbox in the app", () => {
   test("should ask before signing out while notes are still waiting", async () => {
     files().set(OUTBOX, JSON.stringify([note("user_default", "one")]));
     const signOut = signedInAs("user_default");
-    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const alert = spyOnConfirm().mockImplementation(() => {});
 
     await renderRouter("src/app", { initialUrl: "/settings" });
     await act(async () => {
@@ -237,7 +236,7 @@ describe("outbox in the app", () => {
 
   test("should sign straight out when nothing is waiting", async () => {
     const signOut = signedInAs("user_default");
-    const alert = jest.spyOn(Alert, "alert");
+    const alert = spyOnConfirm();
 
     await renderRouter("src/app", { initialUrl: "/settings" });
     await act(async () => {

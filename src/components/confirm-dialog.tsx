@@ -54,6 +54,9 @@ const ConfirmContext = createContext<{
   open: (dialog: Omit<Dialog, "id">) => number;
   close: (id: number) => void;
   current: Dialog | undefined;
+  /** How many hosts inside native modals are mounted right now. */
+  modalHosts: number;
+  setModalHosts: (change: (count: number) => number) => void;
 } | null>(null);
 
 let nextId = 1;
@@ -65,6 +68,7 @@ let nextId = 1;
  */
 export function ConfirmProvider({ children }: { children: ReactNode }) {
   const [queue, setQueue] = useState<Dialog[]>([]);
+  const [modalHosts, setModalHosts] = useState(0);
 
   const open = useCallback((dialog: Omit<Dialog, "id">) => {
     const id = nextId++;
@@ -76,8 +80,8 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ open, close, current: queue[0] }),
-    [open, close, queue],
+    () => ({ open, close, current: queue[0], modalHosts, setModalHosts }),
+    [open, close, queue, modalHosts],
   );
   return (
     <ConfirmContext.Provider value={value}>{children}</ConfirmContext.Provider>
@@ -109,11 +113,28 @@ export function useConfirm(): Confirm {
   );
 }
 
-/** Draws the dialog asked first. Place it inside what the lock covers. */
-export function ConfirmHost() {
+/**
+ * Draws the dialog asked first. Place it inside what the lock covers.
+ *
+ * `inModal` is for a host inside a native `<Modal>` (the `draft` sheet): iOS
+ * draws a modal above the whole app, so a dialog drawn by the app's own host
+ * would sit behind the sheet that asked it. While a modal's host is mounted,
+ * it draws and the app's host does not — one dialog, never two. A modal hides
+ * itself under the lock (`LockedContext`), which unmounts its host and hands
+ * the dialog back to the app's host, where the lock covers it.
+ */
+export function ConfirmHost({ inModal = false }: { inModal?: boolean }) {
   const context = useContext(ConfirmContext);
+  const setModalHosts = context?.setModalHosts;
+  useEffect(() => {
+    if (!inModal || setModalHosts === undefined) return;
+    setModalHosts((count) => count + 1);
+    return () => setModalHosts((count) => count - 1);
+  }, [inModal, setModalHosts]);
+
   const dialog = context?.current;
   if (context === null || dialog === undefined) return null;
+  if (!inModal && context.modalHosts > 0) return null;
 
   const answer = (button: ConfirmButton) => {
     context.close(dialog.id);

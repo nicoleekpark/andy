@@ -112,7 +112,7 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `outbox-line-action` | 온라인일 때 `outbox-line` 옆 초록 글자 — "Read the first now" / "Read it now". 가장 오래된 노트를 열어 바로 읽음 |
 | `pending-line` | 오프라인에서 바꾼 것(노트 수정·삭제)이 아직 저장 안 됐을 때 — "1 change made offline, not saved yet." |
 | `pending-line-sync` | 온라인일 때 `pending-line` 옆 초록 **Sync** — 누르면 모두 저장 (Syncing…) |
-| `sync-conflict-alert` | Sync 중 그 노트가 다른 기기에서 바뀌었을 때 묻는 iOS 알림 — Keep theirs / Keep mine |
+| `sync-conflict-alert` | Sync 중 그 노트가 다른 기기에서 바뀌었을 때 묻는 창 — Keep theirs / Keep mine (둘 다 moss, Cancel 없음). `confirm-dialog`로 그림 (QA #51) |
 | `ask-button` | Ask Andy 화면을 여는 버튼 |
 | `record-button` | 새 노트를 기록하는 초록 버튼 |
 
@@ -300,7 +300,7 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `settings-placeholder` | 임시 컴포넌트의 두 번째 제목 — 지울 예정 |
 | `sign-out-button` | Sign out |
 | `account-delete-button` | Delete account (확인 창) |
-| `sign-out-alert` | 폰에 아직 안 읽힌 노트가 있을 때 Sign out 전에 묻는 iOS 알림 — 로그아웃하면 지워진다 |
+| `sign-out-alert` | 폰에 아직 안 읽힌 노트가 있을 때 Sign out 전에 묻는 창 — 로그아웃하면 지워진다. `confirm-dialog`로 그림, Sign out은 moss (QA #51) |
 
 ### `draft`
 
