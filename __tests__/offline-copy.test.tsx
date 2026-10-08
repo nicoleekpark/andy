@@ -218,23 +218,23 @@ describe("reading offline", () => {
     expect(screen.getByText("Tap record. This note goes to Nina, whoever else comes up.")).toBeTruthy();
   });
 
-  test("should not offer editing a person offline yet — notes, yes", async () => {
+  test("should offer editing both the person and their notes offline", async () => {
     onDisk(copyFor("user_default"));
     online(false);
 
     await renderRouter("src/app", { initialUrl: "/profile/p-nina" });
-    expect(screen.queryByRole("button", { name: "Edit this person" })).toBeNull();
-    // A note's details can be changed offline and synced later.
+    expect(screen.getByRole("button", { name: "Edit this person" })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Edit the note from/ })).toBeTruthy();
   });
 
-  test("should say editing needs a connection, not load forever, if the edit screen is reached offline", async () => {
+  test("should open the person's edit screen offline, saying changes stay on the phone until Sync", async () => {
     onDisk(copyFor("user_default"));
     online(false);
 
     await renderRouter("src/app", { initialUrl: "/profile/p-nina/edit" });
 
-    expect(screen.getByText("Editing needs a connection.")).toBeTruthy();
+    expect(screen.getByDisplayValue("Nina")).toBeTruthy();
+    expect(screen.getByText(/Changes are kept on this phone until you Sync/)).toBeTruthy();
   });
 
   test("should say nothing is kept yet, not 'Loading…' or 'search still works', offline with no copy", async () => {

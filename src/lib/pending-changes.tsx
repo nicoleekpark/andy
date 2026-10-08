@@ -3,7 +3,9 @@ import { createContext, useCallback, useContext, useMemo, useRef, useState } fro
 import { Alert } from "react-native";
 import { api } from "@convex/_generated/api";
 import type { OfflineCopy } from "./offline-copy";
+import { cleanAliases, mergeTags } from "@convex/naming";
 import { pendingStore, type PhoneStore } from "./on-phone";
+import { userMessage } from "./user-message";
 
 /**
  * Changes made offline, kept on this phone until Sync (decided 2026-10-08:
@@ -22,9 +24,73 @@ import { pendingStore, type PhoneStore } from "./on-phone";
 
 type Facts = { keyFacts: string[] };
 
+/** What the person edit screen changes — `updateProfile`'s arguments. */
+export type PersonFields = {
+  name: string;
+  entityType: "person" | "animal";
+  relationshipContext: string;
+  firstMetDate: string;
+  tags: string[];
+  aliases: string[];
+};
+
 export type PendingChange =
   | { id: string; kind: "updateNote"; noteId: string; keyFacts: string[]; base: Facts; madeAt: number }
-  | { id: string; kind: "removeNote"; noteId: string; base: Facts; madeAt: number };
+  | { id: string; kind: "removeNote"; noteId: string; base: Facts; madeAt: number }
+  | {
+      id: string;
+      kind: "updateProfile";
+      profileId: string;
+      fields: PersonFields;
+      base: PersonFields;
+      madeAt: number;
+    }
+  | { id: string; kind: "removeProfile"; profileId: string; base: PersonFields; madeAt: number };
+
+/** The note or person a change is about — one waiting change per target. */
+export function targetOf(change: PendingChange | NewChange): string {
+  return change.kind === "updateNote" || change.kind === "removeNote"
+    ? `note:${change.noteId}`
+    : `person:${change.profileId}`;
+}
+
+/**
+ * A person's fields as the server will store them — the same tidying
+ * `profiles.updateProfile` does, with the same functions (`convex/naming.ts`):
+ * trimmed, tags merged case-insensitively, aliases cleaned of the name itself.
+ * Used for what the phone shows before Sync and for what a change is compared
+ * against after one, so neither disagrees with the server about what was saved.
+ */
+export function storedPerson(fields: PersonFields): PersonFields {
+  const name = fields.name.trim();
+  return {
+    name,
+    entityType: fields.entityType,
+    relationshipContext: fields.relationshipContext.trim(),
+    firstMetDate: fields.firstMetDate.trim(),
+    tags: mergeTags([], fields.tags),
+    aliases: cleanAliases(name, fields.aliases),
+  };
+}
+
+/** A person's fields as the edit screen holds them. */
+export function personFields(profile: {
+  name: string;
+  entityType: "person" | "animal";
+  relationshipContext?: string;
+  firstMetDate?: string;
+  tags: string[];
+  aliases?: string[];
+}): PersonFields {
+  return {
+    name: profile.name,
+    entityType: profile.entityType,
+    relationshipContext: profile.relationshipContext ?? "",
+    firstMetDate: profile.firstMetDate ?? "",
+    tags: profile.tags,
+    aliases: profile.aliases ?? [],
+  };
+}
 
 /** A change as a screen hands it in — Andy stamps `id` and `madeAt`. */
 export type NewChange = PendingChange extends infer C
@@ -36,17 +102,17 @@ export type NewChange = PendingChange extends infer C
 type Stored = { ownerId: string; changes: PendingChange[] };
 
 function isChange(value: unknown): value is PendingChange {
-  const v = value as Partial<PendingChange> | null;
-  return (
-    typeof v === "object" &&
-    v !== null &&
-    typeof v.id === "string" &&
-    (v.kind === "updateNote" || v.kind === "removeNote") &&
-    typeof v.noteId === "string" &&
-    typeof v.base === "object" &&
-    v.base !== null &&
-    Array.isArray(v.base.keyFacts)
-  );
+  const v = value as Record<string, unknown> | null;
+  if (typeof v !== "object" || v === null || typeof v.id !== "string") return false;
+  const base = v.base as Record<string, unknown> | null;
+  if (typeof base !== "object" || base === null) return false;
+  if (v.kind === "updateNote" || v.kind === "removeNote") {
+    return typeof v.noteId === "string" && Array.isArray(base.keyFacts);
+  }
+  if (v.kind === "updateProfile" || v.kind === "removeProfile") {
+    return typeof v.profileId === "string" && typeof base.name === "string";
+  }
+  return false;
 }
 
 /**
@@ -86,26 +152,54 @@ export function loadPending(store: PhoneStore, ownerId: string): PendingChange[]
  * any of these changes — which is what Sync must compare against.
  */
 export function collapse(changes: PendingChange[], next: PendingChange): PendingChange[] {
-  const earlier = changes.find((change) => change.noteId === next.noteId);
-  const kept = changes.filter((change) => change.noteId !== next.noteId);
-  return [...kept, earlier === undefined ? next : { ...next, base: earlier.base }];
+  const target = targetOf(next);
+  const earlier = changes.find((change) => targetOf(change) === target);
+  const kept = changes.filter((change) => targetOf(change) !== target);
+  return [
+    ...kept,
+    earlier === undefined ? next : ({ ...next, base: earlier.base } as PendingChange),
+  ];
 }
 
 /** The phone's copy, as it will be once these changes are saved. */
 export function applyPending(copy: OfflineCopy, changes: PendingChange[]): OfflineCopy {
   if (changes.length === 0) return copy;
-  const removed = new Set(changes.filter((c) => c.kind === "removeNote").map((c) => c.noteId));
-  const edited = new Map(
+  const gonePeople = new Set(
+    changes.flatMap((c) => (c.kind === "removeProfile" ? [c.profileId] : [])),
+  );
+  const editedPeople = new Map(
+    changes.flatMap((c) => (c.kind === "updateProfile" ? [[c.profileId, c.fields] as const] : [])),
+  );
+  // A person's own notes go with them; their name in other people's notes
+  // stays, only no longer opening anything (the server's rule, CLAUDE.md).
+  const goneNotes = new Set([
+    ...changes.flatMap((c) => (c.kind === "removeNote" ? [c.noteId] : [])),
+    ...copy.notes.filter((note) => gonePeople.has(note.profileId)).map((note) => note._id as string),
+  ]);
+  const editedNotes = new Map(
     changes.flatMap((c) => (c.kind === "updateNote" ? [[c.noteId, c.keyFacts] as const] : [])),
   );
   return {
     ...copy,
+    profiles: copy.profiles
+      .filter((profile) => !gonePeople.has(profile._id))
+      .map((profile) => {
+        const fields = editedPeople.get(profile._id);
+        if (fields === undefined) return profile;
+        const stored = storedPerson(fields);
+        return {
+          ...profile,
+          ...stored,
+          relationshipContext: stored.relationshipContext || undefined,
+          firstMetDate: stored.firstMetDate || undefined,
+        };
+      }),
     notes: copy.notes
-      .filter((note) => !removed.has(note._id))
+      .filter((note) => !goneNotes.has(note._id))
       .map((note) =>
-        edited.has(note._id) ? { ...note, keyFacts: edited.get(note._id) } : note,
+        editedNotes.has(note._id) ? { ...note, keyFacts: editedNotes.get(note._id) } : note,
       ),
-    links: copy.links.filter((link) => !removed.has(link.noteId)),
+    links: copy.links.filter((link) => !goneNotes.has(link.noteId)),
   };
 }
 
@@ -113,8 +207,8 @@ type Context = {
   changes: PendingChange[];
   /** Keep a change on the phone. Throws if it cannot be written — say so, don't leave. */
   add: (change: NewChange) => void;
-  /** Whether a note has a change waiting. */
-  touches: (noteId: string) => boolean;
+  /** Whether a note or person (by id) has a change waiting. */
+  touches: (id: string) => boolean;
   /** Send every waiting change, asking about any changed elsewhere since. */
   sync: () => Promise<void>;
   syncing: boolean;
@@ -132,9 +226,9 @@ const PendingContext = createContext<Context>({
   available: false,
 });
 
-function sameFacts(a: string[] | undefined, b: string[]): boolean {
-  const left = a ?? [];
-  return left.length === b.length && left.every((fact, i) => fact === b[i]);
+/** Whether the server still holds what the change was made against. */
+function same(now: Facts | PersonFields, base: Facts | PersonFields): boolean {
+  return JSON.stringify(now) === JSON.stringify(base);
 }
 
 export function PendingProvider({
@@ -177,17 +271,43 @@ export function PendingProvider({
   );
 
   const touches = useCallback(
-    (noteId: string) => changes.some((change) => change.noteId === noteId),
+    (id: string) =>
+      changes.some((change) => targetOf(change) === `note:${id}` || targetOf(change) === `person:${id}`),
     [changes],
   );
 
   const send = useCallback(
     async (change: PendingChange) => {
-      if (change.kind === "updateNote") {
-        await convex.mutation(api.notes.updateNote, { noteId: change.noteId, keyFacts: change.keyFacts });
-      } else {
-        await convex.mutation(api.notes.remove, { noteId: change.noteId });
+      switch (change.kind) {
+        case "updateNote":
+          await convex.mutation(api.notes.updateNote, { noteId: change.noteId, keyFacts: change.keyFacts });
+          return;
+        case "removeNote":
+          await convex.mutation(api.notes.remove, { noteId: change.noteId });
+          return;
+        case "updateProfile":
+          await convex.mutation(api.profiles.updateProfile, { profileId: change.profileId, ...change.fields });
+          return;
+        case "removeProfile":
+          await convex.mutation(api.profiles.remove, { profileId: change.profileId });
+          return;
       }
+    },
+    [convex],
+  );
+
+  /**
+   * What the note or person is on the server now, in the shape `base` holds —
+   * or `null` when it is gone.
+   */
+  const current = useCallback(
+    async (change: PendingChange): Promise<Facts | PersonFields | null> => {
+      if (change.kind === "updateNote" || change.kind === "removeNote") {
+        const now = await convex.query(api.notes.byId, { noteId: change.noteId });
+        return now === null ? null : { keyFacts: now.note.keyFacts ?? [] };
+      }
+      const now = await convex.query(api.profiles.withNotes, { profileId: change.profileId });
+      return now === null ? null : personFields(now.profile);
     },
     [convex],
   );
@@ -202,13 +322,16 @@ export function PendingProvider({
    */
   const settle = useCallback(
     (saved: Map<string, PendingChange>) => {
-      const next = loadPending(store, ownerId).flatMap((change) => {
-        const sent = saved.get(change.noteId);
+      const next = loadPending(store, ownerId).flatMap((change): PendingChange[] => {
+        const sent = saved.get(targetOf(change));
         if (sent === undefined) return [change];
         if (sent.id === change.id) return [];
         // Saved as deleted: nothing left for a newer change to apply to.
-        if (sent.kind === "removeNote") return [];
-        return [{ ...change, base: { keyFacts: sent.keyFacts } }];
+        if (sent.kind === "removeNote" || sent.kind === "removeProfile") return [];
+        // What the server now holds: notes keep details verbatim; a person is
+        // tidied on the way in, so compare against the tidied version.
+        const base = sent.kind === "updateNote" ? { keyFacts: sent.keyFacts } : storedPerson(sent.fields);
+        return [{ ...change, base } as PendingChange];
       });
       write(next);
     },
@@ -223,23 +346,28 @@ export function PendingProvider({
     const saved = new Map<string, PendingChange>();
     const conflicts: PendingChange[] = [];
     let failed = 0;
+    // The server's own words for the first refusal ("That's longer than a
+    // name"), so a change that can never be saved says why.
+    let reason: string | null = null;
     for (const change of toSend) {
       try {
-        const now = await convex.query(api.notes.byId, { noteId: change.noteId });
+        const now = await current(change);
         if (now === null) {
           // Gone on the server (deleted elsewhere): nothing left to change.
-          saved.set(change.noteId, { ...change, kind: "removeNote" } as PendingChange);
+          const gone = change.kind === "updateNote" || change.kind === "removeNote" ? "removeNote" : "removeProfile";
+          saved.set(targetOf(change), { ...change, kind: gone } as PendingChange);
           continue;
         }
-        if (!sameFacts(now.note.keyFacts, change.base.keyFacts)) {
+        if (!same(now, change.base)) {
           conflicts.push(change);
           continue;
         }
         await send(change);
-        saved.set(change.noteId, change);
-      } catch {
+        saved.set(targetOf(change), change);
+      } catch (e) {
         // Kept for the next Sync; nothing is lost.
         failed += 1;
+        reason ??= userMessage(e, "");
       }
     }
     settle(saved);
@@ -255,7 +383,9 @@ export function PendingProvider({
       if (failed > 0) {
         Alert.alert(
           "Some changes didn't sync",
-          `${failed === 1 ? "1 change is" : `${failed} changes are`} still on this phone. Try Sync again in a moment.`,
+          `${failed === 1 ? "1 change is" : `${failed} changes are`} still on this phone.${
+            reason ? ` ${reason}` : " Try Sync again in a moment."
+          }`,
         );
       }
       return;
@@ -264,14 +394,15 @@ export function PendingProvider({
     // One alert, not two: iOS can drop a second one presented while the
     // first is still appearing, and this one needs an answer. Failures are
     // said inside it. Still syncing until it is answered.
-    const count = conflicts.length === 1 ? "1 note was" : `${conflicts.length} notes were`;
+    const count =
+      conflicts.length === 1 ? "Something you changed here was" : `${conflicts.length} things you changed here were`;
     const finish = () => {
       inFlight.current = false;
       setSyncing(false);
     };
     Alert.alert(
       "Changed somewhere else",
-      `${count} changed on another device since you changed ${conflicts.length === 1 ? "it" : "them"} here. Which should Andy keep?${stillWaiting}`,
+      `${count} also changed on another device. Which should Andy keep?${stillWaiting}`,
       [
         {
           text: "Keep theirs",
@@ -289,7 +420,7 @@ export function PendingProvider({
               for (const change of conflicts) {
                 try {
                   await send(change);
-                  kept.set(change.noteId, change);
+                  kept.set(targetOf(change), change);
                 } catch {
                   // Stays waiting — and said, below.
                 }
@@ -310,7 +441,7 @@ export function PendingProvider({
       // on the next Sync.
       { cancelable: true, onDismiss: finish },
     );
-  }, [convex, ownerId, send, settle, store, write]);
+  }, [current, ownerId, send, settle, store, write]);
 
   const value = useMemo(
     () => ({ changes, add, touches, sync, syncing, available: true }),

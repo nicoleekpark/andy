@@ -15,7 +15,9 @@ import { useJustAdded } from "@/lib/use-just-added";
 import { useRowKeys } from "@/lib/use-row-keys";
 import { colors } from "@/constants/theme";
 import { userMessage } from "@/lib/user-message";
-import { useOnline } from "@/lib/offline-copy";
+import { NOTHING_KEPT_OFFLINE, useLiveOrCopy, useOnline } from "@/lib/offline-copy";
+import { personFields, usePending } from "@/lib/pending-changes";
+import { withNotesView } from "@convex/offlineViews";
 
 /**
  * Correcting the person, as opposed to correcting a note about them.
@@ -33,10 +35,17 @@ import { useOnline } from "@/lib/offline-copy";
  */
 export default function EditProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const result = useQuery(api.profiles.withNotes, { profileId: id });
-  // Changing things offline is a later decision (PROJECT_SCOPE.md): offline,
-  // this screen says so instead of waiting on an answer that cannot come.
+  // Offline, the person from the phone's copy (with any waiting changes); a
+  // change made here is kept on the phone and saved on Sync
+  // (`pending-changes.tsx`, decided 2026-10-08).
+  const { data: result } = useLiveOrCopy(
+    useQuery(api.profiles.withNotes, { profileId: id }),
+    (copy) => withNotesView(id, copy.profiles, copy.notes, copy.links, null),
+  );
   const online = useOnline();
+  const pending = usePending();
+  /** Offline, or this person already has a change waiting: to the phone. */
+  const keepOnPhone = pending.available && (!online || pending.touches(id));
   const updateProfile = useMutation(api.profiles.updateProfile);
   const removeProfile = useMutation(api.profiles.remove);
 
@@ -54,19 +63,11 @@ export default function EditProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // The table stores "not known" as an absent field; a form has to show it as
+  // an empty box, and `updateProfile` converts back on the way in. One mapping
+  // (`personFields`), shared with what Sync compares against.
   const saved: Draft | null =
-    result === undefined || result === null
-      ? null
-      : {
-          name: result.profile.name,
-          entityType: result.profile.entityType,
-          // The table stores "not known" as an absent field; a form has to show
-          // it as an empty box, and `updateProfile` converts back on the way in.
-          relationshipContext: result.profile.relationshipContext ?? "",
-          firstMetDate: result.profile.firstMetDate ?? "",
-          tags: result.profile.tags,
-          aliases: result.profile.aliases ?? [],
-        };
+    result === undefined || result === null ? null : personFields(result.profile);
   const working = edits ?? saved;
   // Lines are only ever added at the end here (clearing one removes it on
   // save), so the keys stay with their lines without a removal call.
@@ -87,7 +88,16 @@ export default function EditProfileScreen() {
     setSaving(true);
     setError(null);
     try {
-      await updateProfile({ profileId: id, ...working });
+      if (keepOnPhone) {
+        pending.add({
+          kind: "updateProfile",
+          profileId: id,
+          fields: working,
+          base: saved ?? working,
+        });
+      } else {
+        await updateProfile({ profileId: id, ...working });
+      }
 
       // Normally this was opened from the profile it edits, so closing it puts
       // the corrected person back in view — Convex queries are live, so what is
@@ -152,6 +162,11 @@ export default function EditProfileScreen() {
             void (async () => {
               setError(null);
               try {
+                if (keepOnPhone && saved !== null) {
+                  pending.add({ kind: "removeProfile", profileId: id, base: saved });
+                  router.dismissTo("/");
+                  return;
+                }
                 await removeProfile({ profileId: id });
                 // Back to the home already underneath, not a new one on top:
                 // replace() swapped only this screen and left the deleted
@@ -178,7 +193,7 @@ export default function EditProfileScreen() {
             {result === undefined
               ? online
                 ? "Loading…"
-                : "Editing needs a connection."
+                : NOTHING_KEPT_OFFLINE
               : "Andy doesn't have anyone by that link."}
           </Text>
         </View>
@@ -321,7 +336,7 @@ export default function EditProfileScreen() {
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {!online ? (
           <Text testID="edit-offline-hint" style={styles.quiet}>
-            You&apos;re offline. Editing needs a connection — nothing here can be saved right now.
+            You&apos;re offline. Changes are kept on this phone until you Sync.
           </Text>
         ) : null}
 
@@ -329,8 +344,8 @@ export default function EditProfileScreen() {
           accessibilityRole="button"
           accessibilityLabel="Save changes"
           onPress={() => void save()}
-          disabled={saving || !online}
-          style={[styles.save, (saving || !online) && styles.disabled]}
+          disabled={saving}
+          style={[styles.save, saving && styles.disabled]}
         >
           <Text style={styles.saveLabel}>
             {saving ? "Saving…" : "Save changes"}
@@ -341,7 +356,7 @@ export default function EditProfileScreen() {
           accessibilityRole="button"
           accessibilityLabel="Delete this person"
           onPress={confirmDelete}
-          disabled={saving || !online}
+          disabled={saving}
           style={styles.delete}
         >
           <Text style={styles.deleteLabel}>
