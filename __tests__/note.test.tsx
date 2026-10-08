@@ -5,6 +5,7 @@ import { router } from "expo-router";
 import { renderRouter } from "expo-router/testing-library";
 import { answerByName, given, pressAlertButton, quietCall } from "../test-support/convex-mocks";
 import { ConvexError } from "convex/values";
+import { scrollsAboveKeyboard } from "../test-support/keyboard";
 
 /**
  * src/app/(app)/note/[id].tsx — correcting a note that is already saved.
@@ -169,6 +170,8 @@ describe("note screen", () => {
 
     expect(result.getPathname()).toBe("/note/note-1");
     expect(screen.getByLabelText("Fact 1")).toBeTruthy();
+    // The keyboard must not cover the last fields with no way to scroll to them.
+    expect(scrollsAboveKeyboard("Fact 1")).toBe(true);
   });
 
   test("should show a not-found line when the id names nothing of the caller's", async () => {

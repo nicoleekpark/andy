@@ -12,6 +12,7 @@ import {
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { useJustAdded } from "@/lib/use-just-added";
+import { FORM_SCROLL } from "@/lib/form-scroll";
 import { useRowKeys } from "@/lib/use-row-keys";
 import { colors } from "@/constants/theme";
 import { userMessage } from "@/lib/user-message";
@@ -207,7 +208,7 @@ export default function EditProfileScreen() {
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
+        {...FORM_SCROLL}
       >
         <View style={styles.field}>
           <Text style={styles.fieldLabel}>Name</Text>

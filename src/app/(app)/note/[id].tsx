@@ -12,6 +12,7 @@ import {
 import { useMutation, useQuery } from "convex/react";
 import { noteView } from "@convex/offlineViews";
 import { NOTHING_KEPT_OFFLINE, useLiveOrCopy, useNothingKeptOffline, useOnline } from "@/lib/offline-copy";
+import { FORM_SCROLL } from "@/lib/form-scroll";
 import { usePending } from "@/lib/pending-changes";
 import { OfflineCopyLine } from "@/components/offline-copy-line";
 import { api } from "@convex/_generated/api";
@@ -258,7 +259,7 @@ export default function NoteScreen() {
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
+        {...FORM_SCROLL}
       >
         <OfflineCopyLine takenAt={takenAt} />
         <Text style={styles.lead}>

@@ -6,6 +6,7 @@ import { renderRouter } from "expo-router/testing-library";
 import { api } from "@convex/_generated/api";
 import { answerByName, given, nameOf, pressAlertButton, quietCall } from "../test-support/convex-mocks";
 import { ConvexError } from "convex/values";
+import { scrollsAboveKeyboard } from "../test-support/keyboard";
 
 /**
  * src/app/(app)/profile/[id]/edit.tsx — correcting the person rather than a
@@ -81,6 +82,8 @@ describe("edit profile screen", () => {
       initialUrl: "/profile/contact-1/edit",
     });
     await result;
+    // The keyboard must not cover the last fields with no way to scroll to them.
+    expect(scrollsAboveKeyboard("Name")).toBe(true);
 
     await act(async () => {
       fireEvent.changeText(screen.getByLabelText("Name"), "Joe King");
