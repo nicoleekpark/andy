@@ -262,6 +262,13 @@ live here rather than in §7 because that is the screen they happen on.
 | 11.40 | Give someone a tag (e.g. **dog lover**) and a detail (e.g. *runs a climbing gym in Oakland*). In `ask`, type **Mar**, then **dog**, **lover**, **oakland** | **Mar** finds Marcus by name. Each word finds him too, with `profile-result-match` showing the line it is in. Same result online and offline |
 | 11.41 | In `ask`, type a word that is only in a note's own words (*What you said*), e.g. **greyhound** | The person whose note says it, with that sentence |
 | 11.42 | Type a name that also appears inside someone else's note (e.g. **Judy**) | Judy under **People**; the other person's note under **Came up in** — not listed as a person |
+| 11.43 | Offline, open a note → **Edit** → change a detail → **Save changes** | Back on the person's page, the change already shows. `home` shows `pending-line`: *"1 change made offline, not saved yet."* (no Sync while offline) |
+| 11.44 | Offline, open a note → **Delete this note** → Delete | The note is gone from the page; `pending-line` counts it |
+| 11.45 | Edit the same note twice offline | Still **1** change waiting (the newest) |
+| 11.46 | Back online → **Sync** | *Syncing…*, then the line disappears; the change is on the server (check on another device, or `npm run db`) |
+| 11.47 | Edit a note offline on this phone; change the same note's details on **another device** (or the dashboard); then Sync here | `sync-conflict-alert`: *Changed somewhere else*. **Keep theirs** drops your change; **Keep mine** saves yours over it |
+| 11.48 | With a change waiting, **Settings → Sign out** | The warning counts it: *"This phone has 1 change made offline and not synced…"* |
+| 11.49 | Press **Sync**, and while it says *Syncing…* edit another waiting note again | Nothing is lost: after Sync, the newer edit is still waiting (one change), and a second Sync saves it **without** a *Changed somewhere else* question |
 
 ## 12. Search indexing
 

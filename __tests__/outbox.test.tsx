@@ -229,7 +229,7 @@ describe("outbox in the app", () => {
     expect(signOut).not.toHaveBeenCalled();
     expect(alert).toHaveBeenCalledWith(
       "Sign out?",
-      "1 note on this phone hasn't been read by Andy yet. Signing out deletes it.",
+      "This phone has 1 note Andy hasn't read yet. Signing out deletes it.",
       expect.any(Array),
     );
   });

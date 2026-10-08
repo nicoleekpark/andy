@@ -7,6 +7,7 @@ import { ScreenPlaceholder } from "@/components/screen-placeholder";
 import { colors } from "@/constants/theme";
 import { userMessage } from "@/lib/user-message";
 import { useOutbox } from "@/lib/outbox";
+import { usePending } from "@/lib/pending-changes";
 import { forgetOnThisPhone } from "@/lib/on-phone";
 
 export default function SettingsScreen() {
@@ -46,25 +47,36 @@ export default function SettingsScreen() {
    * else yet.
    */
   const { notes: waiting } = useOutbox();
+  const { changes } = usePending();
   const confirmSignOut = useCallback(() => {
     const signOutAndForget = () => {
       forgetOnThisPhone();
       void signOut();
     };
-    if (waiting.length === 0) {
+    if (waiting.length === 0 && changes.length === 0) {
       signOutAndForget();
       return;
     }
-    const count = waiting.length === 1 ? "1 note" : `${waiting.length} notes`;
+    // What would be lost, in the order a person thinks of it.
+    const lost = [
+      waiting.length === 0
+        ? null
+        : `${waiting.length === 1 ? "1 note" : `${waiting.length} notes`} Andy hasn't read yet`,
+      changes.length === 0
+        ? null
+        : `${changes.length === 1 ? "1 change" : `${changes.length} changes`} made offline and not synced`,
+    ].filter((part): part is string => part !== null);
     Alert.alert(
       "Sign out?",
-      `${count} on this phone ${waiting.length === 1 ? "hasn't" : "haven't"} been read by Andy yet. Signing out deletes ${waiting.length === 1 ? "it" : "them"}.`,
+      `This phone has ${lost.join(" and ")}. Signing out deletes ${
+        waiting.length + changes.length === 1 ? "it" : "them"
+      }.`,
       [
         { text: "Cancel", style: "cancel" },
         { text: "Sign out", style: "destructive", onPress: signOutAndForget },
       ],
     );
-  }, [waiting.length, signOut]);
+  }, [waiting.length, changes.length, signOut]);
 
   /**
    * App Store Guideline 5.1.1(v): deletion has to be in the app, not a support

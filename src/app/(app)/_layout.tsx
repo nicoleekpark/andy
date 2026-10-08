@@ -10,6 +10,7 @@ import { colors } from "@/constants/theme";
 import { LockedContext } from "@/lib/lock-context";
 import { OutboxProvider } from "@/lib/outbox";
 import { OfflineCopyProvider } from "@/lib/offline-copy";
+import { PendingProvider } from "@/lib/pending-changes";
 import { useOffline } from "@/lib/connection";
 import { forgetOnThisPhone, outboxStore } from "@/lib/on-phone";
 import { useAppLock } from "@/lib/use-app-lock";
@@ -173,6 +174,7 @@ export default function AppLayout() {
   return (
     <LockedContext.Provider value={covered}>
       <OutboxProvider ownerId={userId!} store={outboxStore}>
+      <PendingProvider ownerId={userId!}>
       <OfflineCopyProvider ownerId={userId!}>
         <View style={styles.fill}>
           <View
@@ -211,6 +213,7 @@ export default function AppLayout() {
           ) : null}
         </View>
       </OfflineCopyProvider>
+      </PendingProvider>
       </OutboxProvider>
     </LockedContext.Provider>
   );
