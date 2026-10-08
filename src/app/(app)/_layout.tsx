@@ -10,6 +10,7 @@ import { colors } from "@/constants/theme";
 import { LockedContext } from "@/lib/lock-context";
 import { OutboxProvider } from "@/lib/outbox";
 import { OfflineCopyProvider } from "@/lib/offline-copy";
+import { useOffline } from "@/lib/connection";
 import { forgetOnThisPhone, outboxStore } from "@/lib/on-phone";
 import { useAppLock } from "@/lib/use-app-lock";
 import { onNudgeOpened } from "@/lib/notifications";
@@ -23,7 +24,9 @@ import { onNudgeOpened } from "@/lib/notifications";
  *   anyone to sign-in. Clerk can answer offline (its resource cache — see
  *   `src/app/_layout.tsx`); Convex cannot.
  * - **Whether the server has accepted that session** is Convex's answer, and
- *   nothing that reads user data shows until it has said yes once. "Signed in to
+ *   nothing that reads user data shows until it has said yes once — unless
+ *   Andy is offline, when there is no one to ask and the screens show only the
+ *   phone's own copy (see `offline` below). "Signed in to
  *   Clerk" is not the same as "Convex accepts this token" — a misconfigured JWT
  *   template leaves Clerk reporting a session while every query returns nothing
  *   — so that state waits on <Connecting />, which offers sign-out once it gives
@@ -35,6 +38,13 @@ import { onNudgeOpened } from "@/lib/notifications";
  * sign-in screen and lost whatever they were doing (device QA, 2026-10-06; the
  * path traced through convex 1.46.0's authentication_manager.js).
  */
+/**
+ * How long a session let in offline waits, once the connection is back, for
+ * the server to confirm it — the same twenty seconds <Connecting /> takes to
+ * give up.
+ */
+export const RECONNECT_GRACE_MS = 20_000;
+
 export default function AppLayout() {
   const { isLoaded: clerkLoaded, isSignedIn, userId, signOut } = useAuth();
   const { isAuthenticated } = useConvexAuth();
@@ -50,7 +60,37 @@ export default function AppLayout() {
   if (isAuthenticated && !confirmed) {
     setConfirmed(true);
   }
-  const inApp = isSignedIn === true && (isAuthenticated || confirmed);
+  // Opened with no connection at all (decided 2026-10-07: a convention hall
+  // with no signal): Clerk's saved session is all there is, and the server
+  // cannot be asked. It is enough to let a person in — Face ID still stands
+  // in front of everything, and offline the screens show only the copy this
+  // account already kept on the phone (`offline-copy.tsx`). A *connected*
+  // socket whose session the server refuses is not offline, so a broken token
+  // still waits on <Connecting /> with Sign out.
+  const offline = useOffline();
+  // Let in offline, then the connection comes back: the socket opens a moment
+  // before the server confirms the session, and without a grace period that
+  // moment would drop the person to <Connecting /> — unmounting what they
+  // were doing and asking for Face ID again (code-reviewer, 2026-10-07). So a
+  // session let in offline stays in while the server is given
+  // `RECONNECT_GRACE_MS` to say yes. Not for good: a session the server never
+  // accepts (revoked, a broken token) still ends on <Connecting /> with Sign out.
+  const [admittedOffline, setAdmittedOffline] = useState(false);
+  if (offline && isSignedIn === true && !admittedOffline) {
+    setAdmittedOffline(true);
+  }
+  const [graceOver, setGraceOver] = useState(false);
+  if (offline && graceOver) {
+    setGraceOver(false);
+  }
+  useEffect(() => {
+    if (!admittedOffline || offline || isAuthenticated) return;
+    const timer = setTimeout(() => setGraceOver(true), RECONNECT_GRACE_MS);
+    return () => clearTimeout(timer);
+  }, [admittedOffline, offline, isAuthenticated]);
+  const inApp =
+    isSignedIn === true &&
+    (isAuthenticated || confirmed || offline || (admittedOffline && !graceOver));
 
   const ensureUser = useMutation(api.users.ensureUser);
   // `inApp`, not unconditionally: `useAppLock`'s effect fires whether or not
