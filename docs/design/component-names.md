@@ -261,6 +261,7 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `profile-result` | 프로필 하나 (탭하면 프로필) |
 | `profile-result-meta` | 관계 · 노트 수 |
 | `profile-result-meta--mention-only` | only mentioned — 자기 노트 없이 언급만 된 프로필 |
+| `profile-result-match` | (testID에는 `-<profileId>`가 붙음) 이름이 아니라 단어로 찾았을 때 — 그 단어가 있는 문장 ("dog lover", "She fosters two greyhounds…"). 이름으로 찾았으면 안 보임 |
 | `mention-results-label` | CAME UP IN — 이 이름이 나온 노트들 |
 | `mention-result` | 그 노트의 subject (탭하면 노트) |
 | `mention-result-quote` | 노트 속 인용 |

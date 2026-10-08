@@ -259,6 +259,9 @@ live here rather than in §7 because that is the screen they happen on.
 | 11.37 | Ordinary online launch | No "Offline — showing …" flash; `home` loads as before |
 | 11.38 | Offline from cold (11.34), then turn Wi-Fi **on** while using Andy (e.g. typing a note) | **Stays on the same screen**, no second Face ID, the typed words intact; the freshness line goes away once the server answers |
 | 11.39 | Join a Wi-Fi **with no internet** (a phone hotspot with mobile data off — the convention-hall case), close Andy, open it | Note how long `connecting` shows before Andy opens offline. Airplane mode fails at once; a dead Wi-Fi can take longer, because the phone itself has to give up first. If it is long, file it — a shorter wait is a separate fix |
+| 11.40 | Give someone a tag (e.g. **dog lover**) and a detail (e.g. *runs a climbing gym in Oakland*). In `ask`, type **Mar**, then **dog**, **lover**, **oakland** | **Mar** finds Marcus by name. Each word finds him too, with `profile-result-match` showing the line it is in. Same result online and offline |
+| 11.41 | In `ask`, type a word that is only in a note's own words (*What you said*), e.g. **greyhound** | The person whose note says it, with that sentence |
+| 11.42 | Type a name that also appears inside someone else's note (e.g. **Judy**) | Judy under **People**; the other person's note under **Came up in** — not listed as a person |
 
 ## 12. Search indexing
 

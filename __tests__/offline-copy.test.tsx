@@ -263,4 +263,26 @@ describe("reading offline", () => {
     expect(screen.getByText(/nothing has been kept on this phone yet/)).toBeTruthy();
     expect(screen.queryByText(/finding someone by name still works/)).toBeNull();
   });
+
+  test("should find someone by a word in their notes offline, showing the line it is in", async () => {
+    jest.useFakeTimers();
+    try {
+      onDisk(copyFor("user_default"));
+      online(false);
+
+      await renderRouter("src/app", { initialUrl: "/search" });
+      await act(async () => {
+        fireEvent.changeText(screen.getByLabelText("Ask Andy"), "greyhound");
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(1_000);
+      });
+
+      expect(screen.getByRole("button", { name: "Open Nina" })).toBeTruthy();
+      expect(screen.getByTestId("profile-result-match-p-nina")).toBeTruthy();
+      expect(screen.getByText(/Fosters two greyhounds/)).toBeTruthy();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });

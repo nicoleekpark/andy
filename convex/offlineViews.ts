@@ -175,6 +175,30 @@ export function noteView(noteId: string, profiles: Doc<"profiles">[], notes: Not
   return { note, profileName: profile?.name ?? "" };
 }
 
+/** Fewer letters than this match too much to mean anything: "a" is in everyone. */
+export const MIN_WORD_CHARS = 2;
+/** How much of the matching sentence a result shows. */
+const SNIPPET_CHARS = 90;
+
+/**
+ * Where a word appears in what you kept about someone — the sentence it is in,
+ * shortened — or `null`. Folded the way names are (`searchKey`), so "dog
+ * lover" finds "Dog-lover" and case never matters.
+ */
+export function wordMatch(needle: string, texts: (string | undefined)[]): string | null {
+  for (const text of texts) {
+    if (text === undefined || text.trim() === "") continue;
+    if (!searchKey(text).includes(needle)) continue;
+    const sentence =
+      text
+        .split(/(?<=[.!?。！？])\s*|\n+/)
+        .find((part) => searchKey(part).includes(needle)) ?? text;
+    const trimmed = sentence.trim();
+    return trimmed.length > SNIPPET_CHARS ? `${trimmed.slice(0, SNIPPET_CHARS - 1)}…` : trimmed;
+  }
+  return null;
+}
+
 /** Enough of the list to be useful, small enough to read once. */
 export const MAX_PEOPLE = 20;
 export const MAX_MENTIONS = 30;
@@ -206,7 +230,27 @@ export function searchView(
     mentionCounts.set(link.profileId, (mentionCounts.get(link.profileId) ?? 0) + 1);
   }
 
+  // Everything kept about each person, for finding them by a word in it
+  // (decided 2026-10-08): newest note first, so the line shown is the latest.
+  const notesOf = new Map<string, NoteRow[]>();
+  for (const note of [...notes].sort(newestFirst)) {
+    const list = notesOf.get(note.profileId) ?? [];
+    list.push(note);
+    notesOf.set(note.profileId, list);
+  }
+
+  const nameMatched = profiles.some((profile) => {
+    const [name, ...aliases] = namesOf(profile);
+    return (
+      bestMatch(needle, [
+        { name: name ?? profile.name, isAlias: false },
+        ...aliases.map((alias) => ({ name: alias, isAlias: true })),
+      ]) !== null
+    );
+  });
+
   const ranked = [];
+  const byWord = [];
   for (const profile of profiles) {
     // `namesOf` is the rule — a profile answers to its name *and* its
     // aliases, the same set every other name lookup in this codebase uses.
@@ -215,26 +259,56 @@ export function searchView(
       { name: name ?? profile.name, isAlias: false },
       ...aliases.map((alias) => ({ name: alias, isAlias: true })),
     ]);
-    if (match === null) continue;
-
     const seen = stats.get(profile._id);
-    ranked.push({
-      rank: match.rank,
+    const row = {
       profileId: profile._id,
       name: profile.name,
-      matchedName: match.matchedName,
       entityType: profile.entityType,
       relationshipContext: profile.relationshipContext,
       noteCount: seen?.noteCount ?? 0,
       mentionCount: mentionCounts.get(profile._id) ?? 0,
       lastNoteAt: seen?.lastNoteAt ?? null,
+    };
+
+    if (match === null) {
+      // Not by name: by a word in what you kept about them — how you know
+      // them, their tags, what to remember, and the notes' own words. No
+      // model involved, so it works offline exactly as online.
+      if (needle.length < MIN_WORD_CHARS) continue;
+      const theirs = notesOf.get(profile._id) ?? [];
+      const found = wordMatch(needle, [
+        profile.relationshipContext,
+        ...profile.tags,
+        ...theirs.flatMap((note) => rememberedFacts(note.keyFacts)),
+        // A note's own words echo other people's names ("met Judy today"),
+        // so they count only when nobody answers to the word by name — a
+        // name in someone's note belongs under "Came up in", not here.
+        ...(nameMatched ? [] : theirs.map((note) => note.text)),
+      ]);
+      if (found !== null) byWord.push({ ...row, matchedName: profile.name, matchedIn: found });
+      continue;
+    }
+
+    ranked.push({
+      rank: match.rank,
+      ...row,
+      matchedName: match.matchedName,
+      matchedIn: undefined as string | undefined,
     });
   }
   ranked.sort(byNameThenRank);
   // `rank` decided the order and is not the caller's business — a screen
   // that could read it would eventually branch on it, and the tiers are an
   // implementation detail of `peopleSearch.ts`.
-  const people = ranked.slice(0, MAX_PEOPLE).map(({ rank: _rank, ...person }) => person);
+  // People found by name first — that is what most searches are — then
+  // anyone else found by a word in what you kept about them, alphabetically.
+  // A name never hides someone else's word match: a dog called Max does not
+  // hide Marcus tagged "max effort".
+  byWord.sort((a, b) => compareNamesForList(a.name, b.name));
+  const people = [...ranked.map(({ rank: _rank, ...person }) => person), ...byWord].slice(
+    0,
+    MAX_PEOPLE,
+  );
 
   // Mentions of any of those people, plus mentions whose recorded name
   // matches even though the profile is gone. The second half is the point of

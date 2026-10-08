@@ -233,6 +233,13 @@ export default function SearchScreen() {
                         : `only mentioned, in ${person.mentionCount} notes`
                       : "nothing remembered yet"}
                 </Text>
+                {person.matchedIn !== undefined ? (
+                  // Found by a word, not a name: the line it is in, so the row
+                  // says why this person is here.
+                  <Text testID={`profile-result-match-${person.profileId}`} style={styles.personMeta}>
+                    &ldquo;{person.matchedIn}&rdquo;
+                  </Text>
+                ) : null}
               </Pressable>
             ))}
           </View>
