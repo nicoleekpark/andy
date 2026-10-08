@@ -7,6 +7,7 @@ import { forgetSession } from "@/lib/use-once-per-session";
 import { drawn } from "../test-support/drawn";
 import { LOOP_WRITE_MS } from "@/components/thread-loop";
 import { answerByName, nameOf } from "../test-support/convex-mocks";
+import * as briefingModule from "@/lib/use-briefing";
 
 /**
  * src/app/(app)/index.tsx's three branches — loading, empty, populated — are
@@ -47,6 +48,39 @@ function buildPerson(overrides: Partial<Record<string, unknown>> = {}) {
 // The loop is hidden from assistive tech on purpose (the words carry the
 // meaning), and testing-library skips hidden elements unless told otherwise.
 const HIDDEN = { includeHiddenElements: true } as const;
+
+describe("the remote switch", () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  // Home is the only place the briefing runs, so it is the place that has to
+  // hand the switch to it (INFRA.md #6). What "off" then does is
+  // briefing.test.tsx's business.
+  test("should switch the briefing off when the server says calendarBriefing is off", async () => {
+    const briefing = jest.spyOn(briefingModule, "useBriefing");
+    answerByName(useQuery, {
+      [nameOf(api.profiles.people)]: [],
+      [nameOf(api.featureFlags.switchedOff)]: ["calendarBriefing"],
+    });
+
+    await renderRouter("src/app", { initialUrl: "/" });
+
+    expect(briefing).toHaveBeenLastCalledWith(false);
+  });
+
+  test("should leave it on when nothing is switched off, or before the answer lands", async () => {
+    const briefing = jest.spyOn(briefingModule, "useBriefing");
+    answerByName(useQuery, {
+      [nameOf(api.profiles.people)]: [],
+      [nameOf(api.featureFlags.switchedOff)]: undefined,
+    });
+
+    await renderRouter("src/app", { initialUrl: "/" });
+
+    expect(briefing).toHaveBeenLastCalledWith(true);
+  });
+});
 
 describe("home screen", () => {
   beforeEach(() => {

@@ -85,9 +85,9 @@ function backendSays(matched: Record<string, unknown>[]) {
  */
 
 /** A harness that renders whatever the hook currently says. */
-function Harness() {
-  const { briefing, ask, alerts, askForAlerts } = useBriefing();
-  if (briefing.state === "loading") return null;
+function Harness({ enabled = true }: { enabled?: boolean }) {
+  const { briefing, ask, alerts, askForAlerts } = useBriefing(enabled);
+  if (briefing.state === "loading" || briefing.state === "off") return null;
   if (briefing.state === "ask") {
     return (
       <BriefingCard state="ask" onAsk={() => void ask()} asking={briefing.asking} />
@@ -131,6 +131,92 @@ beforeEach(() => {
 afterEach(() => {
   jest.clearAllMocks();
   jest.restoreAllMocks();
+});
+
+// ---------------------------------------------------------------------------
+// The remote switch (INFRA.md #6)
+// ---------------------------------------------------------------------------
+
+test("should read nothing and show nothing when switched off remotely", async () => {
+  grant(true);
+  await render(<Harness enabled={false} />);
+
+  await waitFor(() => expect(Notifications.getAllScheduledNotificationsAsync).toHaveBeenCalled());
+  expect(screen.queryByTestId("briefing-card")).toBeNull();
+  // Not even the permission is checked: switched off means the calendar is
+  // left alone entirely.
+  expect(Calendar.getCalendarPermissions).not.toHaveBeenCalled();
+  expect(Calendar.listEvents).not.toHaveBeenCalled();
+});
+
+test("should cancel the reminders already on the phone when switched off", async () => {
+  (Notifications.getAllScheduledNotificationsAsync as jest.Mock).mockResolvedValue([
+    { identifier: "ours", content: { data: { kind: "andy.briefing" } } },
+    { identifier: "someone-else", content: { data: {} } },
+  ]);
+  await render(<Harness enabled={false} />);
+
+  // A switch that left them would keep buzzing for days after it was flipped.
+  await waitFor(() =>
+    expect(Notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith("ours"),
+  );
+  expect(Notifications.cancelScheduledNotificationAsync).not.toHaveBeenCalledWith("someone-else");
+});
+
+test("should leave no reminder behind when switched off while they are being written", async () => {
+  // A phone's pending notifications, so cancelling and scheduling act on
+  // the same list — the race is between the two.
+  const pending: { identifier: string; content: { data: { kind?: string } } }[] = [];
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  (Notifications.getAllScheduledNotificationsAsync as jest.Mock).mockImplementation(async () => [...pending]);
+  (Notifications.cancelScheduledNotificationAsync as jest.Mock).mockImplementation(async (id: string) => {
+    const at = pending.findIndex((request) => request.identifier === id);
+    if (at >= 0) pending.splice(at, 1);
+  });
+  (Notifications.scheduleNotificationAsync as jest.Mock).mockImplementation(
+    async (request: { content: { data: { kind?: string } } }) => {
+      await gate;
+      pending.push({ identifier: `n${pending.length}`, content: request.content });
+      return "id";
+    },
+  );
+  const soon = Date.now() + 2 * 3600_000;
+  calendarSays([
+    { id: "e1", title: "Coffee with Marcus", startDate: new Date(soon), endDate: new Date(soon + 3600_000), allDay: false },
+  ]);
+  backendSays([
+    {
+      eventId: "e1",
+      title: "Coffee with Marcus",
+      startsAt: soon,
+      endsAt: soon + 3600_000,
+      people: [{ profileId: "p1", name: "Marcus", noteCount: 1 }],
+      ambiguous: [],
+    },
+  ]);
+
+  const { rerender } = await render(<Harness />);
+  await waitFor(() => expect(Notifications.scheduleNotificationAsync).toHaveBeenCalled());
+
+  // Switched off while the reminder is still being written, then it lands.
+  await rerender(<Harness enabled={false} />);
+  await act(async () => {
+    release();
+  });
+
+  await waitFor(() =>
+    expect(pending.filter((request) => request.content.data.kind === "andy.briefing")).toEqual([]),
+  );
+});
+
+test("should come back when switched on again, live", async () => {
+  grant(true);
+  const { rerender } = await render(<Harness enabled={false} />);
+  expect(screen.queryByTestId("briefing-card")).toBeNull();
+
+  await rerender(<Harness enabled />);
+  await waitFor(() => expect(screen.getByTestId("briefing-card")).toBeTruthy());
 });
 
 // ---------------------------------------------------------------------------
