@@ -160,11 +160,28 @@ ios:install`, which is a real build of the real app.
 
 - **Native changes** (a new native module, a new Expo config plugin, anything touching `app.json`'s native config — e.g. the Share Extension itself): OTA update does **not** cover this. These need an actual `eas build` and a physical/simulator install to verify, same as this project's existing "simulator isn't sufficient for CallKit/Siri/widgets" rule in `eas-release-checklist`. Don't trust a green PR-preview-OTA check as proof a native-touching PR works — which is the second reason the OTA workflow was not worth keeping green: it could never have covered the changes most likely to break.
 
-## 6. Feature flags / remote kill switch — ⏸ Deferred, not built yet
+## 6. Feature flags / remote kill switch — ✅ Built 2026-10-08
 
-There is no `featureFlags` table in `convex/schema.ts` today. This is the decision recorded, not a facility that exists — build it when something actually needs to be switched off remotely.
+A `featureFlags` table in Convex (`{ key, enabled, note }`), no third-party service. Built when the calendar briefing needed one: it ships in V1, and if it misbehaves at an event it has to be switchable off without an App Store resubmission.
 
-No new third-party service needed — this project already has Convex. A `featureFlags` table (`{ key: string, enabled: boolean, note: string }`) queried once at app launch gives a real remote kill switch: flip a row in the Convex dashboard, the running app picks it up on next launch (or live, if queried reactively) without an App Store resubmission. Cheaper and simpler than LaunchDarkly/Statsig for a solo project at this stage; revisit a dedicated service only if flag logic gets genuinely complex (percentage rollouts, user targeting).
+**To switch a feature off:** Convex dashboard → the deployment (prod for testers) → Data → `featureFlags` → Add document:
+
+```json
+{ "key": "calendarBriefing", "enabled": false, "note": "why, and who flipped it" }
+```
+
+Running apps hear it live (`useQuery`, no relaunch). **To turn it back on:** delete the row, or set `enabled: true`.
+
+| Key | What off does |
+|---|---|
+| `calendarBriefing` | The home Briefing card disappears; the calendar is not read; this app's briefing and nudge reminders already scheduled on the phone are cancelled |
+
+How it behaves:
+- **No row means on.** The query (`featureFlags.switchedOff`) returns only the keys that are off, so a typo or an unknown key can only fail to switch something off.
+- **On until the server says otherwise:** while loading and offline. A switch that turned features off whenever it could not be read would take them away from everybody without a connection.
+- A newly switchable feature adds its key to `Feature` in `src/lib/feature-flags.ts`, gets a row in the table above, and must *undo* what it already started when switched off, not only stop drawing.
+
+Revisit a dedicated service only if flag logic gets genuinely complex (percentage rollouts, user targeting).
 
 ## 7. CHANGELOG
 

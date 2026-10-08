@@ -196,4 +196,18 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_and_profile", ["userId", "profileId"])
     .index("by_user_and_event", ["userId", "calendarEventId"]),
+
+  /**
+   * The remote kill switch (INFRA.md #6). One row per feature that can be
+   * turned off without an App Store resubmission, written by hand in the
+   * Convex dashboard. **No row means on**: the switch only ever turns
+   * something off, so an empty table — every deployment today — changes
+   * nothing. Not per user, and holds nothing about anyone.
+   */
+  featureFlags: defineTable({
+    key: v.string(),
+    enabled: v.boolean(),
+    /** Why it was switched, for whoever reads the dashboard next. */
+    note: v.optional(v.string()),
+  }).index("by_key", ["key"]),
 });

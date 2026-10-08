@@ -11,6 +11,7 @@ import {
 import {
   askForNotifications,
   briefable,
+  cancelBriefings,
   notificationAccess,
   scheduleBriefings,
   type NotificationAccess,
@@ -58,6 +59,8 @@ export type BriefingState =
   | { state: "ask"; asking: boolean }
   | { state: "denied" }
   | { state: "empty" }
+  /** Switched off remotely: nothing is shown and nothing is read. */
+  | { state: "off" }
   | {
       state: "ready";
       briefing: {
@@ -80,7 +83,14 @@ export type BriefingState =
  */
 export type AlertState = "unavailable" | "off" | "blocked" | "on";
 
-export function useBriefing(): {
+export function useBriefing(
+  /**
+   * The remote switch (`useFeature("calendarBriefing")`). Off: the calendar
+   * is not read, the card says nothing, and reminders already on the phone
+   * are cancelled — a switch that left them would still buzz for days.
+   */
+  enabled = true,
+): {
   briefing: BriefingState;
   ask: () => Promise<void>;
   alerts: AlertState;
@@ -103,6 +113,16 @@ export function useBriefing(): {
    * to tidy them. Two buzzes twenty minutes before one coffee.
    */
   const refreshing = useRef(false);
+  /**
+   * The switch, as of now rather than as of the render a `load` began in, and
+   * the reminders being written at this moment. Switching off mid-refresh has
+   * to win: a `load` that started while on must not schedule after the switch
+   * flipped, and the cancel has to wait for a schedule already under way — or
+   * its reminders land after the cancel and buzz for a feature that is off.
+   * Switching off in a hurry is exactly when that would happen.
+   */
+  const enabledNow = useRef(enabled);
+  const scheduling = useRef<Promise<unknown>>(Promise.resolve());
   /**
    * Whether this component is still on screen.
    *
@@ -145,21 +165,23 @@ export function useBriefing(): {
       // person on failure: a briefing that could not be scheduled is not a reason to
       // take the card down, and the reason is almost always "notifications
       // are off", which the card already offers to fix.
-      void scheduleBriefings(
-        briefable(
-          matched.map((event) => ({
-            eventId: event.eventId,
-            title: event.title,
-            startsAt: event.startsAt,
-            endsAt: event.endsAt,
-            attendeeNames: [],
-            people: event.people,
-          })),
-        ),
-        Date.now(),
-      ).catch((thrown: unknown) =>
-        sayWhyInDevelopment("could not schedule the alerts", thrown),
-      );
+      if (enabledNow.current) {
+        scheduling.current = scheduleBriefings(
+          briefable(
+            matched.map((event) => ({
+              eventId: event.eventId,
+              title: event.title,
+              startsAt: event.startsAt,
+              endsAt: event.endsAt,
+              attendeeNames: [],
+              people: event.people,
+            })),
+          ),
+          Date.now(),
+        ).catch((thrown: unknown) =>
+          sayWhyInDevelopment("could not schedule the alerts", thrown),
+        );
+      }
 
       // The *next* one that is about somebody, not the next one at all. A
       // standup at 09:00 is not a briefing, and showing it would push the
@@ -203,6 +225,17 @@ export function useBriefing(): {
     // The read is three awaits deep — permission, device, backend — and home
     // is the screen a person leaves fastest.
     mounted.current = true;
+    enabledNow.current = enabled;
+    if (!enabled) {
+      void scheduling.current
+        .then(() => cancelBriefings())
+        .catch((thrown: unknown) =>
+          sayWhyInDevelopment("could not cancel the alerts", thrown),
+        );
+      return () => {
+        mounted.current = false;
+      };
+    }
     const run = async () => {
       if (refreshing.current) return;
       refreshing.current = true;
@@ -228,7 +261,7 @@ export function useBriefing(): {
       mounted.current = false;
       subscription.remove();
     };
-  }, [refresh]);
+  }, [enabled, refresh]);
 
   const askForAlerts = useCallback(async () => {
     if (askingAlerts.current) return;
@@ -258,7 +291,12 @@ export function useBriefing(): {
     }
   }, [load]);
 
-  return { briefing: state, ask, alerts, askForAlerts };
+  return {
+    briefing: enabled ? state : { state: "off" },
+    ask,
+    alerts,
+    askForAlerts,
+  };
 }
 
 function alertStateOf(state: NotificationAccess["state"]): AlertState {

@@ -483,6 +483,14 @@ your actual messy real calendar, not synthetic data".
 
 ---
 
+### 18a. The remote switch (INFRA.md #6)
+
+| # | Step | Expected | Result |
+|---|---|---|---|
+| 18a.1 | With a meeting showing on the Briefing card and its reminder scheduled, add `{ "key": "calendarBriefing", "enabled": false, "note": "QA" }` to `featureFlags` in the dashboard of the deployment the app uses, with Andy **open on home** | Within a few seconds, **without relaunching**, the Briefing card disappears. At the meeting's reminder time, **no** reminder arrives | ⬜ |
+| 18a.2 | Delete that row | The card comes back on its own; the reminder is scheduled again | ⬜ |
+| 18a.3 | With the row present, close Andy fully, turn Wi-Fi off, open it | Home works; the card may try to load and shows nothing useful offline. Nothing crashes | ⬜ |
+
 ## 19. Briefing alert and nudge
 
 Local notifications, scheduled on the phone from the same matched answer §18's

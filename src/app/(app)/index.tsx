@@ -5,6 +5,7 @@ import { useOffline } from "@/lib/connection";
 import { api } from "@convex/_generated/api";
 import { BriefingCard } from "@/components/briefing-card";
 import { ThreadLoop } from "@/components/thread-loop";
+import { useFeature } from "@/lib/feature-flags";
 import { useBriefing } from "@/lib/use-briefing";
 import { colors, fonts, space } from "@/constants/theme";
 import { useOncePerSession } from "@/lib/use-once-per-session";
@@ -132,7 +133,9 @@ export default function HomeScreen() {
   const { data: people, takenAt } = useLiveOrCopy(useQuery(api.profiles.people), (copy) =>
     peopleView(copy.profiles, copy.notes),
   );
-  const { briefing, ask, alerts, askForAlerts } = useBriefing();
+  const { briefing, ask, alerts, askForAlerts } = useBriefing(
+    useFeature("calendarBriefing"),
+  );
 
   return (
     <>
@@ -180,7 +183,7 @@ export default function HomeScreen() {
               <OfflineCopyLine takenAt={takenAt} />
               <OutboxLine />
               <PendingLine />
-              {briefing.state === "loading" ? null : briefing.state === "ask" ? (
+              {briefing.state === "loading" || briefing.state === "off" ? null : briefing.state === "ask" ? (
                 <BriefingCard
                   state="ask"
                   onAsk={() => void ask()}

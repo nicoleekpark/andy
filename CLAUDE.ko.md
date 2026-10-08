@@ -71,7 +71,7 @@
 - 모든 인자는 Convex의 `v.*` validator로 검증할 것(이미 `schema.ts`에 쓰고 있는 패턴) — Zod 아님, 이건 REST API가 아님.
 - 유저에게 보여줄 에러는 즉흥적인 `{ error: string }` 형태가 아니라 `ConvexError`를 쓸 것 — 확실하지 않으면 `docs-verifier`로 정확한 현재 패턴을 확인할 것, Convex의 에러 처리 방식은 버전별로 계속 바뀌어옴.
 - `profiles`/`notes`/`metrics`/`calendarLinks`를 읽거나 쓰는 모든 함수는 `ctx.auth.getUserIdentity()`를 체크하고 인증된 유저의 id로 필터링해야 함 — 이건 `security-reviewer`의 첫 번째 차단 체크 항목이니, 게이트가 잡아주길 기대하지 말고 처음부터 맞게 짤 것.
-- **기능 플래그 / 원격 킬 스위치 (⏸ 아직 안 만듦): 새 서드파티 서비스가 아니라 `featureFlags` 테이블.** `{ key, enabled, note }` 를 실행 시점(또는 반응형으로) 조회한다. 대시보드에서 행 하나를 뒤집으면 **앱스토어 재제출 없이** 이미 출시된 기능을 끌 수 있다 — 싸고, 이미 있는 인프라를 재사용한다. `INFRA.md` #6 참고. 로직이 불리언을 넘어설 때만(퍼센트 롤아웃, 사용자별 타게팅) 전용 서비스를 고려할 것.
+- **기능 플래그 / 원격 킬 스위치 (2026-10-08 만듦): 새 서드파티 서비스가 아니라 `featureFlags` 테이블.** `{ key, enabled, note }` 를 `useFeature()`(`src/lib/feature-flags.ts`)가 실시간으로 읽는다. **행이 없으면 켜짐**; 대시보드에서 `{ key, enabled: false, note }` 를 넣으면 **앱스토어 재제출 없이** 이미 출시된 기능을 끈다. 새로 끌 수 있게 하는 기능은 `Feature` 타입에 키를 추가하고, 꺼질 때 이미 시작한 일을 *멈춰야* 한다(브리핑은 예약된 알림을 취소한다). `INFRA.md` #6 참고. 로직이 불리언을 넘어설 때만(퍼센트 롤아웃, 사용자별 타게팅) 전용 서비스를 고려할 것.
 - V1엔 수동 rate-limiting 인프라 없음 — Convex의 함수 호출 모델은 REST식 API 게이트웨이 레이트리밋이 필요 없음; 출시 후 실제로 남용이 문제가 될 때만 재검토.
 
 ## `.claude/rules/`에 대한 참고
