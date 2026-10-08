@@ -1,3 +1,4 @@
+import { useLocalSearchParams } from "expo-router";
 import { CaptureScreen } from "@/components/capture-screen";
 
 /**
@@ -10,5 +11,7 @@ import { CaptureScreen } from "@/components/capture-screen";
  * placeholder id.
  */
 export default function CaptureRoute() {
-  return <CaptureScreen />;
+  // `?outbox=<id>`: a note kept on this phone, opened from home to be read.
+  const { outbox } = useLocalSearchParams<{ outbox?: string }>();
+  return <CaptureScreen outboxId={outbox} />;
 }

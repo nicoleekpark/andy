@@ -3057,4 +3057,127 @@ describe("capture screen offline", () => {
     expect(screen.getByLabelText("Type a note").props.value).toBe("Met Rowan at the booth.");
     expect(result.getPathname()).toBe("/capture");
   });
+
+  function waiting(text: string, extra: Record<string, unknown> = {}) {
+    files().set(
+      "file:///documents/outbox/notes.json",
+      JSON.stringify([
+        { id: "w1", ownerId: "user_default", keptAt: 1, today: "2026-10-01", text, kind: "typed", ...extra },
+      ]),
+    );
+  }
+
+  test("should read a waiting note against the day it was said, and drop the phone's copy once saved", async () => {
+    connected(true);
+    waiting("Met Rowan yesterday at the booth.");
+    const extract = jest.fn(async () => makeDraft({ name: "Rowan" }));
+    (useAction as jest.Mock).mockReturnValue(extract);
+    const saveCapture = jest.fn(async (_args: { source: string }) => ({
+      profileId: "profile-1",
+      noteId: "note-1",
+      createdProfile: true,
+      createdMentionCount: 0,
+    }));
+    mockSaveCapture(saveCapture);
+    scopeTo("Rowan");
+
+    await renderRouter("src/app", { initialUrl: "/capture?outbox=w1" });
+
+    // Read at once, as if Read it had been pressed — with *its* day, so its
+    // "yesterday" is 30 September, not the day before today.
+    await waitFor(() => expect(extract).toHaveBeenCalledTimes(1));
+    expect(extract.mock.calls[0]).toEqual([
+      expect.objectContaining({ text: "Met Rowan yesterday at the booth.", today: "2026-10-01" }),
+    ]);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Remember this" })).toBeTruthy());
+    expect(screen.getByText("What you wrote")).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
+    });
+
+    await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
+    expect(saveCapture.mock.calls[0]?.[0]).toEqual(expect.objectContaining({ source: "manual" }));
+    expect(kept()).toEqual([]);
+  });
+
+  test("should keep a waiting note on the phone when it is not saved", async () => {
+    connected(true);
+    waiting("Met Rowan at the booth.");
+    (useAction as jest.Mock).mockReturnValue(
+      jest.fn(async () => {
+        throw new Error("network");
+      }),
+    );
+
+    await renderRouter("src/app", { initialUrl: "/capture?outbox=w1" });
+
+    await waitFor(() => expect(screen.getByText(/couldn't make sense of that one/)).toBeTruthy());
+    expect(screen.getByLabelText("Type a note").props.value).toBe("Met Rowan at the booth.");
+    expect(kept().map((n) => n.text)).toEqual(["Met Rowan at the booth."]);
+  });
+
+  test("should not keep a waiting note a second time when it is opened offline", async () => {
+    connected(false);
+    waiting("Met Rowan at the booth.");
+
+    const extract = jest.fn(async () => makeDraft({ name: "Rowan" }));
+    (useAction as jest.Mock).mockReturnValue(extract);
+    scopeTo("Rowan");
+
+    await renderRouter("src/app", { initialUrl: "/capture?outbox=w1" });
+
+    // Its words, marked as still kept — and nothing that would keep it again.
+    expect(screen.getByLabelText("Type a note").props.value).toBe("Met Rowan at the booth.");
+    expect(screen.getByText(/This note is still kept on this phone/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Keep this note" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Read it" })).toBeNull();
+    expect(kept()).toHaveLength(1);
+    expect(extract).not.toHaveBeenCalled();
+  });
+
+  test("should say so, not show a blank new note, when the waiting note is no longer here", async () => {
+    connected(true);
+
+    await renderRouter("src/app", { initialUrl: "/capture?outbox=gone" });
+
+    expect(screen.getByText(/That note isn't waiting on this phone any more/)).toBeTruthy();
+  });
+
+  test("should keep the waiting note when its words are put away and something else is saved", async () => {
+    connected(true);
+    waiting("Met Rowan yesterday at the booth.");
+    const handlers = captureListeners();
+    const extract = jest.fn(async (_args: { text: string; today: string }) => makeDraft({ name: "Rowan" }));
+    (useAction as jest.Mock).mockReturnValue(extract);
+    const saveCapture = jest.fn(async () => ({
+      profileId: "profile-1",
+      noteId: "note-1",
+      createdProfile: true,
+      createdMentionCount: 0,
+    }));
+    mockSaveCapture(saveCapture);
+    scopeTo("Rowan");
+
+    await renderRouter("src/app", { initialUrl: "/capture?outbox=w1" });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Discard and start over" })).toBeTruthy());
+
+    // Back to its words, then away from them: a new recording, saved instead.
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Discard and start over" }));
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Record again" }));
+    });
+    await reachReview(handlers, "Lunch with Rowan yesterday.");
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
+    });
+
+    await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
+    // The new note was read against today, not the waiting note's day…
+    expect(extract.mock.calls[1]?.[0].today).not.toBe("2026-10-01");
+    // …and the waiting note is still on the phone, unsaved and not lost.
+    expect(kept().map((n) => n.text)).toEqual(["Met Rowan yesterday at the booth."]);
+  });
 });

@@ -1,7 +1,7 @@
 import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 import { Alert } from "react-native";
 import { useAuth } from "@clerk/expo";
-import { useAction, useConvexAuth } from "convex/react";
+import { useAction, useConvexAuth, useConvexConnectionState } from "convex/react";
 import { renderRouter } from "expo-router/testing-library";
 import { fileStore, loadOutbox, type OutboxNote, type OutboxStore } from "../src/lib/outbox";
 
@@ -50,9 +50,24 @@ function signedInAs(userId: string | undefined, signOut = jest.fn(async () => un
   return signOut;
 }
 
+function online(isWebSocketConnected: boolean) {
+  (useConvexConnectionState as jest.Mock).mockReturnValue({
+    hasInflightRequests: false,
+    isWebSocketConnected,
+    timeOfOldestInflightRequest: null,
+    hasEverConnected: true,
+    connectionCount: 1,
+    connectionRetries: 0,
+    inflightMutations: 0,
+    inflightActions: 0,
+  });
+}
+
 afterEach(() => {
   jest.restoreAllMocks();
   signedInAs("user_default");
+  online(true);
+  (useAction as jest.Mock).mockReturnValue(jest.fn(async () => undefined));
 });
 
 describe("outbox store", () => {
@@ -126,12 +141,43 @@ describe("outbox file", () => {
 });
 
 describe("outbox in the app", () => {
-  test("should say on home how many notes are waiting", async () => {
+  test("should say on home how many notes are waiting, offline", async () => {
     files().set(OUTBOX, JSON.stringify([note("user_default", "one"), note("user_default", "two")]));
+    online(false);
 
     await renderRouter("src/app", { initialUrl: "/" });
 
     expect(screen.getByText("2 notes kept on this phone, waiting for Andy to read them.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Read the first now/ })).toBeNull();
+  });
+
+  test("should open the oldest waiting note to be read, once online", async () => {
+    // Only where the tap leads is under test; the reading it starts never ends.
+    (useAction as jest.Mock).mockReturnValue(jest.fn(() => new Promise(() => {})));
+    files().set(OUTBOX, JSON.stringify([note("user_default", "one"), note("user_default", "two")]));
+
+    const result = renderRouter("src/app", { initialUrl: "/" });
+    await result;
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: /2 notes kept on this phone\. Read the first now/ }));
+    });
+
+    expect(result.getPathname()).toBe("/capture");
+    expect(result.getSearchParams()).toEqual({ outbox: "user_default-one" });
+  });
+
+  test("should open a waiting note recorded on someone's page from that page", async () => {
+    // Only where the tap leads is under test; the reading it starts never ends.
+    (useAction as jest.Mock).mockReturnValue(jest.fn(() => new Promise(() => {})));
+    files().set(OUTBOX, JSON.stringify([{ ...note("user_default", "one"), aboutProfileId: "contact-1" }]));
+
+    const result = renderRouter("src/app", { initialUrl: "/" });
+    await result;
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: /Read it now/ }));
+    });
+
+    expect(result.getPathname()).toBe("/profile/contact-1/capture");
   });
 
   test("should not show another account's waiting notes, and should remove them", async () => {
