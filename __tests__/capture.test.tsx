@@ -332,6 +332,44 @@ describe("capture screen review step", () => {
     expect(call.draft.mentions).toEqual([]);
   });
 
+  test("should let a tag and a mention be added back after removing every one", async () => {
+    const draft = makeDraft();
+    (useAction as jest.Mock).mockReturnValue(jest.fn(async () => draft));
+    const saveCapture = jest.fn(async (_args: { transcript: string; draft: Draft; source: string }) => ({
+      profileId: "profile-1",
+      noteId: "note-1",
+      createdProfile: true,
+      createdMentionCount: 1,
+    }));
+    mockSaveCapture(saveCapture);
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", { initialUrl: "/profile/contact-1/capture" });
+    await result;
+    await reachReview(handlers, "spoken transcript");
+
+    await fireEvent.press(screen.getByRole("button", { name: "Remove tag 1" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Remove mention 1" }));
+    expect(screen.queryByLabelText("Tag 1")).toBeNull();
+    expect(screen.queryByLabelText("Mentioned name 1")).toBeNull();
+
+    await fireEvent.press(screen.getByRole("button", { name: "Add a tag" }));
+    expect(screen.getByLabelText("Tag 1").props.autoFocus).toBe(true);
+    await fireEvent.changeText(screen.getByLabelText("Tag 1"), "neighbour");
+    await fireEvent.press(screen.getByRole("button", { name: "Add someone" }));
+    expect(screen.getByLabelText("Mentioned name 1").props.autoFocus).toBe(true);
+    await fireEvent.changeText(screen.getByLabelText("Mentioned name 1"), "Cal");
+    await fireEvent.changeText(screen.getByLabelText("Mentioned quote 1"), "Cal was there too.");
+    await fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
+
+    await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
+    const [call] = saveCapture.mock.calls[0];
+    expect(call.draft.primary.tags).toEqual(["neighbour"]);
+    expect(call.draft.mentions).toEqual([
+      { name: "Cal", entityType: "person", quote: "Cal was there too." },
+    ]);
+  });
+
   test("should disable Remember this when the draft has no name", async () => {
     const draft = makeDraft({ name: "" });
     (useAction as jest.Mock).mockReturnValue(jest.fn(async () => draft));
