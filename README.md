@@ -184,6 +184,11 @@ npx expo whoami || npx expo login                                 # the server n
 4. App Store Connect → Users and Access: add testers (Developer role). Andy → TestFlight → Internal Testing: a group (e.g. `V1 QA`), the testers, the build, and a **What to Test** note. Internal testers need no Apple review; they install the TestFlight app and accept the email.
 5. Each later round: deploy the backend, build, submit — testers just tap Update.
 
+**Why the backend goes first, and when to deploy it:**
+- **Before every build that reaches testers or the App Store — not after each PR.** Merge as many PRs as you like; `npm run deploy:backend` once, right before step 2, carries them all. A docs-only PR needs no deploy.
+- **Order matters.** A new build calling a function Production doesn't have yet fails on that screen (Convex throws "Could not find public function"). The other way round is safe: backend changes here are additive, so the build testers already have keeps working against the newer backend.
+- **Not additive?** Renaming or dropping a schema field is the five-step migration in `CLAUDE.md`, deployed in steps between builds — not one deploy.
+
 ## Commit Convention
 
 One small, working, tested vertical slice per commit. Conventional commits (`feat:`, `fix:`, `chore:`). See `.claude/skills/small-commit-flow/SKILL.md` — this is the default workflow Claude Code should follow for every feature request in this repo.

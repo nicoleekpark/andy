@@ -183,6 +183,11 @@ npx expo whoami || npx expo login                                 # 서버가 �
 4. App Store Connect → Users and Access: 테스터 추가 (Developer 역할). Andy → TestFlight → Internal Testing: 그룹(예: `V1 QA`), 테스터, 빌드, **What to Test** 메모. 내부 테스터는 Apple 심사가 없다 — TestFlight 앱을 깔고 메일을 수락하면 된다.
 5. 다음 라운드부터: 백엔드 배포 → 빌드 → 제출. 테스터는 Update 만 누르면 된다.
 
+**왜 백엔드를 먼저 올리나, 언제 올리나:**
+- **테스터나 App Store 로 나가는 빌드를 만들기 직전에, PR 마다가 아니라.** PR 을 몇 개 머지하든 2단계 바로 전에 `npm run deploy:backend` 한 번이면 다 같이 올라간다. 문서만 바뀐 PR 은 배포가 필요 없다.
+- **순서가 중요하다.** 새 빌드가 Production 에 아직 없는 함수를 부르면 그 화면이 실패한다(Convex 가 "Could not find public function" 을 던진다). 반대 순서는 안전하다: 이 프로젝트의 백엔드 변경은 추가만 하므로, 테스터가 이미 가진 빌드는 새 백엔드에서도 그대로 동작한다.
+- **추가가 아닐 때:** 스키마 필드 이름 변경·삭제는 `CLAUDE.md` 의 5단계 마이그레이션이고, 한 번의 배포가 아니라 빌드 사이사이에 나눠서 배포한다.
+
 ## 커밋 컨벤션
 
 커밋 하나당 작고, 동작하고, 테스트된 수직 슬라이스 하나. Conventional commits 형식(`feat:`, `fix:`, `chore:`). `.claude/skills/small-commit-flow/SKILL.md` 참고 — 이 레포에서 모든 기능 요청에 대해 Claude Code가 따라야 하는 기본 워크플로임.
