@@ -20,6 +20,7 @@ import { api } from "@convex/_generated/api";
 import type { Draft } from "@convex/extractionPrompt";
 import { matchKey } from "@convex/naming";
 import { useJustAdded } from "@/lib/use-just-added";
+import { FORM_SCROLL } from "@/lib/form-scroll";
 import { useRowKeys } from "@/lib/use-row-keys";
 import { formatDate, localToday } from "@/lib/dates";
 import { sourceLabel } from "@/lib/note-source";
@@ -1384,7 +1385,7 @@ export function CaptureScreen({
         <ScrollView
           style={styles.container}
           contentContainerStyle={styles.reviewContent}
-          keyboardShouldPersistTaps="handled"
+          {...FORM_SCROLL}
         >
           {/* One line for every way in — voice, typing, a card, whatever comes
               next. "Andy heard this" was wrong for two of the three, and "fix
@@ -1864,9 +1865,7 @@ export function CaptureScreen({
         <ScrollView
           style={styles.editorScroll}
           contentContainerStyle={styles.editorContent}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="interactive"
-          automaticallyAdjustKeyboardInsets
+          {...FORM_SCROLL}
         >
           {heard ? (
             <Text style={styles.lead}>

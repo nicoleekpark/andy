@@ -15,6 +15,7 @@ import { api } from "@convex/_generated/api";
 import type { Draft } from "@convex/extractionPrompt";
 import { answerByName, given, nameOf, pressAlertButton, quietCall } from "../test-support/convex-mocks";
 import { ConvexError } from "convex/values";
+import { scrollViewAround, scrollsAboveKeyboard } from "../test-support/keyboard";
 
 /**
  * src/app/(app)/profile/[id]/capture.tsx's whole reason to exist is the
@@ -352,6 +353,9 @@ describe("capture screen review step", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Remove mention 1" }));
     expect(screen.queryByLabelText("Tag 1")).toBeNull();
     expect(screen.queryByLabelText("Mentioned name 1")).toBeNull();
+    // What you said is the last field on the screen; with the keyboard up it
+    // could not be scrolled to (QA #28).
+    expect(scrollsAboveKeyboard("What you said")).toBe(true);
 
     await fireEvent.press(screen.getByRole("button", { name: "Add a tag" }));
     expect(screen.getByLabelText("Tag 1").props.autoFocus).toBe(true);
@@ -544,15 +548,11 @@ describe("capture screen review step", () => {
     const said = screen.getByLabelText("What you said");
     // The field grows; the screen around it is what scrolls.
     expect(said.props.scrollEnabled).toBe(false);
-    let scroller = said.parent;
-    while (scroller && scroller.props.automaticallyAdjustKeyboardInsets === undefined) {
-      scroller = scroller.parent;
-    }
-    expect(scroller?.props.automaticallyAdjustKeyboardInsets).toBe(true);
-    expect(scroller?.props.keyboardDismissMode).toBe("interactive");
-    expect(scroller?.props.keyboardShouldPersistTaps).toBe("handled");
+    expect(scrollsAboveKeyboard("What you said")).toBe(true);
     // And Read it is inside what scrolls, so it can always be reached.
-    expect(within(scroller!).getByRole("button", { name: "Read it" })).toBeTruthy();
+    expect(
+      within(scrollViewAround("What you said")!).getByRole("button", { name: "Read it" }),
+    ).toBeTruthy();
   });
 
   test("should record again from the check step without reading what was heard", async () => {
