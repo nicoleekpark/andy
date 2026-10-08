@@ -5,6 +5,7 @@ import { useAuth } from "@clerk/expo";
 import { useConvexAuth, useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { Connecting } from "@/components/connecting";
+import { ConfirmHost, ConfirmProvider } from "@/components/confirm-dialog";
 import { LockScreen } from "@/components/lock-screen";
 import { colors } from "@/constants/theme";
 import { LockedContext } from "@/lib/lock-context";
@@ -173,6 +174,7 @@ export default function AppLayout() {
 
   return (
     <LockedContext.Provider value={covered}>
+      <ConfirmProvider>
       <OutboxProvider ownerId={userId!} store={outboxStore}>
       <PendingProvider ownerId={userId!}>
       <OfflineCopyProvider ownerId={userId!}>
@@ -198,6 +200,12 @@ export default function AppLayout() {
                 placeholder shown for the moment before the query lands. */}
               <Stack.Screen name="note/[id]" options={{ title: "Note" }} />
             </Stack>
+            {/*
+              Inside what the lock covers, not beside it: a confirmation left
+              open across a trip to another app must be hidden by the lock and
+              still be there after it (device QA build 4 #51).
+            */}
+            <ConfirmHost />
           </View>
 
           {lock.state.phase === "locked" ? (
@@ -215,6 +223,7 @@ export default function AppLayout() {
       </OfflineCopyProvider>
       </PendingProvider>
       </OutboxProvider>
+      </ConfirmProvider>
     </LockedContext.Provider>
   );
 }

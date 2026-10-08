@@ -2,6 +2,7 @@ import { useAuth } from "@clerk/expo";
 import { useAction } from "convex/react";
 import { useCallback, useRef, useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { useConfirm } from "@/components/confirm-dialog";
 import { api } from "@convex/_generated/api";
 import { ScreenPlaceholder } from "@/components/screen-placeholder";
 import { colors } from "@/constants/theme";
@@ -11,6 +12,7 @@ import { usePending } from "@/lib/pending-changes";
 import { forgetOnThisPhone } from "@/lib/on-phone";
 
 export default function SettingsScreen() {
+  const confirm = useConfirm();
   const { signOut } = useAuth();
   const deleteMyAccount = useAction(api.account.deleteMyAccount);
   const [deleting, setDeleting] = useState(false);
@@ -83,7 +85,7 @@ export default function SettingsScreen() {
    * email. It asks once, and says plainly what goes, because nothing comes back.
    */
   const confirmDelete = useCallback(() => {
-    Alert.alert(
+    confirm(
       "Delete your account?",
       "Everyone you keep in Andy, every note and every photo will be deleted, and your sign-in with it. This can't be undone.",
       [
@@ -91,7 +93,7 @@ export default function SettingsScreen() {
         { text: "Delete account", style: "destructive", onPress: () => void deleteAccount() },
       ],
     );
-  }, [deleteAccount]);
+  }, [confirm, deleteAccount]);
 
   return (
     <View style={styles.container}>

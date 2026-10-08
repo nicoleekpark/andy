@@ -1,12 +1,12 @@
-import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 import { useAuth } from "@clerk/expo";
 import { useAction } from "convex/react";
 import { ConvexError } from "convex/values";
 
 import { renderRouter } from "expo-router/testing-library";
-import { Alert } from "react-native";
 import { api } from "@convex/_generated/api";
 import { answerByName, nameOf, quietCall } from "../test-support/convex-mocks";
+import { answerDialog } from "../test-support/dialog";
 
 /**
  * src/app/(app)/settings.tsx reads `signOut` off Clerk's `useAuth` and wires
@@ -44,16 +44,8 @@ describe("settings screen", () => {
     return deleteMyAccount;
   }
 
-  /** Presses the dialog's button called `choice`, once it has been raised. */
-  function answer(choice: string) {
-    return jest.spyOn(Alert, "alert").mockImplementation((_title, _message, buttons) => {
-      buttons?.find((button) => button.text === choice)?.onPress?.();
-    });
-  }
-
   test("should delete the account and sign out, but only once it is confirmed", async () => {
     const deleteMyAccount = mockDelete(async () => null);
-    const alert = answer("Delete account");
     await renderRouter("src/app", { initialUrl: "/settings" });
 
     await act(async () => {
@@ -61,8 +53,10 @@ describe("settings screen", () => {
     });
 
     // It says what goes before anything goes.
-    expect(alert).toHaveBeenCalledTimes(1);
-    expect(alert.mock.calls[0]?.[1]).toMatch(/every note and every photo/);
+    const dialog = screen.getByTestId("confirm-dialog");
+    expect(within(dialog).getByText(/every note and every photo/)).toBeTruthy();
+    expect(deleteMyAccount).not.toHaveBeenCalled();
+    await answerDialog("Delete account");
     await waitFor(() => expect(deleteMyAccount).toHaveBeenCalledTimes(1));
     const { signOut } = (useAuth as jest.Mock)();
     await waitFor(() => expect(signOut).toHaveBeenCalledTimes(1));
@@ -70,13 +64,14 @@ describe("settings screen", () => {
 
   test("should delete nothing when the question is cancelled", async () => {
     const deleteMyAccount = mockDelete(async () => null);
-    answer("Cancel");
     await renderRouter("src/app", { initialUrl: "/settings" });
 
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Delete account" }));
     });
+    await answerDialog("Cancel");
 
+    expect(screen.queryByTestId("confirm-dialog")).toBeNull();
     expect(deleteMyAccount).not.toHaveBeenCalled();
     const { signOut } = (useAuth as jest.Mock)();
     expect(signOut).not.toHaveBeenCalled();
@@ -86,12 +81,12 @@ describe("settings screen", () => {
     mockDelete(async () => {
       throw new ConvexError("Andy can't delete accounts right now. Nothing was deleted. Try again shortly.");
     });
-    answer("Delete account");
     await renderRouter("src/app", { initialUrl: "/settings" });
 
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Delete account" }));
     });
+    await answerDialog("Delete account");
 
     await waitFor(() => expect(screen.getByText(/Nothing was deleted/)).toBeTruthy());
     const { signOut } = (useAuth as jest.Mock)();

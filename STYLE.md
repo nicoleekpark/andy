@@ -33,6 +33,11 @@ places; 0.7 is the floor at 5.0:1); `line` as placeholder text (1.67:1) and as
 the only edge of an input (1.67:1, needs 3:1). `brass` and `line` as pure
 decoration (the card's stripe, the thread, dividers) are exempt.
 
+**The dim behind a dialog** is `colors.scrim`: `ink` at 42% opacity, not a new hue
+(added 2026-10-08 for `confirm-dialog`, QA #51). The screen behind stays
+readable as where you are; the dialog itself is `paper`, its action a `moss`
+pill (`alert` only for the three deletions above), Cancel plain text.
+
 **Light only.** There is no dark palette, and `app.json` pins `userInterfaceStyle: "light"` so the OS setting can't half-apply one. A dark variant isn't a colour swap here — `brass` is the signature and it would need re-deciding against a dark ground, which is a real design pass this V1 timeline doesn't have. Not in PROJECT_SCOPE's Must/Should either. Reverting is one line in `app.json` plus six dark values in the table above.
 
 ## Typography
@@ -70,6 +75,16 @@ lg 16 · xl 24 · xxl 32 · xxxl 48** points. The scale is the one the screens w
 already using most, written down so new layout stops picking numbers. Existing
 screens move onto it as they are touched — not in a sweep, which would be a
 diff nobody can review for the one value that changed.
+
+Added 2026-10-08, the same way (`src/constants/theme.ts`):
+
+- **`textSize`**: **xs 12 · sm 13 · md 14 · base 15 · lg 16 · xl 17 · xxl 18**
+  points. The sizes the screens already use; nothing outside it without adding
+  it here first.
+- **`radius`**: **card 16 · pill 999**. `pill` is the app's button shape.
+- **`textOpacity`**: **secondary 0.8 · quiet 0.7**. Dimmed `ink` text never goes
+  below 0.7, the lowest that still passes WCAG AA on `paper` (5.0:1).
+- **`colors.scrim`**: the dim behind a dialog, `ink` at 42%.
 
 ## Signature Element — spend the one risk here
 

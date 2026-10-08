@@ -3,9 +3,10 @@ import { useMutation, useQuery } from "convex/react";
 import { getFunctionName } from "convex/server";
 import { router } from "expo-router";
 import { renderRouter } from "expo-router/testing-library";
-import { answerByName, given, pressAlertButton, quietCall } from "../test-support/convex-mocks";
+import { answerByName, given, quietCall } from "../test-support/convex-mocks";
 import { ConvexError } from "convex/values";
 import { scrollsAboveKeyboard } from "../test-support/keyboard";
+import { answerDialog } from "../test-support/dialog";
 
 /**
  * src/app/(app)/note/[id].tsx — correcting a note that is already saved.
@@ -37,14 +38,6 @@ function mockUpdateNote(updateNote: jest.Mock) {
   mockNoteMutations({ update: updateNote });
 }
 
-/**
- * `Alert.alert` guards the delete. Spied rather than left to the RN preset, so
- * a test drives the exact button it means to — and so "Cancel does nothing"
- * can be asserted at all, which is the half of a confirmation that matters.
- */
-function mockDeleteAlert(press: "Delete" | "Cancel") {
-  pressAlertButton(press);
-}
 
 /**
  * Routes the shared `useQuery` mock by function name, so the note screen and
@@ -333,7 +326,6 @@ describe("note screen", () => {
       removedStubCount: 1,
     }));
     mockNoteMutations({ remove });
-    mockDeleteAlert("Delete");
 
     const result = renderRouter("src/app", { initialUrl: "/profile/contact-1" });
     await result;
@@ -344,6 +336,7 @@ describe("note screen", () => {
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Delete this note" }));
     });
+    await answerDialog("Delete");
 
     await waitFor(() => expect(remove).toHaveBeenCalledWith({ noteId: "note-1" }));
     // Forwards to the profile rather than back to the timeline entry that no
@@ -358,7 +351,6 @@ describe("note screen", () => {
       removedStubCount: 0,
     }));
     mockNoteMutations({ remove });
-    mockDeleteAlert("Cancel");
 
     const result = renderRouter("src/app", { initialUrl: "/note/note-1?edit=1" });
     await result;
@@ -366,6 +358,7 @@ describe("note screen", () => {
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Delete this note" }));
     });
+    await answerDialog("Cancel");
 
     // A confirmation that deletes on either answer is not a confirmation.
     expect(remove).not.toHaveBeenCalled();
@@ -379,7 +372,6 @@ describe("note screen", () => {
         throw new ConvexError("Andy couldn't find that note.");
       }),
     });
-    mockDeleteAlert("Delete");
 
     const result = renderRouter("src/app", { initialUrl: "/note/note-1?edit=1" });
     await result;
@@ -387,6 +379,7 @@ describe("note screen", () => {
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Delete this note" }));
     });
+    await answerDialog("Delete");
 
     await waitFor(() =>
       expect(screen.getByText("Andy couldn't find that note.")).toBeTruthy(),
