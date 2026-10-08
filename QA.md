@@ -269,6 +269,10 @@ live here rather than in §7 because that is the screen they happen on.
 | 11.47 | Edit a note offline on this phone; change the same note's details on **another device** (or the dashboard); then Sync here | `sync-conflict-alert`: *Changed somewhere else*. **Keep theirs** drops your change; **Keep mine** saves yours over it |
 | 11.48 | With a change waiting, **Settings → Sign out** | The warning counts it: *"This phone has 1 change made offline and not synced…"* |
 | 11.49 | Press **Sync**, and while it says *Syncing…* edit another waiting note again | Nothing is lost: after Sync, the newer edit is still waiting (one change), and a second Sync saves it **without** a *Changed somewhere else* question |
+| 11.50 | Offline, someone's page → **Edit** (top) → change the name, how you know them, a tag → **Save changes** | `edit-offline-hint` while editing; back on the page the changes show at once; `pending-line` counts **1 change** |
+| 11.51 | Offline, **Delete** that person | Back on `home`, they are gone; their name in **other** people's notes still shows (not tappable); `pending-line` counts it |
+| 11.52 | Online → **Sync** | Saved; the line clears. A change the server refuses (e.g. a name over the limit) says why, in its own words, and stays waiting |
+| 11.53 | Rename someone offline here and differently on another device, then Sync here | *Changed somewhere else* → Keep theirs / Keep mine |
 
 ## 12. Search indexing
 

@@ -221,6 +221,7 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `tags-add-button` | Add a tag |
 | `profile-save-button` | Save changes |
 | `profile-delete-button` | Delete + 이름 (확인 창) |
+| `edit-offline-hint` | 오프라인일 때 — 바꾼 것은 Sync할 때까지 이 폰에 보관된다는 안내 |
 
 ### `note`
 

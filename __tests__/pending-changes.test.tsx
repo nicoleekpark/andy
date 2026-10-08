@@ -115,6 +115,49 @@ describe("waiting changes", () => {
     ).toEqual([]);
   });
 
+  test("should show a person's edit tidied the way the server stores it — not something that changes after Sync", () => {
+    const tidy: PendingChange = {
+      id: "t",
+      kind: "updateProfile",
+      profileId: "p-nina",
+      fields: {
+        name: " Nina ",
+        entityType: "person",
+        relationshipContext: "",
+        firstMetDate: "",
+        tags: ["Climbing", "climbing ", ""],
+        aliases: ["nina", "Nini"],
+      },
+      base: { name: "Nina", entityType: "person", relationshipContext: "", firstMetDate: "", tags: [], aliases: [] },
+      madeAt: 1,
+    };
+
+    const shown = applyPending(copy, [tidy]).profiles[0];
+
+    expect(shown).toEqual(expect.objectContaining({ name: "Nina", tags: ["Climbing"], aliases: ["Nini"] }));
+  });
+
+  test("should take a deleted person, and their own notes, out of the copy — not their name in others' notes", () => {
+    const rowan = { ...nina, _id: "p-rowan", name: "Rowan" };
+    const rowanNote = { ...note, _id: "n-2", profileId: "p-rowan", text: "Rowan says Nina moved." };
+    const link = { _id: "m-1", _creationTime: 3, userId: "u1", noteId: "n-2", profileId: "p-nina", name: "Nina", quote: "Nina moved" };
+    const withBoth = { ...copy, profiles: [nina, rowan], notes: [note, rowanNote], links: [link] } as unknown as OfflineCopy;
+    const gone: PendingChange = {
+      id: "g",
+      kind: "removeProfile",
+      profileId: "p-nina",
+      base: { name: "Nina", entityType: "person", relationshipContext: "", firstMetDate: "", tags: [], aliases: [] },
+      madeAt: 1,
+    };
+
+    const after = applyPending(withBoth, [gone]);
+
+    expect(after.profiles.map((p) => p.name)).toEqual(["Rowan"]);
+    expect(after.notes.map((n) => n._id)).toEqual(["n-2"]);
+    // Rowan's note still names her — the link stays, it just opens nothing.
+    expect(after.links).toEqual([link]);
+  });
+
   test("should set an unreadable file aside rather than lose it, and drop another account's", () => {
     let asideCalls = 0;
     const store = (contents: string | null): PhoneStore => ({
@@ -271,7 +314,7 @@ describe("Sync", () => {
 
     await waitFor(() => expect(alert).toHaveBeenCalledWith("Some changes didn't sync", expect.any(String)));
     const left = JSON.parse(files().get(PENDING)!).changes as PendingChange[];
-    expect(left.map((c) => c.noteId)).toEqual(["n-2"]);
+    expect(left.map((c) => (c as { noteId: string }).noteId)).toEqual(["n-2"]);
   });
 
   test("should keep an edit made while Sync was working, compared against what Sync just saved", async () => {
@@ -330,5 +373,119 @@ describe("Sync", () => {
 
     await waitFor(() => expect(alert).toHaveBeenCalledWith("Didn't save", expect.any(String)));
     expect(files().has(PENDING)).toBe(true);
+  });
+});
+
+describe("a person, offline", () => {
+  test("should keep an edit to a person on the phone, show it at once, and save it on Sync", async () => {
+    online(false);
+    const result = renderRouter("src/app", { initialUrl: "/profile/p-nina/edit" });
+    await result;
+
+    await act(async () => {
+      fireEvent.changeText(screen.getByDisplayValue("Nina"), "Nina Park");
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Save changes" }));
+    });
+
+    const kept = JSON.parse(files().get(PENDING)!).changes as PendingChange[];
+    expect(kept).toEqual([
+      expect.objectContaining({
+        kind: "updateProfile",
+        profileId: "p-nina",
+        fields: expect.objectContaining({ name: "Nina Park" }),
+        base: expect.objectContaining({ name: "Nina" }),
+      }),
+    ]);
+    await waitFor(() => expect(result.getPathname()).toBe("/profile/p-nina"));
+    expect(screen.getAllByText("Nina Park").length).toBeGreaterThan(0);
+  });
+
+  test("should keep deleting a person on the phone, taking them and their notes off home", async () => {
+    online(false);
+    jest.spyOn(Alert, "alert").mockImplementation((_t, _m, buttons) => {
+      buttons?.find((b) => b.text === "Delete")?.onPress?.();
+    });
+    const result = renderRouter("src/app", { initialUrl: "/profile/p-nina/edit" });
+    await result;
+
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Delete this person" }));
+    });
+
+    expect(JSON.parse(files().get(PENDING)!).changes).toEqual([
+      expect.objectContaining({ kind: "removeProfile", profileId: "p-nina" }),
+    ]);
+    await waitFor(() => expect(result.getPathname()).toBe("/"));
+    expect(screen.queryByText("Nina")).toBeNull();
+  });
+
+  const renamed: PendingChange = {
+    id: "p1",
+    kind: "updateProfile",
+    profileId: "p-nina",
+    fields: { name: "Nina Park", entityType: "person", relationshipContext: "", firstMetDate: "", tags: [], aliases: [] },
+    base: { name: "Nina", entityType: "person", relationshipContext: "", firstMetDate: "", tags: [], aliases: [] },
+    madeAt: 1,
+  };
+
+  test("should save a waiting edit to a person on Sync", async () => {
+    waiting([renamed]);
+    const { mutation } = server({ profile: { ...nina, aliases: [] }, notes: [], mentionedIn: [], mentionedInTotal: 0, photoUrl: null });
+
+    await renderRouter("src/app", { initialUrl: "/" });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Sync" }));
+    });
+
+    await waitFor(() => expect(mutation).toHaveBeenCalledTimes(1));
+    expect(nameOf((mutation.mock.calls[0] as unknown[])[0])).toBe("profiles:updateProfile");
+    expect((mutation.mock.calls[0] as unknown[])[1]).toEqual(
+      expect.objectContaining({ profileId: "p-nina", name: "Nina Park" }),
+    );
+    expect(files().has(PENDING)).toBe(false);
+  });
+
+  test("should ask before overwriting a person changed elsewhere", async () => {
+    waiting([renamed]);
+    const { mutation } = server({
+      profile: { ...nina, name: "Nina Kim", aliases: [] },
+      notes: [],
+      mentionedIn: [],
+      mentionedInTotal: 0,
+      photoUrl: null,
+    });
+    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+
+    await renderRouter("src/app", { initialUrl: "/" });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Sync" }));
+    });
+
+    await waitFor(() =>
+      expect(alert).toHaveBeenCalledWith("Changed somewhere else", expect.any(String), expect.any(Array), expect.anything()),
+    );
+    expect(mutation).not.toHaveBeenCalled();
+  });
+
+  test("should say why, in the server's words, when a change can never be saved", async () => {
+    waiting([renamed]);
+    const { ConvexError } = jest.requireActual("convex/values") as typeof import("convex/values");
+    const mutation = jest.fn(async () => {
+      throw new ConvexError("That's longer than a name. Try a shorter one.");
+    });
+    const query = jest.fn(async () => ({ profile: { ...nina, aliases: [] }, notes: [], mentionedIn: [], mentionedInTotal: 0, photoUrl: null }));
+    (useConvex as jest.Mock).mockReturnValue({ query, mutation, action: jest.fn() });
+    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+
+    await renderRouter("src/app", { initialUrl: "/" });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Sync" }));
+    });
+
+    await waitFor(() =>
+      expect(alert).toHaveBeenCalledWith("Some changes didn't sync", expect.stringContaining("That's longer than a name")),
+    );
   });
 });

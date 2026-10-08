@@ -308,8 +308,8 @@ export default function ProfileScreen() {
     );
   }, []);
 
-  // A note can be edited offline (kept on the phone until Sync); editing the
-  // person themselves cannot yet, so the header's Edit stays online-only.
+  // Notes and the person can both be edited offline (kept on the phone until
+  // Sync, `pending-changes.tsx`).
   const editNote = (note: { _id: string; createdAt: number }) => (
     <Pressable
       accessibilityRole="button"
@@ -331,7 +331,7 @@ export default function ProfileScreen() {
           headerRight: () =>
             // Only once there is somebody to edit. Offering it over a
             // not-found screen would be a button that can only fail.
-            result === undefined || result === null || !online ? null : (
+            result === undefined || result === null ? null : (
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Edit this person"
