@@ -119,3 +119,110 @@ test("should order two notes saved at the same moment the same way online and of
   expect(online?.notes.map((n) => n.note.text).slice(0, 2)).toEqual(["second saved", "first saved"]);
   expect(offline?.notes.map((n) => n.note.text)).toEqual(online?.notes.map((n) => n.note.text));
 });
+
+/**
+ * Finding someone by a word in what you kept about them, not only by name
+ * (decided 2026-10-08) — the same online and offline, since both run
+ * `searchView`.
+ */
+async function marcusTheDogLover() {
+  const t = convexTest(schema, modules);
+  await t.withIdentity(ALICE).mutation(api.users.ensureUser, {});
+  await t.run(async (ctx) => {
+    const alice = (await ctx.db.query("users").collect())[0]!;
+    const marcus = await ctx.db.insert("profiles", {
+      userId: alice._id,
+      name: "Marcus",
+      entityType: "person",
+      relationshipContext: "Climbing partner",
+      tags: ["dog lover"],
+      autoCreated: false,
+    });
+    const nina = await ctx.db.insert("profiles", {
+      userId: alice._id,
+      name: "Nina",
+      entityType: "person",
+      tags: [],
+      autoCreated: false,
+    });
+    await ctx.db.insert("notes", {
+      userId: alice._id,
+      profileId: marcus,
+      text: "Coffee with Marcus.",
+      keyFacts: ["Runs a climbing gym in Oakland"],
+      source: "manual",
+      createdAt: 1,
+    });
+    await ctx.db.insert("notes", {
+      userId: alice._id,
+      profileId: nina,
+      text: "Met Nina at the shelter. She fosters two greyhounds and hates mornings.",
+      source: "manual",
+      createdAt: 2,
+    });
+  });
+  return t.withIdentity(ALICE);
+}
+
+test("should find someone by a word in their tags, details or notes, saying where", async () => {
+  const asAlice = await marcusTheDogLover();
+  const find = async (query: string) =>
+    (await asAlice.query(api.people.search, { query })).people.map((p) => [p.name, p.matchedIn]);
+
+  // By name, as before.
+  expect(await find("Mar")).toEqual([["Marcus", undefined]]);
+  // By a tag, both words and either one.
+  expect(await find("dog lover")).toEqual([["Marcus", "dog lover"]]);
+  expect(await find("lover")).toEqual([["Marcus", "dog lover"]]);
+  // By what to remember, and how you know them.
+  expect(await find("oakland")).toEqual([["Marcus", "Runs a climbing gym in Oakland"]]);
+  expect(await find("climbing")).toEqual([["Marcus", "Climbing partner"]]);
+  // By the note's own words — the sentence it is in.
+  expect(await find("greyhound")).toEqual([["Nina", "She fosters two greyhounds and hates mornings."]]);
+});
+
+test("should not search by word on a single letter, which is in everyone", async () => {
+  const asAlice = await marcusTheDogLover();
+
+  // "o" is in nearly every note here, and in no one's name.
+  const result = await asAlice.query(api.people.search, { query: "o" });
+
+  expect(result.people).toEqual([]);
+});
+
+test("should not let a name hide someone else's word match — a dog called Max, Marcus tagged 'max effort'", async () => {
+  const t = convexTest(schema, modules);
+  await t.withIdentity(ALICE).mutation(api.users.ensureUser, {});
+  await t.run(async (ctx) => {
+    const alice = (await ctx.db.query("users").collect())[0]!;
+    await ctx.db.insert("profiles", {
+      userId: alice._id,
+      name: "Max",
+      entityType: "animal",
+      tags: [],
+      autoCreated: false,
+    });
+    const marcus = await ctx.db.insert("profiles", {
+      userId: alice._id,
+      name: "Marcus",
+      entityType: "person",
+      tags: ["max effort athlete"],
+      autoCreated: false,
+    });
+    await ctx.db.insert("notes", {
+      userId: alice._id,
+      profileId: marcus,
+      text: "Trained with Marcus.",
+      source: "manual",
+      createdAt: 1,
+    });
+  });
+
+  const result = await t.withIdentity(ALICE).query(api.people.search, { query: "max" });
+
+  // Max by name first, then Marcus by his tag.
+  expect(result.people.map((p) => [p.name, p.matchedIn])).toEqual([
+    ["Max", undefined],
+    ["Marcus", "max effort athlete"],
+  ]);
+});

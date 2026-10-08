@@ -46,6 +46,12 @@ export const search = query({
          */
         mentionCount: v.number(),
         lastNoteAt: v.union(v.number(), v.null()),
+        /**
+         * When they were found by a word in what you kept about them rather
+         * than by name: the sentence it is in, so the row says why they are
+         * here ("Fosters two greyhounds"). Absent for a match by name.
+         */
+        matchedIn: v.optional(v.string()),
       }),
     ),
     /** Somebody else's note that names one of them, newest first. */
