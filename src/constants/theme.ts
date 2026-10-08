@@ -26,6 +26,11 @@ export const colors = {
    * 4.5:1, both as text on paper and as paper text on a red button (2026-10-08).
    */
   alert: "#9F4C3B",
+  /**
+   * The dim behind a dialog: `ink` at 42%, not a new hue. The screen behind
+   * stays readable as where you are (`confirm-dialog`, 2026-10-08).
+   */
+  scrim: "rgba(42, 38, 34, 0.42)",
 } as const;
 
 export type ColorToken = keyof typeof colors;
@@ -74,4 +79,36 @@ export const space = {
   xl: 24,
   xxl: 32,
   xxxl: 48,
+} as const;
+
+/**
+ * Text sizes, in points. Taken from what the screens already use (12 to 18,
+ * counted on 2026-10-08: 14 ×30, 15 ×27, 16 ×19, 13 ×14, 12 ×14, 18 ×7,
+ * 17 ×7). Existing screens move over as they are touched.
+ */
+export const textSize = {
+  xs: 12,
+  sm: 13,
+  md: 14,
+  base: 15,
+  lg: 16,
+  xl: 17,
+  xxl: 18,
+} as const;
+
+/** Corner radii. `pill` is the app's button shape; `card` a floating card. */
+export const radius = {
+  card: 16,
+  pill: 999,
+} as const;
+
+/**
+ * How far `ink` text may be dimmed. WCAG 2.2 AA needs 4.5:1 on `paper`: 0.8
+ * gives 6.8:1 and 0.7 gives 5.0:1, the floor. Below 0.7 text fails — 0.6 is
+ * 3.8:1 — so lighter is for disabled controls only, never for text someone
+ * needs to read. Checked in `__tests__/contrast.test.ts`.
+ */
+export const textOpacity = {
+  secondary: 0.8,
+  quiet: 0.7,
 } as const;

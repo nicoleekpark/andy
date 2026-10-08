@@ -10,7 +10,7 @@ import {
 } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { colors, space } from "@/constants/theme";
+import { colors, radius, space, textOpacity, textSize } from "@/constants/theme";
 
 /**
  * Andy's own confirmation dialog, in place of `Alert.alert`.
@@ -179,31 +179,30 @@ export function ConfirmHost() {
 const styles = StyleSheet.create({
   scrim: {
     ...StyleSheet.absoluteFill,
-    // `ink`, dimmed: the screen behind stays readable as where you are.
-    backgroundColor: "rgba(42, 38, 34, 0.42)",
+    backgroundColor: colors.scrim,
     justifyContent: "center",
     paddingHorizontal: space.xxl,
     paddingVertical: space.xxxl,
   },
   card: {
     backgroundColor: colors.paper,
-    borderRadius: 16,
+    borderRadius: radius.card,
     padding: space.xl,
     gap: space.md,
     maxHeight: "100%",
   },
   messageScroll: { flexGrow: 0, flexShrink: 1 },
-  title: { color: colors.ink, fontSize: 18, fontWeight: "600" },
-  message: { color: colors.ink, fontSize: 15, lineHeight: 21, opacity: 0.8 },
+  title: { color: colors.ink, fontSize: textSize.xxl, fontWeight: "600" },
+  message: { color: colors.ink, fontSize: textSize.base, opacity: textOpacity.secondary },
   buttons: { gap: space.sm, marginTop: space.sm },
   pill: {
     backgroundColor: colors.moss,
-    borderRadius: 999,
-    paddingVertical: 14,
+    borderRadius: radius.pill,
+    paddingVertical: space.lg,
     alignItems: "center",
   },
   destructive: { backgroundColor: colors.alert },
-  pillLabel: { color: colors.paper, fontSize: 16, fontWeight: "600" },
-  plain: { paddingVertical: 10, alignItems: "center" },
-  plainLabel: { color: colors.ink, fontSize: 15, opacity: 0.7 },
+  pillLabel: { color: colors.paper, fontSize: textSize.lg, fontWeight: "600" },
+  plain: { paddingVertical: space.md, alignItems: "center" },
+  plainLabel: { color: colors.ink, fontSize: textSize.base, opacity: textOpacity.quiet },
 });

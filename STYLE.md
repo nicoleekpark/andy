@@ -76,6 +76,16 @@ already using most, written down so new layout stops picking numbers. Existing
 screens move onto it as they are touched — not in a sweep, which would be a
 diff nobody can review for the one value that changed.
 
+Added 2026-10-08, the same way (`src/constants/theme.ts`):
+
+- **`textSize`**: **xs 12 · sm 13 · md 14 · base 15 · lg 16 · xl 17 · xxl 18**
+  points. The sizes the screens already use; nothing outside it without adding
+  it here first.
+- **`radius`**: **card 16 · pill 999**. `pill` is the app's button shape.
+- **`textOpacity`**: **secondary 0.8 · quiet 0.7**. Dimmed `ink` text never goes
+  below 0.7, the lowest that still passes WCAG AA on `paper` (5.0:1).
+- **`colors.scrim`**: the dim behind a dialog, `ink` at 42%.
+
 ## Signature Element — spend the one risk here
 
 The **Briefing card** (pre-meeting digest / post-meeting nudge) is the single place that looks different from everything else — and it survived the day-4 scope cut precisely because it is the app's signature, not despite it: a `brass` left-edge accent stripe and a `brass` timestamp. Every other screen — profile list, search results, settings — stays plain and disciplined. Don't spread this treatment elsewhere or it stops being a signature.

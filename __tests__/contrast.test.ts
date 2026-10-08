@@ -1,4 +1,4 @@
-import { colors } from "../src/constants/theme";
+import { colors, textOpacity } from "../src/constants/theme";
 
 /**
  * WCAG 2.2 AA for the colour pairs Andy draws text with (STYLE.md →
@@ -19,12 +19,26 @@ function contrast(a: string, b: string): number {
 
 const TEXT = 4.5;
 
+/** `ink` drawn at this opacity over `paper`, as the eye receives it. */
+function dimmed(opacity: number): string {
+  const channel = (i: number) => {
+    const ink = parseInt(colors.ink.slice(i, i + 2), 16);
+    const paper = parseInt(colors.paper.slice(i, i + 2), 16);
+    return Math.round(ink * opacity + paper * (1 - opacity))
+      .toString(16)
+      .padStart(2, "0");
+  };
+  return `#${channel(1)}${channel(3)}${channel(5)}`;
+}
+
 test.each([
   ["ink text on paper", colors.ink, colors.paper],
   ["paper text on a moss button", colors.paper, colors.moss],
   ["moss text on paper", colors.moss, colors.paper],
   ["alert text on paper (errors, Delete links)", colors.alert, colors.paper],
   ["paper text on an alert button (Delete, Stop)", colors.paper, colors.alert],
+  ["secondary (dimmed) ink text on paper", dimmed(textOpacity.secondary), colors.paper],
+  ["quiet (most dimmed) ink text on paper", dimmed(textOpacity.quiet), colors.paper],
 ])("%s meets 4.5:1", (_name, foreground, background) => {
   expect(contrast(foreground, background)).toBeGreaterThanOrEqual(TEXT);
 });
