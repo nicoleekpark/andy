@@ -17,7 +17,7 @@ Names follow `docs/design/component-names.md` (`briefing-card`, `home`,
 | 2 | Ask at the point of use, less heavily | Decided — to design |
 | 3 | Connect later, after "Don't Allow", and disconnect | Decided — to design |
 | 4 | Mute from the card (X) | Decided — to design |
-| 5 | Match names on the phone; the calendar never leaves it | Decided — to build |
+| 5 | Match names on the phone; the calendar never leaves it | ✅ Built — `convex/calendarMatch.ts`, used by `src/lib/use-briefing.ts`; `calendar.matchEvents` kept only for build 4 |
 
 ## 1. V1 keeps the briefing, with a remote off switch
 
@@ -98,10 +98,11 @@ owner's choice: "mute" means both). Rules that follow from it:
 
 ## 5. Privacy — names are matched on the phone
 
-Today the phone sends upcoming event titles and attendee names to Andy's
-server (`calendar.matchEvents`), which matches them against the person's own
-saved names and keeps nothing. The iOS purpose string says so; the card does
-not.
+Until build 5 the phone sent upcoming event titles and attendee names to
+Andy's server (`calendar.matchEvents`), which matched them against the
+person's own saved names and kept nothing. The iOS purpose string said so; the
+card did not. From build 5 the matching happens on the phone, and the purpose
+string and the card both say so.
 
 Industry practice is data minimisation and on-device processing where it is
 possible; Apple does not count data that never leaves the device as
@@ -119,11 +120,16 @@ and the matching is pure functions (`convex/calendarNames.ts`,
 - The purpose strings in `app.json` change from "matched against the people
   saved in your own Andy account" to "matched on this phone", in the same PR
   (re-run `app-store-reviewer`, since a permission string changes).
+- **At submission (App Store Connect, not the repo):** App Privacy → Calendar
+  is **Not Collected** — Apple counts only data transmitted off the device.
+  If an earlier answer listed it as collected, correct it before `eas
+  submit`. Build 4 still sends events to `calendar.matchEvents`, but it is a
+  TestFlight build, not a submission.
 
 ## Build order
 
 1. ~~Remote off switch~~ — #124.
-2. On-device matching (5) + purpose strings.
+2. ~~On-device matching (5) + purpose strings~~ — built. `calendar.matchEvents` stays until build 4 is retired, then goes with its tests.
 3. Card: Not now, Open Settings when refused, X → mute dialog (2, 3, 4).
 4. `settings` → Calendar section: Show on home, Connect / off, Open Settings;
    meeting-reminder timing (#9) belongs here too, if it is taken on.
