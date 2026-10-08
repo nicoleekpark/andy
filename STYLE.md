@@ -22,11 +22,16 @@ import `colors`. `alert` has exactly one non-error use — destructive controls:
 deleting a note or a person on their edit screens, and deleting the whole
 account in Settings. Each has earned the same weight as an error.
 
-**Accessibility (decided 2026-10-08): every pairing meets WCAG 2.2 AA.** Text
-4.5:1 (3:1 at 18pt, or 14pt bold), the edges of controls and meaningful icons
-3:1, touch targets at least 44×44pt. A colour that fails is changed here, not
-argued for case by case. `__tests__/contrast.test.ts` checks the pairs the app
-draws text with.
+**Accessibility (decided 2026-10-08): every pairing must meet WCAG 2.2 AA.**
+Text 4.5:1 (3:1 at 18pt, or 14pt bold), the edges of controls and meaningful
+icons 3:1, touch targets at least 44×44pt. A colour that fails is changed here,
+not argued for case by case. `__tests__/contrast.test.ts` checks the pairs the
+app draws text with. `alert` was fixed first (4.33 → 4.71:1). **Known gaps, each
+its own slice, not yet in the test:** `brass` text on `paper` (2.28:1 — the time
+on the Briefing card); `ink` text dimmed to 0.5–0.6 opacity (2.9–3.8:1, about 45
+places; 0.7 is the floor at 5.0:1); `line` as placeholder text (1.67:1) and as
+the only edge of an input (1.67:1, needs 3:1). `brass` and `line` as pure
+decoration (the card's stripe, the thread, dividers) are exempt.
 
 **Light only.** There is no dark palette, and `app.json` pins `userInterfaceStyle: "light"` so the OS setting can't half-apply one. A dark variant isn't a colour swap here — `brass` is the signature and it would need re-deciding against a dark ground, which is a real design pass this V1 timeline doesn't have. Not in PROJECT_SCOPE's Must/Should either. Reverting is one line in `app.json` plus six dark values in the table above.
 
