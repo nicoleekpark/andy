@@ -5,6 +5,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { removeOrphanedAutoCreated } from "./cleanup";
 import { candidatesForSpokenName, matchKey, mergeTags } from "./naming";
 import { nameToFileUnder, possessiveBases } from "./possessive";
+import { withoutEmbedding } from "./offlineViews";
 import schema from "./schema";
 import { getAuthenticatedUser } from "./users";
 import {
@@ -500,7 +501,8 @@ export const byId = query({
     const profileName =
       profile !== null && profile.userId === user._id ? profile.name : "";
 
-    return { note, profileName };
+    // Without its search vector, like every note a screen receives.
+    return { note: withoutEmbedding(note), profileName };
   },
 });
 

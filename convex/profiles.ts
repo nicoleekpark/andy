@@ -2,10 +2,10 @@ import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { removeOrphanedAutoCreated } from "./cleanup";
-import { rememberedFacts } from "./embeddingModel";
 import { MAX_NAME_CHARS } from "./extractionPrompt";
-import { candidatesForSpokenName, cleanAliases, compareNamesForList, matchKey, mergeTags } from "./naming";
+import { candidatesForSpokenName, cleanAliases, matchKey, mergeTags } from "./naming";
 import { possessiveBases } from "./possessive";
+import { peopleView, withNotesView, withoutEmbedding } from "./offlineViews";
 import schema from "./schema";
 import { getAuthenticatedUser } from "./users";
 
@@ -14,7 +14,6 @@ import { getAuthenticatedUser } from "./users";
  * count. Enough to see the shape of who brings this person up, short enough
  * that it does not push the timeline off the screen.
  */
-const MENTIONED_IN_SHOWN = 5;
 
 /**
  * TODO(when a single profile passes ~10 notes): an "often with" summary.
@@ -118,99 +117,53 @@ export const withNotes = query({
     }
 
     const profile = await ctx.db.get("profiles", profileId);
-    // One `null` for "no such profile" and for "not yours". Distinguishing them
-    // would let anyone with a valid id discover whether it exists.
     if (profile === null || profile.userId !== user._id) {
       return null;
     }
 
-    // Both `userId` and `profileId` are pinned, so this check stands on its own
-    // rather than leaning on the ownership check above — a note would have to
-    // fail both to be returned. Worth keeping that way: Convex has no foreign
-    // keys, so "a note's userId always matches its profile's owner" is an
-    // invariant every future write path has to keep, not something the database
-    // enforces.
-    //
-    // Ordered by the index rather than sorted afterwards, and reversed so the
-    // newest note is first — the timeline reads down into the past.
-    const notes = await ctx.db
-      .query("notes")
-      .withIndex("by_user_and_profile_and_createdAt", (q) =>
-        q.eq("userId", user._id).eq("profileId", profileId),
+    // Only this person's notes, through the narrow index — not the whole
+    // account's (security-reviewer, 2026-10-07: reading everything on every
+    // page open grows with the account). Plus the few notes of someone else's
+    // they came up in, fetched one by one from this user's own links. The page
+    // itself is built by the function the phone's offline copy uses too.
+    const [profiles, links, theirNotes] = await Promise.all([
+      ctx.db
+        .query("profiles")
+        .withIndex("by_user", (q) => q.eq("userId", user._id))
+        .collect(),
+      ctx.db
+        .query("noteMentions")
+        .withIndex("by_user", (q) => q.eq("userId", user._id))
+        .collect(),
+      ctx.db
+        .query("notes")
+        .withIndex("by_user_and_profile_and_createdAt", (q) =>
+          q.eq("userId", user._id).eq("profileId", profileId),
+        )
+        .order("desc")
+        .collect(),
+    ]);
+    const sources = (
+      await Promise.all(
+        links
+          .filter((link) => link.profileId === profileId)
+          .map((link) => ctx.db.get("notes", link.noteId)),
       )
-      .order("desc")
-      .collect();
+    ).filter(
+      (source): source is NonNullable<typeof source> =>
+        source !== null && source.userId === user._id && source.profileId !== profileId,
+    );
+    const notes = [...theirNotes, ...sources];
 
-    // Every link this user owns, read once and split two ways rather than
-    // queried per note. Same trade as `people` below: one read while a person
-    // has hundreds of notes, revisited with pagination when that stops holding.
-    const links = await ctx.db
-      .query("noteMentions")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
-
-    // Names for display. Scoped to this user, so a link can never resolve to
-    // someone else's row even if one somehow pointed there.
-    const names = new Map<string, string>();
-    for (const owned of await ctx.db
-      .query("profiles")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect()) {
-      names.set(owned._id, owned.name);
-    }
-
-    const byNote = new Map<
-      string,
-      { profileId: Id<"profiles">; name: string; quote: string; exists: boolean }[]
-    >();
-    const mentionedIn = [];
-    const noteById = new Map(notes.map((note) => [note._id as string, note]));
-
-    for (const link of links) {
-      if (link.profileId === profileId) {
-        // Somebody else's note that names this person. Notes about *them* are
-        // the timeline; this is the other direction.
-        const source = await ctx.db.get("notes", link.noteId);
-        if (source !== null && source.profileId !== profileId) {
-          mentionedIn.push({
-            noteId: link.noteId,
-            createdAt: source.createdAt,
-            quote: link.quote,
-            aboutProfileId: source.profileId,
-            aboutName: names.get(source.profileId) ?? "",
-          });
-        }
-      }
-      if (noteById.has(link.noteId)) {
-        const list = byNote.get(link.noteId) ?? [];
-        // The profile's current name while it exists, so a rename shows
-        // everywhere; the name the link recorded once it does not.
-        const current = names.get(link.profileId);
-        list.push({
-          profileId: link.profileId,
-          name: current ?? link.name,
-          quote: link.quote,
-          exists: current !== undefined,
-        });
-        byNote.set(link.noteId, list);
-      }
-    }
-
-    mentionedIn.sort((a, b) => b.createdAt - a.createdAt);
-
-    return {
-      profile,
-      photoUrl:
-        profile.photoStorageId === undefined
-          ? null
-          : await ctx.storage.getUrl(profile.photoStorageId),
-      notes: notes.map((note) => ({
-        note,
-        mentions: byNote.get(note._id) ?? [],
-      })),
-      mentionedIn: mentionedIn.slice(0, MENTIONED_IN_SHOWN),
-      mentionedInTotal: mentionedIn.length,
-    };
+    return withNotesView(
+      profileId,
+      profiles,
+      notes.map(withoutEmbedding),
+      links,
+      profile.photoStorageId === undefined
+        ? null
+        : await ctx.storage.getUrl(profile.photoStorageId),
+    );
   },
 });
 
@@ -251,66 +204,16 @@ export const people = query({
   ),
   handler: async (ctx) => {
     const user = await getAuthenticatedUser(ctx);
-
-    // Every note this user owns, in one read. Fine while a person has hundreds
-    // rather than tens of thousands; when that stops being true the fix is a
-    // paginated home, not a denormalised counter.
     const notes = await ctx.db
       .query("notes")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect();
-
-    const byProfile = new Map<
-      string,
-      {
-        lastNoteAt: number;
-        noteCount: number;
-        latestFact: string | null;
-        latestFactAt: number;
-      }
-    >();
-    for (const note of notes) {
-      const seen = byProfile.get(note.profileId);
-      // Through the same filter search and Ask Andy use, so a whitespace-only
-      // fact is no more a line here than it is a fact there.
-      const fact = rememberedFacts(note.keyFacts)[0];
-      // Latest by `createdAt`, which is when the note was *said*: a note kept
-      // offline and saved later is backdated to that moment (`noteDate` in
-      // notes.ts), so a later save of an older note does not take over the
-      // line under someone's name. `>=` on an exact tie (the same millisecond)
-      // lets the later-read note win, which is arbitrary and harmless.
-      const newer =
-        fact !== undefined && note.createdAt >= (seen?.latestFactAt ?? -Infinity);
-      byProfile.set(note.profileId, {
-        lastNoteAt: Math.max(seen?.lastNoteAt ?? 0, note.createdAt),
-        noteCount: (seen?.noteCount ?? 0) + 1,
-        latestFact: newer ? fact : (seen?.latestFact ?? null),
-        latestFactAt: newer ? note.createdAt : (seen?.latestFactAt ?? -Infinity),
-      });
-    }
-
     const profiles = await ctx.db
       .query("profiles")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect();
-
-    return profiles
-      .flatMap((profile) => {
-        const stats = byProfile.get(profile._id);
-        return stats === undefined
-          ? []
-          : [
-              {
-                profile,
-                lastNoteAt: stats.lastNoteAt,
-                noteCount: stats.noteCount,
-                latestFact: stats.latestFact,
-              },
-            ];
-      })
-      // Stable, and `by_user` hands profiles over oldest first, so two people
-      // with the same name stay in the order they were added.
-      .sort((a, b) => compareNamesForList(a.profile.name, b.profile.name));
+    // Built by the function the phone's offline copy uses too.
+    return peopleView(profiles, notes.map(withoutEmbedding));
   },
 });
 
