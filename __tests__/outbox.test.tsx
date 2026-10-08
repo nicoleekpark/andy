@@ -4,6 +4,7 @@ import { useAuth } from "@clerk/expo";
 import { useAction, useConvexAuth, useConvexConnectionState } from "convex/react";
 import { renderRouter } from "expo-router/testing-library";
 import { fileStore, loadOutbox, type OutboxNote, type OutboxStore } from "../src/lib/outbox";
+import { answerDialog } from "../test-support/dialog";
 
 /**
  * Notes kept on this phone while offline (`src/lib/outbox.tsx`): what is kept,
@@ -272,14 +273,12 @@ describe("outbox in the app", () => {
     files().set(OUTBOX, JSON.stringify([note("user_default", "one")]));
     const signOut = signedInAs("user_default");
     (useAction as jest.Mock).mockReturnValue(jest.fn(async () => undefined));
-    jest.spyOn(Alert, "alert").mockImplementation((_title, _message, buttons) => {
-      buttons?.find((b) => b.text === "Delete account")?.onPress?.();
-    });
 
     await renderRouter("src/app", { initialUrl: "/settings" });
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Delete account" }));
     });
+    await answerDialog("Delete account");
 
     await waitFor(() => expect(signOut).toHaveBeenCalledTimes(1));
     expect(files().has(OUTBOX)).toBe(false);

@@ -1,7 +1,6 @@
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,6 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useConfirm } from "@/components/confirm-dialog";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { useJustAdded } from "@/lib/use-just-added";
@@ -35,6 +35,7 @@ import { withNotesView } from "@convex/offlineViews";
  * is identical and the bug it avoids is the same one.
  */
 export default function EditProfileScreen() {
+  const confirm = useConfirm();
   const { id } = useLocalSearchParams<{ id: string }>();
   // Offline, the person from the phone's copy (with any waiting changes); a
   // change made here is kept on the phone and saved on Sync
@@ -148,7 +149,7 @@ export default function EditProfileScreen() {
       noteCount === 0
         ? "There are no notes to lose."
         : `${noteCount} ${noteCount === 1 ? "note" : "notes"} go with them, for good.`;
-    Alert.alert(
+    confirm(
       `Delete ${result.profile.name}?`,
       `${lost}\n\n` +
         "Anyone who only ever came up inside those notes goes too. People with notes of their own stay.\n\n" +

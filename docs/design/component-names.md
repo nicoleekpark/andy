@@ -37,6 +37,10 @@ These appear on most screens and mean the same thing everywhere.
 | `offline-copy-line` | 오프라인에서 폰의 사본을 보여줄 때 화면 맨 위 — "Offline — showing what Andy had at 3:40 PM." (home·프로필·노트·Ask 공통, 온라인이면 안 보임) |
 | `note-source-label` / `-text` / `-field` / `-hint` | 노트 원문 (WHAT YOU SAID / WROTE) — 기록·리뷰·노트 화면 공통 |
 | `note-details-label` / `note-detail` / `note-detail-field` / `note-details-add-button` | 기억할 내용 (WHAT TO REMEMBER) — 리뷰·노트 화면 공통 |
+| `confirm-dialog` | Andy가 직접 그리는 확인 창 (가운데 카드 + 뒤 어둡게). 잠금 화면이 이 창까지 덮음 — iOS 시스템 알림 대신 (QA #51) |
+| `confirm-dialog-title` / `-body` | 질문 한 줄 / 무엇이 일어나는지 |
+| `confirm-dialog-action` | 할 일 버튼 — moss, 지우기 세 곳(노트·사람·계정)만 alert 빨강 |
+| `confirm-dialog-cancel` | Cancel — 글씨만, 맨 아래 |
 
 ## Screens
 
@@ -319,12 +323,12 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 
 | Capture | State | 설명 |
 |---|---|---|
-| O1 | `note-delete-alert` | 노트 삭제 확인 — iOS 시스템 알림, 문구는 Andy |
+| O1 | `note-delete-alert` | 노트 삭제 확인 — 캡처는 예전 iOS 시스템 알림. 이제 `confirm-dialog`로 그림 (QA #51) |
 
 | Name | 설명 |
 |---|---|
-| `note-delete-alert` | 알림 전체 |
+| `note-delete-alert` | 창 전체 (`confirm-dialog`) |
 | `note-delete-alert-title` | Delete this note? |
 | `note-delete-alert-body` | 무엇이 지워지는지 |
-| `note-delete-alert-cancel` | Cancel |
-| `note-delete-alert-confirm` | Delete (빨강) |
+| `note-delete-alert-cancel` | Cancel (`confirm-dialog-cancel`) |
+| `note-delete-alert-confirm` | Delete (`confirm-dialog-action`, alert 빨강) |

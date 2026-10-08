@@ -1,7 +1,6 @@
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,6 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useConfirm } from "@/components/confirm-dialog";
 import { useMutation, useQuery } from "convex/react";
 import { noteView } from "@convex/offlineViews";
 import { NOTHING_KEPT_OFFLINE, useLiveOrCopy, useNothingKeptOffline, useOnline } from "@/lib/offline-copy";
@@ -52,6 +52,7 @@ import { userMessage } from "@/lib/user-message";
  * already said what they came to do.
  */
 export default function NoteScreen() {
+  const confirm = useConfirm();
   const { id, edit: editParam } = useLocalSearchParams<{
     id: string;
     edit?: string;
@@ -183,7 +184,7 @@ export default function NoteScreen() {
    * profile is the same destination either way, reached forwards.
    */
   const confirmDelete = useCallback(() => {
-    Alert.alert(
+    confirm(
       "Delete this note?",
       "The note and what it recorded go for good. People it mentioned keep their own notes.",
       [
@@ -218,7 +219,7 @@ export default function NoteScreen() {
         },
       ],
     );
-  }, [id, removeNote, keepOnPhone, pending, baseFacts, profileId]);
+  }, [confirm, id, removeNote, keepOnPhone, pending, baseFacts, profileId]);
 
   if (result === undefined || result === null) {
     return (

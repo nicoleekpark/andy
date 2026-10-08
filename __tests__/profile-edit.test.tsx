@@ -1,12 +1,13 @@
-import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 import { useMutation, useQuery } from "convex/react";
 
 import { router } from "expo-router";
 import { renderRouter } from "expo-router/testing-library";
 import { api } from "@convex/_generated/api";
-import { answerByName, given, nameOf, pressAlertButton, quietCall } from "../test-support/convex-mocks";
+import { answerByName, given, nameOf, quietCall } from "../test-support/convex-mocks";
 import { ConvexError } from "convex/values";
 import { scrollsAboveKeyboard } from "../test-support/keyboard";
+import { answerDialog } from "../test-support/dialog";
 
 /**
  * src/app/(app)/profile/[id]/edit.tsx — correcting the person rather than a
@@ -51,16 +52,6 @@ function mockUpdateProfile(updateProfile: jest.Mock) {
   mockProfileMutations({ update: updateProfile });
 }
 
-/**
- * `Alert.alert` guards the delete. Spied so a test can press the exact button
- * it means to — and so "Cancel deletes nothing" can be asserted at all, which
- * is the half of a confirmation that matters. Returns the spy so the message
- * itself can be read: what it counts is the difference between deleting an
- * empty row and deleting four years of notes.
- */
-function mockDeleteAlert(press: "Delete" | "Cancel") {
-  return pressAlertButton(press);
-}
 
 type Args = {
   profileId: string;
@@ -223,7 +214,6 @@ describe("edit profile screen", () => {
       removedAutoCreatedCount: 0,
     }));
     mockProfileMutations({ remove });
-    const alert = mockDeleteAlert("Delete");
 
     const result = renderRouter("src/app", {
       initialUrl: "/profile/contact-1/edit",
@@ -236,14 +226,17 @@ describe("edit profile screen", () => {
 
     // "Delete Emma?" reads the same for an empty row and for years of notes,
     // and those are not the same decision.
-    expect(alert.mock.calls[0]?.[0]).toBe("Delete Emma?");
-    const body = alert.mock.calls[0]?.[1] ?? "";
+    const dialog = within(screen.getByTestId("confirm-dialog"));
+    expect(dialog.getByText("Delete Emma?")).toBeTruthy();
+    const body = dialog.getByText(/notes go with them/).props.children as string;
     expect(body).toContain("2 notes go with them");
     // Both rules, because each one surprises somebody: what follows them out,
     // and what deliberately does not.
     expect(body).toContain("only ever came up inside those notes goes too");
     expect(body).toContain("that note keeps the name");
     expect(body).toContain("cannot be undone");
+    expect(remove).not.toHaveBeenCalled();
+    await answerDialog("Delete");
     await waitFor(() => expect(remove).toHaveBeenCalledWith({ profileId: "contact-1" }));
     // Home, not back: back is this person's profile, which is gone.
     await waitFor(() => expect(result.getPathname()).toBe("/"));
@@ -259,7 +252,6 @@ describe("edit profile screen", () => {
     mockProfileMutations({
       remove: jest.fn(async () => ({ removedNoteCount: 0, removedAutoCreatedCount: 0 })),
     });
-    mockDeleteAlert("Delete");
 
     const result = renderRouter("src/app", { initialUrl: "/" });
     await result;
@@ -273,6 +265,7 @@ describe("edit profile screen", () => {
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Delete this person" }));
     });
+    await answerDialog("Delete");
 
     await waitFor(() => expect(result.getPathname()).toBe("/"));
     expect(router.canGoBack()).toBe(false);
@@ -285,7 +278,6 @@ describe("edit profile screen", () => {
       removedAutoCreatedCount: 0,
     }));
     mockProfileMutations({ remove });
-    mockDeleteAlert("Cancel");
 
     const result = renderRouter("src/app", {
       initialUrl: "/profile/contact-1/edit",
@@ -295,6 +287,7 @@ describe("edit profile screen", () => {
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Delete this person" }));
     });
+    await answerDialog("Cancel");
 
     expect(remove).not.toHaveBeenCalled();
     expect(screen.getByLabelText("Name")).toBeTruthy();
@@ -307,7 +300,6 @@ describe("edit profile screen", () => {
         throw new ConvexError("Andy couldn't find that person.");
       }),
     });
-    mockDeleteAlert("Delete");
 
     const result = renderRouter("src/app", {
       initialUrl: "/profile/contact-1/edit",
@@ -317,6 +309,7 @@ describe("edit profile screen", () => {
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Delete this person" }));
     });
+    await answerDialog("Delete");
 
     await waitFor(() =>
       expect(screen.getByText("Andy couldn't find that person.")).toBeTruthy(),

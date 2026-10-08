@@ -11,6 +11,7 @@ import {
   loadPending,
   type PendingChange,
 } from "../src/lib/pending-changes";
+import { answerDialog } from "../test-support/dialog";
 
 /**
  * Changes made offline, kept on the phone until Sync (`pending-changes.tsx`,
@@ -204,15 +205,13 @@ describe("editing offline", () => {
 
   test("should keep a delete on the phone and take the note off the page", async () => {
     online(false);
-    jest.spyOn(Alert, "alert").mockImplementation((_t, _m, buttons) => {
-      buttons?.find((b) => b.text === "Delete")?.onPress?.();
-    });
     const result = renderRouter("src/app", { initialUrl: "/note/n-1?edit=1" });
     await result;
 
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Delete this note" }));
     });
+    await answerDialog("Delete");
 
     expect(JSON.parse(files().get(PENDING)!).changes).toEqual([
       expect.objectContaining({ kind: "removeNote", noteId: "n-1" }),
@@ -404,15 +403,13 @@ describe("a person, offline", () => {
 
   test("should keep deleting a person on the phone, taking them and their notes off home", async () => {
     online(false);
-    jest.spyOn(Alert, "alert").mockImplementation((_t, _m, buttons) => {
-      buttons?.find((b) => b.text === "Delete")?.onPress?.();
-    });
     const result = renderRouter("src/app", { initialUrl: "/profile/p-nina/edit" });
     await result;
 
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Delete this person" }));
     });
+    await answerDialog("Delete");
 
     expect(JSON.parse(files().get(PENDING)!).changes).toEqual([
       expect.objectContaining({ kind: "removeProfile", profileId: "p-nina" }),
