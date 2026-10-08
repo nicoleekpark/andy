@@ -1,0 +1,289 @@
+<!--
+  DESIGN PROTOTYPE — not production code.
+  HTML approximation of native iOS screens (`home` and `settings`) for Andy,
+  built to compare three calendar-connection options. This is Option B —
+  "Native grouped list + Switch": the settings half borrows the iOS
+  Settings.app visual idiom (inset rounded rows, a system-style Switch),
+  on the theory that it is the most recognisable control for exactly this
+  job. The card's two choices stack full width, echoing the shape of the
+  iOS permission sheet about to appear.
+
+  Fonts: Lora and IBM Plex Mono are not loaded here, so this mock falls back
+  to a system serif/monospace that is visually close, not the real faces.
+  Colour, spacing, radius and opacity use the same values as
+  `src/constants/theme.ts`, named the same way, as CSS variables below.
+
+  The buttons above the phone frame are mock-only controls to switch between
+  states for review — they do not exist on the real screen.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>calendar-connection — Option B (mock)</title>
+<style>
+  :root {
+    --color-ink: #2A2622; --color-paper: #E8E6DE; --color-moss: #5C6B4F;
+    --color-brass: #B8935A; --color-line: #B8B3A8; --color-alert: #9F4C3B;
+    --color-scrim: rgba(42, 38, 34, 0.42);
+    --space-xs: 4px; --space-sm: 8px; --space-md: 12px; --space-lg: 16px;
+    --space-xl: 24px; --space-xxl: 32px; --space-xxxl: 48px;
+    --text-xs: 12px; --text-sm: 13px; --text-md: 14px; --text-base: 15px;
+    --text-lg: 16px; --text-xl: 17px; --text-xxl: 18px;
+    --radius-card: 16px; --radius-pill: 999px;
+    --opacity-secondary: 0.8; --opacity-quiet: 0.7;
+    --font-display: Georgia, "Times New Roman", serif;
+    --font-utility: "Courier New", monospace;
+  }
+  * { box-sizing: border-box; }
+  body { background:#d8d4c8; font-family:-apple-system,system-ui,sans-serif; margin:0; padding:24px; color:var(--color-ink); }
+  .note { max-width:760px; margin:0 auto 20px; font-size:13px; opacity:.75; line-height:1.5; }
+  .rig { max-width:760px; margin:0 auto 20px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  .rig fieldset { border:1px dashed #9a9488; border-radius:8px; padding:8px 10px; display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+  .rig legend { font-size:11px; text-transform:uppercase; letter-spacing:.04em; opacity:.6; }
+  .rig button { font-size:12px; padding:6px 10px; border-radius:6px; border:1px solid #9a9488; background:#fff; cursor:pointer; }
+  .rig button.active { background:var(--color-moss); color:var(--color-paper); border-color:var(--color-moss); }
+  .frame { width:390px; margin:0 auto; border-radius:44px; background:#111; padding:14px; box-shadow:0 20px 50px rgba(0,0,0,.35); }
+  .screen { background:var(--color-paper); border-radius:32px; overflow:hidden; min-height:800px; position:relative; }
+  .ios-status-bar { height:44px; display:flex; align-items:center; justify-content:space-between; padding:0 20px; font-size:14px; font-weight:600; }
+  .nav-bar { padding:4px 20px 14px; border-bottom:1px solid var(--color-line); display:flex; align-items:center; justify-content:space-between; }
+  .nav-bar-title { font-family:var(--font-display); font-size:22px; }
+  .nav-bar-action-right { font-size:var(--text-base); color:var(--color-moss); }
+  .view { display:none; } .view.active { display:block; }
+
+  .briefing-card { position:relative; background:var(--color-paper); margin:20px 24px; padding:18px 16px 16px 20px; overflow:hidden; }
+  .briefing-card::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--color-brass); }
+  .briefing-card-mute-button { position:absolute; top:2px; right:2px; width:44px; height:44px; display:flex; align-items:center; justify-content:center; background:none; border:none; cursor:pointer; }
+  .briefing-card-mute-button span { font-size:20px; color:var(--color-ink); opacity:var(--opacity-quiet); }
+  .briefing-card-when { color:var(--color-brass); font-family:var(--font-utility); font-size:var(--text-sm); margin-bottom:4px; }
+  .briefing-card-title { font-family:var(--font-display); font-size:var(--text-xxl); line-height:24px; margin:0 44px 0 0; }
+  .briefing-card-body { font-size:var(--text-md); line-height:20px; opacity:var(--opacity-quiet); margin-top:var(--space-sm); }
+  .briefing-card-permission-note { font-size:var(--text-sm); line-height:18px; opacity:var(--opacity-quiet); margin-top:var(--space-sm); font-style:italic; }
+  .briefing-card-footnote { font-size:var(--text-sm); opacity:var(--opacity-quiet); margin-top:var(--space-md); }
+  /* Option B: buttons stack full width, primary on top — echoes the two-button
+     shape of the iOS permission sheet that follows. */
+  .briefing-card-buttons { display:flex; flex-direction:column; gap:var(--space-sm); margin-top:var(--space-lg); }
+  .pill-full { display:flex; align-items:center; justify-content:center; width:100%; background:var(--color-moss); color:var(--color-paper); border-radius:var(--radius-pill); padding:14px; font-size:var(--text-base); border:none; cursor:pointer; min-height:44px; }
+  .text-full { display:flex; align-items:center; justify-content:center; width:100%; background:none; border:none; color:var(--color-ink); opacity:var(--opacity-quiet); font-size:var(--text-base); padding:12px; min-height:44px; cursor:pointer; }
+  .briefing-card-reminder-button { display:inline-block; margin-top:var(--space-md); background:none; border:none; color:var(--color-moss); font-size:var(--text-md); padding:var(--space-sm) 0; min-height:44px; cursor:pointer; }
+  .person-row { margin-top:var(--space-md); display:flex; align-items:baseline; gap:10px; }
+  .person-row .name { color:var(--color-moss); font-size:var(--text-lg); }
+  .person-row .meta { font-family:var(--font-utility); font-size:var(--text-xs); opacity:var(--opacity-quiet); }
+
+  .profile-row { padding:14px 24px; border-bottom:1px solid var(--color-line); display:flex; justify-content:space-between; }
+  .profile-row-name { font-family:var(--font-display); font-size:var(--text-xl); }
+  .profile-row-meta { font-family:var(--font-utility); font-size:var(--text-xs); opacity:var(--opacity-quiet); }
+
+  .scrim { position:absolute; inset:0; background:var(--color-scrim); display:none; align-items:center; justify-content:center; padding:var(--space-xxl); }
+  .scrim.active { display:flex; }
+  .confirm-dialog { background:var(--color-paper); border-radius:var(--radius-card); padding:var(--space-xl); width:100%; }
+  .confirm-dialog-title { font-size:var(--text-xxl); font-weight:600; margin:0 0 var(--space-md); }
+  .confirm-dialog-body { font-size:var(--text-base); opacity:var(--opacity-secondary); line-height:1.4; margin:0 0 var(--space-md); }
+  .confirm-dialog-action { display:block; width:100%; background:var(--color-moss); color:var(--color-paper); border:none; border-radius:var(--radius-pill); padding:var(--space-lg); font-size:var(--text-lg); font-weight:600; margin-bottom:var(--space-sm); cursor:pointer; }
+  .confirm-dialog-cancel { display:block; width:100%; text-align:center; background:none; border:none; color:var(--color-ink); opacity:var(--opacity-quiet); font-size:var(--text-base); padding:var(--space-md); cursor:pointer; }
+
+  /* --- settings: native grouped-table idiom --- */
+  .settings-body { padding:0 20px; background:#ded9cc; min-height:600px; }
+  .calendar-section-label { font-size:var(--text-sm); text-transform:uppercase; letter-spacing:.06em; opacity:var(--opacity-quiet); margin:var(--space-xl) var(--space-sm) var(--space-sm); }
+  .calendar-section {
+    background: var(--color-paper);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .grouped-row { padding:12px 16px; border-bottom:1px solid var(--color-line); display:flex; align-items:center; justify-content:space-between; min-height:44px; }
+  .grouped-row:last-child { border-bottom:none; }
+  .grouped-row-label { font-size:var(--text-base); }
+  .ios-switch { width:51px; height:31px; border-radius:16px; background:var(--color-line); position:relative; cursor:pointer; flex:0 0 auto; }
+  .ios-switch.on { background:var(--color-moss); }
+  .ios-switch::after { content:""; position:absolute; top:2px; left:2px; width:27px; height:27px; border-radius:50%; background:#fff; transition:left .15s; }
+  .ios-switch.on::after { left:22px; }
+  .grouped-note { padding:8px 16px 14px; font-size:var(--text-sm); opacity:var(--opacity-quiet); line-height:1.4; border-bottom:1px solid var(--color-line); }
+  .grouped-note:last-child { border-bottom:none; }
+  .grouped-chevron-row { padding:12px 16px; display:flex; align-items:center; justify-content:space-between; min-height:44px; border-bottom:1px solid var(--color-line); cursor:pointer; }
+  .grouped-chevron-row:last-child { border-bottom:none; }
+  .grouped-chevron-row .chev { color:var(--color-line); }
+  .muted-banner { background: var(--color-paper); margin-top: var(--space-md); border-radius:10px; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; }
+  .muted-banner .calendar-unmute-button { color:var(--color-moss); background:none; border:none; font-size:var(--text-base); padding:0; cursor:pointer; }
+  .account-row { padding:16px 24px; background:var(--color-paper); margin-top:var(--space-xl); border-radius:10px; }
+  .account-row.out { color:var(--color-alert); margin-top:var(--space-sm); }
+</style>
+</head>
+<body>
+
+<p class="note">
+  Design prototype (Option B — <strong>native grouped list + Switch</strong>). Not production code.
+  Phone frame is a 390pt approximation. The grey panels above the frame are
+  mock-only controls for reviewing states — they aren't part of the design.
+</p>
+
+<div class="rig">
+  <fieldset><legend>screen</legend>
+    <button data-screen="home" class="active">home</button>
+    <button data-screen="settings">settings</button>
+  </fieldset>
+  <fieldset><legend>briefing-card state</legend>
+    <button data-card="ask" class="active">ask</button>
+    <button data-card="denied">denied</button>
+    <button data-card="empty">empty</button>
+    <button data-card="ready">ready</button>
+  </fieldset>
+  <fieldset><legend>calendar-section state</legend>
+    <button data-section="not-asked" class="active">not asked</button>
+    <button data-section="refused">refused</button>
+    <button data-section="on">on</button>
+    <button data-section="muted">muted for today</button>
+    <button data-section="off">off in andy</button>
+  </fieldset>
+</div>
+
+<div class="frame">
+  <div class="screen">
+    <div class="ios-status-bar"><span>9:41</span><span>⚫︎⚫︎⚫︎ 🔋</span></div>
+
+    <div class="view active" id="view-home">
+      <div class="nav-bar"><div class="nav-bar-title">Andy</div><div class="nav-bar-action-right">⚙︎</div></div>
+
+      <div class="briefing-card" id="briefing-card">
+        <button class="briefing-card-mute-button" aria-label="Mute the briefing" onclick="openMute()"><span>✕</span></button>
+
+        <div class="card-state" data-state="ask">
+          <div class="briefing-card-title">Before you walk in</div>
+          <div class="briefing-card-body">Andy can read your calendar and show what you wrote about whoever you're meeting next. It reads on this phone — your calendar never leaves it, and nothing is added to it.</div>
+          <div class="briefing-card-permission-note">iPhone will ask for full access. It's the only kind that lets an app read events.</div>
+          <div class="briefing-card-buttons">
+            <button class="pill-full briefing-card-connect-button">Connect calendar</button>
+            <button class="text-full briefing-card-not-now-button">Not now</button>
+          </div>
+          <div class="briefing-card-footnote">You can connect later in Settings.</div>
+        </div>
+
+        <div class="card-state" data-state="denied" style="display:none">
+          <div class="briefing-card-title">Before you walk in</div>
+          <div class="briefing-card-body">Calendar access is off, so Andy can't see who you're meeting. To turn it on, choose Full Access under Calendars.</div>
+          <div class="briefing-card-buttons">
+            <button class="pill-full briefing-card-open-settings-button">Open iPhone Settings</button>
+          </div>
+        </div>
+
+        <div class="card-state" data-state="empty" style="display:none">
+          <div class="briefing-card-title">Nothing coming up</div>
+          <div class="briefing-card-body">No meetings in the next twelve hours with anyone you've written about.</div>
+        </div>
+
+        <div class="card-state" data-state="ready" style="display:none">
+          <div class="briefing-card-when">2:30 PM</div>
+          <div class="briefing-card-title">Coffee with Priya</div>
+          <div class="person-row"><span class="name">Priya K.</span><span class="meta">4 notes</span></div>
+          <button class="briefing-card-reminder-button">Remind me 10 minutes before ›</button>
+        </div>
+      </div>
+
+      <div class="profile-row"><div class="profile-row-name">Jordan Lee</div><div class="profile-row-meta">friend · 3 notes</div></div>
+      <div class="profile-row"><div class="profile-row-name">Priya K.</div><div class="profile-row-meta">colleague · 4 notes</div></div>
+
+      <div class="scrim" id="mute-scrim">
+        <div class="confirm-dialog" id="briefing-mute-alert">
+          <div class="confirm-dialog-title">Mute the briefing?</div>
+          <div class="confirm-dialog-body" id="mute-body">The card leaves home. You can connect your calendar any time in Settings.</div>
+          <button class="confirm-dialog-action" id="briefing-mute-alert-today">Mute for today</button>
+          <button class="confirm-dialog-action" id="briefing-mute-alert-indefinite">Mute until I turn it back on</button>
+          <button class="confirm-dialog-cancel" id="briefing-mute-alert-cancel" onclick="closeMute()">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="view" id="view-settings">
+      <div class="nav-bar"><div class="nav-bar-title">Settings</div><div></div></div>
+      <div class="settings-body">
+        <div class="calendar-section-label">Calendar</div>
+        <div class="calendar-section" id="calendar-section">
+
+          <div class="section-state" data-state="not-asked">
+            <div class="grouped-note">Before a meeting, Andy shows what you wrote about whoever you're meeting. It reads your calendar on this phone — nothing leaves it, and nothing is added.</div>
+            <div class="grouped-row"><div class="grouped-row-label calendar-connect-button">Connect calendar</div><span class="chev" style="color:var(--color-moss)">›</span></div>
+          </div>
+
+          <div class="section-state" data-state="refused" style="display:none">
+            <div class="grouped-note">Calendar access is off for Andy. To turn it on, choose Full Access under Calendars.</div>
+            <div class="grouped-row"><div class="grouped-row-label calendar-open-settings-button">Open iPhone Settings</div><span class="chev">›</span></div>
+          </div>
+
+          <div class="section-state" data-state="on" style="display:none">
+            <div class="grouped-row">
+              <div class="grouped-row-label">Calendar</div>
+              <div class="ios-switch on" title="On/Off switch — ambiguous while muted, see Option B's weakness"></div>
+            </div>
+            <div class="grouped-note">On — Andy reads your calendar on this phone.</div>
+            <div class="grouped-chevron-row"><span class="calendar-open-settings-button">Remove access completely</span><span class="chev">›</span></div>
+            <div id="reminders-row">
+              <div class="reminders-state" data-rstate="not-asked">
+                <div class="grouped-chevron-row"><span class="reminders-on-button">Remind me 10 minutes before</span><span class="chev">›</span></div>
+              </div>
+              <div class="reminders-state" data-rstate="allowed" style="display:none">
+                <div class="grouped-note">Reminders on — 10 minutes before, and a nudge after. They show a name, never what you wrote.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-state" data-state="muted" style="display:none">
+            <div class="grouped-row">
+              <div class="grouped-row-label">Calendar</div>
+              <!-- The switch still reads "on" — the thing Option B can't resolve cleanly:
+                   the calendar *connection* is on, but nothing is firing, and a bare
+                   switch can't say that on its own. -->
+              <div class="ios-switch on"></div>
+            </div>
+            <div class="muted-banner">Muted until tomorrow <button class="calendar-unmute-button">Turn back on</button></div>
+            <div class="grouped-chevron-row"><span class="calendar-open-settings-button">Remove access completely</span><span class="chev">›</span></div>
+          </div>
+
+          <div class="section-state" data-state="off" style="display:none">
+            <div class="grouped-row">
+              <div class="grouped-row-label">Calendar</div>
+              <div class="ios-switch"></div>
+            </div>
+            <div class="grouped-note">Off — Andy isn't reading your calendar, and no reminders are set.</div>
+            <div class="grouped-chevron-row"><span class="calendar-open-settings-button">Remove access completely</span><span class="chev">›</span></div>
+          </div>
+
+        </div>
+
+        <div class="account-row">Sign out</div>
+        <div class="account-row out">Delete account</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('[data-screen]').forEach(b => b.onclick = () => {
+    document.querySelectorAll('[data-screen]').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    document.getElementById('view-home').classList.toggle('active', b.dataset.screen === 'home');
+    document.getElementById('view-settings').classList.toggle('active', b.dataset.screen === 'settings');
+  });
+  document.querySelectorAll('[data-card]').forEach(b => b.onclick = () => {
+    document.querySelectorAll('[data-card]').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    document.querySelectorAll('.card-state').forEach(s => s.style.display = s.dataset.state === b.dataset.card ? '' : 'none');
+  });
+  document.querySelectorAll('[data-section]').forEach(b => b.onclick = () => {
+    document.querySelectorAll('[data-section]').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    document.querySelectorAll('.section-state').forEach(s => s.style.display = s.dataset.state === b.dataset.section ? '' : 'none');
+  });
+  function openMute() {
+    const current = document.querySelector('[data-card].active').dataset.card;
+    const connected = current === 'ready' || current === 'empty';
+    document.getElementById('mute-body').textContent = connected
+      ? 'The card leaves home and meeting reminders stay quiet. "For today" ends at midnight, so tomorrow\'s reminders still come.'
+      : 'The card leaves home. You can connect your calendar any time in Settings.';
+    document.getElementById('mute-scrim').classList.add('active');
+  }
+  function closeMute() { document.getElementById('mute-scrim').classList.remove('active'); }
+  document.getElementById('briefing-mute-alert-today').onclick = closeMute;
+  document.getElementById('briefing-mute-alert-indefinite').onclick = closeMute;
+</script>
+</body>
+</html>

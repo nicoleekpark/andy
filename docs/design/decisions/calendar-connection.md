@@ -444,3 +444,382 @@ keeps its name with the new label.
    fixed lead changes from 20 to 10 minutes before the meeting.** Every
    string that says "20 minutes" changes with it ("Remind me 10 minutes
    before ›"; the `settings` section says "10 minutes").
+
+## Options
+
+_`product-designer`, 2026-10-08. Covers build-order steps 3–4: the
+`briefing-card` changes (R1–R17) and the new `settings` → `calendar-section`
+(R18–R22). Mocks: `docs/design/mocks/calendar-connection-a.html` (recommended),
+`-b.html`, `-c.html`._
+
+### Design read
+
+**What already exists and has to be preserved.** `briefing-card.tsx` already
+draws four states (`ask`/`denied`/`empty`/`ready`) with the stripe as the
+app's one signature colour, a `Pressable` pill for the one forward action,
+and a plain-text link for the reminder ask. `confirm-dialog.tsx` already
+draws every alert in the app (`note-delete-alert`, `sign-out-alert`,
+`sync-conflict-alert`) as a `paper` card over a `scrim`, actions stacked as
+full-width pills with `Cancel` last and plain. `settings.tsx` today is a
+placeholder with exactly two rows (`sign-out-button`, bordered; `account-delete-button`,
+plain `alert` text) — there is no section system yet, so `calendar-section`
+is the **first real section** this screen gets.
+
+**Where the brief leaves real design freedom, and where it doesn't.** The
+brief (R1–R22) is unusually prescriptive — it already fixes the mute
+control's shape (`confirm-dialog`, three named buttons), which states carry
+the X, what every state's copy says, and that there is exactly one calendar
+switch with three values. That means the `briefing-card` side of this slice
+is close to "apply an established pattern": the open questions are button
+*placement and weight* (how "Connect calendar" and "Not now" sit next to
+each other; how the lone "Open iPhone Settings" button in the denied state
+is weighted), not the interaction model. The real fork is `calendar-section`:
+nothing like it exists in `settings` yet, so how a three-state, five-row
+permission control reads as a settings section is a genuine, consequential
+choice — new users of this exact pattern will see it every time `settings`
+grows. The three options below are built around that fork; each carries a
+consistent (but, for the reasons above, minor) treatment of the card so the
+whole slice reads as one option end to end.
+
+**The user's task.** Someone who got "that calendar ask felt heavy" has three
+possible intents when they reach for a control: connect (if not yet),
+quiet it temporarily without losing the setup, or turn it off/on outright.
+Each has to resolve in the fewest taps, and the control must never *look*
+like it does one thing while doing another (R9's silent half-mute,
+R17's rejected second switch) — the biggest UX risk here is a control whose
+visual state and actual behaviour drift apart under the three-switches
+model in the brief.
+
+**Constraints carried into every option:** `brass` stays only on the
+Briefing card's stripe/timestamp (not reused in `settings`); `alert` is not
+used anywhere in this slice (muting and turning off are reversible, not
+deletions — STYLE.md reserves `alert` for the three deletions); every new
+control is drawn from `colors`/`space`/`textSize`/`radius`/`textOpacity`,
+no raw numbers; every tap target ≥44×44pt; every new text/background pairing
+states its ratio (below).
+
+### Option A — Visible state rows (recommended)
+
+**Concept.** `calendar-section` shows every control for the current state at
+once — one status sentence, then its buttons — with no toggle and no
+disclosure, styled with the weights the app already uses: a `moss` filled
+pill for the one way forward, `moss` plain text for a reversible but
+intentional action, `ink` at `textOpacity.quiet` for the rare "remove it
+completely" escape hatch. The card gets a top-right X (`briefing-card-mute-button`)
+and `Connect calendar` / `Not now` laid out inline, pill first.
+
+**Why it may work (hypothesis).** *Recognition over recall* — the whole
+section is scannable without a single tap, so "how do I turn this off" (the
+brief's own success metric) is answered by opening Settings, not by also
+guessing that a row has to be expanded or that a switch's third position is
+hidden somewhere. *Jakob's Law, applied internally* — it matches `settings.tsx`'s
+own existing two rows (bordered/plain text, not native chrome), so the first
+real section doesn't introduce a visual language the rest of the screen
+doesn't have yet. Test: in TestFlight, does anyone ask "how do I turn this
+off" after opening Settings → Calendar once? (Brief's success metric #1.)
+
+**Strengths.** Lowest build cost — no new interaction primitive, only new
+content inside the shape `settings.tsx` already has. Every state in R18–R22's
+table maps to visible markup 1:1, so a reviewer can check the spec against
+the screen without exercising any control first. Three-tier text weight
+(pill > moss text > quiet ink text) reuses existing tokens meaningfully
+instead of inventing a fourth colour.
+
+**Weaknesses / risks.** Doesn't scale gracefully if `settings` grows several
+more sections later (each becomes its own small stack of rows with no shared
+chrome) — not a V1 problem, since this is the only section, but worth
+naming now so it isn't accidentally treated as "the" pattern without
+revisiting it. The status sentence is the only thing separating five states
+visually; if a tester skims, "On" and "Off" differ only in the sentence's
+first word and which button follows — mitigated by the sentence always
+leading with the word On/Off/Muted (a Von-Restorff-style lead word), but
+worth QA'ing at a glance, not just by reading.
+
+**Design-system impact.** No new component — reuses the `confirm-dialog`
+pattern (unchanged) and two button weights the app already has (the existing
+`moss` pill from `briefing-card`'s own `action`/`actionLabel`, and plain
+`ink`/`textOpacity.quiet` text from `confirm-dialog`'s `plain`/`plainLabel`).
+Formalises a `moss`-plain-text weight as a *second* tier between the pill and
+the quiet tier — see token note below.
+
+### Option B — Native grouped list + Switch
+
+**Concept.** `settings` grows an iOS-style grouped-table card (inset rounded
+group, inset rows, hairline dividers) and the On/Off half of the control
+becomes a real `Switch`, coloured `moss` when on. Muted-for-today replaces
+the switch's row with a status banner ("Muted until tomorrow · Turn back
+on") rather than trying to make the switch show a third position.
+
+**Why it may work (hypothesis).** *Jakob's Law, applied externally* — a
+`Switch` next to "Calendar" is the single most recognised control on iOS for
+exactly this job (it is literally how iOS's own Settings → Calendar accounts
+list reads), so no explanation is needed for what flipping it does. Test:
+do testers reach for the switch before reading the sentence next to it?
+
+**Strengths.** Zero learning cost for anyone who has used an iPhone.
+`Switch` ships with a correct 44pt+ target and its own accessibility role for
+free.
+
+**Weaknesses / risks.** The three-state model doesn't fit a binary control
+cleanly: while muted, the switch still has to read "on" (the calendar
+*connection* is on; only its effect is paused) while a separate banner says
+"muted" right next to it — exactly the kind of "control's visual state and
+actual behaviour drift apart" risk flagged in the Design read, and the
+mock makes this concrete (see `-b.html`, `data-section="muted"`). It is also
+the biggest visual swing in this slice: STYLE.md's Grounding explicitly
+steers away from looking like "a corporate CRM" or an off-the-shelf utility
+app, and this app's own screens (including today's `settings.tsx`) don't use
+inset grouped-table chrome anywhere else — adopting it here means either
+introducing it as a second visual language just for this one section, or
+committing to re-skinning every future settings row the same way, which is a
+bigger decision than this slice.
+
+**Design-system impact.** New: a grouped-row primitive, an inset-card
+container, and a themed `Switch` (needs its `trackColor`/`thumbColor`
+checked against `colors.moss`/`colors.paper`/`colors.line` for the 3:1
+control-edge minimum). Highest build cost of the three.
+
+**Context where it would be the right choice.** If `settings` is deliberately
+heading toward looking like iOS's own Settings app throughout (a real
+redesign direction, not implied anywhere in STYLE.md today) — not this V1.
+
+### Option C — Progressive disclosure (accordion)
+
+**Concept.** `calendar-section` collapses to one row — "Calendar" + a status
+word ("On" / "Off" / "Muted until tomorrow") + a chevron. Tapping it expands
+in place to show the same content as Option A. The card is unchanged from
+Option A (the brief fixes its content either way — R4 requires `Not now`
+beside `Connect calendar` always, so there's no disclosure surface to use
+there).
+
+**Why it may work (hypothesis).** *Progressive disclosure / Hick's Law* — a
+person who isn't thinking about the calendar right now sees one calm line
+instead of up to five, which keeps `settings` matching STYLE.md's "every
+other screen stays plain" instruction as more sections arrive later. Test:
+does collapsing the detail change anything measured by the brief's success
+criteria, or only add a tap with no behavioural effect?
+
+**Strengths.** Scales the best of the three if `settings` grows — every
+future section is "one line, tap to open," a real, reusable pattern. Keeps
+the settings list short at a glance.
+
+**Weaknesses / risks.** Adds a tap to the one job this section exists for —
+someone who has already navigated to Settings → Calendar has already
+decided to look at it; hiding the controls behind a second tap is friction
+with no corresponding benefit *this* V1, since there is exactly one section
+to disclose. This is the over-engineering risk named in the brief's own
+companion material: building for a multi-section future that isn't
+scheduled. It also means the brief's state table (R18–R22) no longer
+describes what's visible at a glance in `settings` — it describes what's
+visible after one more tap, which is a small but real gap between the
+written spec and the shipped screen.
+
+**Design-system impact.** New: a `settings-section` accordion primitive
+(collapsed summary + animated/expand detail, `accessibilityState="{expanded}"`,
+reduced-motion-safe). Medium build cost — more than A, less than B (no
+`Switch` to theme), but the first thing anyone adding a second settings
+section later has to decide is whether to keep using it.
+
+**Context where it would be the right choice.** If two or three more
+settings sections were already planned for this V1 (they are not — see
+`PROJECT_SCOPE.md`'s scope cut) or if `calendar-section`'s content were long
+enough to overwhelm the screen on its own (it isn't: at most one status
+line, one muted line, two buttons, one removal line and the reminders row —
+six short lines).
+
+### Recommendation
+
+**Option A.** It is the only one of the three that is simultaneously
+cheapest to build, the most internally consistent (matches `settings.tsx`'s
+own existing two rows rather than introducing a second visual language or a
+new accordion primitive this V1 doesn't need elsewhere), and the one where
+the shipped screen and the brief's state table (R18–R22) are the same
+document — a reviewer can check one against the other without touching
+anything. Option B's native `Switch` is the right call the day `settings`
+deliberately adopts iOS's own grouped-table look throughout; Option C's
+accordion is the right call the day a second or third section needs the
+screen to stay short. Neither condition holds yet.
+
+**Interaction states, end to end (Option A):**
+
+- `briefing-card--ask`: stripe; `briefing-card-mute-button` (X, top-right,
+  44×44pt, label "Mute the briefing") always present; `briefing-card-title`
+  "Before you walk in"; `briefing-card-body`; a new
+  `briefing-card-permission-note` (quiet, smaller, the "iPhone will ask for
+  full access…" line — kept visually distinct from the body since it's
+  about the *next* screen, not this one); `briefing-card-connect-button`
+  (pill, "Connect calendar" / "Asking…" while pending) beside
+  `briefing-card-not-now-button` (plain text, "Not now"); a new
+  `briefing-card-footnote` ("You can connect later in Settings.").
+- `briefing-card--denied`: X; title; body; **one** button,
+  `briefing-card-open-settings-button`, drawn as the pill (it is the only
+  forward action in this state, so it gets the pill's weight, not the plain
+  text it would get if it were a second-tier choice beside something else —
+  Fitts's Law: the one path forward should be the biggest easy target, not
+  styled smaller because today's code happens to draw this state with no
+  button at all).
+- `briefing-card--empty`: X; title "Nothing coming up"; body (Terminology
+  fix: "anyone you've written about", not "keep notes about").
+  `briefing-card--ready`: unchanged, X added, `briefing-card-reminder-button`
+  copy only changes (20→10 minutes).
+- X → `briefing-mute-alert` (a `confirm-dialog` instance): title "Mute the
+  briefing?"; body is one of the brief's two variants, chosen by whether the
+  card is currently showing a connected state (`ready`/`empty`) or not
+  (`ask`/`denied`) — see Assumption 1 below;
+  `briefing-mute-alert-today` and `briefing-mute-alert-indefinite`, both
+  `moss` pills (R7: neither is destructive), **"for today" listed first** —
+  a deliberate ordering, not alphabetical or brief-order-by-accident: it
+  puts the easily-reversible choice where a stacked list of equal-weight
+  buttons is most often chosen from, supporting the brief's own hypothesis
+  (b) that an easy, reversible mute gets picked over a permanent one;
+  `briefing-mute-alert-cancel` plain, last.
+- `settings` → `calendar-section`, placed above `sign-out-button` (R18):
+  section label "Calendar" (`calendar-section-label`, sentence-case value,
+  drawn uppercase per STYLE.md); one `calendar-status-line` per state;
+  `calendar-connect-button` / `calendar-off-button` / `calendar-unmute-button`
+  / `calendar-open-settings-button` as specified in R18–R22's table, in the
+  three text weights above; `calendar-muted-line` ("Muted until tomorrow ·
+  Turn back on", the unmute action inline after the `·`, mirroring the
+  existing `outbox-line`/`outbox-line-action` and
+  `pending-line`/`pending-line-sync` pattern of a status line with its
+  action appended rather than a fourth new pattern); `calendar-remove-line`
+  + its own `calendar-open-settings-button`, always at `textOpacity.quiet`
+  weight since it's the rare, not-the-point escape hatch; `reminders-row`
+  (shown only On/Muted) with `reminders-status-line` and
+  `reminders-on-button` / `reminders-open-settings-button` in the matching
+  weights.
+
+**States this covers (every state needs its own row in `QA.md`, per the
+brief's success criterion #3):** `briefing-card` × {ask, denied, empty,
+ready} × {X not pressed, X pressed → dialog → each of the 3 buttons};
+`calendar-section` × {not asked, refused, on, muted, off} × `reminders-row`
+× {not asked, allowed, refused} where shown. Loading: before the remote
+switch/module/first note copy is known, both the card (existing `"unavailable"`
+state, R1) and `calendar-section` (new: hide until the flag is known, same
+null-until-known pattern) show nothing — never a flash of the wrong state.
+Offline: both work fully offline (R22) since the setting, the iOS permission
+and the matching are all on-device; no network-error state is needed for
+either, because nothing in this slice calls the network (`Linking.openSettings`
+and the native permission check are both local and effectively can't fail
+in a user-visible way — deliberately no error UI for them, not an omission).
+
+**Components and tokens.**
+- Reused as-is: `confirm-dialog` / `useConfirm` (unchanged — `briefing-mute-alert`
+  is a new *instance*, not a new dialog component); `colors.moss`,
+  `colors.paper`, `colors.ink`, `colors.line`; `space.xs/sm/md/lg/xl`;
+  `textSize.sm/md/base/lg/xl/xxl`; `radius.pill`; `textOpacity.quiet` (0.7),
+  `textOpacity.secondary` (0.8); `fonts.display` (card title only, unchanged).
+- New, but no new tokens: a second **text-weight tier** — `colors.moss` at
+  full opacity, no background, for a reversible-but-intentional action
+  (`calendar-off-button`, `calendar-unmute-button`, `briefing-card-reminder-button`
+  already uses this look today, just unnamed). This is a *pattern*, not a
+  token — it's `colors.moss` + no fill, already legal — but worth naming in
+  `STYLE.md`'s Signature Element / button-language notes as "the second
+  tier" so a future screen doesn't reinvent it as a fourth button style.
+  No change needed to `theme.ts`.
+- `calendar-section` is intentionally **not** extracted into a reusable
+  `<SettingsSection>` component this slice — it has exactly one caller.
+  Extract it when a second section is added, per "don't over-abstract a
+  component used once."
+
+**Accessibility.**
+- Contrast (computed against this file's token hex values; same method as
+  `__tests__/contrast.test.ts`): `ink` on `paper` 12.0:1; `moss` on `paper`
+  (status-line links, `calendar-off-button`, `calendar-unmute-button`,
+  `briefing-card-reminder-button`) **4.58:1** — passes AA for normal text
+  (≥4.5:1), new pairing, needs a row added to `contrast.test.ts`; `paper`
+  text on a `moss` pill (`briefing-card-connect-button`,
+  `briefing-card-open-settings-button`, `calendar-connect-button`) **4.58:1**
+  (same pair, reversed — already in use elsewhere in the app, e.g.
+  `confirm-dialog`'s pill); `ink` at `textOpacity.quiet` (0.7) on `paper`
+  — the X glyph and `calendar-remove-line` — **5.0:1**, STYLE.md's own
+  documented floor, reused rather than a new ratio.
+- Touch targets: X is a 44×44pt `Pressable` with the glyph centred inside it
+  (not a 20pt glyph alone) — this is new; today's code has no X at all.
+  Every text-only button (`calendar-off-button`, `reminders-on-button`, etc.)
+  gets `minHeight: 44` via padding, matching `confirm-dialog`'s own `plain`
+  button, not just its visible text size.
+- VoiceOver: X keeps its existing decided label "Mute the briefing" (not
+  "×" or "close"); `calendar-unmute-button` needs its own label distinct from
+  the sentence it sits inside ("Turn back on", read by VoiceOver as its own
+  element, not swallowed into `calendar-muted-line`'s text) — same pattern
+  `outbox-line-action` already uses.
+- Meaning never depends on colour alone: every state's identity is carried
+  by its sentence's first word (On/Off/Muted/Refused) and by which buttons
+  are present, not by colour — true in all three options, confirmed in A by
+  construction (no colour-only status dot).
+- Reduced motion: no new animation (Option A and B have none; Option C's
+  accordion would need a reduced-motion-safe, non-animated expand, matching
+  `use-thread-motion.ts`'s existing honouring of the system setting).
+- Dynamic Type: `calendar-status-line` and the mute alert's body already use
+  `ScrollView`-wrapped text in `confirm-dialog` (existing), so a long status
+  sentence at the largest Dynamic Type size scrolls rather than pushing
+  buttons off-screen; `calendar-section`'s stacked rows (not a fixed-height
+  card) grow naturally with type size, which Option B's fixed-height
+  grouped-table rows would have to be checked against specifically (one more
+  reason this isn't the lower-risk choice for V1).
+
+**Questions and assumptions (flag to product-strategist/owner if these are
+wrong):**
+1. The two `briefing-mute-alert` body variants ("connected" vs "not
+   connected", per the brief's copy section) are assumed to key off whether
+   the card is currently `ready`/`empty` (connected: reminders may exist) vs
+   `ask`/`denied` (not connected: they can't). The brief names the two
+   variants but doesn't spell out which card states map to which — this is
+   a reasonable reading of "no reminders exist yet" but worth a one-line
+   confirmation.
+2. `calendar-section-label`, `calendar-status-line`, `calendar-remove-line`
+   and `reminders-status-line` are new names this file didn't have on its
+   "Names (new)" list — added below for exactly the parts the brief's own
+   copy table describes but doesn't name (a status sentence and a
+   explanatory sentence both need their own name, same as `briefing-card-body`
+   and `note-source-hint` already do elsewhere).
+
+### New names (for `docs/design/component-names.md`)
+
+All from the brief's own "Names (new)" list, confirmed as-is:
+`briefing-card--denied`, `briefing-card--empty`, `briefing-card--ready`,
+`briefing-card-mute-button`, `briefing-card-not-now-button`,
+`briefing-card-open-settings-button`, `briefing-card-reminder-button`,
+`briefing-mute-alert` with `-today`, `-indefinite`, `-cancel`;
+`calendar-section`, `calendar-connect-button`, `calendar-off-button`,
+`calendar-muted-line`, `calendar-unmute-button`, `calendar-open-settings-button`,
+`reminders-row`, `reminders-on-button`, `reminders-open-settings-button`.
+
+Added by this pass (parts the brief's copy table describes without naming,
+following the precedent of `confirm-dialog-title`/`-body` and
+`briefing-card-title`/`-body` — a dialog or card gets a name for its heading
+and its body, not just for its buttons):
+`briefing-mute-alert-title`, `briefing-mute-alert-body` (two copy variants,
+one name); `briefing-card-permission-note` (the "iPhone will ask for full
+access…" line — new copy, not in today's card); `briefing-card-footnote`
+("You can connect later in Settings."); `calendar-section-label` (the
+section header "Calendar", same role as `tags-label`/`aliases-label`
+elsewhere); `calendar-status-line` (the one On/Off/Refused/Not-asked
+sentence — one name, four states' content, same pattern as
+`briefing-card-body`); `calendar-remove-line` ("To take away access
+completely…"); `reminders-status-line` (the row's one sentence across its
+three states).
+
+`briefing-card-connect-button` keeps its existing name with its new label
+("Connect calendar"), per the brief.
+
+### Suggested refactor (not part of this slice's scope, flagged while the
+file is open)
+
+`briefing-card.tsx` predates `space`/`textSize`/`radius`/`textOpacity`
+(added 2026-10-08) and still uses raw numbers throughout —
+`fontSize: 18/14/16/13/12` (these map exactly onto `textSize.xxl/md/lg/sm/xs`,
+no judgement call needed), `opacity: 0.7/0.5/0.55` (0.7 already equals
+`textOpacity.quiet`; 0.5 and **0.55 are below STYLE.md's own documented AA
+floor of 0.7** — `personMeta`'s "1 note"/"nothing remembered yet" text is a
+pre-existing contrast gap, already named in STYLE.md's "Known gaps" list,
+not newly found here), `borderRadius: 10` (neither `radius` token — closest
+named gap, not a new token to add, just a reminder it's unresolved), and
+`marginHorizontal/marginBottom/padding*` as raw 24/20/18/16/14/12/10/8/4.
+Since this slice already has to touch every style in this file to add the X
+and the new buttons, STYLE.md's own rule applies directly — "existing
+screens move onto it as they are touched, not in a sweep" — so the
+implementation PR should move `briefing-card.tsx` onto the named tokens
+(and raise `personMeta`'s opacity to at least `textOpacity.quiet`) as part
+of this change, not as a separate cleanup later.
