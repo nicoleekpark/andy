@@ -366,7 +366,10 @@ export function CaptureScreen({
   // Offline, who it is about comes from the phone's copy, so recording from
   // someone's page works with no connection too.
   const { data: scoped } = useLiveOrCopy(
-    useQuery(api.profiles.withNotes, profileId === undefined ? "skip" : { profileId }),
+    useQuery(
+      api.profiles.withNotes,
+      profileId === undefined ? "skip" : { profileId },
+    ),
     (copy) =>
       profileId === undefined
         ? undefined
@@ -402,7 +405,9 @@ export function CaptureScreen({
    * different person" is one tap away rather than absent.
    */
   const [expanded, setExpanded] = useState<string[]>([]);
-  const { markAdded, focusProps } = useJustAdded<number>();
+  // One focus target for every list on the screen, so the keys say which
+  // list: "fact-0" and "mention-0" are different rows.
+  const { markAdded, focusProps } = useJustAdded<string>();
 
   /** Record an answer for one name. */
   const pick = useCallback((name: string, profileId: string | null) => {
@@ -424,7 +429,9 @@ export function CaptureScreen({
   const outbox = useOutbox();
   const offline = useOffline() && outbox.available;
   const waiting =
-    outboxId === undefined ? undefined : outbox.notes.find((note) => note.id === outboxId);
+    outboxId === undefined
+      ? undefined
+      : outbox.notes.find((note) => note.id === outboxId);
   /**
    * Opened for a waiting note that is no longer here — saved from another
    * screen, or never this account's. Said, rather than quietly becoming a
@@ -735,7 +742,9 @@ export function CaptureScreen({
    * "What you wrote".
    */
   // A waiting note opens with its words already here, from the first render.
-  const [typing, setTyping] = useState<string | null>(() => waiting?.text ?? null);
+  const [typing, setTyping] = useState<string | null>(
+    () => waiting?.text ?? null,
+  );
 
   const [locale, setLocale] = useState(DEFAULT_LOCALE);
   const [preferOnDevice, setPreferOnDevice] = useState(true);
@@ -890,9 +899,7 @@ export function CaptureScreen({
         setReadTranscript(result.cardText);
         setPhase("review");
       } catch (e) {
-        setError(
-          userMessage(e, "Andy couldn't read that card. Try again."),
-        );
+        setError(userMessage(e, "Andy couldn't read that card. Try again."));
         setPhase("idle");
       }
     },
@@ -999,7 +1006,9 @@ export function CaptureScreen({
     // no model for this language, recognition would go to Apple's servers and
     // fail — so say so before recording, rather than after someone has spoken.
     if (offline && !onDeviceAvailable) {
-      setError("Speech needs a connection for this language — type it instead.");
+      setError(
+        "Speech needs a connection for this language — type it instead.",
+      );
       setPhase("idle");
       return;
     }
@@ -1262,9 +1271,7 @@ export function CaptureScreen({
       // return to.
       router.replace(`/profile/${saved.profileId}`);
     } catch (e) {
-      setError(
-        userMessage(e, "Andy couldn't save that one. Try again."),
-      );
+      setError(userMessage(e, "Andy couldn't save that one. Try again."));
       setPhase("review");
     }
   }, [
@@ -1543,7 +1550,7 @@ export function CaptureScreen({
                     }
                     style={[styles.input, styles.factInput]}
                     multiline
-                    {...focusProps(index)}
+                    {...focusProps(`fact-${index}`)}
                     accessibilityLabel={`Fact ${index + 1}`}
                   />
                   <Pressable
@@ -1573,7 +1580,7 @@ export function CaptureScreen({
               accessibilityRole="button"
               accessibilityLabel="Add a fact"
               onPress={() => {
-                markAdded(draft.primary.keyFacts.length);
+                markAdded(`fact-${draft.primary.keyFacts.length}`);
                 editPrimary({ keyFacts: [...draft.primary.keyFacts, ""] });
               }}
               hitSlop={8}
@@ -1582,29 +1589,78 @@ export function CaptureScreen({
             </Pressable>
           </Field>
 
-          {draft.primary.tags.length > 0 ? (
-            <Field label="Tags">
-              {draft.primary.tags.map((tag, index) => (
-                <View key={tagKeys.keys[index]} style={styles.factRow}>
+          {/*
+            Always shown, like the facts. Hidden when empty, removing the last
+            tag removed the only way to add one back.
+          */}
+          <Field label="Tags">
+            {draft.primary.tags.map((tag, index) => (
+              <View key={tagKeys.keys[index]} style={styles.factRow}>
+                <TextInput
+                  value={tag}
+                  onChangeText={(next) =>
+                    editPrimary({
+                      tags: draft.primary.tags.map((t, i) =>
+                        i === index ? next : t,
+                      ),
+                    })
+                  }
+                  style={[styles.input, styles.factInput]}
+                  {...focusProps(`tag-${index}`)}
+                  accessibilityLabel={`Tag ${index + 1}`}
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove tag ${index + 1}`}
+                  onPress={() => {
+                    tagKeys.removeKey(index);
+                    editPrimary({
+                      tags: draft.primary.tags.filter((_, i) => i !== index),
+                    });
+                  }}
+                  style={styles.remove}
+                >
+                  <Text style={styles.removeLabel}>×</Text>
+                </Pressable>
+              </View>
+            ))}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Add a tag"
+              onPress={() => {
+                markAdded(`tag-${draft.primary.tags.length}`);
+                editPrimary({ tags: [...draft.primary.tags, ""] });
+              }}
+              hitSlop={8}
+            >
+              <Text style={styles.addLine}>Add a tag</Text>
+            </Pressable>
+          </Field>
+
+          {/*
+            Always shown, for the same reason as the tags: removing everyone
+            Andy heard left no way to name the one it missed. A blank row is
+            harmless — `saveCapture` skips a mention with no name.
+          */}
+          <Field label="Also came up">
+            {draft.mentions.map((mention, index) => (
+              <View key={mentionKeys.keys[index]} style={styles.mentionBlock}>
+                <View style={styles.factRow}>
                   <TextInput
-                    value={tag}
-                    onChangeText={(next) =>
-                      editPrimary({
-                        tags: draft.primary.tags.map((t, i) =>
-                          i === index ? next : t,
-                        ),
-                      })
-                    }
+                    value={mention.name}
+                    onChangeText={(name) => editMention(index, { name })}
                     style={[styles.input, styles.factInput]}
-                    accessibilityLabel={`Tag ${index + 1}`}
+                    {...focusProps(`mention-${index}`)}
+                    accessibilityLabel={`Mentioned name ${index + 1}`}
                   />
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={`Remove tag ${index + 1}`}
+                    accessibilityLabel={`Remove mention ${index + 1}`}
                     onPress={() => {
-                      tagKeys.removeKey(index);
-                      editPrimary({
-                        tags: draft.primary.tags.filter((_, i) => i !== index),
+                      mentionKeys.removeKey(index);
+                      setDraft({
+                        ...draft,
+                        mentions: draft.mentions.filter((_, i) => i !== index),
                       });
                     }}
                     style={styles.remove}
@@ -1612,39 +1668,7 @@ export function CaptureScreen({
                     <Text style={styles.removeLabel}>×</Text>
                   </Pressable>
                 </View>
-              ))}
-            </Field>
-          ) : null}
-
-          {draft.mentions.length > 0 ? (
-            <Field label="Also came up">
-              {draft.mentions.map((mention, index) => (
-                <View key={mentionKeys.keys[index]} style={styles.mentionBlock}>
-                  <View style={styles.factRow}>
-                    <TextInput
-                      value={mention.name}
-                      onChangeText={(name) => editMention(index, { name })}
-                      style={[styles.input, styles.factInput]}
-                      accessibilityLabel={`Mentioned name ${index + 1}`}
-                    />
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`Remove mention ${index + 1}`}
-                      onPress={() => {
-                        mentionKeys.removeKey(index);
-                        setDraft({
-                          ...draft,
-                          mentions: draft.mentions.filter(
-                            (_, i) => i !== index,
-                          ),
-                        });
-                      }}
-                      style={styles.remove}
-                    >
-                      <Text style={styles.removeLabel}>×</Text>
-                    </Pressable>
-                  </View>
-                  {/*
+                {/*
                     Editable, and it did not start that way.
                     
                     The argument for locking it was that a quote's value is
@@ -1662,16 +1686,16 @@ export function CaptureScreen({
                     already happened on real data. A blank field can be filled
                     in; absent markup cannot.
                   */}
-                  <TextInput
-                    value={mention.quote}
-                    onChangeText={(quote) => editMention(index, { quote })}
-                    style={[styles.input, styles.mentionQuoteInput]}
-                    multiline
-                    placeholder="What the note says about them"
-                    placeholderTextColor={colors.line}
-                    accessibilityLabel={`Mentioned quote ${index + 1}`}
-                  />
-                  {/*
+                <TextInput
+                  value={mention.quote}
+                  onChangeText={(quote) => editMention(index, { quote })}
+                  style={[styles.input, styles.mentionQuoteInput]}
+                  multiline
+                  placeholder="What the note says about them"
+                  placeholderTextColor={colors.line}
+                  accessibilityLabel={`Mentioned quote ${index + 1}`}
+                />
+                {/*
                     The same line the subject gets. A misheard mention costs
                     less than a misheard subject — the person it invents stays
                     off the home list and goes when the note does — but it is
@@ -1682,42 +1706,54 @@ export function CaptureScreen({
                     drops those, so promising anything about them would be a
                     line about a row that is never written.
                   */}
-                  {matchKey(mention.name) ===
-                  matchKey(draft.primary.name) ? null : (
-                    <>
-                      {questionFor(mention.name) !== undefined ? null : (
-                        <Fate
-                          candidates={fateOf(mention.name)}
-                          onDisagree={
-                            expanded.includes(mention.name.trim())
-                              ? undefined
-                              : () => openPicker(mention.name)
-                          }
+                {matchKey(mention.name) ===
+                matchKey(draft.primary.name) ? null : (
+                  <>
+                    {questionFor(mention.name) !== undefined ? null : (
+                      <Fate
+                        candidates={fateOf(mention.name)}
+                        onDisagree={
+                          expanded.includes(mention.name.trim())
+                            ? undefined
+                            : () => openPicker(mention.name)
+                        }
+                      />
+                    )}
+                    {(() => {
+                      const question = questionFor(mention.name);
+                      return question === undefined ? null : (
+                        <NamePicker
+                          question={question}
+                          required={mustSettle.has(question.name)}
+                          answered={resolutions[question.name]}
+                          onPick={pick}
                         />
-                      )}
-                      {(() => {
-                        const question = questionFor(mention.name);
-                        return question === undefined ? null : (
-                          <NamePicker
-                            question={question}
-                            required={mustSettle.has(question.name)}
-                            answered={resolutions[question.name]}
-                            onPick={pick}
-                          />
-                        );
-                      })()}
-                    </>
-                  )}
-                </View>
-              ))}
-            </Field>
-          ) : null}
+                      );
+                    })()}
+                  </>
+                )}
+              </View>
+            ))}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Add someone"
+              onPress={() => {
+                markAdded(`mention-${draft.mentions.length}`);
+                setDraft({
+                  ...draft,
+                  mentions: [
+                    ...draft.mentions,
+                    { name: "", entityType: "person", quote: "" },
+                  ],
+                });
+              }}
+              hitSlop={8}
+            >
+              <Text style={styles.addLine}>Add someone</Text>
+            </Pressable>
+          </Field>
 
-          <Field
-            label={
-              sourceLabel(source, { draft: true })
-            }
-          >
+          <Field label={sourceLabel(source, { draft: true })}>
             <Text style={styles.quiet}>
               Correcting this fixes the note itself. The facts above stay as
               they are — unless you ask Andy to read it again.
@@ -1727,9 +1763,7 @@ export function CaptureScreen({
               onChangeText={setTranscript}
               style={[styles.input, styles.transcriptInput]}
               multiline
-              accessibilityLabel={
-                sourceLabel(source, { draft: true })
-              }
+              accessibilityLabel={sourceLabel(source, { draft: true })}
             />
             {/*
               Beside the transcript, because it acts on the transcript. When the
@@ -1836,7 +1870,8 @@ export function CaptureScreen({
         >
           {heard ? (
             <Text style={styles.lead}>
-              Check what Andy heard. Fix any names or words before it&apos;s read.
+              Check what Andy heard. Fix any names or words before it&apos;s
+              read.
             </Text>
           ) : null}
           {/*
@@ -2002,15 +2037,15 @@ export function CaptureScreen({
                     source === "business_card"
                     ? "Reading the card…"
                     : "Reading…"
-                : waitingGone
-                  ? "That note isn't waiting on this phone any more — it may already be saved. Tap record to start a new one."
-                : scopeMissing
-                  ? "Andy doesn't have anyone by that link."
-                  : scopeLoading
-                    ? "Finding out who this is about…"
-                    : aboutName !== undefined
-                      ? `Tap record. This note goes to ${aboutName}, whoever else comes up.`
-                      : "Tap record and say what you want to remember."}
+                  : waitingGone
+                    ? "That note isn't waiting on this phone any more — it may already be saved. Tap record to start a new one."
+                    : scopeMissing
+                      ? "Andy doesn't have anyone by that link."
+                      : scopeLoading
+                        ? "Finding out who this is about…"
+                        : aboutName !== undefined
+                          ? `Tap record. This note goes to ${aboutName}, whoever else comes up.`
+                          : "Tap record and say what you want to remember."}
             </Text>
           )}
         </ScrollView>

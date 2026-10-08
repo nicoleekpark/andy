@@ -164,6 +164,13 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `note-detail-field` | 기억할 내용 한 줄 (detail) |
 | `note-detail-remove-button` | × — 이 줄 지우기 |
 | `note-details-add-button` | Add a fact (copy PR 후 Add a detail) |
+| `tags-label` | TAGS — 비어 있어도 보임 |
+| `tag-field` | 태그 한 칸 (× 로 지우기) |
+| `tags-add-button` | Add a tag |
+| `also-came-up-label` | ALSO CAME UP — 노트에 같이 나온 사람들, 비어 있어도 보임 |
+| `mention-name-field` | 같이 나온 사람 이름 (× 로 지우기) |
+| `mention-quote-field` | 노트에서 그 사람에 대한 부분 |
+| `mention-add-button` | Add someone — 빠진 사람 추가 |
 | `note-source-label` | WHAT YOU SAID |
 | `note-source-hint` | 원문을 고쳐도 위 내용은 그대로라는 안내 |
 | `note-source-field` | 원문 (고칠 수 있음) |
