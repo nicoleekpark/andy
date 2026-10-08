@@ -28,6 +28,24 @@ import {
 
 const MAX_MENTIONS = 32;
 
+/** How far back a kept-offline note may be dated. */
+export const MAX_KEPT_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * The date a note is filed under: when it was kept, if that is believable,
+ * otherwise now. Believable means not in the future (a phone clock ahead of
+ * the server's must not file a note under tomorrow) and no older than
+ * `MAX_KEPT_AGE_MS` — a client is a public caller, and backdating years would
+ * let any note slide anywhere in a timeline. The fallback is the save time
+ * rather than an error: the note itself is fine, and refusing it would lose
+ * what someone was told over a clock.
+ */
+export function noteDate(keptAt: number | undefined, now: number): number {
+  if (keptAt === undefined || !Number.isFinite(keptAt)) return now;
+  if (keptAt > now || now - keptAt > MAX_KEPT_AGE_MS) return now;
+  return keptAt;
+}
+
 export const saveCapture = mutation({
   args: {
     /** What was actually said. Stored verbatim as the note's body. */
@@ -75,6 +93,13 @@ export const saveCapture = mutation({
         }),
       ),
     ),
+    /**
+     * When the note was kept on the phone, for a note written offline and
+     * saved later (`src/lib/outbox.tsx`): the timeline should say the day it
+     * was said, not the day the hall's Wi-Fi came back. Honoured only when it
+     * is in the past and recent — see `noteDate`.
+     */
+    keptAt: v.optional(v.number()),
   },
   returns: v.object({
     profileId: v.id("profiles"),
@@ -394,9 +419,9 @@ export const saveCapture = mutation({
       keyFacts: keyFacts.length > 0 ? keyFacts : undefined,
       source: args.source,
       // The moment of capture. `createdAt` exists separately from
-      // `_creationTime` so a note can later be backdated to when the
-      // conversation actually happened; nothing does that yet.
-      createdAt: Date.now(),
+      // `_creationTime` so a note can be backdated to when the conversation
+      // actually happened — a note kept offline carries that moment.
+      createdAt: noteDate(args.keptAt, Date.now()),
     });
 
     // After the note, because each link points at it. `userId` is stamped on

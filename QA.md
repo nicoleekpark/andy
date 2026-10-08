@@ -244,6 +244,7 @@ live here rather than in §7 because that is the screen they happen on.
 | 11.24 | Open a waiting note, then press **Discard and start over** (or back) instead of saving | The note is **still waiting** on `home` — only saving removes it |
 | 11.25 | Open a waiting note, press **Record again**, record something **different**, and save that | The new note is saved; the **original waiting note is still waiting** on `home` (it was put away, not saved) |
 | 11.26 | Open a waiting note's link after it has already been saved (e.g. tap **Read the first now** twice quickly, save on the first) | The second screen says *"That note isn't waiting on this phone any more — it may already be saved."* — not a blank new note |
+| 11.27 | Keep a note offline, wait at least a day (or change the simulator's date forward), then read it and **Remember this** | On the person's page and the note itself, the note's date is **the day it was kept**, not today — and it sits in the right place among their other notes. A note kept more than 30 days ago is dated the day it was saved |
 
 ## 12. Search indexing
 
