@@ -15,12 +15,23 @@ The subject is _personal memory-keeping_ — closer to marginalia in a well-love
 | `moss`  | `#5C6B4F` | primary accent — buttons, active states                                  |
 | `brass` | `#B8935A` | **The signature.** Inside the signed-in app: the Briefing card only. Before sign-in: the thread (icon, launch screen, name mark). Nowhere else |
 | `line`  | `#B8B3A8` | dividers, borders                                                        |
-| `alert` | `#A8503E` | errors only — muted, not a bright red                                    |
+| `alert` | `#9F4C3B` | errors only — muted, not a bright red. Darkened from `#A8503E` (4.33:1) to pass WCAG AA 4.5:1 on `paper` |
 
 `src/constants/theme.ts` is the only place these hex values appear; screens
 import `colors`. `alert` has exactly one non-error use — destructive controls:
 deleting a note or a person on their edit screens, and deleting the whole
 account in Settings. Each has earned the same weight as an error.
+
+**Accessibility (decided 2026-10-08): every pairing must meet WCAG 2.2 AA.**
+Text 4.5:1 (3:1 at 18pt, or 14pt bold), the edges of controls and meaningful
+icons 3:1, touch targets at least 44×44pt. A colour that fails is changed here,
+not argued for case by case. `__tests__/contrast.test.ts` checks the pairs the
+app draws text with. `alert` was fixed first (4.33 → 4.71:1). **Known gaps, each
+its own slice, not yet in the test:** `brass` text on `paper` (2.28:1 — the time
+on the Briefing card); `ink` text dimmed to 0.5–0.6 opacity (2.9–3.8:1, about 45
+places; 0.7 is the floor at 5.0:1); `line` as placeholder text (1.67:1) and as
+the only edge of an input (1.67:1, needs 3:1). `brass` and `line` as pure
+decoration (the card's stripe, the thread, dividers) are exempt.
 
 **Light only.** There is no dark palette, and `app.json` pins `userInterfaceStyle: "light"` so the OS setting can't half-apply one. A dark variant isn't a colour swap here — `brass` is the signature and it would need re-deciding against a dark ground, which is a real design pass this V1 timeline doesn't have. Not in PROJECT_SCOPE's Must/Should either. Reverting is one line in `app.json` plus six dark values in the table above.
 
@@ -239,3 +250,6 @@ remembered, never a screen full of what was written about someone.
 ## Guardrail for Claude Code
 
 Before building any screen, check this file. If a color/font choice isn't listed here, don't invent one ad hoc — flag it and ask, or extend this file deliberately (and say why) rather than drifting screen by screen.
+
+- **Tokens only.** Colours, spacing, fonts, text sizes, radii and opacities in `src/` are taken from `src/constants/theme.ts` by name — never a hex, rgb or named colour, never a one-off number where a token exists. A missing value is added to `theme.ts` and to this file first. ESLint refuses a raw colour anywhere in `src/` but `theme.ts`.
+- **WCAG 2.2 AA, always** (see Accessibility under Color Tokens). A new token, or a new pairing of two, is checked for contrast before it is used and gets a row in `__tests__/contrast.test.ts`.

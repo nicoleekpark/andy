@@ -55,7 +55,7 @@ Treat every repeated decision as a candidate for a reusable system, not a one-of
 - Reuse an existing component before proposing a new one. If a new one is needed, define it as a reusable component, not a one-screen special case, and specify its purpose, variants, states, content rules, interaction behavior, accessibility behavior, and token dependencies.
 - Do not over-abstract a component used once unless it establishes a deliberate system primitive.
 - Every screen design covers its empty, loading, error, and permission-denied states. Take the copy for these from the brief.
-- Touch targets are at least 44×44 pt, text contrast is at least 4.5:1, and layouts survive large Dynamic Type sizes.
+- WCAG 2.2 AA is a hard rule, not an option to trade (owner's decision, 2026-10-08): touch targets at least 44×44 pt; text contrast at least 4.5:1 (3:1 only at ≥18pt or ≥14pt bold), counting text dimmed with opacity; control edges and meaningful icons 3:1; layouts that survive large Dynamic Type sizes. Never present an option that fails it, and state each new colour pairing's ratio in the option.
 - This is a React Native / Expo app. Design in terms that map to it (flex layout, native navigation, safe areas), not web-only patterns.
 - V1 is light mode only (`STYLE.md`). Do not design a dark variant unless asked.
 

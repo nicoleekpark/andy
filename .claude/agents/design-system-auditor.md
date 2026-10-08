@@ -14,19 +14,19 @@ First read `STYLE.md`, `src/constants/theme.ts` (the tokens: `colors`, `fonts`, 
 
 Check, in this order:
 
-1. **Raw values.** Hex or rgb colors, and numeric literals for spacing, font size, radius, or shadow in changed style code, where a token exists. Name the token that should be used.
+1. **Raw values.** Hex, rgb or named colours (`"white"`, `"transparent"`), and numeric literals for spacing, font size, radius, opacity or shadow in changed style code. `CLAUDE.md` → Visual Design: tokens only, decided by the owner 2026-10-08. Where a token exists, name it. Where none exists, the slice must add one to `src/constants/theme.ts` **and** `STYLE.md` before using it — report that as must-fix, not as a token candidate. (ESLint already refuses raw colours in `src/`; you are the check for numbers.)
 2. **Duplicated components.** A new component, or inline JSX, that does what an existing shared component already does.
 3. **Drift from the approved design.** Anything in `## Final design` that the implementation changed or dropped, including the copy.
 4. **Missing states.** Empty, loading, error, and permission-denied states that the design specified and the code does not render.
-5. **Accessibility.** Pressable elements without `accessibilityLabel` or `accessibilityRole`; touch targets under 44×44 pt; `allowFontScaling={false}` or fixed heights that break at large text sizes; text and background token pairs under 4.5:1 contrast.
+5. **Accessibility — WCAG 2.2 AA is a hard rule** (`CLAUDE.md` → Visual Design, decided 2026-10-08). Pressable elements without `accessibilityLabel` or `accessibilityRole`; touch targets under 44×44 pt (count `hitSlop`); `allowFontScaling={false}` or fixed heights that break at large text sizes; text under 4.5:1 against what is behind it (3:1 only at ≥18pt or ≥14pt bold) — **compute it, including text dimmed with `opacity`**, which blends toward the background (`ink` at 0.6 on `paper` is 3.8:1 and fails; 0.7 is 5.0:1); control edges and meaningful icons under 3:1. Every failure is must-fix. Decorative marks and disabled controls are exempt. A new token pair without a row in `__tests__/contrast.test.ts` is a finding.
 
-Known: paper text on the brass Briefing card is about 2.3:1. It is a STYLE.md decision under review — report it once as "design decision needed", not as must-fix on every diff.
+Known: `brass` on `paper` is about 2.3:1. It is fine only where `brass` is decorative (the Briefing card's stripe, the thread); as text or as a control's only edge it fails like anything else.
 
 Do not give opinions on whether the design is good. That is `product-designer`'s call. Do not flag a raw value when no matching token exists; list it instead under "token candidates" for the designer.
 
 Report a short list with file and line:
 
-- **Must fix before commit**: raw values where a token exists, and pressables with no accessibility label. Include the one-line replacement.
+- **Must fix before commit**: raw values (with the token to use, or the token the slice must add), every WCAG 2.2 AA failure, and pressables with no accessibility label. Include the one-line replacement.
 - **Worth noting, your call**: everything else.
 - **Token candidates**: values with no token that appear more than once.
 

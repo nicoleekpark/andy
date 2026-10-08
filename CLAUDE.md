@@ -65,6 +65,10 @@ Internally model the core entity generically (not hardcoded to "contact") — th
 
 Check `STYLE.md` before building any screen — color tokens, type roles, and the one signature element (the Briefing card) are decided there. Don't invent ad hoc colors/fonts per screen. Its **Voice** section governs every word a person reads (screens, store listing, README, the privacy page): Andy *remembers*, it never *collects*, and "Andy's promises" only ever list what the code already guarantees.
 
+**Design tokens only — no raw values (decided 2026-10-08).** Every colour, spacing value, font and text size, radius and opacity in `src/` comes from `src/constants/theme.ts` (`colors`, `fonts`, `space`, …), by name. Never a hex/rgb/named colour (`"#fff"`, `"rgba(…)"`, `"white"`) and never a one-off number where a token exists. A value the design needs and lacks is added to `theme.ts` **and** `STYLE.md` first, then used. ESLint fails any raw colour outside `theme.ts`; numbers are checked by `design-system-auditor`. Existing raw numbers move onto tokens as their files are touched, not in a sweep.
+
+**Accessibility is a hard rule, not a trade-off (decided 2026-10-08): WCAG 2.2 AA everywhere.** Text 4.5:1 against what is behind it (3:1 only at 18pt, or 14pt bold) — including text dimmed with `opacity`; the edges of controls and meaningful icons 3:1; touch targets at least 44×44pt; text that scales with Dynamic Type and a layout that survives it; every pressable with an accessibility role and label. A failing token is changed in `theme.ts` + `STYLE.md`, never argued for. `__tests__/contrast.test.ts` checks the token pairs; a new pair gets a row there. Decorative marks and disabled controls are exempt.
+
 Refer to every screen and every part of one by its name in `docs/design/component-names.md` — in chat, PRs, `QA.md`, dev reports and agent output. A slice that adds, removes or reshapes a part of a screen updates its rows there in the same PR; a new part gets a name there before it is talked about.
 
 ## Scope Discipline

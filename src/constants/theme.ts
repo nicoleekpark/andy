@@ -20,8 +20,12 @@ export const colors = {
   brass: "#B8935A",
   /** dividers, borders */
   line: "#B8B3A8",
-  /** errors only — muted, deliberately not a bright red */
-  alert: "#A8503E",
+  /**
+   * errors only — muted, deliberately not a bright red. #9F4C3B rather than the
+   * first #A8503E: that one reached 4.33:1 against `paper`, under WCAG AA's
+   * 4.5:1, both as text on paper and as paper text on a red button (2026-10-08).
+   */
+  alert: "#9F4C3B",
 } as const;
 
 export type ColorToken = keyof typeof colors;
