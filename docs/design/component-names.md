@@ -34,6 +34,7 @@ These appear on most screens and mean the same thing everywhere.
 | `nav-bar-action-right` | 맨 위 오른쪽 자리 — 화면마다 다름 (Settings, Edit) |
 | `expo-dev-menu` | 왼쪽 위 톱니 — 개발용 빌드에만 있음, 테스터 앱엔 없음 |
 | `debug-panel` | record 화면 아래 개발용 진단 줄 — 테스터 빌드에서 숨길지 결정 필요 |
+| `offline-copy-line` | 오프라인에서 폰의 사본을 보여줄 때 화면 맨 위 — "Offline — showing what Andy had at 3:40 PM." (home·프로필·노트·Ask 공통, 온라인이면 안 보임) |
 | `note-source-label` / `-text` / `-field` / `-hint` | 노트 원문 (WHAT YOU SAID / WROTE) — 기록·리뷰·노트 화면 공통 |
 | `note-details-label` / `note-detail` / `note-detail-field` / `note-details-add-button` | 기억할 내용 (WHAT TO REMEMBER) — 리뷰·노트 화면 공통 |
 
@@ -254,6 +255,7 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `ask-field` | 질문 칸 — placeholder "Who are you thinking of?" |
 | `ask-submit-button--disabled` | Ask — 비어 있으면 비활성 |
 | `ask-hint` | 무엇을 물을 수 있는지 안내 |
+| `ask-offline-hint` | 오프라인일 때 — 자연어 질문은 연결이 필요하고 이름 찾기는 된다는 안내 (Ask 버튼 비활성) |
 | `ask-submit-button` | Ask |
 | `profile-results-label` | PEOPLE — 이름이 맞는 프로필들 |
 | `profile-result` | 프로필 하나 (탭하면 프로필) |

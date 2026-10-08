@@ -25,6 +25,8 @@ import { sourceLabel } from "@/lib/note-source";
 import { colors, space } from "@/constants/theme";
 import { userMessage } from "@/lib/user-message";
 import { useOutbox } from "@/lib/outbox";
+import { useLiveOrCopy } from "@/lib/offline-copy";
+import { withNotesView } from "@convex/offlineViews";
 
 /**
  * Voice capture, end to end: speak → transcript → draft → confirm → saved.
@@ -360,9 +362,14 @@ export function CaptureScreen({
    * `"skip"` when there is no profile in the route, so capture from home does
    * not run a query it has no argument for.
    */
-  const scoped = useQuery(
-    api.profiles.withNotes,
-    profileId === undefined ? "skip" : { profileId },
+  // Offline, who it is about comes from the phone's copy, so recording from
+  // someone's page works with no connection too.
+  const { data: scoped } = useLiveOrCopy(
+    useQuery(api.profiles.withNotes, profileId === undefined ? "skip" : { profileId }),
+    (copy) =>
+      profileId === undefined
+        ? undefined
+        : withNotesView(profileId, copy.profiles, copy.notes, copy.links, null),
   );
   // Guarded on `profileId` rather than trusting `scoped` to be undefined when
   // the query is skipped: the subject must come from the route, so the route is

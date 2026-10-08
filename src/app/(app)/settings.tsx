@@ -6,7 +6,8 @@ import { api } from "@convex/_generated/api";
 import { ScreenPlaceholder } from "@/components/screen-placeholder";
 import { colors } from "@/constants/theme";
 import { userMessage } from "@/lib/user-message";
-import { forgetOutbox, useOutbox } from "@/lib/outbox";
+import { useOutbox } from "@/lib/outbox";
+import { forgetOnThisPhone } from "@/lib/on-phone";
 
 export default function SettingsScreen() {
   const { signOut } = useAuth();
@@ -25,7 +26,7 @@ export default function SettingsScreen() {
       await deleteMyAccount({});
       // The account is gone; the session that named it goes with it, and so
       // do any notes it kept on this phone.
-      forgetOutbox();
+      forgetOnThisPhone();
       await signOut();
     } catch (thrown) {
       setError(
@@ -38,7 +39,7 @@ export default function SettingsScreen() {
   }, [deleteMyAccount, signOut]);
 
   /**
-   * Signing out removes notes kept on this phone while offline (`forgetOutbox`)
+   * Signing out removes notes kept on this phone while offline (`forgetOnThisPhone`)
    * — they belong to whoever wrote them, and the next person to sign in must
    * not inherit them.
    * Asked first when any are still waiting, because those words exist nowhere
@@ -47,7 +48,7 @@ export default function SettingsScreen() {
   const { notes: waiting } = useOutbox();
   const confirmSignOut = useCallback(() => {
     const signOutAndForget = () => {
-      forgetOutbox();
+      forgetOnThisPhone();
       void signOut();
     };
     if (waiting.length === 0) {

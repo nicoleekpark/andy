@@ -12,9 +12,12 @@ import {
 import { useAction, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "@convex/_generated/api";
-import { colors, fonts } from "@/constants/theme";
+import { colors, fonts, space } from "@/constants/theme";
 import { formatDate } from "@/lib/dates";
 import { userMessage } from "@/lib/user-message";
+import { searchView } from "@convex/offlineViews";
+import { NOTHING_KEPT_OFFLINE, useLiveOrCopy, useNothingKeptOffline, useOnline } from "@/lib/offline-copy";
+import { OfflineCopyLine } from "@/components/offline-copy-line";
 
 /**
  * Ask Andy — recall across every note, not only the ones filed under a name.
@@ -73,12 +76,22 @@ export default function SearchScreen() {
   // `"skip"` rather than an empty query: no subscription at all while the box
   // is empty, instead of one that asks the backend to confirm nothing matches
   // nothing.
-  const byName = useQuery(
-    api.people.search,
-    settled.trim() === "" ? "skip" : { query: settled.trim() },
+  //
+  // Offline, the same search runs over the phone's copy (`offline-copy.tsx`):
+  // finding someone by name needs no server.
+  const { data: byName, takenAt } = useLiveOrCopy(
+    useQuery(api.people.search, settled.trim() === "" ? "skip" : { query: settled.trim() }),
+    (copy) =>
+      settled.trim() === ""
+        ? undefined
+        : searchView(settled.trim(), copy.profiles, copy.notes, copy.links),
   );
+  // Asking in your own words is a Claude call; offline there is nothing to
+  // answer it with, and sending it now would wait with no answer.
+  const online = useOnline();
+  const nothingKept = useNothingKeptOffline();
 
-  const ready = question.trim() !== "" && !busy;
+  const ready = question.trim() !== "" && !busy && online;
   // Whether anything below is actually marked. The answer's source line claims
   // there are marks, and `usedNotes: []` is a designed outcome rather than an
   // edge case — the prompt tells the model to cite nothing when it drew on
@@ -164,6 +177,14 @@ export default function SearchScreen() {
         </View>
 
         {error !== null && <Text style={styles.error}>{error}</Text>}
+        {!online ? (
+          <Text testID="ask-offline-hint" style={styles.offlineHint}>
+            {nothingKept
+              ? NOTHING_KEPT_OFFLINE
+              : "You're offline. Asking in your own words needs a connection — finding someone by name still works."}
+          </Text>
+        ) : null}
+        <OfflineCopyLine takenAt={takenAt} />
 
         {/*
           Above the asked-for answer, always. These cost nothing and are
@@ -414,6 +435,7 @@ function ResultCard({ result }: { result: Results[number] }) {
 }
 
 const styles = StyleSheet.create({
+  offlineHint: { color: colors.ink, fontSize: 14, opacity: 0.55, lineHeight: 21, marginBottom: space.md },
   sectionLabel: {
     color: colors.ink,
     fontFamily: fonts.display,

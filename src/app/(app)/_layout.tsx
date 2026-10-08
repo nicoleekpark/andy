@@ -8,7 +8,9 @@ import { Connecting } from "@/components/connecting";
 import { LockScreen } from "@/components/lock-screen";
 import { colors } from "@/constants/theme";
 import { LockedContext } from "@/lib/lock-context";
-import { OutboxProvider, forgetOutbox, outboxStore } from "@/lib/outbox";
+import { OutboxProvider } from "@/lib/outbox";
+import { OfflineCopyProvider } from "@/lib/offline-copy";
+import { forgetOnThisPhone, outboxStore } from "@/lib/on-phone";
 import { useAppLock } from "@/lib/use-app-lock";
 import { onNudgeOpened } from "@/lib/notifications";
 
@@ -100,8 +102,8 @@ export default function AppLayout() {
     return (
       <Connecting
         onSignOut={() => {
-          // A sign-out the person chose: notes kept on this phone go with it.
-          forgetOutbox();
+          // A sign-out the person chose: what Andy keeps on this phone goes with it.
+          forgetOnThisPhone();
           void signOut().catch(() => {});
         }}
       />
@@ -131,6 +133,7 @@ export default function AppLayout() {
   return (
     <LockedContext.Provider value={covered}>
       <OutboxProvider ownerId={userId!} store={outboxStore}>
+      <OfflineCopyProvider ownerId={userId!}>
         <View style={styles.fill}>
           <View
             style={styles.fill}
@@ -167,6 +170,7 @@ export default function AppLayout() {
             <View style={styles.cover} testID="lock-cover" />
           ) : null}
         </View>
+      </OfflineCopyProvider>
       </OutboxProvider>
     </LockedContext.Provider>
   );

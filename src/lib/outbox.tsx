@@ -1,4 +1,4 @@
-import { Directory, File, Paths } from "expo-file-system";
+import { jsonFileStore, outboxStore, type PhoneStore } from "./on-phone";
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 
 /**
@@ -15,7 +15,7 @@ import { createContext, useCallback, useContext, useMemo, useState } from "react
  * documents folder. iOS keeps that sandbox private to Andy and encrypted at
  * rest. Every note carries the signed-in account it was written under, so the
  * next person to sign in on this phone never sees it; signing out on purpose
- * removes them all (`forgetOutbox`).
+ * removes them all (`forgetOnThisPhone` in `on-phone.ts`).
  */
 
 export type OutboxNote = {
@@ -37,81 +37,15 @@ export type OutboxNote = {
   aboutProfileId?: string;
 };
 
-/** Where the outbox lives. A seam so tests use memory instead of the disk. */
-export type OutboxStore = {
-  /** The file's contents, or `null` when there is none. */
-  read(): string | null;
-  /** Replace the contents — completely, or not at all. */
-  write(contents: string): void;
-  /**
-   * Move contents that cannot be read out of the way, kept rather than
-   * deleted: they may be someone's notes, and the next `write` must not land
-   * on top of them.
-   */
-  setAside(): void;
-  /** Remove everything, set-aside files included. */
-  remove(): void;
-};
+/** Where the outbox lives (`on-phone.ts`). */
+export type OutboxStore = PhoneStore;
 
-/**
- * One folder of Andy's own, so "remove everything" is one delete and a file
- * set aside is never left behind by sign-out.
- */
+/** The outbox's own file — kept for tests that exercise the real file layout. */
 export function fileStore(): OutboxStore {
-  const folder = () => new Directory(Paths.document, "outbox");
-  const notes = () => new File(folder(), "notes.json");
-  const pending = () => new File(folder(), "notes.next.json");
-  return {
-    read() {
-      if (notes().exists) return notes().textSync();
-      // Killed between the two steps of `write` below: the new contents are
-      // complete in `pending`, and nothing else has them.
-      if (pending().exists) return pending().textSync();
-      return null;
-    },
-    write(contents) {
-      const dir = folder();
-      if (!dir.exists) dir.create({ intermediates: true });
-      // Written whole to a second file, then swapped in — so a write cut off
-      // halfway leaves the previous notes intact rather than a half-written
-      // file that reads as nothing.
-      const next = pending();
-      next.write(contents);
-      const current = notes();
-      if (current.exists) current.delete();
-      next.rename("notes.json");
-    },
-    setAside() {
-      for (const file of [notes(), pending()]) {
-        if (file.exists) file.rename(`unreadable-${Date.now()}-${file.name}`);
-      }
-    },
-    remove() {
-      const dir = folder();
-      if (dir.exists) dir.delete();
-    },
-  };
+  return jsonFileStore("outbox", "notes.json");
 }
 
-/** The one outbox on this phone. */
-export const outboxStore = fileStore();
-
-/**
- * Remove every note kept on this phone. Called on a sign-out the person chose
- * (and account deletion) — never on Clerk merely reporting signed-out, which
- * also happens when a session expires on its own, and must not cost anyone
- * the words they kept. Notes left behind that way still carry their owner and
- * are never shown to another account (`loadOutbox`).
- *
- * Best effort: a failure to delete must not stop the sign-out itself.
- */
-export function forgetOutbox(store: OutboxStore = outboxStore): void {
-  try {
-    store.remove();
-  } catch {
-    // Still owner-tagged; the next account to load it removes it.
-  }
-}
+export { outboxStore };
 
 function isNote(value: unknown): value is OutboxNote {
   const v = value as Partial<OutboxNote> | null;
