@@ -107,7 +107,7 @@ export async function askForCalendar(): Promise<CalendarAccess> {
  *
  * All-day events are dropped. "Anna's birthday" sitting on today would put a
  * briefing at the top of the screen all day about a meeting that is not
- * happening, and the thing this feature is for is the twenty minutes before you
+ * happening, and the thing this feature is for is the ten minutes before you
  * walk into a room.
  */
 export async function readUpcoming(

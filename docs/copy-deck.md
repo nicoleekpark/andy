@@ -61,7 +61,7 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 | nothing remembered yet | text | `src/components/briefing-card.tsx:143` |  |
 | 1 note | text | `src/components/briefing-card.tsx:145` |  |
 | Remind me before meetings | VoiceOver | `src/components/briefing-card.tsx:154` |  |
-| Remind me 20 minutes before › | text | `src/components/briefing-card.tsx:159` |  |
+| Remind me 10 minutes before › | text | `src/components/briefing-card.tsx:159` |  |
 | Notifications are off, so Andy can't remind you before this. Turn them on in Settings › Andy. | text | `src/components/briefing-card.tsx:169` |  |
 | You've written about {…}people called “{…}”, so Andy can't tell which one this is. | text | `src/components/briefing-card.tsx:178` |  |
 | Andy can't reach the server. | text | `src/components/connecting.tsx:125` |  |
@@ -374,10 +374,10 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 
 | What a person reads | Kind | Where | Planned change (STYLE.md → Terminology) |
 |---|---|---|---|
-| Coming up | body | `src/lib/notifications.ts:132` |  |
-| Anything to remember? | title | `src/lib/notifications.ts:153` |  |
-| How was {…}? | title | `src/lib/notifications.ts:153` |  |
-| Tap to add what you want to remember. | body | `src/lib/notifications.ts:154` |  |
+| Coming up | body | `src/lib/notifications.ts:138` |  |
+| Anything to remember? | title | `src/lib/notifications.ts:159` |  |
+| How was {…}? | title | `src/lib/notifications.ts:159` |  |
+| Tap to add what you want to remember. | body | `src/lib/notifications.ts:160` |  |
 | Andy looked at too many calendar events at once. Try a shorter range. | server error | `convex/calendar.ts:124` |  |
 
 ## Navigation titles

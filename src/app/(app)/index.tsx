@@ -175,7 +175,7 @@ export default function HomeScreen() {
           contentContainerStyle={styles.list}
           /*
             Above the list rather than beside it. The briefing is about the next
-            twenty minutes and the list is about everybody — putting the two in
+            ten minutes and the list is about everybody — putting the two in
             the same scroll, in that order, is the whole hierarchy.
           */
           ListHeaderComponent={

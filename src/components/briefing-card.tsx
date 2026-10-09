@@ -12,7 +12,7 @@ import { colors, fonts } from "../constants/theme";
  * "torn edge" on top; React Native cannot draw that, and `STYLE.md` dropped it.)
  *
  * It sits at the top of home rather than on a screen of its own because the
- * thing it is for is the twenty minutes before you walk into a room, and a
+ * thing it is for is the ten minutes before you walk into a room, and a
  * briefing you have to navigate to is a briefing you read afterwards.
  */
 
@@ -42,7 +42,7 @@ type Props =
       state: "ready";
       briefing: Briefing;
       /**
-       * Whether the phone will say anything twenty minutes before this.
+       * Whether the phone will say anything ten minutes before this.
        *
        * Offered here rather than at the first prompt, and that is the point:
        * "remind me before this" means something in front of a real meeting and
@@ -156,7 +156,7 @@ export function BriefingCard(props: Props) {
               style={styles.quiet}
             >
               <Text style={styles.quietLabel}>
-                Remind me 20 minutes before ›
+                Remind me 10 minutes before ›
               </Text>
             </Pressable>
           ) : null}
