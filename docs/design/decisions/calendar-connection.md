@@ -14,9 +14,9 @@ Names follow `docs/design/component-names.md` (`briefing-card`, `home`,
 | # | Decision | State |
 |---|---|---|
 | 1 | Ship the calendar briefing in V1, with a remote off switch | ✅ Built — #124 (`featureFlags`, key `calendarBriefing`; how-to in `INFRA.md` #6) |
-| 2 | Ask at the point of use, less heavily | Decided — to design |
-| 3 | Connect later, after "Don't Allow", and disconnect | Decided — to design |
-| 4 | Mute from the card (X) | Decided — brief written, to design |
+| 2 | Ask at the point of use, less heavily | Designed — Option A chosen, to build |
+| 3 | Connect later, after "Don't Allow", and disconnect | Designed — Option A chosen, to build |
+| 4 | Mute from the card (X) | Designed — Option A chosen, to build |
 | 5 | Match names on the phone; the calendar never leaves it | ✅ Built — `convex/calendarMatch.ts`, used by `src/lib/use-briefing.ts`; `calendar.matchEvents` kept only for build 4 |
 
 ## 1. V1 keeps the briefing, with a remote off switch
@@ -823,3 +823,24 @@ screens move onto it as they are touched, not in a sweep" — so the
 implementation PR should move `briefing-card.tsx` onto the named tokens
 (and raise `personMeta`'s opacity to at least `textOpacity.quiet`) as part
 of this change, not as a separate cleanup later.
+
+## Final design
+
+**Option A — Visible state rows**, chosen by the owner on 2026-10-08. Build
+exactly what `### Option A` above specifies, with the copy in `## Brief` →
+`### Copy`, and the mock `docs/design/mocks/calendar-connection-a.html`
+(hosted: https://claude.ai/artifact/JMdsALGQSJvqfBS6G5iJch).
+
+Carried into the build, from the brief and the owner's answers:
+- one stored state (on / muted until a stored local midnight / off), on this
+  phone; the remote `calendarBriefing` switch still overrides everything;
+- reminders scheduled to the end of the next local day (≤20 meetings), 10
+  minutes before, and none for a meeting that starts while muted;
+- no `briefing-card` while nobody is in Andy;
+- the new names in `### Names` and Option A's additions go into
+  `docs/design/component-names.md` in the build PR;
+- `briefing-card.tsx` moves onto the tokens while it is being rewritten
+  (its `opacity: 0.55` text is under the AA floor).
+
+Separate, smaller PRs first: pending reminders cancelled on sign-out and
+account deletion (R15), and the lead moved from 20 to 10 minutes.
