@@ -529,6 +529,7 @@ name only one person answers to.
 | 19.9 | Put a meeting that **already started** in the calendar, foreground the app | **No buzz on launch.** iOS fires a past date trigger immediately, so an unguarded version alerts about a meeting that began an hour ago | ⬜ |
 | 19.10 | A meeting named for nobody you keep ("Standup") | **No notification at all.** "You have a meeting" is what the calendar app already does | ⬜ |
 | 19.11 | Schedule something from another app (a reminder, a timer), then foreground Andy | **It survives.** Andy cancels only its own — every notification it schedules is marked, and `cancelAllScheduledNotificationsAsync` is deliberately not used | ⬜ |
+| 19.12 | With a meeting's reminder scheduled, Settings → **Sign out** (and, on a test account only, **Delete account**) | **No reminder arrives** at that meeting's time — nothing with that person's name reaches the lock screen after the account has left the phone. A reminder from another app still arrives (19.11). Unit-tested; that iOS really drops them is device-only | ⬜ |
 
 ---
 
