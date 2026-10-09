@@ -1,4 +1,5 @@
 import { Directory, File, Paths } from "expo-file-system";
+import { cancelBriefings } from "./notifications";
 
 /**
  * What Andy keeps on this phone, and how it is written.
@@ -82,6 +83,10 @@ export const pendingStore = jsonFileStore("pending", "changes.json");
  * anyone the words they kept. What is left behind that way still carries its
  * owner and is never shown to another account.
  *
+ * That includes this app's meeting reminders. They sit with iOS rather than
+ * in a file, but they carry a person's name and would still reach the lock
+ * screen after the account that wrote about them has left the phone.
+ *
  * Best effort: a failure to delete must not stop the sign-out itself.
  */
 export function forgetOnThisPhone(): void {
@@ -92,4 +97,7 @@ export function forgetOnThisPhone(): void {
       // Still owner-tagged; the next account to load it removes it.
     }
   }
+  // Not awaited: the sign-out it belongs to must not wait on the native
+  // bridge, and a failure here leaves nothing worse than before.
+  void cancelBriefings().catch(() => undefined);
 }
