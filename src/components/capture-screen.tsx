@@ -22,7 +22,8 @@ import { matchKey } from "@convex/naming";
 import { useJustAdded } from "@/lib/use-just-added";
 import { FORM_SCROLL } from "@/lib/form-scroll";
 import { useRowKeys } from "@/lib/use-row-keys";
-import { formatDate, localToday } from "@/lib/dates";
+import { localToday } from "@/lib/dates";
+import { describePerson } from "@/lib/describe-person";
 import { sourceLabel } from "@/lib/note-source";
 import { colors, space } from "@/constants/theme";
 import { userMessage } from "@/lib/user-message";
@@ -79,30 +80,6 @@ const DEFAULT_LOCALE = "en-US";
 
 type Phase =
   "idle" | "starting" | "listening" | "extracting" | "review" | "saving";
-
-/**
- * What separates two people who share a name: how you know them, how much is
- * recorded, and when you last added to it. Written once because the candidate
- * button shows it and its accessibility label repeats it — two copies would
- * drift, and the screen-reader version is the one nobody notices going stale.
- */
-function describe(candidate: {
-  relationshipContext?: string;
-  entityType: "person" | "animal";
-  noteCount: number;
-  lastNoteAt: number | null;
-}): string {
-  return [
-    candidate.relationshipContext,
-    candidate.entityType === "animal" ? "animal" : null,
-    `${candidate.noteCount} ${candidate.noteCount === 1 ? "note" : "notes"}`,
-    candidate.lastNoteAt === null
-      ? "never written about"
-      : `last ${formatDate(candidate.lastNoteAt)}`,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-}
 
 /**
  * What saving will do with one name, in a line.
@@ -200,7 +177,7 @@ function NamePicker({
           <Pressable
             key={candidate.profileId}
             accessibilityRole="button"
-            accessibilityLabel={`${candidate.name}, ${describe(candidate)}`}
+            accessibilityLabel={`${candidate.name}, ${describePerson(candidate)}`}
             accessibilityState={{ selected: picked }}
             onPress={() => onPick(question.name, candidate.profileId)}
             style={[styles.candidate, picked && styles.candidateOn]}
@@ -226,7 +203,7 @@ function NamePicker({
                   */}
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`View ${candidate.name}, ${describe(candidate)}`}
+                accessibilityLabel={`View ${candidate.name}, ${describePerson(candidate)}`}
                 onPress={() => router.push(`/profile/${candidate.profileId}`)}
                 hitSlop={12}
               >
@@ -245,7 +222,7 @@ function NamePicker({
             <Text
               style={[styles.candidateMeta, picked && styles.candidateNameOn]}
             >
-              {describe(candidate)}
+              {describePerson(candidate)}
             </Text>
           </Pressable>
         );
@@ -315,7 +292,7 @@ function Fate({
   return (
     <View style={styles.fateRow}>
       <Text style={[styles.quiet, styles.fateText]}>
-        Adding to {only.name} · {describe(only)}
+        Adding to {only.name} · {describePerson(only)}
       </Text>
       {/*
         The line used to be the end of it: one match joined silently, and the

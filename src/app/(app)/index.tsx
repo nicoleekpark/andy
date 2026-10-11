@@ -134,7 +134,7 @@ export default function HomeScreen() {
   const { data: people, takenAt } = useLiveOrCopy(useQuery(api.profiles.people), (copy) =>
     peopleView(copy.profiles, copy.notes),
   );
-  const { briefing, ask, alerts, askForAlerts } = useBriefing(
+  const { briefing, ask, alerts, askForAlerts, answer, unanswer } = useBriefing(
     useFeature("calendarBriefing"),
   );
   const { askToMute, notNow, openIphoneSettings } = useBriefingActions();
@@ -202,6 +202,10 @@ export default function HomeScreen() {
                   briefing={briefing.briefing}
                   alerts={alerts}
                   onEnableAlerts={() => void askForAlerts()}
+                  onAnswer={(nameKey, profileId) =>
+                    answer(briefing.briefing.eventId, nameKey, profileId)
+                  }
+                  onUnanswer={(nameKey) => unanswer(briefing.briefing.eventId, nameKey)}
                   onMute={() => askToMute(true)}
                 />
               ) : briefing.state === "denied" ? (

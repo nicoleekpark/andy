@@ -50,6 +50,7 @@ import { muteForToday, nextLocalMidnight, setCalendarSetting } from "../src/lib/
 import * as calendarMatch from "@convex/calendarMatch";
 import { NONE, pick, picksOf } from "../src/lib/briefing-picks";
 import { forgetOnThisPhone } from "../src/lib/on-phone";
+import { formatDate } from "../src/lib/dates";
 
 jest.mock("convex/react", () => ({ useConvex: jest.fn() }));
 // The phone's copy, which matching reads. Mocked so these tests need no
@@ -115,7 +116,7 @@ const EMPTY_COPY = {
 
 /** A harness that renders whatever the hook currently says. */
 function Harness({ enabled = true }: { enabled?: boolean }) {
-  const { briefing, ask, alerts, askForAlerts } = useBriefing(enabled);
+  const { briefing, ask, alerts, askForAlerts, answer, unanswer } = useBriefing(enabled);
   const onMute = jest.fn();
   if (
     briefing.state === "loading" ||
@@ -143,6 +144,8 @@ function Harness({ enabled = true }: { enabled?: boolean }) {
         briefing={briefing.briefing}
         alerts={alerts}
         onEnableAlerts={() => void askForAlerts()}
+        onAnswer={(nameKey, profileId) => answer(briefing.briefing.eventId, nameKey, profileId)}
+        onUnanswer={(nameKey) => unanswer(briefing.briefing.eventId, nameKey)}
         onMute={onMute}
       />
     );
@@ -576,7 +579,15 @@ test("should say plainly when there is nothing written about the person yet", as
   );
 });
 
-test("should say it cannot tell which person rather than pick one", async () => {
+test("should ask which person rather than pick one", async () => {
+  (useReadingCopy as jest.Mock).mockReturnValue({
+    ...EMPTY_COPY,
+    profiles: [
+      { _id: "j-gym", _creationTime: 0, userId: "u", name: "Judy", relationshipContext: "from the gym", entityType: "person", tags: [], autoCreated: false },
+      { _id: "j-work", _creationTime: 0, userId: "u", name: "Judy", relationshipContext: "from work", entityType: "person", tags: [], autoCreated: false },
+    ],
+    notes: [{ profileId: "j-work", createdAt: Date.UTC(2026, 8, 2, 12) }],
+  });
   calendarSays([
     { id: "e1", title: "Lunch with Judy", startDate: new Date(AT), endDate: new Date(AT), allDay: false },
   ]);
@@ -587,21 +598,24 @@ test("should say it cannot tell which person rather than pick one", async () => 
       startsAt: AT,
       endsAt: AT,
       people: [],
-      ambiguous: [{ name: "Judy", count: 2 }],
+      ambiguous: [{ name: "Judy", key: "judy", count: 2, profileIds: ["j-gym", "j-work"] }],
     },
   ]);
   await render(<Harness />);
 
-  await waitFor(() =>
-    expect(screen.getByText(/can.t tell which one/)).toBeTruthy(),
-  );
-  // Filed as "Judy", so the card says Judy — not the lowercase key the
-  // matching compares by.
-  expect(screen.getByText(/“Judy”/)).toBeTruthy();
-  // People are written about, never "kept" (STYLE.md → Terminology).
-  // The apostrophe is written &apos; in the JSX; on screen it is a plain '.
-  expect(screen.getByText(/You've written about 2 people called “Judy”/)).toBeTruthy();
-  expect(screen.queryByText(/You keep/)).toBeNull();
+  // Filed as "Judy", so the card asks about Judy — not the lowercase key the
+  // matching compares by. People are written about, never "kept" (STYLE.md).
+  await waitFor(() => expect(screen.getByText("Which Judy is this?")).toBeTruthy());
+  expect(screen.getByText(/You've written about 2 people called Judy/)).toBeTruthy();
+  // Both offered, each with how you know them, in the order `review` lists
+  // them — and neither chosen for you, though one has more notes (R-P10).
+  const choices = screen.getAllByTestId("briefing-card-pick-choice");
+  expect(choices.map((c) => c.props.accessibilityLabel)).toEqual([
+    "Judy, from the gym · 0 notes · never written about",
+    `Judy, from work · 1 note · last ${formatDate(Date.UTC(2026, 8, 2, 12))}`,
+  ]);
+  expect(screen.queryByTestId("briefing-card-person-link")).toBeNull();
+  expect(screen.getByText("Neither of them")).toBeTruthy();
 });
 
 // ---------------------------------------------------------------------------
@@ -643,7 +657,7 @@ describe("an answered shared name", () => {
 
   test("should brief the Priya picked, and remind you about her, from the moment she is picked", async () => {
     await render(<Harness />);
-    await waitFor(() => expect(screen.getByText(/can.t tell which one/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("Which Priya is this?")).toBeTruthy());
     // Unanswered: no reminder that cannot name who it is about (R-P5).
     expect(briefingTimes()).toEqual([]);
 
@@ -655,10 +669,55 @@ describe("an answered shared name", () => {
     // reminder (R-P5).
     await waitFor(() => expect(screen.getByLabelText("Open Priya")).toBeTruthy());
     expect(screen.getByText("1 note")).toBeTruthy();
-    expect(screen.queryByText(/can.t tell which one/)).toBeNull();
+    expect(screen.queryByText("Which Priya is this?")).toBeNull();
     await waitFor(() =>
       expect(briefingTimes()).toContain(AT - BRIEFING_LEAD_MINUTES * 60_000),
     );
+  });
+
+  test("should answer with one tap on the card, and take it back with one more", async () => {
+    await render(<Harness />);
+    await waitFor(() => expect(screen.getByText("Which Priya is this?")).toBeTruthy());
+
+    const [, shah] = screen.getAllByTestId("briefing-card-pick-choice");
+    await act(async () => {
+      fireEvent.press(shah!);
+    });
+
+    // Saved at once, no dialog (R-P4), against this event and this name.
+    expect(picksOf("user_a")).toEqual([
+      expect.objectContaining({ eventId: "e1", nameKey: "priya", profileId: "p-shah" }),
+    ]);
+    await waitFor(() => expect(screen.getByLabelText("Open Priya")).toBeTruthy());
+    expect(screen.queryByText("Which Priya is this?")).toBeNull();
+
+    await act(async () => {
+      fireEvent.press(screen.getByText("Not this Priya?"));
+    });
+
+    // Back to the question with nothing chosen — not the previous answer as
+    // a default (R-P10).
+    expect(picksOf("user_a")).toEqual([]);
+    await waitFor(() => expect(screen.getByText("Which Priya is this?")).toBeTruthy());
+  });
+
+  test("should say Neither on the card and offer Change there", async () => {
+    await render(<Harness />);
+    await waitFor(() => expect(screen.getByText("Which Priya is this?")).toBeTruthy());
+
+    await act(async () => {
+      fireEvent.press(screen.getByText("Neither of them"));
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText("Not a Priya you've written about.")).toBeTruthy(),
+    );
+    expect(picksOf("user_a")).toEqual([expect.objectContaining({ profileId: NONE })]);
+
+    await act(async () => {
+      fireEvent.press(screen.getByText("Change"));
+    });
+    await waitFor(() => expect(screen.getByText("Which Priya is this?")).toBeTruthy());
   });
 
   test("should not lose an answer given while the calendar is still being read", async () => {
@@ -690,7 +749,7 @@ describe("an answered shared name", () => {
 
     // R-P6: the meeting stays until it starts; nobody is on it to remind about.
     await waitFor(() => expect(screen.getByText("Coffee with Priya")).toBeTruthy());
-    expect(screen.queryByText(/can.t tell which one/)).toBeNull();
+    expect(screen.queryByText("Which Priya is this?")).toBeNull();
     expect(briefingTimes()).toEqual([]);
   });
 
@@ -705,7 +764,7 @@ describe("an answered shared name", () => {
     ]);
     await render(<Harness />);
 
-    await waitFor(() => expect(screen.getByText(/can.t tell which one/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("Which Priya is this?")).toBeTruthy());
     // R-P7: pruned on the read, since a deletion elsewhere never reaches it.
     expect(picksOf("user_a")).toEqual([]);
     // Tidying is part of that read, not a reason for another: one calendar
@@ -718,7 +777,7 @@ describe("an answered shared name", () => {
     pick("user_b", "e1", "priya", "p-shah");
     await render(<Harness />);
 
-    await waitFor(() => expect(screen.getByText(/can.t tell which one/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("Which Priya is this?")).toBeTruthy());
     expect(briefingTimes()).toEqual([]);
   });
 });
@@ -1136,9 +1195,11 @@ test("should offer the reminder at the time it is actually scheduled", async () 
   await render(
     <BriefingCard
       state="ready"
-      briefing={{ title: "Coffee with Marcus", startsAt: AT, people: [], ambiguous: [] }}
+      briefing={{ eventId: "e1", title: "Coffee with Marcus", startsAt: AT, people: [], ambiguous: [], declined: [] }}
       alerts="off"
       onEnableAlerts={jest.fn()}
+      onAnswer={jest.fn()}
+      onUnanswer={jest.fn()}
       onMute={jest.fn()}
     />,
   );

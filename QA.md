@@ -489,6 +489,14 @@ your actual messy real calendar, not synthetic data".
 | 18.21 | Tap ✕ → **Mute until I turn it back on** | The card leaves and **no reminders** come at all, until it is turned back on (A3 adds that to Settings; until then a reinstall resets it) | ⬜ |
 | 18.22 | Tap ✕ → **Cancel** | Nothing changes. Neither mute button is red; with VoiceOver the ✕ reads "Mute the briefing" | ⬜ |
 | 18.23 | Look at a meeting card's time | The time is **dark ink**, not gold — gold stays only on the left stripe (contrast, STYLE.md) | ⬜ |
+| 18.24 | Keep two people called Priya (different "how you know them"). Add an event "Coffee with Priya" in the next 12 hours | The card asks **"Which Priya is this?"** with both Priyas, each with how you know them, notes and last date — in the same order and wording as `review`'s picker. **Neither is highlighted.** No reminder is scheduled yet | ⬜ |
+| 18.25 | Tap one Priya | Saved **at once, no dialog**: that Priya shows as a link, with **Not this Priya?** under it. Her reminder now comes 10 minutes before. Relaunch the app → still that Priya, not asked again | ⬜ |
+| 18.26 | Make the event **repeat weekly**, look again next week (or move the date forward) | Not asked again — one answer covers the series | ⬜ |
+| 18.27 | Tap **Not this Priya?** | Back to the question, with neither Priya chosen | ⬜ |
+| 18.28 | Tap **Neither of them** | "Not a Priya you've written about." with **Change**. The meeting stays on the card; no reminder for it | ⬜ |
+| 18.29 | Answer a Priya, then sign out and sign back in | Asked again — answers stay on the phone only and go with a sign-out | ⬜ |
+| 18.30 | Answer a Priya, then delete that Priya from Andy | The card asks again (if two Priyas are still left) or shows the one Priya left | ⬜ |
+| 18.31 | VoiceOver on the pick | Each choice reads "Priya, friend · 4 notes · last …", hint "Remembers this Priya for this event." Every choice, Neither and Not this Priya? is at least 44pt tall | ⬜ |
 
 ---
 
