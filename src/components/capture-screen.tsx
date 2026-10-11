@@ -24,7 +24,7 @@ import { FORM_SCROLL } from "@/lib/form-scroll";
 import { useRowKeys } from "@/lib/use-row-keys";
 import { formatDate, localToday } from "@/lib/dates";
 import { sourceLabel } from "@/lib/note-source";
-import { colors, space } from "@/constants/theme";
+import { colors, space, textSize } from "@/constants/theme";
 import { userMessage } from "@/lib/user-message";
 import { useOutbox } from "@/lib/outbox";
 import { useLiveOrCopy } from "@/lib/offline-copy";
@@ -1111,20 +1111,6 @@ export function CaptureScreen({
   }, []);
 
   /**
-   * Re-read with no question asked. Split out because the save-time prompt in
-   * `save` has already asked — raising `reread`'s own confirmation on top of it
-   * would be two dialogs in a row saying the same thing.
-   */
-  const rereadNow = useCallback(() => {
-    const spoken = transcript.trim();
-    if (spoken === "") {
-      return;
-    }
-    setResolutions({});
-    void runExtraction(spoken, true);
-  }, [transcript, runExtraction]);
-
-  /**
    * Read the corrected transcript again.
    *
    * Editing the transcript does not re-run extraction, on purpose: the facts
@@ -1143,10 +1129,10 @@ export function CaptureScreen({
     if (spoken === "") {
       return;
     }
-    // Built on `rereadNow` rather than repeating its two lines. Copied, the two
-    // have to be kept in step by hand, and the one that drifts is whichever is
-    // edited second.
-    const run = rereadNow;
+    const run = () => {
+      setResolutions({});
+      void runExtraction(spoken, true);
+    };
 
     const touched =
       draft !== null &&
@@ -1165,7 +1151,7 @@ export function CaptureScreen({
         { text: "Read it again", onPress: run },
       ],
     );
-  }, [confirm, transcript, draft, extracted, rereadNow]);
+  }, [confirm, transcript, draft, extracted, runExtraction]);
 
   /**
    * Whether the words on screen have moved on from the words the facts came out
@@ -1292,51 +1278,18 @@ export function CaptureScreen({
   ]);
 
   /**
-   * Save — but first, if the transcript and the facts have come apart, ask.
-   *
-   * This is the last moment the question can be asked at all. After the save the
-   * record is read-only (`notes.updateNote` does not take it), so a note saved
-   * with a corrected transcript and facts built from the old wording keeps that
-   * disagreement permanently — and since search and Ask Andy read the facts, the
-   * note would answer with wording its own record contradicts.
-   *
-   * Asked here rather than on every keystroke, and rather than by re-reading
-   * automatically: re-reading rewrites facts a person may have hand-corrected,
-   * which is the thing day 3 deliberately refused to do behind their back.
-   * There is no wrong answer to this question — only two the user has to pick
-   * between — which is why it is a question and not a refusal.
+   * Save, without asking. When the wording was corrected after it was read,
+   * the review screen already says so where it happened — under the wording,
+   * beside **Read it again** — so the choice is made in place, not in a
+   * dialog at the last step (device QA #18/#19, owner's decision 2026-10-11:
+   * the save-time question was more than anyone could take in there).
    */
   const save = useCallback(() => {
     if (draft === null) {
       return;
     }
-    if (!transcriptEdited) {
-      void commit();
-      return;
-    }
-
-    confirm(
-      // Branched by door, like the two labels on the review screen already are.
-      // A scanned card told somebody they changed what they *said* otherwise.
-      source === "business_card"
-        ? "You changed what the card says"
-        : source === "manual"
-          ? "You changed what you wrote"
-          : "You changed what you said",
-      // Both costs are named. Stating only what re-reading costs made the
-      // message quietly argue for the other button — and "Keep my facts" is the
-      // choice that is permanent, since after saving only the facts can change.
-      "The facts above still come from the old wording. Keep them and the record and the facts stay out of step for good. Reading it again rewrites them, including anything you edited.",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Keep my facts", onPress: () => void commit() },
-        // Worded exactly like the link on the review screen and the button in
-        // its own confirmation. Three names for one action on one screen is
-        // three things to learn.
-        { text: "Read it again", onPress: rereadNow },
-      ],
-    );
-  }, [confirm, draft, source, transcriptEdited, commit, rereadNow]);
+    void commit();
+  }, [draft, commit]);
 
   /** Edit one field of the draft's primary person. */
   const editPrimary = useCallback((patch: Partial<Draft["primary"]>) => {
@@ -1767,6 +1720,17 @@ export function CaptureScreen({
               multiline
               accessibilityLabel={sourceLabel(source, { draft: true })}
             />
+            {/*
+              The moment the wording and the details come apart, said where it
+              happened — STYLE.md's own example sentence. Saving anyway keeps
+              the corrected wording and these details; Read it again rebuilds
+              them from the corrected wording.
+            */}
+            {transcriptEdited ? (
+              <Text style={styles.edited} accessibilityLiveRegion="polite">
+                The details above still come from the old wording.
+              </Text>
+            ) : null}
             {/*
               Beside the transcript, because it acts on the transcript. When the
               mistake is a word in the note — "민호" heard as "민우" — fixing it
@@ -2235,6 +2199,7 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   candidateOn: { backgroundColor: colors.moss, borderColor: colors.moss },
+  edited: { color: colors.ink, fontSize: textSize.md, marginTop: space.sm },
   reread: { color: colors.moss, fontSize: 13, paddingTop: 4 },
 
   candidateHead: {
