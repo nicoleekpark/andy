@@ -320,3 +320,381 @@ person row, unnamed until now), `briefing-card-pick`,
 `briefing-card-pick-neither`, `briefing-card-pick-change-button`,
 `briefing-card-pick-none-line`. The designer may rename these under the file's
 rules.
+
+## Options
+
+_`product-designer`, 2026-10-11. Covers §5 (the pick) and §6 (the carousel)
+together, since the brief's own §3 state table says a meeting can carry both
+at once and the real UX risk is how they sit on one card, not either alone.
+The owner was asleep for this brief and will choose from these three in the
+morning; each option answers the brief's open questions 1–4 explicitly below.
+Mocks: `docs/design/mocks/briefing-card-people-a.html` (recommended), `-b.html`,
+`-c.html`. Builds on top of the card as it exists after PR #133 (not in this
+worktree): the ✕ `briefing-card-mute-button` on every visible state, the
+`ask`/`denied` states with their pills, and the meeting time redrawn in `ink`
+rather than `brass` (decided 2026-10-11 — see the note below the frame in
+`-a.html`; `brass` is now the stripe only, everywhere in the signed-in app, and
+this closes STYLE.md's own "known gap" line for this text, which should be
+removed in the same PR)._
+
+### Design read
+
+**What already exists and has to be preserved.** `briefing-card.tsx` (as
+read in this worktree, pre-#133) draws one meeting per card: a time, a title,
+a flat list of `person` rows, and the ambiguous-name sentence the brief is
+replacing (§7, "Gone"). `review`'s `name-choice` already solves almost the
+same problem — pick one of several candidates sharing a name — as a flat,
+always-visible list of cards with a meta line, no default selection, no
+sheet. `confirm-dialog` is the app's only modal surface today, reserved for
+yes/no and three-way *confirmations* (mute, sign-out, delete, sync conflict),
+never for picking from an open set of named options — reusing it for the pick
+would be its first use as a chooser rather than a confirmer.
+
+**The user's task.** Someone glancing at the card before walking into a room
+has two things they might need, often together: "which Priya is this" (a
+question that blocks nothing else and is answered once per event, ever,
+per R-P1–R-P2) and "what's after this" (a second or third meeting that today
+is simply invisible, per #12/#14). The design has to make clear that these
+are independent — answering the Priya question doesn't page you anywhere,
+and paging doesn't lose an unanswered Priya question (R-C5's exception) —
+without the card reading as two unrelated features bolted together.
+
+**Constraints carried into every option:** `brass` stays the stripe only;
+no `alert` (nothing here is destructive — a pick is undone in one tap, R-P4);
+every tap target ≥44×44pt; position shown as text, not dots alone (R-C8);
+no auto-advance, ever (R-C7); page changes have no motion to need reducing —
+simplest compliance with "Reduce Motion: instant, or a cross-fade" is to
+have no animation at all, which is what all three options below do, rather
+than building a cross-fade just to then disable it; every new text/colour
+pairing states its ratio under Recommendation.
+
+**Where the brief leaves real design freedom.** The brief (R-P1–R-P10,
+R-C1–R-C8) is prescriptive about *what* each state contains and *what*
+every rule does to data and reminders — not about *how* a candidate list
+is reached (inline vs. a tap away) or *how* a second meeting is reached
+(step vs. jump vs. browse-at-a-glance). Those two axes are the real fork,
+and they interact: an inline, always-open pick block is tall, which matters
+more or less depending on whether the carousel also wants vertical room for
+a multi-page strip or keeps the card to one page's height at a time. The
+three options below are built around that interaction, with a consistent
+(but on the picker/carousel axis, genuinely different) answer to both halves
+at once.
+
+### Option A — Inline, always open (recommended)
+
+**Concept.** Every candidate, every page's content, and the "N of M" pager
+are always fully visible — no sheet, no accordion. Paging is two 44×44pt
+chevron buttons flanking the position text, placed once at the bottom of the
+card (`briefing-card-pager`); the pick block (`briefing-card-pick`) sits
+inline wherever an ambiguous name would otherwise be a resolved
+`briefing-card-person-link`, laid out exactly like `name-choice` on `review`.
+
+**Why it may work (hypothesis).** *Recognition over recall, and Jakob's Law
+applied internally* — a tester who has already seen "which Marcus?" on
+`review` recognises the same shape here without re-learning it; nothing is
+hidden behind a tap, so the brief's own hypothesis (b) — *no default,
+candidates that show how you know each one* — is testable exactly as
+written, because the candidates are visible the instant the card is. Test:
+does anyone in TestFlight tap a wrong Priya because a candidate's meta line
+wasn't visible before they committed? (Kills (b) if so — unlikely here, since
+nothing is hidden.)
+
+**Strengths.** Lowest build cost of the three — no new modal, no new
+expand/collapse state machine, nothing to make Reduce-Motion-safe beyond
+"don't animate." Every name the brief proposes (§5, §6, "Names (new)") maps
+onto this option with no renaming and no restructuring — this is close to
+"apply the pattern the brief already specified," which is itself a signal
+it's the lower-risk choice. Consistent with the owner's own prior choice on
+this exact card: `calendar-connection.md`'s Option A ("visible state rows,"
+chosen 2026-10-08) was the same bet — show everything, no disclosure — for
+the settings half of this same component; choosing A again here keeps one
+house style for "how `briefing-card` and its neighbourhood ask questions,"
+rather than two.
+
+**Weaknesses / risks.** The card can get tall: one page with two ambiguous
+names (the brief's own edge case, shown in `-a.html`'s toggle) stacks two
+full pick blocks before the pager. STYLE.md's and the brief's own rule
+(R-C8, Dynamic Type) explicitly sanctions this — "nothing is cut off… the
+profile list below moves down instead" — so it's a named, accepted
+trade-off, not an oversight, but it is real scroll distance on a small
+phone at the largest text sizes. Mitigated by the fact that only the
+*current* page's content renders at all (not all pages at once), so the
+worst case is bounded by one meeting's own ambiguity, not by how many
+meetings are in the window.
+
+**Design-system impact.** No new component. Reuses `briefing-card`'s
+existing pill/quiet-text button styles, `name-choice`'s established
+candidate-list shape (new to this file, not new to the app), and the
+mute button's 44×44pt icon-button treatment for the two chevrons. No new
+tokens.
+
+### Option B — Compact question + sheet, jump-to-page pager
+
+**Concept.** An unanswered ambiguous name collapses to one line —
+`briefing-card-pick-question-button`, "Which Priya is this? ›" — that opens
+a new modal, `briefing-card-pick-sheet` (the `confirm-dialog` card shape over
+a scrim, but as a chooser rather than a confirmer — a genuinely new use of
+that visual language). The pager gains small numbered buttons
+(`briefing-card-page-number-button`) alongside the chevrons, so any page is
+reached in one tap rather than N steps.
+
+**Why it may work (hypothesis).** *Progressive disclosure / Hick's Law* —
+the card's resting state, unanswered, shows one line instead of up to four
+(label, note, two candidates, Neither), which matters more as candidate
+count grows past two (the brief's own "three or more, no cap" edge case).
+*Jakob's Law, applied externally* — action-sheet pickers are a common iOS
+pattern. Test: does hiding the candidates until the sheet opens change
+whether testers pick correctly, or does it just add a tap with no
+behavioural effect (i.e., does hypothesis (b) hold just as well behind a
+sheet as inline)?
+
+**Strengths.** Shortest card height in the unanswered state — useful if a
+future meeting has many candidates sharing a name (uncapped per the brief).
+A modal sheet gives VoiceOver a focused, trapped context for free, which can
+make the "every candidate reachable, in order" requirement (R-C8) easier to
+guarantee than scanning a long inline list.
+
+**Weaknesses / risks.** The jump-to-page numbers do not scale to the
+brief's own stated cap: `-b.html`'s 6-meeting state already needs ~350pt of
+the card's ~342pt usable width at compliant 44×44pt targets, and R-C1 allows
+up to 10. Past a small count, the pager would have to silently become
+chevrons-only, which means two different pager UIs depending on count — more
+states to spec and QA, not fewer. The sheet introduces a second place in the
+app that turns a name into a person (the first is `name-choice` on
+`review`), which is exactly the seam `CLAUDE.md`'s `namesOf` rule exists to
+guard — not a defect by itself, but a new surface `security-reviewer` and
+the implementer have to keep in sync with the inline pattern rather than
+one shared piece of markup. Hiding the meta line until the sheet opens also
+works *against* the brief's hypothesis (b) being cleanly testable, since
+"no default" is easiest to trust when the candidates were visible the whole
+time, not revealed by the same tap that might commit to one.
+
+**Design-system impact.** New: a picker-flavoured instance of the dialog
+surface (`briefing-card-pick-sheet`), with its own lock-aware modal-host
+wiring (the `ConfirmHost(inModal)` unmount-under-lock behaviour
+`confirm-dialog.tsx` already has to coordinate with); a new
+jump-to-page control. Highest build cost of the three.
+
+**Context where it would be the right choice.** If candidate counts
+routinely ran past three or four, or if a future version wanted an even
+richer candidate row (a photo, a longer note excerpt) that would crowd an
+inline card — neither is true for this brief's data (one line of meta, a
+realistic cap of two or three people sharing a first name).
+
+### Option C — Meeting strip + expand-in-place
+
+**Concept.** Every meeting in the window is shown as a small chip
+(`briefing-card-meeting-chip`, time + name) in a horizontal strip
+(`briefing-card-meeting-strip`) above the focused meeting's detail; tapping
+a chip swaps the detail below it — browsing, not stepping. An ambiguous
+name collapses to a toggle row (`briefing-card-pick-toggle`) that expands
+downward in place (no modal) to show the candidates.
+
+**Why it may work (hypothesis).** *Gestalt grouping / recognition over
+recall, aimed squarely at the brief's hypothesis (c)* — "testers don't find
+the second meeting without being told" is answered most directly by making
+every meeting visible without any tap at all, rather than inferring a
+hidden second page from a "1 of 3" text that first has to be noticed and
+read. Test: in TestFlight, does anyone with a 3-meeting window reach Emily's
+briefing without being told the strip exists?
+
+**Strengths.** The only option where "11:00 Priya and 11:05 Emily can both
+be read before 11:00" (brief §2's success criterion #2) is true without any
+interaction — both are visible at once, which is the most literal reading
+of that line in the whole brief.
+
+**Weaknesses / risks.** Two real, separable costs. First: a horizontal
+scroll strip living inside a card that itself sits inside a vertically
+scrolling `home` is a nested-scroll gesture conflict on iOS, and R-C8
+("swiping is never the only way to reach a page") means a second, linear
+VoiceOver path has to be built and tested *in addition* to the strip, not
+instead of it (`-c.html`'s toggleable "Previous meeting / Next meeting"
+pair demonstrates this — it is a second navigation surface, not a
+convenience). Second, and sharper: expand-in-place *adds* a tap to the
+single highest-priority action the card has — unlike `calendar-connection`'s
+accordion option (which collapsed a status line someone would read once and
+leave), here the question is the reason the card exists, so collapsing it
+by default trades calm for friction on exactly the task the brief says must
+have *minimum* friction (§1, "one tap tells Andy which Priya").
+
+**Design-system impact.** New: a horizontal chip-strip primitive with a
+required linear fallback path, and an expand-in-place accordion distinct
+from `confirm-dialog`'s whole-screen modal pattern. Highest combined
+complexity of the three once the required accessibility fallback is
+counted, for a browsing benefit that's genuinely valuable only if hypothesis
+(c) is actually killed by testers in Option A's simpler pager.
+
+**Context where it would be the right choice.** If the owner's own week of
+use (or TestFlight) kills hypothesis (c) under Option A — i.e., people
+really do miss the second meeting with "1 of 3" visible — this is the
+direct fix to reach for, not a first guess ahead of that evidence.
+
+### How each option answers the brief's open questions (§10)
+
+1. **M2 (the invitation settles the title's ambiguous name)** is a matching
+   rule in `convex/calendarMatch.ts`, not a screen decision — identical
+   under all three options. All three show the result of M1–M3 the same
+   way: a name M2 already resolved never reaches a pick block at all.
+2. **R-P5 (no reminder until a Priya is picked)** — same across all three;
+   none of them puts a reminder control inside the pick block or sheet, so
+   nothing here changes whether this is testable.
+3. **R-P6 ("Neither" keeps the meeting, with Change)** — every option keeps
+   `briefing-card-pick-none-line` + Change visible on the page itself
+   (A, inline always; B, after the sheet closes; C, after the toggle
+   collapses) — in no option does "Neither" require reopening anything to
+   find Change again.
+4. **R-P8 (off-in-Andy keeps picks; sign-out/deletion clear them)** — a data
+   rule, invisible on screen in all three; no option surfaces a picks list
+   (explicitly out of scope, §9) so none of them risk re-opening it.
+
+### Recommendation
+
+**Option A.** It is the cheapest to build, the one whose markup matches the
+brief's own named parts without renaming anything, the one most consistent
+with an established in-app pattern (`name-choice`) rather than inventing a
+new modal use or a new nested-scroll primitive, and it is the most literal,
+lowest-risk way to satisfy R-C8's accessibility rules (nothing to keep in
+sync between a visible state and a hidden one, because nothing is hidden).
+It is also the same bet the owner already made for this card's settings
+half seven days ago (`calendar-connection.md`), which argues for consistency
+over re-opening the question. Option B is the right call if real candidate
+lists grow past two or three names or a richer candidate row is wanted later;
+Option C is the right call specifically if hypothesis (c) is killed — if
+testers really do miss a second meeting under A's simple pager, despite
+"1 of 3" being visible text. Neither condition holds yet; both are
+revisit-on-evidence, not now.
+
+**Interaction states, end to end (Option A), on top of PR #133's card:**
+
+- **Single meeting (brief §3, "drawn like today"):** no `briefing-card-pager`,
+  no position text — identical to a one-page carousel with the pager hidden,
+  so there is exactly one code path for "the current page's content," not two.
+- **Carousel, 2–10 meetings:** `briefing-card-page` holds one meeting's time,
+  title, and either `briefing-card-person-link` rows or `briefing-card-pick`
+  blocks (one per ambiguous name on that meeting, stacked); below all pages,
+  card-level and rendered once regardless of which page is showing:
+  `briefing-card-pager` (`briefing-card-previous-button` /
+  `briefing-card-page-position` "`{i} of {n}`" / `briefing-card-next-button`,
+  each previous/next 44×44pt, disabled — `aria-disabled`-equivalent,
+  `accessibilityState={{ disabled: true }}` — rather than hidden, at the
+  first/last page so the control never jumps around under a finger) and the
+  `briefing-card-reminder-button`/blocked line (R-C4: about notifications,
+  not about one meeting, so it never re-renders per page).
+- **Pick, unanswered:** `briefing-card-pick-label` ("Which {Name} is this?"),
+  `briefing-card-pick-note` (hint), each `briefing-card-pick-choice` (name +
+  `briefing-card-pick-choice-meta`), `briefing-card-pick-neither` ("Neither
+  of them") — tapping any of these commits at once (R-P4, no dialog).
+- **Pick, picked:** the chosen candidate as `briefing-card-person-link`, plus
+  `briefing-card-pick-change-button` ("Not this {Name}?") beneath it, which
+  returns to unanswered — never defaults back to the previously-picked
+  candidate (R-P10).
+- **Pick, "Neither":** `briefing-card-pick-none-line` + inline Change,
+  returning to unanswered.
+- **Two ambiguous names on one meeting** (brief §8 edge case, shown in
+  `-a.html`'s toggle): two independent `briefing-card-pick` blocks, stacked,
+  each answered separately — never a shared Neither or a shared candidate
+  list.
+- **R-C5 (meeting starts while the app is open):** page content is filtered
+  by a timer re-checking `startsAt`; if the page removed was mid-pick, the
+  removal is deferred until the pick resolves (inline, so "mid-pick" is
+  simply "the pick block is still showing its unanswered state" — no extra
+  flag needed to detect this, unlike a sheet/accordion option where
+  "mid-pick" would also have to mean "the sheet/accordion is open").
+- **VoiceOver order:** mute button → time → title → (person links / pick
+  blocks, in the order they appear) → previous button → position text →
+  next button → reminder button. Previous/next are two separate elements
+  (not one `adjustable` control), matching the mute button's existing plain
+  two-state pattern rather than introducing the `adjustable` trait
+  elsewhere unused in this app; each page's container carries a combined
+  label ("Meeting 2 of 3, 11:05, Coffee with Emily") so landing on a new
+  page after Next/Previous announces all three at once, per R-C8.
+- **Reduce Motion:** page and pick-state changes are an instant content
+  swap in both mocked and real versions — there is no animation to turn off
+  (the simplest compliant answer, not a cross-fade disabled under Reduce
+  Motion, since nothing here needs motion to begin with).
+
+**Components and tokens.**
+- Reused as-is: `briefing-card`'s existing pill (`colors.moss` fill,
+  `colors.paper` text, `radius.pill`) and quiet-text (`colors.ink` at
+  `textOpacity.quiet`) button styles; `name-choice`'s candidate-row shape
+  (new to this file, established elsewhere); `colors.line` as a decorative
+  divider between choice rows (not the sole indicator of interactivity —
+  full-width `Pressable` rows with `accessibilityRole="button"` carry that,
+  the same way `profile-row` already relies on layout and text, not its
+  hairline, to read as a row); `space.*`, `textSize.*`, `radius.pill`,
+  `textOpacity.quiet`/`secondary`; `fonts.display` (titles), `fonts.utility`
+  (time, meta lines) — all unchanged from `briefing-card.tsx`.
+- New, no new tokens: the two 44×44pt chevron buttons reuse the mute
+  button's icon-button shape (centred glyph in a fixed-size `Pressable`,
+  `colors.ink` at `textOpacity.quiet`) rather than inventing a second
+  icon-button treatment.
+- Not extracted into a shared component this slice: `briefing-card-pick`'s
+  layout is visually close to `name-choice` but not identical (no "View"
+  link, no "Someone new," different copy) — noted as a candidate for a
+  shared `<CandidateList>` primitive if a third picker ever appears, not
+  built now, per "don't over-abstract a component used once/twice."
+
+**Accessibility (ratios against this file's token hex values, same method
+as `__tests__/contrast.test.ts`):**
+- `ink` (time, titles, pick labels, choice names) on `paper`, full opacity:
+  **12.0:1** — unchanged pairing, now also used for `briefing-card-when`
+  (moved off `brass`'s 2.28:1, per the 2026-10-11 decision carried into
+  every option here).
+- `ink` at `textOpacity.quiet` (0.7) on `paper` — pick notes, meta lines,
+  the "Neither of them" row, disabled chevrons' glyph, `pick-none-line`:
+  **5.0:1**, STYLE.md's own documented floor, reused rather than a new ratio.
+- `moss` on `paper` — `briefing-card-pick-change-button`, the inline
+  "Change" in `pick-none-line`: **4.58:1**, the same pairing already
+  recorded in `calendar-connection.md`'s Options for this card's other
+  buttons; needs a row in `__tests__/contrast.test.ts` if it isn't there yet
+  from that slice.
+- `paper` on `moss` (the person-link's implicit background is none — this
+  pairing isn't used in Option A at all, since choice rows have no fill;
+  listed here only to confirm it was considered and rejected as unnecessary).
+- Touch targets: every `briefing-card-pick-choice`, `-pick-neither`, and
+  `-pick-change-button` gets `minHeight: 44` the same way `confirm-dialog`'s
+  `plain` button does, independent of its visible text size at default
+  Dynamic Type; the two pager buttons are fixed 44×44pt regardless of text
+  size (their glyph does not reflow).
+- Meaning never depends on colour alone: a picked vs. unanswered vs. "none"
+  state is carried by which text and buttons are present (a label, a
+  person's name, or a none-line), never by colour; the disabled chevron at
+  the first/last page is marked `accessibilityState={{ disabled: true }}`,
+  not conveyed by dimming alone.
+- Dynamic Type: no fixed-height containers; a long pick note or a long
+  candidate name wraps and pushes the rest of the page down, same as every
+  other text block in this card today — nothing is clipped.
+
+**Open disagreement: none.** Nothing in the brief makes a design worse here
+— R-P1–R-P10 and R-C1–R-C8 are specific enough that this slice is closer to
+"apply a prescribed pattern" on the data/rules side, and the genuine design
+freedom (inline vs. sheet vs. strip) doesn't conflict with any business
+rule either way.
+
+**Questions for the owner, surfaced by choosing between options (not by the
+brief itself):**
+1. Is Option A's "card can get two pick-blocks tall" an acceptable look, or
+   should the two-ambiguous-names edge case (rare, per the brief) get a
+   different treatment even under A — e.g., answering one collapses it to
+   a one-line `person-link` before showing the second? (Default assumed:
+   acceptable as shown in `-a.html`, since STYLE.md's own Dynamic Type rule
+   already sanctions a growing card.)
+2. Confirm the previous/next-as-two-buttons VoiceOver choice (vs. one
+   `adjustable` pager) — R-C8 leaves this explicitly to the designer, flagged
+   here only because it's a first in this app and worth the owner's eyes
+   once, not because the brief is ambiguous about it.
+
+### New names (for `docs/design/component-names.md`, beyond the brief's own list)
+
+All of the brief's "Names (new)" list (§ above) is adopted as-is under
+Option A, with no renames. Added by this pass, for parts the brief's copy
+section describes but Option A's build needs a name for (following the
+precedent of `confirm-dialog-title`/`-body`, `briefing-card-title`/`-body`):
+none — Option A needed no part the brief hadn't already named. (Options B
+and C each would have needed their own additional names —
+`briefing-card-pick-question-button`, `briefing-card-pick-sheet` with
+`-title`/`-note`/`-choice`/`-neither`, `briefing-card-page-number-button`
+for B; `briefing-card-meeting-strip`, `briefing-card-meeting-chip` with its
+`--selected` state, `briefing-card-pick-toggle`, `briefing-card-pick-detail`
+for C — listed here only so they exist if the owner picks either of those
+instead, not added to `component-names.md` unless chosen.)
