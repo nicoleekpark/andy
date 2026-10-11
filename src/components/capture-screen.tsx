@@ -1111,20 +1111,6 @@ export function CaptureScreen({
   }, []);
 
   /**
-   * Re-read with no question asked. Split out because the save-time prompt in
-   * `save` has already asked — raising `reread`'s own confirmation on top of it
-   * would be two dialogs in a row saying the same thing.
-   */
-  const rereadNow = useCallback(() => {
-    const spoken = transcript.trim();
-    if (spoken === "") {
-      return;
-    }
-    setResolutions({});
-    void runExtraction(spoken, true);
-  }, [transcript, runExtraction]);
-
-  /**
    * Read the corrected transcript again.
    *
    * Editing the transcript does not re-run extraction, on purpose: the facts
@@ -1143,10 +1129,10 @@ export function CaptureScreen({
     if (spoken === "") {
       return;
     }
-    // Built on `rereadNow` rather than repeating its two lines. Copied, the two
-    // have to be kept in step by hand, and the one that drifts is whichever is
-    // edited second.
-    const run = rereadNow;
+    const run = () => {
+      setResolutions({});
+      void runExtraction(spoken, true);
+    };
 
     const touched =
       draft !== null &&
@@ -1165,7 +1151,7 @@ export function CaptureScreen({
         { text: "Read it again", onPress: run },
       ],
     );
-  }, [confirm, transcript, draft, extracted, rereadNow]);
+  }, [confirm, transcript, draft, extracted, runExtraction]);
 
   /**
    * Whether the words on screen have moved on from the words the facts came out

@@ -2166,7 +2166,6 @@ describe("capture screen review step", () => {
   });
 
   test("should let a candidate be opened and come back to the draft untouched", async () => {
-    mockAlert("Keep my facts");
     (useAction as jest.Mock).mockReturnValue(
       jest.fn(async () => makeDraft({ name: "Emma" })),
     );
@@ -2603,8 +2602,7 @@ describe("capture screen review step", () => {
     expect(screen.getByText("The details above still come from the old wording.")).toBeTruthy();
   });
 
-  test("should keep the facts as they are and save the corrected transcript when asked to", async () => {
-    mockAlert("Keep my facts");
+  test("should save the corrected transcript with the facts as they are", async () => {
     const draft = makeDraft();
     const extract = jest.fn(async () => draft);
     (useAction as jest.Mock).mockReturnValue(extract);
