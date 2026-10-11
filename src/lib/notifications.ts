@@ -41,7 +41,7 @@ const MAX_BRIEFED_MEETINGS = 20;
 export const BRIEFING_LEAD_MINUTES = 10;
 
 /** How long after it ends the nudge arrives. */
-const NUDGE_DELAY_MINUTES = 15;
+export const NUDGE_DELAY_MINUTES = 15;
 
 /**
  * Only ours are cancelled.

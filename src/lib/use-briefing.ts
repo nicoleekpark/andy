@@ -19,6 +19,7 @@ import {
   askForNotifications,
   briefable,
   cancelBriefings,
+  NUDGE_DELAY_MINUTES,
   notificationAccess,
   scheduleBriefings,
   type NotificationAccess,
@@ -245,8 +246,15 @@ export function useBriefing(
       // next local day, so an 08:00 meeting is reminded at 07:50 even when
       // Andy was last opened the afternoon before. The card stays on the next
       // twelve hours.
+      // And a little behind: from as far back as a nudge can still be due.
+      // Every refresh cancels this app's reminders and schedules them again
+      // from this read, and EventKit only returns a meeting still running at
+      // `from` — so a read starting now left out one that ended five minutes
+      // ago, and opening Andy then took away its "How was …?" for good
+      // (device QA #39). The card is unaffected: it shows only what has not
+      // started.
       const events = await readUpcoming(
-        new Date(now),
+        new Date(now - NUDGE_DELAY_MINUTES * 60_000),
         new Date(nextLocalMidnight(nextLocalMidnight(now))),
       );
       if (events.length === 0) {

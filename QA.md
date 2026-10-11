@@ -544,6 +544,7 @@ name only one person answers to.
 | 19.13 | In the afternoon, put an **08:00 tomorrow** meeting with somebody you've written about. Open Andy once, then **don't open it again** until after 07:50 | A reminder arrives at **07:50** anyway. Reminders are scheduled to the end of the next day (R13); the card itself still shows only the next 12 hours | ⬜ |
 | 19.14 | With a reminder scheduled, iPhone Settings → Andy → Calendars → **None**. Come back to Andy | The card says calendar access is off, and **no reminder arrives** at that meeting's time (R14) | ⬜ |
 | 19.15 | A fresh account with **nobody** in Andy yet, calendar never connected | **No briefing card at all** on `home` — not even the invitation (R2). It appears after the first person is added | ⬜ |
+| 19.17 | A meeting with someone you've written about ends; **open Andy 5 minutes later**, then leave it | The "How was …?" nudge still arrives **15 minutes after the end** (device QA #39). Before, opening Andy in that window cancelled it for good | ⬜ |
 
 ---
 
