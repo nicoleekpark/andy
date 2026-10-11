@@ -44,6 +44,7 @@ import { useConvex } from "convex/react";
 import { BriefingCard } from "../src/components/briefing-card";
 import { hasNativeModule } from "../src/lib/native";
 import { useBriefing } from "../src/lib/use-briefing";
+import { BRIEFING_LEAD_MINUTES } from "../src/lib/notifications";
 import { useReadingCopy } from "../src/lib/offline-copy";
 import * as calendarMatch from "@convex/calendarMatch";
 
@@ -690,7 +691,7 @@ test("should refresh once when two foregrounds arrive together", async () => {
   // switch, pulling notification centre down, dismissing a permission sheet.
   // Each refresh cancels this app's pending briefings and schedules the whole
   // set again, so two interleaved leave duplicate pairs for one meeting:
-  // two buzzes twenty minutes before one coffee.
+  // two buzzes ten minutes before one coffee.
   const listener = (AppState.addEventListener as jest.Mock).mock.calls.at(-1);
   await act(async () => {
     (listener?.[1] as (phase: string) => void)("active");
@@ -768,6 +769,20 @@ test("should send the events in time order, earliest first", async () => {
 // ---------------------------------------------------------------------------
 // The card's look
 // ---------------------------------------------------------------------------
+
+test("should offer the reminder at the time it is actually scheduled", async () => {
+  // The card says the number in words; this keeps it honest when the lead
+  // changes (it went from 20 to 10 on 2026-10-08).
+  await render(
+    <BriefingCard
+      state="ready"
+      briefing={{ title: "Coffee with Marcus", startsAt: AT, people: [], ambiguous: [] }}
+      alerts="off"
+      onEnableAlerts={jest.fn()}
+    />,
+  );
+  expect(screen.getByText(`Remind me ${BRIEFING_LEAD_MINUTES} minutes before ›`)).toBeTruthy();
+});
 
 test("should draw no dashed border, which React Native cannot render on one side", async () => {
   // STYLE.md once asked for a dashed "torn edge" on top of this card. It never

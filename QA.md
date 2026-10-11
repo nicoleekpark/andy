@@ -499,9 +499,10 @@ disagree. **Nothing here has been done on a device.**
 
 **Needs a build.** `expo-notifications` is a native module.
 
-**The hard part of testing this is waiting.** A briefing fires 20 minutes before
-a meeting and a nudge 15 minutes after it ends, so the quickest honest test is
-to put an event in the calendar starting ~22 minutes from now and leave the app.
+**The hard part of testing this is waiting.** A briefing fires 10 minutes before
+a meeting (20 until 2026-10-08) and a nudge 15 minutes after it ends, so the
+quickest honest test is to put an event in the calendar starting ~12 minutes
+from now and leave the app.
 Rows 19.6–19.8 are the ones that do not need waiting.
 
 **You do not have to wait to know it was scheduled.** SpringBoard logs every
@@ -514,8 +515,8 @@ name only one person answers to.
 
 | # | Do this | Expect | |
 |---|---|---|---|
-| 19.1 | With the briefing card showing a real meeting, tap `Remind me 20 minutes before ›` | The system notification sheet. **Only then** — nothing asked on launch, and it is not stacked on the calendar prompt | ⬜ |
-| 19.2 | Allow, then put an event ~22 minutes out naming somebody you keep notes on. Background the app | A notification ~20 minutes before it starts | ✅ — simulator, 2026-09-29: an 11:00 meeting alerted at 10:40:00 exactly |
+| 19.1 | With the briefing card showing a real meeting, tap `Remind me 10 minutes before ›` | The system notification sheet. **Only then** — nothing asked on launch, and it is not stacked on the calendar prompt | ⬜ |
+| 19.2 | Allow, then put an event ~12 minutes out naming somebody you keep notes on. Background the app | A notification ~10 minutes before it starts | ⬜ — re-run for the 10-minute lead. Was ✅ at the old 20-minute lead (simulator, 2026-09-29: an 11:00 meeting alerted at 10:40:00 exactly) |
 | 19.3 | **Read the lock screen carefully** | The person's name and the meeting title. **No notes, no facts, nothing you wrote down.** A lock screen is read by whoever is holding the phone, and that is not always you | ✅ — simulator, 2026-09-29: lock screen showed `Irene` / `Coffee with Irene` and nothing else |
 | 19.4 | Wait until 15 minutes after the meeting ends | *"How was Marcus?"* — tap to add what you want to remember | ✅ — simulator, 2026-09-29: a meeting ending 11:15 nudged at 11:30:00, *"How was Irene?"*, no notes shown |
 | 19.5 | Tap the nudge | **That person's capture screen opens** ("This note goes to Marcus…"), ready to record. Until 2026-10-01 it only opened the app — the id was carried and nothing read it | ⬜ |

@@ -66,6 +66,19 @@ afterEach(() => {
 });
 
 // ---------------------------------------------------------------------------
+// When
+// ---------------------------------------------------------------------------
+
+test("should brief ten minutes before the meeting starts", async () => {
+  // Ten, not the first twenty: early enough to read, late enough to still
+  // remember walking in (owner's decision, 2026-10-08).
+  await scheduleBriefings([meeting()], NOW);
+
+  const briefing = scheduled().find((request) => request.content.data.capture !== true);
+  expect(briefing?.trigger.date.getTime()).toBe(meeting().startsAt - 10 * 60_000);
+});
+
+// ---------------------------------------------------------------------------
 // The 64-pending ceiling
 // ---------------------------------------------------------------------------
 

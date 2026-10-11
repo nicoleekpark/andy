@@ -32,8 +32,13 @@ import type { UpcomingEvent } from "./calendar";
  */
 const MAX_BRIEFED_MEETINGS = 20;
 
-/** How long before a meeting the briefing arrives. */
-const BRIEFING_LEAD_MINUTES = 20;
+/**
+ * How long before a meeting the briefing arrives: ten minutes, down from the
+ * first twenty (owner's decision, 2026-10-08; choosing it per person, device
+ * QA #9, stays out of V1). The card says the number in words
+ * (`briefing-card.tsx`); a test holds the two together.
+ */
+export const BRIEFING_LEAD_MINUTES = 10;
 
 /** How long after it ends the nudge arrives. */
 const NUDGE_DELAY_MINUTES = 15;

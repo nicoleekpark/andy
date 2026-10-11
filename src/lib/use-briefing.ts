@@ -116,7 +116,7 @@ export function useBriefing(
    * dismissing a permission sheet. Each one cancels this app's pending
    * briefings and schedules the whole set again, so two interleaved leave
    * **duplicate pairs** for the same meeting until the next foreground happens
-   * to tidy them. Two buzzes twenty minutes before one coffee.
+   * to tidy them. Two buzzes ten minutes before one coffee.
    */
   const refreshing = useRef(false);
   /**
