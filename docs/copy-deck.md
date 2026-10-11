@@ -13,7 +13,7 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 
 **For the designer:** read top to bottom and mark anything that sounds wrong, unclear, or unlike the rest. Quote the string and its `Where` when you report it.
 
-385 strings, 17 with a planned change.
+402 strings, 17 with a planned change.
 
 ## Sign-in
 
@@ -320,31 +320,32 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 
 | What a person reads | Kind | Where | Planned change (STYLE.md → Terminology) |
 |---|---|---|---|
-| Hide the other notes | text | `src/app/(app)/search.tsx:113` |  |
-| {…} other notes came up | text | `src/app/(app)/search.tsx:116` |  |
-| Andy couldn't reach that just now. Try again. | message | `src/app/(app)/search.tsx:139` |  |
-| Ask Andy | title | `src/app/(app)/search.tsx:150` |  |
-| Ask Andy | VoiceOver | `src/app/(app)/search.tsx:154` |  |
-| Who are you thinking of? | placeholder | `src/app/(app)/search.tsx:159` |  |
-| Ask | VoiceOver | `src/app/(app)/search.tsx:169` |  |
-| Ask | text | `src/app/(app)/search.tsx:175` |  |
-| You're offline. Asking in your own words needs a connection — finding someone by name still works. | text | `src/app/(app)/search.tsx:184` |  |
-| People | text | `src/app/(app)/search.tsx:195` |  |
-| Open {…} | VoiceOver | `src/app/(app)/search.tsx:200` |  |
-| 1 note | text | `src/app/(app)/search.tsx:228` |  |
-| {…} notes | text | `src/app/(app)/search.tsx:229` |  |
-| only mentioned, in 1 note | text | `src/app/(app)/search.tsx:232` |  |
-| only mentioned, in {…} notes | text | `src/app/(app)/search.tsx:233` |  |
-| nothing remembered yet | text | `src/app/(app)/search.tsx:234` |  |
-| “{…}” | text | `src/app/(app)/search.tsx:239` |  |
-| Came up in | text | `src/app/(app)/search.tsx:250` |  |
-| Open the note about {…} | VoiceOver | `src/app/(app)/search.tsx:255` |  |
-| Searching | VoiceOver | `src/app/(app)/search.tsx:274` |  |
-| Ask in your own words. Andy reads everything you have saved — including people who only came up inside someone else's note. | text | `src/app/(app)/search.tsx:284` |  |
-| From the marked notes below | text | `src/app/(app)/search.tsx:310` |  |
-| Nothing saved about that yet — try other words, or record it. | text | `src/app/(app)/search.tsx:318` |  |
-| used in the answer | text | `src/app/(app)/search.tsx:374` |  |
-| Also came up | text | `src/app/(app)/search.tsx:400` |  |
+| Hide the other notes | text | `src/app/(app)/search.tsx:121` |  |
+| {…} other notes came up | text | `src/app/(app)/search.tsx:124` |  |
+| Andy didn't hear back in time. Try again. | message | `src/app/(app)/search.tsx:150` |  |
+| Andy couldn't reach that just now. Try again. | message | `src/app/(app)/search.tsx:158` |  |
+| Ask Andy | title | `src/app/(app)/search.tsx:169` |  |
+| Ask Andy | VoiceOver | `src/app/(app)/search.tsx:173` |  |
+| Who are you thinking of? | placeholder | `src/app/(app)/search.tsx:178` |  |
+| Ask | VoiceOver | `src/app/(app)/search.tsx:188` |  |
+| Ask | text | `src/app/(app)/search.tsx:194` |  |
+| You're offline. Asking in your own words needs a connection — finding someone by name still works. | text | `src/app/(app)/search.tsx:203` |  |
+| People | text | `src/app/(app)/search.tsx:214` |  |
+| Open {…} | VoiceOver | `src/app/(app)/search.tsx:219` |  |
+| 1 note | text | `src/app/(app)/search.tsx:247` |  |
+| {…} notes | text | `src/app/(app)/search.tsx:248` |  |
+| only mentioned, in 1 note | text | `src/app/(app)/search.tsx:251` |  |
+| only mentioned, in {…} notes | text | `src/app/(app)/search.tsx:252` |  |
+| nothing remembered yet | text | `src/app/(app)/search.tsx:253` |  |
+| “{…}” | text | `src/app/(app)/search.tsx:258` |  |
+| Came up in | text | `src/app/(app)/search.tsx:269` |  |
+| Open the note about {…} | VoiceOver | `src/app/(app)/search.tsx:274` |  |
+| Searching | VoiceOver | `src/app/(app)/search.tsx:297` |  |
+| Ask in your own words. Andy reads everything you have saved — including people who only came up inside someone else's note. | text | `src/app/(app)/search.tsx:307` |  |
+| From the marked notes below | text | `src/app/(app)/search.tsx:333` |  |
+| Nothing saved about that yet — try other words, or record it. | text | `src/app/(app)/search.tsx:341` |  |
+| used in the answer | text | `src/app/(app)/search.tsx:397` |  |
+| Also came up | text | `src/app/(app)/search.tsx:423` |  |
 | Ask Andy something first. | server error | `convex/search.ts:259` |  |
 | That's a long question. Try a shorter one. | server error | `convex/search.ts:264` |  |
 
@@ -352,18 +353,18 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 
 | What a person reads | Kind | Where | Planned change (STYLE.md → Terminology) |
 |---|---|---|---|
-| Andy couldn't delete your account. Check your connection and try again. | message | `src/app/(app)/settings.tsx:36` |  |
-| {…} Andy hasn't read yet | text | `src/app/(app)/settings.tsx:66` |  |
-| {…} made offline and not synced | text | `src/app/(app)/settings.tsx:69` |  |
-| Cancel | button | `src/app/(app)/settings.tsx:77` |  |
-| Sign out | button | `src/app/(app)/settings.tsx:78` |  |
-| Delete account | button | `src/app/(app)/settings.tsx:93` |  |
-| Settings | title | `src/app/(app)/settings.tsx:100` |  |
-| Manage your account. | note | `src/app/(app)/settings.tsx:100` |  |
-| Sign out | text | `src/app/(app)/settings.tsx:108` |  |
-| Delete account | VoiceOver | `src/app/(app)/settings.tsx:116` |  |
-| Deleting your account… | text | `src/app/(app)/settings.tsx:119` |  |
-| Delete account | text | `src/app/(app)/settings.tsx:119` |  |
+| Andy couldn't delete your account. Check your connection and try again. | message | `src/app/(app)/settings.tsx:37` |  |
+| {…} Andy hasn't read yet | text | `src/app/(app)/settings.tsx:67` |  |
+| {…} made offline and not synced | text | `src/app/(app)/settings.tsx:70` |  |
+| Cancel | button | `src/app/(app)/settings.tsx:78` |  |
+| Sign out | button | `src/app/(app)/settings.tsx:79` |  |
+| Delete account | button | `src/app/(app)/settings.tsx:94` |  |
+| Settings | title | `src/app/(app)/settings.tsx:101` |  |
+| Manage your account. | note | `src/app/(app)/settings.tsx:101` |  |
+| Sign out | text | `src/app/(app)/settings.tsx:111` |  |
+| Delete account | VoiceOver | `src/app/(app)/settings.tsx:119` |  |
+| Deleting your account… | text | `src/app/(app)/settings.tsx:122` |  |
+| Delete account | text | `src/app/(app)/settings.tsx:122` |  |
 
 ## App lock
 
@@ -381,6 +382,22 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 
 | What a person reads | Kind | Where | Planned change (STYLE.md → Terminology) |
 |---|---|---|---|
+| Calendar | text | `src/components/calendar-section.tsx:89` |  |
+| Before a meeting, Andy shows what you wrote about whoever you're meeting. It reads your calendar on this phone — nothing leaves it, and nothing is added. | text | `src/components/calendar-section.tsx:95` |  |
+| Connect calendar | label | `src/components/calendar-section.tsx:99` |  |
+| Calendar access is off for Andy. To turn it on, choose Full Access under Calendars. | text | `src/components/calendar-section.tsx:104` |  |
+| Open iPhone Settings | label | `src/components/calendar-section.tsx:107` |  |
+| Muted until tomorrow · | text | `src/components/calendar-section.tsx:113` |  |
+| Turn back on | VoiceOver | `src/components/calendar-section.tsx:116` |  |
+| Turn back on | text | `src/components/calendar-section.tsx:120` |  |
+| On — Andy reads your calendar on this phone. | text | `src/components/calendar-section.tsx:127` |  |
+| Turn off in Andy | label | `src/components/calendar-section.tsx:129` |  |
+| Off — Andy isn't reading your calendar, and no reminders are set. | text | `src/components/calendar-section.tsx:136` |  |
+| To take away access completely, turn off Calendars for Andy in iPhone Settings. | text | `src/components/calendar-section.tsx:144` |  |
+| Andy can remind you 10 minutes before a meeting, and ask afterwards what's new. | text | `src/components/calendar-section.tsx:154` |  |
+| Remind me 10 minutes before | label | `src/components/calendar-section.tsx:158` |  |
+| Reminders on — 10 minutes before, and a nudge after. They show a name, never what you wrote. | text | `src/components/calendar-section.tsx:164` |  |
+| Notifications are off for Andy. | text | `src/components/calendar-section.tsx:169` |  |
 | Coming up | body | `src/lib/notifications.ts:137` |  |
 | Anything to remember? | title | `src/lib/notifications.ts:158` |  |
 | How was {…}? | title | `src/lib/notifications.ts:158` |  |
@@ -391,7 +408,7 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 | Mute for today | button | `src/lib/use-briefing-actions.ts:30` |  |
 | Mute until I turn it back on | button | `src/lib/use-briefing-actions.ts:33` |  |
 | Cancel | button | `src/lib/use-briefing-actions.ts:36` |  |
-| Andy looked at too many calendar events at once. Try a shorter range. | server error | `convex/calendar.ts:124` |  |
+| Andy looked at too many calendar events at once. Try a shorter range. | server error | `convex/calendar.ts:128` |  |
 
 ## Navigation titles
 
@@ -407,10 +424,10 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 
 | What a person reads | Kind | Where | Planned change (STYLE.md → Terminology) |
 |---|---|---|---|
-| You're signed out. Sign in to continue. | server error | `convex/account.ts:49` |  |
-| Andy couldn't finish deleting your account. Try again, and nothing already removed will come back. | server error | `convex/account.ts:113` |  |
-| Andy can't delete accounts right now. Nothing was deleted. Try again shortly. | server error | `convex/account.ts:128` |  |
-| Your notes and people are deleted, but Andy couldn't finish removing your sign-in. Try again. | server error | `convex/account.ts:156` |  |
+| You're signed out. Sign in to continue. | server error | `convex/account.ts:50` |  |
+| Andy couldn't finish deleting your account. Try again, and nothing already removed will come back. | server error | `convex/account.ts:120` |  |
+| Andy can't delete accounts right now. Nothing was deleted. Try again shortly. | server error | `convex/account.ts:135` |  |
+| Your notes and people are deleted, but Andy couldn't finish removing your sign-in. Try again. | server error | `convex/account.ts:163` |  |
 | Andy couldn't put that into words. Try asking it differently. | server error | `convex/answer.ts:70` |  |
 | Andy can't reach Claude right now. This one's on us — try again shortly. | server error | `convex/claude.ts:61` |  |
 | Andy is thinking about too many things at once. Try again in a moment. | server error | `convex/claude.ts:87` |  |
