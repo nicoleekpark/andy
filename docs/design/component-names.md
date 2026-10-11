@@ -203,6 +203,7 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `note-source-hint` | 원문을 고쳐도 위 내용은 그대로라는 안내 |
 | `note-source-field` | 원문 (고칠 수 있음) |
 | `reread-button` | Read it again — 고친 원문으로 다시 읽기 |
+| `note-source-edited-line` | "The details above still come from the old wording." — 원문을 고치면 그 아래 바로 뜸. 저장할 때 따로 묻지 않음 (QA #18/#19) |
 | `remember-button--disabled` | Remember this — 아직 비활성 |
 | `remember-blocked-reason` | 왜 저장 못 하는지 한 줄 |
 | `discard-button` | Discard and start over |

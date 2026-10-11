@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { copiedStore, fingerprintOf } from "@/lib/on-phone";
 import { ConfirmHost, useConfirm } from "@/components/confirm-dialog";
-import { colors, fonts } from "../constants/theme";
+import { colors, fonts, textOpacity } from "../constants/theme";
 import { useLocked } from "../lib/lock-context";
 import { hasNativeModule } from "../lib/native";
 
@@ -361,17 +361,18 @@ const styles = StyleSheet.create({
   label: {
     color: colors.ink,
     fontSize: 12,
-    opacity: 0.55,
+    opacity: textOpacity.quiet,
     textTransform: "uppercase",
     letterSpacing: 0.6,
     fontFamily: fonts.display,
     marginTop: 8,
   },
+  // The field's only visible edge: `edge`, 3:1 (WCAG 1.4.11), and a whole point wide.
   subject: {
     color: colors.ink,
     fontSize: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.line,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.edge,
     paddingVertical: 8,
   },
   body: {
@@ -399,7 +400,7 @@ const styles = StyleSheet.create({
   footnote: {
     color: colors.ink,
     fontSize: 13,
-    opacity: 0.55,
+    opacity: textOpacity.quiet,
     lineHeight: 19,
     textAlign: "center",
     marginTop: 4,

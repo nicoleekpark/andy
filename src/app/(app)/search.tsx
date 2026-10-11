@@ -12,7 +12,7 @@ import {
 import { useAction, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "@convex/_generated/api";
-import { colors, fonts, space } from "@/constants/theme";
+import { colors, fonts, space, textOpacity } from "@/constants/theme";
 import { formatDate } from "@/lib/dates";
 import { userMessage } from "@/lib/user-message";
 import { TimedOut, withTimeout } from "@/lib/with-timeout";
@@ -176,7 +176,7 @@ export default function SearchScreen() {
             // The longer explanation lives in the empty state below, where it has
             // the full width and nothing to compete with.
             placeholder="Who are you thinking of?"
-            placeholderTextColor={colors.line}
+            placeholderTextColor={colors.placeholder}
             value={question}
             onChangeText={setQuestion}
             onSubmitEditing={ask}
@@ -465,12 +465,12 @@ function ResultCard({ result }: { result: Results[number] }) {
 }
 
 const styles = StyleSheet.create({
-  offlineHint: { color: colors.ink, fontSize: 14, opacity: 0.55, lineHeight: 21, marginBottom: space.md },
+  offlineHint: { color: colors.ink, fontSize: 14, opacity: textOpacity.quiet, lineHeight: 21, marginBottom: space.md },
   sectionLabel: {
     color: colors.ink,
     fontFamily: fonts.display,
     fontSize: 12,
-    opacity: 0.55,
+    opacity: textOpacity.quiet,
     textTransform: "uppercase",
     letterSpacing: 0.6,
     marginTop: 18,
@@ -489,17 +489,18 @@ const styles = StyleSheet.create({
     color: colors.ink,
     fontFamily: fonts.utility,
     fontSize: 12,
-    opacity: 0.55,
+    opacity: textOpacity.quiet,
   },
   container: { flex: 1, backgroundColor: colors.paper, padding: 24, gap: 16 },
 
   askRow: { flexDirection: "row", gap: 10, alignItems: "center" },
+  // The field's only visible edge: `edge`, 3:1 (WCAG 1.4.11), and a whole point wide.
   input: {
     flex: 1,
     color: colors.ink,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: colors.edge,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -544,7 +545,7 @@ const styles = StyleSheet.create({
   cardMeta: {
     color: colors.ink,
     fontSize: 12,
-    opacity: 0.55,
+    opacity: textOpacity.quiet,
     fontFamily: fonts.utility,
   },
   cardBody: { color: colors.ink, fontSize: 15, lineHeight: 22, opacity: 0.85 },
@@ -557,7 +558,7 @@ const styles = StyleSheet.create({
   label: {
     color: colors.ink,
     fontSize: 11,
-    opacity: 0.45,
+    opacity: textOpacity.quiet,
     fontFamily: fonts.display,
     letterSpacing: 0.6,
     textTransform: "uppercase",
@@ -571,7 +572,7 @@ const styles = StyleSheet.create({
   quiet: {
     color: colors.ink,
     fontSize: 15,
-    opacity: 0.6,
+    opacity: textOpacity.quiet,
     lineHeight: 22,
     textAlign: "center",
   },

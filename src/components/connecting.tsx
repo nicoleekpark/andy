@@ -6,7 +6,7 @@ import {
   View,
 } from "react-native";
 import { ThreadLoop } from "@/components/thread-loop";
-import { colors, space } from "@/constants/theme";
+import { colors, space, textOpacity } from "@/constants/theme";
 
 /**
  * Rebuild the Convex session from inside it.
@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
   quiet: {
     color: colors.ink,
     fontSize: 15,
-    opacity: 0.6,
+    opacity: textOpacity.quiet,
     lineHeight: 22,
     textAlign: "center",
   },
