@@ -4,6 +4,10 @@ import { useAction, useConvexAuth, useConvexConnectionState } from "convex/react
 import { renderRouter } from "expo-router/testing-library";
 import { fileStore, loadOutbox, type OutboxNote, type OutboxStore } from "../src/lib/outbox";
 import { answerDialog, spyOnConfirm } from "../test-support/dialog";
+import { Image } from "expo-image";
+import * as Clipboard from "expo-clipboard";
+import * as native from "@/lib/native";
+import { fingerprintOf } from "@/lib/on-phone";
 
 /**
  * Notes kept on this phone while offline (`src/lib/outbox.tsx`): what is kept,
@@ -13,7 +17,10 @@ import { answerDialog, spyOnConfirm } from "../test-support/dialog";
 
 const files = () =>
   (jest.requireMock("expo-file-system") as { __files: Map<string, string> }).__files;
+const fs = () =>
+  jest.requireMock("expo-file-system") as { __files: Map<string, string>; __folders: Set<string> };
 const OUTBOX = "file:///documents/outbox/notes.json";
+const COPIED = "file:///documents/clipboard/copied.json";
 
 function note(ownerId: string, text: string): OutboxNote {
   return { id: `${ownerId}-${text}`, ownerId, keptAt: 1, today: "2026-10-07", text, kind: "typed" };
@@ -79,6 +86,8 @@ afterEach(() => {
 jest.mock("expo-notifications", () => ({
   getAllScheduledNotificationsAsync: jest.fn(async () => []),
   cancelScheduledNotificationAsync: jest.fn(async () => undefined),
+  getPresentedNotificationsAsync: jest.fn(async () => []),
+  dismissNotificationAsync: jest.fn(async () => undefined),
   scheduleNotificationAsync: jest.fn(async () => "id"),
   getPermissionsAsync: jest.fn(async () => ({ granted: false, canAskAgain: true })),
   requestPermissionsAsync: jest.fn(async () => ({ granted: false, canAskAgain: true })),
@@ -95,7 +104,19 @@ function remindersPending() {
     { identifier: "ours", content: { data: { kind: "andy.briefing" } } },
     { identifier: "someone-else", content: { data: {} } },
   ]);
+  (notifications.getPresentedNotificationsAsync as jest.Mock).mockResolvedValue([
+    { request: { identifier: "shown-ours", content: { data: { kind: "andy.briefing" } } } },
+    { request: { identifier: "shown-else", content: { data: {} } } },
+  ]);
+  jest.spyOn(Image, "clearDiskCache").mockResolvedValue(true);
+  jest.spyOn(Image, "clearMemoryCache").mockResolvedValue(true);
   return notifications.cancelScheduledNotificationAsync as jest.Mock;
+}
+
+/** The delivered ones, in Notification Center, after `remindersPending`. */
+function dismissed() {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return require("expo-notifications").dismissNotificationAsync as jest.Mock;
 }
 
 describe("outbox store", () => {
@@ -232,6 +253,8 @@ describe("outbox in the app", () => {
     files().set(OUTBOX, JSON.stringify([note("user_default", "one")]));
     const signOut = signedInAs("user_default");
     const cancel = remindersPending();
+    fs().__folders.add("file:///caches/ImagePicker");
+    files().set("file:///caches/ImagePicker/card.jpg", "jpeg bytes");
     spyOnConfirm().mockImplementation((_title, _message, buttons) => {
       buttons?.find((b) => b.text === "Sign out")?.onPress?.();
     });
@@ -243,9 +266,18 @@ describe("outbox in the app", () => {
 
     expect(signOut).toHaveBeenCalledTimes(1);
     expect(files().has(OUTBOX)).toBe(false);
-    // A reminder naming somebody must not outlive the account on this phone.
+    // A reminder naming somebody must not outlive the account on this phone —
+    // pending, or already delivered and sitting in Notification Center.
     await waitFor(() => expect(cancel).toHaveBeenCalledWith("ours"));
     expect(cancel).not.toHaveBeenCalledWith("someone-else");
+    await waitFor(() => expect(dismissed()).toHaveBeenCalledWith("shown-ours"));
+    expect(dismissed()).not.toHaveBeenCalledWith("shown-else");
+    // Nor a photo: picked copies (profile photos, business cards) and the
+    // image cache go too.
+    expect(fs().__folders.has("file:///caches/ImagePicker")).toBe(false);
+    expect(files().has("file:///caches/ImagePicker/card.jpg")).toBe(false);
+    expect(Image.clearDiskCache).toHaveBeenCalled();
+    expect(Image.clearMemoryCache).toHaveBeenCalled();
   });
 
   test("should ask before signing out while notes are still waiting", async () => {
@@ -264,6 +296,43 @@ describe("outbox in the app", () => {
       "This phone has 1 note Andy hasn't read yet. Signing out deletes it.",
       expect.any(Array),
     );
+  });
+
+  // The clipboard: Andy's copy of a follow-up draft goes; anything copied
+  // since, in any app, is the person's (owner's decision, 2026-10-11).
+  function clipboardHolds(text: string) {
+    jest.spyOn(native, "hasNativeModule").mockReturnValue(true);
+    jest.spyOn(Clipboard, "getStringAsync").mockResolvedValue(text);
+    return jest.spyOn(Clipboard, "setStringAsync").mockResolvedValue(true);
+  }
+
+  test("should clear the clipboard on sign-out while it still holds Andy's copy", async () => {
+    signedInAs("user_default");
+    files().set(COPIED, JSON.stringify({ fingerprint: fingerprintOf("Hope Berlin is treating you well.") }));
+    const set = clipboardHolds("Hope Berlin is treating you well.");
+
+    await renderRouter("src/app", { initialUrl: "/settings" });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Sign out" }));
+    });
+
+    await waitFor(() => expect(set).toHaveBeenCalledWith(""));
+    expect(files().has(COPIED)).toBe(false);
+  });
+
+  test("should leave the clipboard alone when something else was copied since", async () => {
+    signedInAs("user_default");
+    files().set(COPIED, JSON.stringify({ fingerprint: fingerprintOf("Hope Berlin is treating you well.") }));
+    const set = clipboardHolds("a link the person copied in Safari");
+
+    await renderRouter("src/app", { initialUrl: "/settings" });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Sign out" }));
+    });
+
+    await waitFor(() => expect(Clipboard.getStringAsync).toHaveBeenCalled());
+    expect(set).not.toHaveBeenCalled();
+    expect(files().has(COPIED)).toBe(false);
   });
 
   test("should sign straight out when nothing is waiting", async () => {

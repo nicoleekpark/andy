@@ -1,5 +1,7 @@
 import { Directory, File, Paths } from "expo-file-system";
-import { cancelBriefings } from "./notifications";
+import { Image } from "expo-image";
+import { hasNativeModule } from "./native";
+import { forgetBriefings } from "./notifications";
 
 /**
  * What Andy keeps on this phone, and how it is written.
@@ -75,17 +77,80 @@ export const outboxStore = jsonFileStore("outbox", "notes.json");
 export const offlineCopyStore = jsonFileStore("offline-copy", "copy.json");
 /** Changes made offline, waiting for Sync. */
 export const pendingStore = jsonFileStore("pending", "changes.json");
+/**
+ * A fingerprint of the last text Andy put on the clipboard (`clipboard.ts`) —
+ * never the text — so a sign-out can tell Andy's copy from anything copied
+ * since, and clear only its own.
+ */
+export const copiedStore = jsonFileStore("clipboard", "copied.json");
 
 /**
- * Remove everything Andy keeps on this phone. Called on a sign-out the person
- * chose (and account deletion) — never on Clerk merely reporting signed-out,
- * which also happens when a session expires on its own, and must not cost
- * anyone the words they kept. What is left behind that way still carries its
- * owner and is never shown to another account.
+ * A short, one-way fingerprint (32-bit FNV-1a, hex): enough to recognise the
+ * same text again, not enough to read anything back out of.
+ */
+export function fingerprintOf(text: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash.toString(16).padStart(8, "0");
+}
+
+/**
+ * Clear the clipboard if what is on it is still what Andy copied (a follow-up
+ * draft about somebody). Anything copied since, in any app, is the person's
+ * and is left alone — the owner's decision, 2026-10-11. Reading another app's
+ * copy makes iOS ask "Allow Paste?"; "Don't Allow" leaves it, which is right.
+ */
+async function forgetAndysCopy(): Promise<void> {
+  let copied: { fingerprint?: unknown } | null = null;
+  try {
+    const raw = copiedStore.read();
+    copied = raw === null ? null : (JSON.parse(raw) as { fingerprint?: unknown });
+  } catch {
+    copied = null;
+  }
+  try {
+    copiedStore.remove();
+  } catch {
+    // Only a fingerprint; harmless if it stays.
+  }
+  if (typeof copied?.fingerprint !== "string" || !hasNativeModule("ExpoClipboard")) return;
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const clipboard = require("expo-clipboard") as typeof import("expo-clipboard");
+  const now = await clipboard.getStringAsync();
+  if (now !== "" && fingerprintOf(now) === copied.fingerprint) {
+    await clipboard.setStringAsync("");
+  }
+}
+
+/**
+ * Leave nothing of this account on the phone, as if Andy had never been used
+ * on it. Called on a sign-out the person chose and on account deletion —
+ * never on Clerk merely reporting signed-out, which also happens when a
+ * session expires on its own, and must not cost anyone the words they kept.
+ * After a sign-out everything comes back from the server on the next sign-in;
+ * after a deletion there is nothing left to come back.
  *
- * That includes this app's meeting reminders. They sit with iOS rather than
- * in a file, but they carry a person's name and would still reach the lock
- * screen after the account that wrote about them has left the phone.
+ * What it covers, and **what anything new that keeps data on the phone must
+ * add here** (CLAUDE.md → "Sign-out and account deletion leave nothing"):
+ * - the stores in this file (notes waiting offline, the offline copy, changes
+ *   waiting for Sync);
+ * - this app's reminders — pending, and already delivered in Notification
+ *   Center (`forgetBriefings`) — which carry a person's name;
+ * - photos: `expo-image`'s memory and disk caches (profile photos), and the
+ *   copies `expo-image-picker` makes in `Caches/ImagePicker` (profile photos
+ *   and business cards);
+ * - the clipboard, only while it still holds what Andy copied there
+ *   (`forgetAndysCopy`).
+ *
+ * Not here, on purpose: Clerk's own caches. On sign-out Clerk removes its
+ * session token and re-saves its client as signed out (read in
+ * `@clerk/expo` 4.6.8, `createClerkInstance.js`); re-check on an upgrade. The
+ * in-memory Convex cache goes with the per-account client (`_layout.tsx`).
+ * Permissions (calendar, notifications, microphone) belong to iOS, not to
+ * Andy's data, and an app cannot reset them.
  *
  * Best effort: a failure to delete must not stop the sign-out itself.
  */
@@ -97,7 +162,24 @@ export function forgetOnThisPhone(): void {
       // Still owner-tagged; the next account to load it removes it.
     }
   }
-  // Not awaited: the sign-out it belongs to must not wait on the native
-  // bridge, and a failure here leaves nothing worse than before.
-  void cancelBriefings().catch(() => undefined);
+  try {
+    const picked = new Directory(Paths.cache, "ImagePicker");
+    if (picked.exists) picked.delete();
+  } catch {
+    // iOS clears Caches on its own when space runs low.
+  }
+  // Not awaited: the sign-out these belong to must not wait on the native
+  // bridge, and a failure leaves nothing worse than before.
+  for (const forget of [
+    forgetAndysCopy,
+    forgetBriefings,
+    () => Image.clearMemoryCache(),
+    () => Image.clearDiskCache(),
+  ]) {
+    try {
+      void forget().catch(() => undefined);
+    } catch {
+      // A native module missing from this build throws before it returns.
+    }
+  }
 }
