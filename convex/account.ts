@@ -25,6 +25,7 @@ const BATCH = 200;
  * name profiles.
  */
 export const OWNED_TABLES = [
+  "appleTokens",
   "noteMentions",
   "calendarLinks",
   "metrics",
@@ -98,6 +99,12 @@ export const deleteMyAccount = action({
     // Checked before anything is touched. Without it the data would go and
     // the sign-in would stay: an account that looks deleted and isn't.
     const secretKey = clerkSecretKey();
+
+    // Apple requires Sign in with Apple tokens to be revoked when an account
+    // is deleted (5.1.1(v)). First, while the token is still here to read;
+    // it reports rather than throws, because Apple being unreachable must
+    // not stand between someone and leaving (`appleSignIn.ts`).
+    await ctx.runAction(internal.appleSignIn.revokeForCurrentUser, {});
 
     // Data first, sign-in account last. If the data half fails, you can still
     // sign in and try again; if the account went first, whatever was left

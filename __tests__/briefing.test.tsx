@@ -48,6 +48,8 @@ import { BRIEFING_LEAD_MINUTES } from "../src/lib/notifications";
 import { useReadingCopy } from "../src/lib/offline-copy";
 import { muteForToday, nextLocalMidnight, setCalendarSetting } from "../src/lib/calendar-setting";
 import * as calendarMatch from "@convex/calendarMatch";
+import { NONE, pick, picksOf } from "../src/lib/briefing-picks";
+import { forgetOnThisPhone } from "../src/lib/on-phone";
 
 jest.mock("convex/react", () => ({ useConvex: jest.fn() }));
 // The phone's copy, which matching reads. Mocked so these tests need no
@@ -55,7 +57,11 @@ jest.mock("convex/react", () => ({ useConvex: jest.fn() }));
 jest.mock("../src/lib/offline-copy", () => ({ useReadingCopy: jest.fn() }));
 jest.mock("expo-router", () => ({ router: { push: jest.fn() } }));
 
-const AT = new Date("2026-09-22T09:30:00Z").getTime();
+/**
+ * A meeting two hours from now, on the minute. It used to be a fixed date in
+ * the past, which the card now drops: a meeting leaves it when it starts.
+ */
+const AT = Math.ceil((Date.now() + 2 * 3600_000) / 60_000) * 60_000;
 
 function grant(granted: boolean, canAskAgain = true) {
   (Calendar.getCalendarPermissions as jest.Mock).mockResolvedValue({
@@ -110,6 +116,7 @@ const EMPTY_COPY = {
 /** A harness that renders whatever the hook currently says. */
 function Harness({ enabled = true }: { enabled?: boolean }) {
   const { briefing, ask, alerts, askForAlerts } = useBriefing(enabled);
+  const onMute = jest.fn();
   if (
     briefing.state === "loading" ||
     briefing.state === "off" ||
@@ -120,7 +127,13 @@ function Harness({ enabled = true }: { enabled?: boolean }) {
   }
   if (briefing.state === "ask") {
     return (
-      <BriefingCard state="ask" onAsk={() => void ask()} asking={briefing.asking} />
+      <BriefingCard
+        state="ask"
+        onAsk={() => void ask()}
+        asking={briefing.asking}
+        onNotNow={jest.fn()}
+        onMute={onMute}
+      />
     );
   }
   if (briefing.state === "ready") {
@@ -130,10 +143,15 @@ function Harness({ enabled = true }: { enabled?: boolean }) {
         briefing={briefing.briefing}
         alerts={alerts}
         onEnableAlerts={() => void askForAlerts()}
+        onMute={onMute}
       />
     );
   }
-  return <BriefingCard state={briefing.state} />;
+  if (briefing.state === "denied") {
+    return <BriefingCard state="denied" onOpenSettings={jest.fn()} onMute={onMute} />;
+  }
+  if (briefing.state === "empty") return <BriefingCard state="empty" onMute={onMute} />;
+  return <BriefingCard state="unavailable" />;
 }
 
 beforeEach(() => {
@@ -383,7 +401,7 @@ test("should invite rather than prompt when calendar access has never been asked
   await render(<Harness />);
 
   await waitFor(() =>
-    expect(screen.getByLabelText("Let Andy read my calendar")).toBeTruthy(),
+    expect(screen.getByLabelText("Connect calendar")).toBeTruthy(),
   );
   // `CLAUDE.md`: permissions are opt-in per feature, requested at the point of
   // use. A card that asked iOS on render would be the app-wide prompt that
@@ -400,11 +418,11 @@ test("should ask iOS only when the invitation is taken", async () => {
   });
   await render(<Harness />);
   await waitFor(() =>
-    expect(screen.getByLabelText("Let Andy read my calendar")).toBeTruthy(),
+    expect(screen.getByLabelText("Connect calendar")).toBeTruthy(),
   );
 
   await act(async () => {
-    fireEvent.press(screen.getByLabelText("Let Andy read my calendar"));
+    fireEvent.press(screen.getByLabelText("Connect calendar"));
   });
 
   await waitFor(() =>
@@ -440,11 +458,11 @@ test("should show the meeting straight after access is allowed, asking for nothi
   ]);
   await render(<Harness />);
   await waitFor(() =>
-    expect(screen.getByLabelText("Let Andy read my calendar")).toBeTruthy(),
+    expect(screen.getByLabelText("Connect calendar")).toBeTruthy(),
   );
 
   await act(async () => {
-    fireEvent.press(screen.getByLabelText("Let Andy read my calendar"));
+    fireEvent.press(screen.getByLabelText("Connect calendar"));
   });
 
   // Found live: Allow was tapped and the card disappeared, because the read
@@ -463,14 +481,14 @@ test("should ask once however fast the invitation is tapped twice", async () => 
   );
   await render(<Harness />);
   await waitFor(() =>
-    expect(screen.getByLabelText("Let Andy read my calendar")).toBeTruthy(),
+    expect(screen.getByLabelText("Connect calendar")).toBeTruthy(),
   );
 
   // Two presses before the first resolves. Each one is a system permission
   // sheet; two of them stacked is the app asking twice for the same thing.
   await act(async () => {
-    fireEvent.press(screen.getByLabelText("Let Andy read my calendar"));
-    fireEvent.press(screen.getByLabelText("Let Andy read my calendar"));
+    fireEvent.press(screen.getByLabelText("Connect calendar"));
+    fireEvent.press(screen.getByLabelText("Connect calendar"));
   });
   expect(Calendar.requestCalendarPermissions).toHaveBeenCalledTimes(1);
 
@@ -479,16 +497,15 @@ test("should ask once however fast the invitation is tapped twice", async () => 
   });
 });
 
-test("should offer no button once iOS will not ask again", async () => {
+test("should offer iPhone Settings, not Connect, once iOS will not ask again", async () => {
   grant(false, false);
   await render(<Harness />);
 
-  // A button that cannot work is worse than no button: pressing it does
-  // nothing at all, which reads as the app being broken rather than as a
-  // choice that was already made.
+  // Connect would do nothing at all — iOS will not show its sheet twice — so
+  // the way forward is Andy's own page in iPhone Settings (R5).
   await waitFor(() => expect(screen.getByTestId("briefing-card")).toBeTruthy());
-  expect(screen.queryByLabelText("Let Andy read my calendar")).toBeNull();
-  expect(screen.getByText(/Settings/)).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Connect calendar" })).toBeNull();
+  expect(screen.getByRole("button", { name: "Open iPhone Settings" })).toBeTruthy();
 });
 
 test("should show nothing at all when the calendar module is not in this build", async () => {
@@ -587,6 +604,125 @@ test("should say it cannot tell which person rather than pick one", async () => 
   expect(screen.queryByText(/You keep/)).toBeNull();
 });
 
+// ---------------------------------------------------------------------------
+// Which Priya — answered on the card, kept on this phone
+// (docs/design/decisions/briefing-card-people.md, R-P1–R-P8)
+// ---------------------------------------------------------------------------
+
+describe("an answered shared name", () => {
+  const twoPriyas = {
+    ...EMPTY_COPY,
+    profiles: [
+      { _id: "p-kumar", _creationTime: 0, userId: "u", name: "Priya", entityType: "person", tags: [], autoCreated: false },
+      { _id: "p-shah", _creationTime: 0, userId: "u", name: "Priya", entityType: "person", tags: [], autoCreated: false },
+    ],
+    notes: [{ profileId: "p-shah", createdAt: 0 }],
+  };
+  const coffee = {
+    eventId: "e1",
+    title: "Coffee with Priya",
+    startsAt: AT,
+    endsAt: AT + 3600_000,
+    people: [],
+    ambiguous: [{ name: "Priya", key: "priya", count: 2, profileIds: ["p-kumar", "p-shah"] }],
+  };
+
+  beforeEach(() => {
+    (useReadingCopy as jest.Mock).mockReturnValue(twoPriyas);
+    calendarSays([
+      { id: "e1", title: "Coffee with Priya", startDate: new Date(AT), endDate: new Date(AT + 3600_000), allDay: false },
+    ]);
+    backendSays([coffee]);
+  });
+
+  afterEach(async () => {
+    await act(async () => {
+      forgetOnThisPhone();
+    });
+  });
+
+  test("should brief the Priya picked, and remind you about her, from the moment she is picked", async () => {
+    await render(<Harness />);
+    await waitFor(() => expect(screen.getByText(/can.t tell which one/)).toBeTruthy());
+    // Unanswered: no reminder that cannot name who it is about (R-P5).
+    expect(briefingTimes()).toEqual([]);
+
+    await act(async () => {
+      pick("user_a", "e1", "priya", "p-shah");
+    });
+
+    // No foreground needed: a Priya picked at 10:45 still gets her 10:50
+    // reminder (R-P5).
+    await waitFor(() => expect(screen.getByLabelText("Open Priya")).toBeTruthy());
+    expect(screen.getByText("1 note")).toBeTruthy();
+    expect(screen.queryByText(/can.t tell which one/)).toBeNull();
+    await waitFor(() =>
+      expect(briefingTimes()).toContain(AT - BRIEFING_LEAD_MINUTES * 60_000),
+    );
+  });
+
+  test("should not lose an answer given while the calendar is still being read", async () => {
+    let release: (events: unknown[]) => void = () => {};
+    (Calendar.listEvents as jest.Mock).mockReturnValueOnce(
+      new Promise((resolve) => (release = resolve)),
+    );
+    await render(<Harness />);
+    await waitFor(() => expect(Calendar.listEvents).toHaveBeenCalledTimes(1));
+
+    // Picked while the first read is still under way. That read started
+    // before the answer, so its result is thrown away — and the refresh the
+    // answer asked for used to be dropped with it, leaving no card at all.
+    await act(async () => {
+      pick("user_a", "e1", "priya", "p-shah");
+    });
+    await act(async () => {
+      release([
+        { id: "e1", title: "Coffee with Priya", startDate: new Date(AT), endDate: new Date(AT + 3600_000), allDay: false },
+      ]);
+    });
+
+    await waitFor(() => expect(screen.getByLabelText("Open Priya")).toBeTruthy());
+  });
+
+  test("should keep a meeting answered Neither on the card, so the answer can be undone there", async () => {
+    pick("user_a", "e1", "priya", NONE);
+    await render(<Harness />);
+
+    // R-P6: the meeting stays until it starts; nobody is on it to remind about.
+    await waitFor(() => expect(screen.getByText("Coffee with Priya")).toBeTruthy());
+    expect(screen.queryByText(/can.t tell which one/)).toBeNull();
+    expect(briefingTimes()).toEqual([]);
+  });
+
+  test("should ask again, and forget the answer, once the picked Priya has been deleted", async () => {
+    pick("user_a", "e1", "priya", "p-shah");
+    (useReadingCopy as jest.Mock).mockReturnValue({
+      ...twoPriyas,
+      profiles: [...twoPriyas.profiles.slice(0, 1), { ...twoPriyas.profiles[0], _id: "p-third" }],
+    });
+    backendSays([
+      { ...coffee, ambiguous: [{ ...coffee.ambiguous[0], profileIds: ["p-kumar", "p-third"] }] },
+    ]);
+    await render(<Harness />);
+
+    await waitFor(() => expect(screen.getByText(/can.t tell which one/)).toBeTruthy());
+    // R-P7: pruned on the read, since a deletion elsewhere never reaches it.
+    expect(picksOf("user_a")).toEqual([]);
+    // Tidying is part of that read, not a reason for another: one calendar
+    // read, one round of reminders.
+    await act(async () => {});
+    expect(Calendar.listEvents).toHaveBeenCalledTimes(1);
+  });
+
+  test("should not use another account's answer on this phone", async () => {
+    pick("user_b", "e1", "priya", "p-shah");
+    await render(<Harness />);
+
+    await waitFor(() => expect(screen.getByText(/can.t tell which one/)).toBeTruthy());
+    expect(briefingTimes()).toEqual([]);
+  });
+});
+
 test("should skip the meetings that are about nobody and show the one that is not", async () => {
   calendarSays([
     { id: "a", title: "Standup", startDate: new Date(AT), endDate: new Date(AT), allDay: false },
@@ -609,6 +745,87 @@ test("should skip the meetings that are about nobody and show the one that is no
   // feature exists for off the top of the screen.
   await waitFor(() => expect(screen.getByText("Coffee with Marcus")).toBeTruthy());
   expect(screen.queryByText("Standup")).toBeNull();
+});
+
+// ---------------------------------------------------------------------------
+// A meeting leaves the card when it starts (device QA #12)
+// ---------------------------------------------------------------------------
+
+/** Two meetings with Nina, starting at these times. */
+function meetingsAt(first: number, second: number) {
+  (calendarMatch.matchEventsIn as jest.Mock).mockRestore();
+  calendarSays([
+    { id: "a", title: "Coffee with Nina", startDate: new Date(first), endDate: new Date(first + 3600_000), allDay: false },
+    { id: "b", title: "Lunch with Nina", startDate: new Date(second), endDate: new Date(second + 3600_000), allDay: false },
+  ]);
+}
+
+test("should not show a meeting that has already started", async () => {
+  const now = Date.now();
+  meetingsAt(now - 10 * 60_000, now + 2 * 3600_000);
+  await render(<Harness />);
+
+  await waitFor(() => expect(screen.getByText("Lunch with Nina")).toBeTruthy());
+  expect(screen.queryByText("Coffee with Nina")).toBeNull();
+});
+
+test("should move on to the next meeting the moment one starts, with the app open", async () => {
+  jest.useFakeTimers();
+  try {
+    const now = Date.now();
+    meetingsAt(now + 5 * 60_000, now + 2 * 3600_000);
+    await render(<Harness />);
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(0);
+    });
+    expect(screen.getByText("Coffee with Nina")).toBeTruthy();
+
+    // No foreground, no tap: the clock passes the start.
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(5 * 60_000 + 2_000);
+    });
+    expect(screen.queryByText("Coffee with Nina")).toBeNull();
+    expect(screen.getByText("Lunch with Nina")).toBeTruthy();
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+test("should not keep refreshing after being switched off while a refresh was under way", async () => {
+  jest.useFakeTimers();
+  try {
+    const now = Date.now();
+    meetingsAt(now + 5 * 60_000, now + 2 * 3600_000);
+    // The calendar read is slow: still in flight when the switch flips.
+    let answer!: () => void;
+    const slow = new Promise<void>((resolve) => (answer = resolve));
+    const events = (Calendar.listEvents as jest.Mock).getMockImplementation();
+    (Calendar.listEvents as jest.Mock).mockImplementation(async (...args: unknown[]) => {
+      await slow;
+      return events?.(...args);
+    });
+
+    const { rerender } = await render(<Harness />);
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(0);
+    });
+    await rerender(<Harness enabled={false} />);
+    await act(async () => {
+      answer();
+      await jest.advanceTimersByTimeAsync(0);
+    });
+    const reads = (Calendar.listEvents as jest.Mock).mock.calls.length;
+
+    // Well past the first meeting's start: a timer left behind would read
+    // the calendar again for a feature that is off.
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(10 * 60_000);
+    });
+    expect((Calendar.listEvents as jest.Mock).mock.calls.length).toBe(reads);
+    expect(screen.queryByTestId("briefing-card")).toBeNull();
+  } finally {
+    jest.useRealTimers();
+  }
 });
 
 test("should say the day is clear rather than show an empty card body", async () => {
@@ -746,11 +963,11 @@ test("should say why when the card goes the moment access is allowed", async () 
   (Calendar.getCalendars as jest.Mock).mockRejectedValue(cause);
   const view = await render(<Harness />);
   await waitFor(() =>
-    expect(screen.getByLabelText("Let Andy read my calendar")).toBeTruthy(),
+    expect(screen.getByLabelText("Connect calendar")).toBeTruthy(),
   );
 
   await act(async () => {
-    fireEvent.press(screen.getByLabelText("Let Andy read my calendar"));
+    fireEvent.press(screen.getByLabelText("Connect calendar"));
   });
 
   await waitFor(() => expect(briefingWarnings(warn)).toHaveLength(1));
@@ -922,6 +1139,7 @@ test("should offer the reminder at the time it is actually scheduled", async () 
       briefing={{ title: "Coffee with Marcus", startsAt: AT, people: [], ambiguous: [] }}
       alerts="off"
       onEnableAlerts={jest.fn()}
+      onMute={jest.fn()}
     />,
   );
   expect(screen.getByText(`Remind me ${BRIEFING_LEAD_MINUTES} minutes before ›`)).toBeTruthy();
@@ -932,7 +1150,7 @@ test("should draw no dashed border, which React Native cannot render on one side
   // appeared: React Native warns "Unsupported dashed / dotted border style"
   // and draws nothing (QA 18.3). It was dropped rather than hand-drawn, so a
   // dashed style here is a regression to something that silently does nothing.
-  const view = await render(<BriefingCard state="empty" />);
+  const view = await render(<BriefingCard state="empty" onMute={jest.fn()} />);
 
   const dashed: unknown[] = [];
   const walk = (node: unknown) => {

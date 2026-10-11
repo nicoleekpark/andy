@@ -1,0 +1,255 @@
+<!--
+  DESIGN PROTOTYPE — not production code.
+  HTML approximation of the native `home` screen's `briefing-card` for Andy.
+  Option B — "Compact question + sheet, jump-to-page pager": an unanswered
+  ambiguous name collapses to one tappable question line; tapping it opens a
+  modal sheet (the `confirm-dialog` shape — paper card over scrim) with the
+  candidates. The pager adds small numbered page buttons so any meeting is
+  reachable in one tap, not just by stepping. Builds on top of the card
+  shipped in PR #133 (✕ mute, ask/denied states, time now `ink`).
+
+  Fonts: Lora/IBM Plex Mono not loaded — falls back to a close system face.
+  Tokens are declared as CSS variables below, named as `src/constants/theme.ts`.
+
+  The grey panel above the frame holds mock-only review controls. Inside the
+  frame: tap the question line to open the sheet, tap a candidate or
+  "Neither of them" to answer and close it, tap a page number to jump.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>briefing-card-people — Option B: sheet + jump-to-page</title>
+<style>
+  :root {
+    --color-ink: #2A2622; --color-paper: #E8E6DE; --color-moss: #5C6B4F;
+    --color-brass: #B8935A; --color-line: #B8B3A8; --color-alert: #9F4C3B;
+    --color-scrim: rgba(42, 38, 34, 0.42);
+    --space-xs: 4px; --space-sm: 8px; --space-md: 12px; --space-lg: 16px;
+    --space-xl: 24px; --space-xxl: 32px; --space-xxxl: 48px;
+    --text-xs: 12px; --text-sm: 13px; --text-md: 14px; --text-base: 15px;
+    --text-lg: 16px; --text-xl: 17px; --text-xxl: 18px;
+    --radius-card: 16px; --radius-pill: 999px;
+    --opacity-secondary: 0.8; --opacity-quiet: 0.7;
+    --font-display: Georgia, "Times New Roman", serif;
+    --font-utility: "Courier New", monospace;
+  }
+  * { box-sizing: border-box; }
+  body { background: #d8d4c8; font-family: -apple-system, system-ui, sans-serif; margin: 0; padding: 24px; color: var(--color-ink); }
+  .note { max-width: 760px; margin: 0 auto 20px; font-size: 13px; opacity: 0.75; line-height: 1.5; }
+  .rig { max-width: 760px; margin: 0 auto 20px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .rig fieldset { border: 1px dashed #9a9488; border-radius: 8px; padding: 8px 10px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .rig legend { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.6; }
+  .rig button { font-size: 12px; padding: 6px 10px; border-radius: 6px; border: 1px solid #9a9488; background: #fff; cursor: pointer; }
+  .rig button.active { background: var(--color-moss); color: var(--color-paper); border-color: var(--color-moss); }
+
+  .frame { width: 390px; margin: 0 auto; border-radius: 44px; background: #111; padding: 14px; box-shadow: 0 20px 50px rgba(0,0,0,0.35); }
+  .screen { background: var(--color-paper); border-radius: 32px; overflow: hidden; min-height: 760px; position: relative; }
+  .ios-status-bar { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-size: 14px; font-weight: 600; }
+  .nav-bar { padding: 4px 20px 14px; border-bottom: 1px solid var(--color-line); display: flex; align-items: center; justify-content: space-between; }
+  .nav-bar-title { font-family: var(--font-display); font-size: 22px; }
+  .nav-bar-action-right { font-size: var(--text-base); color: var(--color-moss); }
+
+  .briefing-card { position: relative; background: var(--color-paper); margin: 20px 24px; padding: 18px 16px 16px 20px; overflow: hidden; }
+  .briefing-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--color-brass); }
+  .briefing-card-mute-button { position: absolute; top: 2px; right: 2px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: none; border: none; cursor: pointer; }
+  .briefing-card-mute-button span { font-size: 20px; line-height: 1; color: var(--color-ink); opacity: var(--opacity-quiet); }
+  .briefing-card-when { color: var(--color-ink); font-family: var(--font-utility); font-size: var(--text-sm); margin-bottom: 4px; }
+  .briefing-card-title { font-family: var(--font-display); font-size: var(--text-xxl); line-height: 24px; margin: 0 44px 0 0; }
+
+  .briefing-card-person-link { margin-top: var(--space-md); display: flex; align-items: baseline; gap: 10px; cursor: pointer; }
+  .briefing-card-person-link .name { color: var(--color-moss); font-size: var(--text-lg); }
+  .briefing-card-person-link .meta { font-family: var(--font-utility); font-size: var(--text-xs); opacity: var(--opacity-quiet); }
+
+  /* --- compact question line (new): one tap opens the sheet --- */
+  .briefing-card-pick-question-button {
+    display: flex; width: 100%; align-items: center; justify-content: space-between;
+    background: none; border: none; border-top: 1px solid var(--color-line);
+    margin-top: var(--space-md); padding: var(--space-md) 0; min-height: 44px; cursor: pointer;
+    font-size: var(--text-base); color: var(--color-ink); text-align: left;
+  }
+  .briefing-card-pick-question-button .chev { opacity: var(--opacity-quiet); }
+  .briefing-card-pick-change-button { display: inline-block; margin-top: var(--space-xs); background: none; border: none; color: var(--color-moss); font-size: var(--text-sm); padding: var(--space-xs) 0; min-height: 44px; cursor: pointer; }
+  .briefing-card-pick-none-line { font-size: var(--text-base); margin-top: var(--space-md); padding-top: var(--space-md); border-top: 1px solid var(--color-line); line-height: 1.4; }
+  .briefing-card-pick-none-line .change { color: var(--color-moss); background: none; border: none; font-size: var(--text-base); padding: 0; cursor: pointer; }
+
+  /* --- sheet (new): a confirm-dialog-shaped modal --- */
+  .scrim { position: absolute; inset: 0; background: var(--color-scrim); display: none; align-items: center; justify-content: center; padding: var(--space-xxl); z-index: 5; }
+  .scrim.active { display: flex; }
+  .briefing-card-pick-sheet { background: var(--color-paper); border-radius: var(--radius-card); padding: var(--space-xl); width: 100%; }
+  .briefing-card-pick-sheet-title { font-size: var(--text-xxl); font-weight: 600; margin: 0 0 var(--space-xs); }
+  .briefing-card-pick-sheet-note { font-size: var(--text-sm); opacity: var(--opacity-quiet); line-height: 1.4; margin-bottom: var(--space-md); }
+  .briefing-card-pick-sheet-choice { display: block; width: 100%; text-align: left; background: none; border: none; border-bottom: 1px solid var(--color-line); padding: var(--space-md) 0; min-height: 44px; cursor: pointer; }
+  .briefing-card-pick-sheet-choice:last-of-type { border-bottom: none; }
+  .briefing-card-pick-sheet-choice .name { font-size: var(--text-base); display: block; }
+  .briefing-card-pick-sheet-choice .meta { font-family: var(--font-utility); font-size: var(--text-xs); opacity: var(--opacity-quiet); display: block; margin-top: 2px; }
+  .briefing-card-pick-sheet-neither { display: block; width: 100%; text-align: center; margin-top: var(--space-md); background: none; border: none; color: var(--color-ink); opacity: var(--opacity-quiet); font-size: var(--text-base); padding: var(--space-md) 0; min-height: 44px; cursor: pointer; }
+
+  /* --- pager with jump-to-page numbers (new) --- */
+  .briefing-card-pager { margin-top: var(--space-lg); padding-top: var(--space-md); border-top: 1px solid var(--color-line); display: flex; align-items: center; justify-content: center; gap: var(--space-sm); flex-wrap: wrap; }
+  .briefing-card-previous-button, .briefing-card-next-button { width: 44px; height: 44px; border-radius: var(--radius-pill); background: none; border: 1px solid var(--color-line); display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--color-ink); cursor: pointer; }
+  .briefing-card-previous-button[aria-disabled="true"], .briefing-card-next-button[aria-disabled="true"] { opacity: 0.35; cursor: default; }
+  .briefing-card-page-number-button { width: 44px; height: 44px; border-radius: var(--radius-pill); background: none; border: 1px solid var(--color-line); font-family: var(--font-utility); font-size: var(--text-sm); color: var(--color-ink); cursor: pointer; }
+  .briefing-card-page-number-button.current { background: var(--color-moss); color: var(--color-paper); border-color: var(--color-moss); }
+  .briefing-card-page-position { font-family: var(--font-utility); font-size: var(--text-sm); color: var(--color-ink); opacity: var(--opacity-secondary); }
+
+  .briefing-card-reminder-button { display: inline-block; margin-top: var(--space-md); background: none; border: none; color: var(--color-moss); font-size: var(--text-md); padding: var(--space-sm) 0; min-height: 44px; cursor: pointer; }
+
+  .profile-row { padding: 14px 24px; border-bottom: 1px solid var(--color-line); display: flex; justify-content: space-between; }
+  .profile-row-name { font-family: var(--font-display); font-size: var(--text-xl); }
+  .profile-row-meta { font-family: var(--font-utility); font-size: var(--text-xs); opacity: var(--opacity-quiet); }
+</style>
+</head>
+<body>
+
+<p class="note">
+  Design prototype (Option B — <strong>compact question + sheet, jump-to-page</strong>).
+  Not production code. The grey panels above the frame are mock-only review
+  controls. Inside the frame: tap "Which Priya is this? ›" to open the
+  sheet; tap a candidate or "Neither of them" inside it to answer and close;
+  tap a numbered page button to jump directly.
+</p>
+
+<div class="rig">
+  <fieldset>
+    <legend>meetings in window</legend>
+    <button data-mode="single" class="active">1 — single meeting (no pager)</button>
+    <button data-mode="carousel">6 — carousel (numbers nearly fill the width)</button>
+  </fieldset>
+  <fieldset>
+    <legend>reset</legend>
+    <button onclick="resetPick()">reset Priya question to unanswered</button>
+  </fieldset>
+</div>
+
+<div class="frame">
+  <div class="screen">
+    <div class="ios-status-bar"><span>9:41</span><span>⚫︎⚫︎⚫︎ 🔋</span></div>
+    <div class="nav-bar"><div class="nav-bar-title">Andy</div><div class="nav-bar-action-right">⚙︎</div></div>
+
+    <div class="briefing-card" id="card">
+      <button class="briefing-card-mute-button" aria-label="Mute the briefing"><span>✕</span></button>
+
+      <div class="briefing-card-page" id="page-0">
+        <div class="briefing-card-when">2:30 PM</div>
+        <div class="briefing-card-title">Coffee with Priya</div>
+
+        <div id="pick-unanswered">
+          <button class="briefing-card-pick-question-button" onclick="openSheet()">
+            <span>Which Priya is this?</span><span class="chev">›</span>
+          </button>
+        </div>
+
+        <div id="pick-picked" style="display:none">
+          <div class="briefing-card-person-link"><span class="name" id="picked-name">Priya Kapoor</span><span class="meta">4 notes</span></div>
+          <button class="briefing-card-pick-change-button" onclick="resetPick()">Not this Priya?</button>
+        </div>
+
+        <div id="pick-none" style="display:none">
+          <div class="briefing-card-pick-none-line">Not a Priya you've written about. <button class="change" onclick="resetPick()">Change</button></div>
+        </div>
+      </div>
+
+      <div class="briefing-card-page" id="page-other" style="display:none">
+        <div class="briefing-card-when" id="other-when">3:15 PM</div>
+        <div class="briefing-card-title" id="other-title">1:1 with Emily Chen</div>
+        <div class="briefing-card-person-link"><span class="name" id="other-name">Emily Chen</span><span class="meta">6 notes</span></div>
+      </div>
+
+      <div class="briefing-card-pager" id="pager" style="display:none">
+        <button class="briefing-card-previous-button" id="prev-btn" aria-label="Previous meeting" aria-disabled="true" onclick="goPage(-1)">‹</button>
+        <button class="briefing-card-page-number-button current" data-n="1" aria-label="Meeting 1" onclick="goTo(0)">1</button>
+        <button class="briefing-card-page-number-button" data-n="2" aria-label="Meeting 2" onclick="goTo(1)">2</button>
+        <button class="briefing-card-page-number-button" data-n="3" aria-label="Meeting 3" onclick="goTo(2)">3</button>
+        <button class="briefing-card-page-number-button" data-n="4" aria-label="Meeting 4" onclick="goTo(3)">4</button>
+        <button class="briefing-card-page-number-button" data-n="5" aria-label="Meeting 5" onclick="goTo(4)">5</button>
+        <button class="briefing-card-page-number-button" data-n="6" aria-label="Meeting 6" onclick="goTo(5)">6</button>
+        <button class="briefing-card-next-button" id="next-btn" aria-label="Next meeting" onclick="goPage(1)">›</button>
+      </div>
+
+      <button class="briefing-card-reminder-button">Remind me 10 minutes before ›</button>
+    </div>
+
+    <div class="profile-row"><div class="profile-row-name">Priya Kapoor</div><div class="profile-row-meta">friend · 4 notes</div></div>
+    <div class="profile-row"><div class="profile-row-name">Priya Shah</div><div class="profile-row-meta">colleague · 7 notes</div></div>
+
+    <div class="scrim" id="sheet-scrim">
+      <div class="briefing-card-pick-sheet" role="dialog" aria-modal="true" aria-label="Which Priya is this?">
+        <div class="briefing-card-pick-sheet-title">Which Priya is this?</div>
+        <div class="briefing-card-pick-sheet-note">You've written about 2 people called Priya. Andy will remember your answer for this event, every time it repeats. It stays on this phone.</div>
+        <button class="briefing-card-pick-sheet-choice" onclick="pickChoice('kapoor')">
+          <span class="name">Priya Kapoor</span><span class="meta">friend · 4 notes · 2026-09-30</span>
+        </button>
+        <button class="briefing-card-pick-sheet-choice" onclick="pickChoice('shah')">
+          <span class="name">Priya Shah</span><span class="meta">colleague · 7 notes · 2026-10-05</span>
+        </button>
+        <button class="briefing-card-pick-sheet-neither" onclick="pickNone()">Neither of them</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="note" style="margin-top:20px;">
+  <strong>Why the 6-meeting state looks crowded:</strong> at 44×44pt each, six
+  page-number buttons plus the two arrow buttons already need about 350pt of
+  the card's ~342pt usable width — this is the option's named risk. The brief
+  caps the window at 10 meetings (R-C1), a count this layout cannot reach
+  without wrapping to a second row or dropping the numbers for prev/next-only,
+  which would make the pager two different controls depending on count.
+</p>
+
+<script>
+  const state = { mode: 'single', page: 0, pick: 'unanswered' };
+  const others = [
+    { when: '3:15 PM', title: '1:1 with Emily Chen', name: 'Emily Chen', meta: '6 notes' },
+    { when: '4:30 PM', title: 'Call with Jordan Lee', name: 'Jordan Lee', meta: '3 notes' },
+    { when: '5:00 PM', title: 'Check-in with Sam', name: 'Sam Okafor', meta: '2 notes' },
+    { when: '5:45 PM', title: 'Walk with Marcus', name: 'Marcus Webb', meta: '1 note' },
+    { when: '7:00 PM', title: 'Dinner with Jordan Lee', name: 'Jordan Lee', meta: '3 notes' },
+  ];
+
+  function render() {
+    const total = state.mode === 'carousel' ? 6 : 1;
+    document.getElementById('page-0').style.display = state.page === 0 ? '' : 'none';
+    document.getElementById('page-other').style.display = state.page > 0 ? '' : 'none';
+    document.getElementById('pager').style.display = state.mode === 'carousel' ? 'flex' : 'none';
+    if (state.page > 0) {
+      const o = others[state.page - 1];
+      document.getElementById('other-when').textContent = o.when;
+      document.getElementById('other-title').textContent = o.title;
+      document.getElementById('other-name').textContent = o.name;
+      document.getElementById('other-name').nextElementSibling.textContent = o.meta;
+    }
+    document.getElementById('prev-btn').setAttribute('aria-disabled', state.page === 0 ? 'true' : 'false');
+    document.getElementById('next-btn').setAttribute('aria-disabled', state.page === total - 1 ? 'true' : 'false');
+    document.querySelectorAll('.briefing-card-page-number-button').forEach((b, i) => b.classList.toggle('current', i === state.page));
+    document.getElementById('pick-unanswered').style.display = state.pick === 'unanswered' ? '' : 'none';
+    document.getElementById('pick-picked').style.display = state.pick === 'picked' ? '' : 'none';
+    document.getElementById('pick-none').style.display = state.pick === 'none' ? '' : 'none';
+  }
+  function goPage(delta) {
+    const total = state.mode === 'carousel' ? 6 : 1;
+    const next = state.page + delta;
+    if (next < 0 || next >= total) return;
+    state.page = next; render();
+  }
+  function goTo(i) { state.page = i; render(); }
+  function openSheet() { document.getElementById('sheet-scrim').classList.add('active'); }
+  function closeSheet() { document.getElementById('sheet-scrim').classList.remove('active'); }
+  function pickChoice(who) {
+    document.getElementById('picked-name').textContent = who === 'kapoor' ? 'Priya Kapoor' : 'Priya Shah';
+    state.pick = 'picked'; closeSheet(); render();
+  }
+  function pickNone() { state.pick = 'none'; closeSheet(); render(); }
+  function resetPick() { state.pick = 'unanswered'; render(); }
+
+  document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => {
+    document.querySelectorAll('[data-mode]').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    state.mode = b.dataset.mode; state.page = 0; render();
+  });
+
+  render();
+</script>
+</body>
+</html>

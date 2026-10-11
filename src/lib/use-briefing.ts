@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
 import { matchEventsIn } from "@convex/calendarMatch";
 import { useReadingCopy } from "./offline-copy";
+import { applyPicks, tidyPicks, useBriefingPicksVersion } from "./briefing-picks";
 import {
   nextLocalMidnight,
   settingAt,
@@ -43,6 +44,12 @@ import {
  */
 
 const WINDOW_HOURS = 12;
+
+/**
+ * How long after a meeting's start the card refreshes: a second, so the clock
+ * has unambiguously passed the start and the meeting reads as begun.
+ */
+const START_GRACE_MS = 1000;
 
 /**
  * Why the card is not there, said to whoever is running a development build.
@@ -90,8 +97,17 @@ export type BriefingState =
       briefing: {
         title: string;
         startsAt: number;
-        people: { profileId: string; name: string; noteCount: number }[];
-        ambiguous: { name: string; count: number }[];
+        people: {
+          profileId: string;
+          name: string;
+          noteCount: number;
+          /** Answered on the card: which shared name this person was picked for. */
+          pickedFor?: string;
+        }[];
+        /** Shared names not answered yet — who could be meant, for the card to ask. */
+        ambiguous: { name: string; key: string; count: number; profileIds: string[] }[];
+        /** Shared names answered "Neither of them" (R-P6). */
+        declined: { name: string; key: string }[];
       };
     };
 
@@ -122,6 +138,8 @@ export function useBriefing(
 } {
   const copy = useReadingCopy();
   const setting = useCalendarSetting();
+  /** Answering which person a shared name means refreshes at once (R-P5). */
+  const picksVersion = useBriefingPicksVersion();
   /** The setting as of now, read when a refresh runs. */
   const settingNow = useRef<CalendarSetting>(setting);
   const off = !enabled || setting.mode === "off";
@@ -144,6 +162,15 @@ export function useBriefing(
    * to tidy them. Two buzzes ten minutes before one coffee.
    */
   const refreshing = useRef(false);
+  /**
+   * A refresh asked for while one was running — after a mute, a pick, the
+   * copy arriving. Run once that one finishes, not dropped: the one running
+   * started before the change, and its answer is thrown away (`live`), so
+   * dropping this left the card on its old state until the next foreground.
+   */
+  const refreshAfter = useRef<(() => Promise<void>) | null>(null);
+  /** Which effect's refresh is running, to tell a change from a repeat. */
+  const runningRefresh = useRef<(() => Promise<void>) | null>(null);
   /**
    * The switch, as of now rather than as of the render a `load` began in, and
    * the reminders being written at this moment. Switching off mid-refresh has
@@ -228,9 +255,42 @@ export function useBriefing(
         return mutedUntil === null ? { state: "empty" } : { state: "muted" };
       }
 
-      const matched = matchEventsIn(known.profiles, known.notes, events);
+      // The person's own answers to "which Priya?" (R-P3), pruned against the
+      // copy first (R-P7): a person deleted anywhere takes their answers with
+      // them, and nothing but this read can find that out.
+      const picks = tidyPicks(
+        known.ownerId,
+        known.profiles,
+        new Set(events.map((event) => event.eventId)),
+        now,
+      );
+      const noteCounts = new Map<string, number>();
+      for (const note of known.notes) {
+        noteCounts.set(note.profileId, (noteCounts.get(note.profileId) ?? 0) + 1);
+      }
+      const personFor = (profileId: string) => {
+        const profile = known.profiles.find((p) => p._id === profileId);
+        return profile === undefined
+          ? undefined
+          : { profileId, name: profile.name, noteCount: noteCounts.get(profileId) ?? 0 };
+      };
+      const matched = matchEventsIn(known.profiles, known.notes, events).map((event) =>
+        applyPicks(
+          {
+            ...event,
+            people: event.people.map((person) => ({
+              profileId: person.profileId,
+              name: person.name,
+              noteCount: person.noteCount,
+            })),
+          },
+          picks,
+          personFor,
+        ),
+      );
 
-      // Scheduled from the same answer the card is drawn from, so what the
+      // Scheduled from the same answer the card is drawn from — a picked
+      // Priya included, an unanswered one not (R-P5) — so what the
       // phone will say and what the screen says cannot disagree. Silent to the
       // person on failure: a briefing that could not be scheduled is not a reason to
       // take the card down, and the reason is almost always "notifications
@@ -262,12 +322,20 @@ export function useBriefing(
       // The *next* one that is about somebody, not the next one at all. A
       // standup at 09:00 is not a briefing, and showing it would push the
       // meeting this feature exists for off the top of the screen. Only from
-      // the card's own twelve hours, though the read went further.
+      // the card's own twelve hours, though the read went further — and only
+      // one that has not started: a meeting leaves the card when it begins
+      // (owner's decision, 2026-10-11, device QA #12). The nudge after it is
+      // the reminder's job, not the card's.
       const cardUntil = now + WINDOW_HOURS * 3600_000;
       const briefing = matched.find(
         (event) =>
+          event.startsAt > now &&
           event.startsAt < cardUntil &&
-          (event.people.length > 0 || event.ambiguous.length > 0),
+          (event.people.length > 0 ||
+            event.ambiguous.length > 0 ||
+            // "Neither of them" stays on the card until it starts, so the
+            // answer can be undone where it was given (R-P6).
+            event.declined.length > 0),
       );
       return briefing === undefined
         ? { state: "empty" }
@@ -276,12 +344,9 @@ export function useBriefing(
             briefing: {
               title: briefing.title,
               startsAt: briefing.startsAt,
-              people: briefing.people.map((person) => ({
-                profileId: person.profileId,
-                name: person.name,
-                noteCount: person.noteCount,
-              })),
+              people: briefing.people,
               ambiguous: briefing.ambiguous,
+              declined: briefing.declined,
             },
           };
     },
@@ -321,16 +386,47 @@ export function useBriefing(
         mounted.current = false;
       };
     }
-    const run = async () => {
-      if (refreshing.current) return;
+    /**
+     * The moment the meeting on the card starts, the card moves on — with the
+     * app open too, not only on the next foreground (device QA #12).
+     */
+    let atStart: ReturnType<typeof setTimeout> | undefined;
+    /**
+     * This effect's own liveness, not the shared `mounted`: a refresh still
+     * in flight when the briefing is switched off or muted would otherwise
+     * see the next effect's `mounted = true`, set its stale answer and start
+     * a timer nothing clears — bringing the card back after it was turned
+     * off (review of #134).
+     */
+    let live = true;
+    const run = async (): Promise<void> => {
+      if (refreshing.current) {
+        // A second foreground while this same effect's refresh runs is the
+        // same question twice — dropped. One running from before a change
+        // is about to be thrown away, so this one goes next.
+        if (runningRefresh.current !== run) refreshAfter.current = run;
+        return;
+      }
       refreshing.current = true;
+      runningRefresh.current = run;
       try {
         const next = await refresh();
-        if (mounted.current) setState(next);
+        if (!live) return;
+        setState(next);
+        clearTimeout(atStart);
+        if (next.state === "ready") {
+          atStart = setTimeout(
+            () => void run(),
+            Math.max(0, next.briefing.startsAt - Date.now()) + START_GRACE_MS,
+          );
+        }
         const permission = await notificationAccess();
-        if (mounted.current) setAlerts(alertStateOf(permission.state));
+        if (live) setAlerts(alertStateOf(permission.state));
       } finally {
         refreshing.current = false;
+        const next = refreshAfter.current;
+        refreshAfter.current = null;
+        if (next !== null) void next();
       }
     };
 
@@ -343,14 +439,18 @@ export function useBriefing(
       if (phase === "active") void run();
     });
     return () => {
+      live = false;
+      if (refreshAfter.current === run) refreshAfter.current = null;
       mounted.current = false;
+      clearTimeout(atStart);
       subscription.remove();
     };
     // `hasCopy`, not `copy`: run again when the copy first arrives, not on
     // every edit to it.
     // `setting` too: muting or turning it back on refreshes at once, so the
-    // reminders follow before the dialog has closed (R10, R20).
-  }, [off, refresh, hasCopy, setting, cancelAfterScheduling]);
+    // reminders follow before the dialog has closed (R10, R20). `picksVersion`
+    // likewise: a Priya picked at 10:45 still gets her 10:50 reminder (R-P5).
+  }, [off, refresh, hasCopy, setting, picksVersion, cancelAfterScheduling]);
 
   const askForAlerts = useCallback(async () => {
     if (askingAlerts.current) return;

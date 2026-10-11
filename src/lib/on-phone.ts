@@ -88,6 +88,11 @@ export const copiedStore = jsonFileStore("clipboard", "copied.json");
  * (`calendar-setting.ts`; `docs/design/decisions/calendar-connection.md`).
  */
 export const calendarSettingStore = jsonFileStore("calendar-setting", "setting.json");
+/**
+ * Which person a shared name on a calendar event means, as answered on the
+ * briefing card (`briefing-picks.ts`). Event ids and profile ids only.
+ */
+export const briefingPicksStore = jsonFileStore("briefing-picks", "picks.json");
 
 /**
  * Told after everything is forgotten, so anything holding a copy of what was
@@ -152,7 +157,8 @@ async function forgetAndysCopy(): Promise<void> {
  * What it covers, and **what anything new that keeps data on the phone must
  * add here** (CLAUDE.md → "Sign-out and account deletion leave nothing"):
  * - the stores in this file (notes waiting offline, the offline copy, changes
- *   waiting for Sync, the calendar setting) — and anything holding them in
+ *   waiting for Sync, the calendar setting, the briefing's answers about
+ *   which person a shared name means) — and anything holding them in
  *   memory, told through `onForgetOnThisPhone`;
  * - this app's reminders — pending, and already delivered in Notification
  *   Center (`forgetBriefings`) — which carry a person's name;
@@ -172,7 +178,13 @@ async function forgetAndysCopy(): Promise<void> {
  * Best effort: a failure to delete must not stop the sign-out itself.
  */
 export function forgetOnThisPhone(): void {
-  for (const store of [outboxStore, offlineCopyStore, pendingStore, calendarSettingStore]) {
+  for (const store of [
+    outboxStore,
+    offlineCopyStore,
+    pendingStore,
+    calendarSettingStore,
+    briefingPicksStore,
+  ]) {
     try {
       store.remove();
     } catch {

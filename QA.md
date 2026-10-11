@@ -318,6 +318,7 @@ reach: a real screen, a real keyboard, and a real transcript at its real length.
 |---|---|---|
 | 14.1 | Home → `Ask Andy` | The search screen. The field reads `Who are you thinking of?` **in full** — a truncated placeholder means the Ask button has taken too much of the row |
 | 14.2 | Type a question, press the keyboard's **return** key (not the Ask button) | It searches. `onSubmitEditing` is a separate path from the button and only one of them is unit-tested |
+| 14.2a | Ask a question, and **while it is still answering** turn Wi-Fi off | The spinner stops at once and the offline line shows instead. With Wi-Fi on but the answer never arriving (e.g. a dead venue network), after **30 seconds**: "Andy didn't hear back in time. Try again." — never an endless spinner (device QA #44) | ⬜ |
 | 14.3 | Type slowly and watch the Convex logs (`npm run db` → Logs) | **One** `search:recall` call, on submit. One per keystroke is the way this feature becomes expensive |
 | 14.4 | Ask something that matches a long voice note | The transcript is clipped at four lines. One long note must not push every other result off the screen |
 | 14.5 | Ask something matching a note that mentions a **deleted** person | Their name still shows, dimmed, and **nothing happens when tapped**. Turn on VoiceOver: it must not be announced as a button, dimmed or otherwise |
@@ -479,7 +480,15 @@ your actual messy real calendar, not synthetic data".
 | 18.13 | Name an event with someone you have **no** notes about but do keep a profile for | The card still shows them, saying "nothing remembered yet". Knowing you have nothing is the reminder this app exists to give | ⬜ |
 | 18.14 | Deny calendar access, then reopen the app | The card says access is off and points at Settings — **and shows no button**, because iOS will not open the sheet a second time and a button that does nothing reads as a broken app | ⬜ |
 | 18.15 | Open the app on a build **without** `expo-calendar` (i.e. the current one) | **No card, and home works normally.** Day 6 lost a whole profile screen to a missing native module; this is the check that it cannot happen here | ⬜ |
-| 18.16 | Check the Convex logs (`npm run db` → Logs) after a briefing | One `calendar:matchEvents` per foreground, not one per event. Titles appear in the log as arguments — they are your own calendar reaching your own backend, and nothing stores them | ⬜ |
+| 18.16 | Check the Convex logs (`npm run db` → Logs) after a briefing, on **build 5 or later** | **No `calendar:matchEvents` call at all** — names are matched on the phone and the calendar never leaves it (#127). Build 4 and earlier still call it, once per foreground | ⬜ |
+| 18.16a | Two meetings with people you've written about, the first ~5 minutes away. Keep Andy **open on home** past its start | At the start time the card moves on to the second meeting **by itself**, without leaving the app. A meeting already in progress is never on the card (device QA #12). Its reminder and nudge are unaffected | ⬜ |
+| 18.17 | With someone in Andy and the calendar never connected, look at `home` | `briefing-card--ask`: "Before you walk in", the line that iPhone will ask for **full access**, **Connect calendar** (filled) beside **Not now**, "You can connect later in Settings.", and a ✕ top right | ⬜ |
+| 18.18 | Tap **Not now** | The card goes **at once, no dialog**, and stays gone after relaunching. It does not come back by itself | ⬜ |
+| 18.19 | (Fresh install) Tap **Connect calendar** → **Don't Allow** | `briefing-card--denied` with **Open iPhone Settings**. Tapping it opens **Andy's own page** in the Settings app. Allow there, come back to Andy → the briefing shows without another tap | ⬜ |
+| 18.20 | With a meeting showing, tap ✕ → **Mute for today** | The card leaves `home` at once. A meeting **later today** gets no reminder and no nudge; one **tomorrow** still does. After midnight (or next morning) the card is back by itself | ⬜ |
+| 18.21 | Tap ✕ → **Mute until I turn it back on** | The card leaves and **no reminders** come at all, until it is turned back on (A3 adds that to Settings; until then a reinstall resets it) | ⬜ |
+| 18.22 | Tap ✕ → **Cancel** | Nothing changes. Neither mute button is red; with VoiceOver the ✕ reads "Mute the briefing" | ⬜ |
+| 18.23 | Look at a meeting card's time | The time is **dark ink**, not gold — gold stays only on the left stripe (contrast, STYLE.md) | ⬜ |
 
 ---
 
@@ -617,6 +626,18 @@ their rows.
 | 21.15b | Open the follow-up `draft` sheet, edit the message, tap **Write another draft** | **Replace what you wrote?** appears **on the sheet**, in front of it — not behind it. Then switch away and come back: only the `lock` screen; after unlocking, the sheet and the question are both back | ⬜ |
 | 21.15c | Make a change offline, have it changed on another device, come back online and tap **Sync** | **Changed somewhere else** is Andy's own card with **Keep theirs** and **Keep mine** (both green, no red), and no Cancel: one of the two has to be chosen | ⬜ |
 
+
+## 21a. Settings → Calendar (docs/design/decisions/calendar-connection.md, A3)
+
+| # | Step | Expected | Result |
+|---|---|---|---|
+| 21a.1 | Fresh install, calendar never connected → Settings | **CALENDAR** section: the "reads on this phone — nothing leaves it" sentence and **Connect calendar**. Tapping it shows the iOS sheet; allow → "On — Andy reads your calendar on this phone." | ⬜ |
+| 21a.2 | On → **Turn off in Andy** | At once, no dialog: "Off — Andy isn't reading your calendar, and no reminders are set." The home card is gone, and a meeting's reminder does not arrive. **Connect calendar** turns it straight back on — **no iOS sheet** | ⬜ |
+| 21a.3 | *(Needs #133, the card's ✕.)* Home card ✕ → **Mute for today**, then Settings | "Muted until tomorrow · **Turn back on**". Tapping it brings the card back on home | ⬜ |
+| 21a.4 | **Open iPhone Settings** (under "To take away access completely…") | Andy's own page in the Settings app. Set Calendars to None, come back: the section says access is off, with **Open iPhone Settings** as the button | ⬜ |
+| 21a.5 | Reminder row, notifications never asked | "Andy can remind you 10 minutes before…" and **Remind me 10 minutes before** → the iOS notifications sheet. Allowed → "Reminders on — 10 minutes before, and a nudge after. They show a name, never what you wrote." | ⬜ |
+| 21a.6 | Airplane mode, then all of the above | Everything works offline — the setting and permissions are on the phone (R22) | ⬜ |
+| 21a.7 | Largest Dynamic Type | The Settings screen scrolls; every button is reachable and at least 44pt tall | ⬜ |
 
 ## 22. Deleting your account
 

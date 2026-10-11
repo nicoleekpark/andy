@@ -65,9 +65,11 @@ prompt shows **once**, so an in-app explanation comes before it.
 2. **Remove access entirely:** "Turn off Calendars for Andy in iPhone
    Settings", with **Open Settings**.
 
-When "this meeting's Priya is this Priya" is remembered (device QA #10, using
-`calendarLinks`), turning the calendar off has to say whether those choices
-are forgotten. Open — decide with #10.
+When "this meeting's Priya is this Priya" is remembered (device QA #10),
+turning the calendar off has to say whether those choices are forgotten.
+**Decided (2026-10-11):** they are kept. Off is reversible and the answers
+never leave the phone; only sign-out and deletion clear them. They live on the
+phone, not in `calendarLinks`. See `briefing-card-people.md` R-P1 and R-P8.
 
 ## 4. Muting from the card (X)
 
@@ -846,5 +848,6 @@ Separate, smaller PRs first: pending reminders cancelled on sign-out and
 account deletion (R15, #129/#131), and the lead moved from 20 to 10 minutes (#130).
 
 **Build:** A1 — the setting and what it does to reading and reminders
-(R1–R2, R8–R10, R13–R15), no new UI; A2 — the card; A3 — the `settings`
-section.
+(R1–R2, R8–R10, R13–R15), no new UI (#132); A2 — the card: X and
+`briefing-mute-alert`, Not now, Open iPhone Settings, the brief's copy, moved
+onto tokens, time in ink (R3–R7, R11); A3 — the `settings` section.
