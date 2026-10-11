@@ -48,6 +48,8 @@ import { BRIEFING_LEAD_MINUTES } from "../src/lib/notifications";
 import { useReadingCopy } from "../src/lib/offline-copy";
 import { muteForToday, nextLocalMidnight, setCalendarSetting } from "../src/lib/calendar-setting";
 import * as calendarMatch from "@convex/calendarMatch";
+import { NONE, pick, picksOf } from "../src/lib/briefing-picks";
+import { forgetOnThisPhone } from "../src/lib/on-phone";
 
 jest.mock("convex/react", () => ({ useConvex: jest.fn() }));
 // The phone's copy, which matching reads. Mocked so these tests need no
@@ -600,6 +602,125 @@ test("should say it cannot tell which person rather than pick one", async () => 
   // The apostrophe is written &apos; in the JSX; on screen it is a plain '.
   expect(screen.getByText(/You've written about 2 people called “Judy”/)).toBeTruthy();
   expect(screen.queryByText(/You keep/)).toBeNull();
+});
+
+// ---------------------------------------------------------------------------
+// Which Priya — answered on the card, kept on this phone
+// (docs/design/decisions/briefing-card-people.md, R-P1–R-P8)
+// ---------------------------------------------------------------------------
+
+describe("an answered shared name", () => {
+  const twoPriyas = {
+    ...EMPTY_COPY,
+    profiles: [
+      { _id: "p-kumar", _creationTime: 0, userId: "u", name: "Priya", entityType: "person", tags: [], autoCreated: false },
+      { _id: "p-shah", _creationTime: 0, userId: "u", name: "Priya", entityType: "person", tags: [], autoCreated: false },
+    ],
+    notes: [{ profileId: "p-shah", createdAt: 0 }],
+  };
+  const coffee = {
+    eventId: "e1",
+    title: "Coffee with Priya",
+    startsAt: AT,
+    endsAt: AT + 3600_000,
+    people: [],
+    ambiguous: [{ name: "Priya", key: "priya", count: 2, profileIds: ["p-kumar", "p-shah"] }],
+  };
+
+  beforeEach(() => {
+    (useReadingCopy as jest.Mock).mockReturnValue(twoPriyas);
+    calendarSays([
+      { id: "e1", title: "Coffee with Priya", startDate: new Date(AT), endDate: new Date(AT + 3600_000), allDay: false },
+    ]);
+    backendSays([coffee]);
+  });
+
+  afterEach(async () => {
+    await act(async () => {
+      forgetOnThisPhone();
+    });
+  });
+
+  test("should brief the Priya picked, and remind you about her, from the moment she is picked", async () => {
+    await render(<Harness />);
+    await waitFor(() => expect(screen.getByText(/can.t tell which one/)).toBeTruthy());
+    // Unanswered: no reminder that cannot name who it is about (R-P5).
+    expect(briefingTimes()).toEqual([]);
+
+    await act(async () => {
+      pick("user_a", "e1", "priya", "p-shah");
+    });
+
+    // No foreground needed: a Priya picked at 10:45 still gets her 10:50
+    // reminder (R-P5).
+    await waitFor(() => expect(screen.getByLabelText("Open Priya")).toBeTruthy());
+    expect(screen.getByText("1 note")).toBeTruthy();
+    expect(screen.queryByText(/can.t tell which one/)).toBeNull();
+    await waitFor(() =>
+      expect(briefingTimes()).toContain(AT - BRIEFING_LEAD_MINUTES * 60_000),
+    );
+  });
+
+  test("should not lose an answer given while the calendar is still being read", async () => {
+    let release: (events: unknown[]) => void = () => {};
+    (Calendar.listEvents as jest.Mock).mockReturnValueOnce(
+      new Promise((resolve) => (release = resolve)),
+    );
+    await render(<Harness />);
+    await waitFor(() => expect(Calendar.listEvents).toHaveBeenCalledTimes(1));
+
+    // Picked while the first read is still under way. That read started
+    // before the answer, so its result is thrown away — and the refresh the
+    // answer asked for used to be dropped with it, leaving no card at all.
+    await act(async () => {
+      pick("user_a", "e1", "priya", "p-shah");
+    });
+    await act(async () => {
+      release([
+        { id: "e1", title: "Coffee with Priya", startDate: new Date(AT), endDate: new Date(AT + 3600_000), allDay: false },
+      ]);
+    });
+
+    await waitFor(() => expect(screen.getByLabelText("Open Priya")).toBeTruthy());
+  });
+
+  test("should keep a meeting answered Neither on the card, so the answer can be undone there", async () => {
+    pick("user_a", "e1", "priya", NONE);
+    await render(<Harness />);
+
+    // R-P6: the meeting stays until it starts; nobody is on it to remind about.
+    await waitFor(() => expect(screen.getByText("Coffee with Priya")).toBeTruthy());
+    expect(screen.queryByText(/can.t tell which one/)).toBeNull();
+    expect(briefingTimes()).toEqual([]);
+  });
+
+  test("should ask again, and forget the answer, once the picked Priya has been deleted", async () => {
+    pick("user_a", "e1", "priya", "p-shah");
+    (useReadingCopy as jest.Mock).mockReturnValue({
+      ...twoPriyas,
+      profiles: [...twoPriyas.profiles.slice(0, 1), { ...twoPriyas.profiles[0], _id: "p-third" }],
+    });
+    backendSays([
+      { ...coffee, ambiguous: [{ ...coffee.ambiguous[0], profileIds: ["p-kumar", "p-third"] }] },
+    ]);
+    await render(<Harness />);
+
+    await waitFor(() => expect(screen.getByText(/can.t tell which one/)).toBeTruthy());
+    // R-P7: pruned on the read, since a deletion elsewhere never reaches it.
+    expect(picksOf("user_a")).toEqual([]);
+    // Tidying is part of that read, not a reason for another: one calendar
+    // read, one round of reminders.
+    await act(async () => {});
+    expect(Calendar.listEvents).toHaveBeenCalledTimes(1);
+  });
+
+  test("should not use another account's answer on this phone", async () => {
+    pick("user_b", "e1", "priya", "p-shah");
+    await render(<Harness />);
+
+    await waitFor(() => expect(screen.getByText(/can.t tell which one/)).toBeTruthy());
+    expect(briefingTimes()).toEqual([]);
+  });
 });
 
 test("should skip the meetings that are about nobody and show the one that is not", async () => {
