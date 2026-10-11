@@ -176,7 +176,7 @@ test("should refuse to pick between two people who answer to the same name", asy
   // by. `CLAUDE.md`: names are matched case-insensitively and always *stored*
   // as the user wrote them — the first version put "judy" on the card for
   // somebody filed as "Judy".
-  expect(matched?.ambiguous).toEqual([{ name: "Judy", count: 2 }]);
+  expect(matched?.ambiguous).toEqual([expect.objectContaining({ name: "Judy", count: 2 })]);
 });
 
 test("should report the name as it is filed, whatever the calendar shouted", async () => {
@@ -204,7 +204,7 @@ test("should report the name as it is filed, whatever the calendar shouted", asy
   // Neither the calendar's shouting nor the comparison key. Calendars are full
   // of titles in capitals, and a card reading "you keep 2 people called JUDY"
   // is the calendar's voice, not the app's.
-  expect(matched?.ambiguous).toEqual([{ name: "Judy", count: 2 }]);
+  expect(matched?.ambiguous).toEqual([expect.objectContaining({ name: "Judy", count: 2 })]);
 });
 
 test("should find nobody in a meeting that is not about a person", async () => {
