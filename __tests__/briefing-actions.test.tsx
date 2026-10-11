@@ -117,7 +117,8 @@ test("should put the X on every visible card state, at a 44pt target", async () 
     <BriefingCard
       key="r"
       state="ready"
-      briefing={{ eventId: "e1", title: "Coffee with Nina", startsAt: 0, people: [], ambiguous: [], declined: [] }}
+      briefings={[{ eventId: "e1", title: "Coffee with Nina", startsAt: 0, people: [], ambiguous: [], declined: [] }]}
+      now={-1}
       alerts="on"
       onEnableAlerts={jest.fn()}
       onAnswer={jest.fn()}
@@ -157,7 +158,8 @@ test("should draw the meeting time in ink, not brass, so it can be read", async 
   await render(
     <BriefingCard
       state="ready"
-      briefing={{ eventId: "e1", title: "Coffee with Nina", startsAt: 0, people: [], ambiguous: [], declined: [] }}
+      briefings={[{ eventId: "e1", title: "Coffee with Nina", startsAt: 0, people: [], ambiguous: [], declined: [] }]}
+      now={-1}
       alerts="on"
       onEnableAlerts={jest.fn()}
       onAnswer={jest.fn()}
@@ -167,6 +169,6 @@ test("should draw the meeting time in ink, not brass, so it can be read", async 
   );
   // Brass text on paper is 2.28:1 (STYLE.md → Accessibility); the stripe keeps it.
   const time = new Date(0).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-  const style = Object.assign({}, ...[screen.getByText(time).props.style].flat(Infinity));
+  const style = Object.assign({}, ...[screen.getByText(time, { includeHiddenElements: true }).props.style].flat(Infinity));
   expect(style.color).toBe(colors.ink);
 });

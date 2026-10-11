@@ -39,7 +39,7 @@ jest.mock("expo-notifications", () => ({
 import * as Calendar from "expo-calendar";
 import * as Notifications from "expo-notifications";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
-import { AppState } from "react-native";
+import { AccessibilityInfo, AppState } from "react-native";
 import { useConvex } from "convex/react";
 import { BriefingCard } from "../src/components/briefing-card";
 import { hasNativeModule } from "../src/lib/native";
@@ -141,11 +141,12 @@ function Harness({ enabled = true }: { enabled?: boolean }) {
     return (
       <BriefingCard
         state="ready"
-        briefing={briefing.briefing}
+        briefings={briefing.briefings}
+        now={briefing.now}
         alerts={alerts}
         onEnableAlerts={() => void askForAlerts()}
-        onAnswer={(nameKey, profileId) => answer(briefing.briefing.eventId, nameKey, profileId)}
-        onUnanswer={(nameKey) => unanswer(briefing.briefing.eventId, nameKey)}
+        onAnswer={answer}
+        onUnanswer={unanswer}
         onMute={onMute}
       />
     );
@@ -850,6 +851,209 @@ test("should move on to the next meeting the moment one starts, with the app ope
   }
 });
 
+// ---------------------------------------------------------------------------
+// More than one meeting (docs/design/decisions/briefing-card-people.md, R-C1–R-C8)
+// ---------------------------------------------------------------------------
+
+describe("the carousel", () => {
+  const position = () => screen.queryByTestId("briefing-card-page-position");
+
+  test("should show the next meeting first, with the later one a tap away", async () => {
+    const now = Date.now();
+    meetingsAt(now + 3600_000, now + 2 * 3600_000);
+    await render(<Harness />);
+
+    await waitFor(() => expect(screen.getByText("Coffee with Nina")).toBeTruthy());
+    // Position as words, not dots (R-C8).
+    expect(position()?.props.children).toEqual([1, " of ", 2]);
+    expect(screen.getByLabelText("Previous meeting").props.accessibilityState).toEqual({ disabled: true });
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Next meeting"));
+    });
+
+    // #14: the 11:05 Emily can be read before 11:00.
+    expect(screen.getByText("Lunch with Nina")).toBeTruthy();
+    expect(screen.queryByText("Coffee with Nina")).toBeNull();
+    expect(position()?.props.children).toEqual([2, " of ", 2]);
+    expect(screen.getByLabelText("Next meeting").props.accessibilityState).toEqual({ disabled: true });
+  });
+
+  test("should have no pager for a single meeting", async () => {
+    const now = Date.now();
+    meetingsAt(now - 60_000, now + 2 * 3600_000);
+    await render(<Harness />);
+
+    await waitFor(() => expect(screen.getByText("Lunch with Nina")).toBeTruthy());
+    expect(screen.queryByTestId("briefing-card-pager")).toBeNull();
+  });
+
+  test("should say each page's place, time and title to VoiceOver at once", async () => {
+    const now = Date.now();
+    meetingsAt(now + 3600_000, now + 2 * 3600_000);
+    await render(<Harness />);
+
+    await waitFor(() =>
+      expect(screen.getByRole("header", { name: /^Meeting 1 of 2, .+, Coffee with Nina$/ })).toBeTruthy(),
+    );
+  });
+
+  test("should stay on the page being read when the app comes back", async () => {
+    const now = Date.now();
+    meetingsAt(now + 3600_000, now + 2 * 3600_000);
+    await render(<Harness />);
+    await waitFor(() => expect(screen.getByText("Coffee with Nina")).toBeTruthy());
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Next meeting"));
+    });
+
+    const listener = (AppState.addEventListener as jest.Mock).mock.calls.at(-1);
+    await act(async () => {
+      (listener?.[1] as (phase: string) => void)("active");
+    });
+
+    // R-C6: still that meeting, not back to the first page.
+    await waitFor(() => expect(Calendar.listEvents).toHaveBeenCalledTimes(2));
+    expect(screen.getByText("Lunch with Nina")).toBeTruthy();
+  });
+
+  test("should move on at a start without reading the calendar again", async () => {
+    jest.useFakeTimers();
+    try {
+      const now = Date.now();
+      meetingsAt(now + 5 * 60_000, now + 2 * 3600_000);
+      await render(<Harness />);
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(0);
+      });
+      expect(position()).toBeTruthy();
+
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(5 * 60_000 + 2_000);
+      });
+
+      // R-C5: only the clock moved — no read, no rescheduling.
+      expect(Calendar.listEvents).toHaveBeenCalledTimes(1);
+      expect(screen.getByText("Lunch with Nina")).toBeTruthy();
+      // One meeting left: no pager (§3).
+      expect(position()).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  test("should take VoiceOver to what replaced a page that left, never into nothing", async () => {
+    const focus = jest.spyOn(AccessibilityInfo, "sendAccessibilityEvent").mockImplementation(() => {});
+    jest.useFakeTimers();
+    try {
+      const now = Date.now();
+      // Two meetings, then one, then none: both handovers move focus (R-C8).
+      meetingsAt(now + 5 * 60_000, now + 10 * 60_000);
+      await render(<Harness />);
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(0);
+      });
+      expect(focus).not.toHaveBeenCalled();
+
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(5 * 60_000 + 2_000);
+      });
+      expect(screen.getByText("Lunch with Nina")).toBeTruthy();
+      expect(focus).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(5 * 60_000);
+      });
+      // The last one gone: "Nothing coming up" takes the focus.
+      expect(screen.getByText("Nothing coming up")).toBeTruthy();
+      expect(focus).toHaveBeenCalledTimes(2);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  test("should keep a page mid-question when its meeting starts, until it is answered", async () => {
+    jest.useFakeTimers();
+    try {
+      const now = Date.now();
+      (useReadingCopy as jest.Mock).mockReturnValue({
+        ...EMPTY_COPY,
+        profiles: [
+          { _id: "p-kumar", _creationTime: 0, userId: "u", name: "Priya", entityType: "person", tags: [], autoCreated: false },
+          { _id: "p-shah", _creationTime: 0, userId: "u", name: "Priya", entityType: "person", tags: [], autoCreated: false },
+        ],
+      });
+      backendSays([
+        {
+          eventId: "e1",
+          title: "Coffee with Priya",
+          startsAt: now + 5 * 60_000,
+          endsAt: now + 3600_000,
+          people: [],
+          ambiguous: [{ name: "Priya", key: "priya", count: 2, profileIds: ["p-kumar", "p-shah"] }],
+        },
+        {
+          eventId: "e2",
+          title: "Lunch with Nina",
+          startsAt: now + 2 * 3600_000,
+          endsAt: now + 3 * 3600_000,
+          people: [{ profileId: "p-nina", name: "Nina", noteCount: 0 }],
+          ambiguous: [],
+        },
+      ]);
+      calendarSays([{ id: "e1", title: "x", startDate: new Date(now + 5 * 60_000), endDate: new Date(now + 3600_000), allDay: false }]);
+      await render(<Harness />);
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(0);
+      });
+      expect(screen.getByText("Which Priya is this?")).toBeTruthy();
+
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(5 * 60_000 + 2_000);
+      });
+      // Not pulled from under a finger mid-choice (R-C5).
+      expect(screen.getByText("Which Priya is this?")).toBeTruthy();
+
+      await act(async () => {
+        fireEvent.press(screen.getByText("Neither of them"));
+        await jest.advanceTimersByTimeAsync(0);
+      });
+      // Answered, and started: it goes, and the next one is there.
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(0);
+      });
+      expect(screen.queryByText("Coffee with Priya")).toBeNull();
+      expect(screen.getByText("Lunch with Nina")).toBeTruthy();
+    } finally {
+      await act(async () => {
+        forgetOnThisPhone();
+      });
+      jest.useRealTimers();
+    }
+  });
+
+  test("should show at most ten meetings, in time order", async () => {
+    const now = Date.now();
+    const many = Array.from({ length: 12 }, (_, i) => ({
+      eventId: `e${i}`,
+      // Titles in the opposite order to times, so only a sort by time passes.
+      title: `Meeting ${String(i).padStart(2, "0")}`,
+      // Given out of order, so the card has to sort them.
+      startsAt: now + (12 - i) * 10 * 60_000,
+      endsAt: now + (13 - i) * 10 * 60_000,
+      people: [{ profileId: "p-nina", name: "Nina", noteCount: 0 }],
+      ambiguous: [],
+    }));
+    backendSays(many);
+    calendarSays([{ id: "x", title: "x", startDate: new Date(now + 60_000), endDate: new Date(now + 120_000), allDay: false }]);
+    await render(<Harness />);
+
+    await waitFor(() => expect(position()?.props.children).toEqual([1, " of ", 10]));
+    // The earliest first: e11 starts soonest, though its title sorts last.
+    expect(screen.getByText("Meeting 11")).toBeTruthy();
+  });
+});
+
 test("should not keep refreshing after being switched off while a refresh was under way", async () => {
   jest.useFakeTimers();
   try {
@@ -1195,7 +1399,8 @@ test("should offer the reminder at the time it is actually scheduled", async () 
   await render(
     <BriefingCard
       state="ready"
-      briefing={{ eventId: "e1", title: "Coffee with Marcus", startsAt: AT, people: [], ambiguous: [], declined: [] }}
+      briefings={[{ eventId: "e1", title: "Coffee with Marcus", startsAt: AT, people: [], ambiguous: [], declined: [] }]}
+      now={AT - 1}
       alerts="off"
       onEnableAlerts={jest.fn()}
       onAnswer={jest.fn()}

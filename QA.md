@@ -498,6 +498,12 @@ your actual messy real calendar, not synthetic data".
 | 18.29 | Answer a Priya, then sign out and sign back in | Asked again — answers stay on the phone only and go with a sign-out | ⬜ |
 | 18.30 | Answer a Priya, then delete that Priya from Andy | The card asks again (if two Priyas are still left) or shows the one Priya left | ⬜ |
 | 18.31 | VoiceOver on the pick | Each choice reads "Priya, friend · 4 notes · last …", hint "Remembers this Priya for this event." Every choice, Neither and Not this Priya? is at least 44pt tall | ⬜ |
+| 18.32 | Two meetings with people you've written about in the next 12 hours (e.g. 11:00 Priya, 11:05 Emily) | The first one, with **‹ 1 of 2 ›** under it. **›** shows Emily; **‹** is dimmed on the first page and **›** on the last. Nothing moves by itself | ⬜ |
+| 18.33 | Stay on Emily's page, switch apps and come back | Still Emily's page, not back to the first | ⬜ |
+| 18.34 | Keep Andy open on home past 11:00 | Priya's page goes **by itself**, Emily alone, no pager. Reminders unaffected | ⬜ |
+| 18.35 | A meeting with an **unanswered** "Which Priya?" on screen, past its start | It **waits** — not pulled away mid-choice. Answer it → it goes. (Only while Andy stays open: leave and come back and a started meeting is gone, like any other — expected) | ⬜ |
+| 18.36 | VoiceOver on the card with 2+ meetings | Title reads "Meeting 1 of 2, 11:00, Coffee with Priya". Previous/Next are buttons; the dimmed one says dimmed. When the page you're on leaves, focus goes to the card's title, not nowhere | ⬜ |
+| 18.37 | Largest text size with 2+ meetings | Each page grows with its text, nothing cut; the list below moves down | ⬜ |
 
 ---
 

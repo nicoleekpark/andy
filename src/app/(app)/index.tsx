@@ -199,13 +199,12 @@ export default function HomeScreen() {
               ) : briefing.state === "ready" ? (
                 <BriefingCard
                   state="ready"
-                  briefing={briefing.briefing}
+                  briefings={briefing.briefings}
+                  now={briefing.now}
                   alerts={alerts}
                   onEnableAlerts={() => void askForAlerts()}
-                  onAnswer={(nameKey, profileId) =>
-                    answer(briefing.briefing.eventId, nameKey, profileId)
-                  }
-                  onUnanswer={(nameKey) => unanswer(briefing.briefing.eventId, nameKey)}
+                  onAnswer={answer}
+                  onUnanswer={unanswer}
                   onMute={() => askToMute(true)}
                 />
               ) : briefing.state === "denied" ? (

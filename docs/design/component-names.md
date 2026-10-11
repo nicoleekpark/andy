@@ -115,6 +115,12 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `briefing-card-when` | 미팅 시간 — 2026-10-11부터 brass가 아니라 ink (대비) |
 | `briefing-card-reminder-button` | Remind me 10 minutes before › |
 | `briefing-card-mute-button` | 오른쪽 위 ✕ (44pt) — 모든 상태에 있음. 누르면 `briefing-mute-alert` |
+| `briefing-card--carousel` | 미팅이 2~10개일 때 — 다음 미팅이 첫 페이지, 나머지는 이전/다음으로. 저절로 넘어가지 않음 |
+| `briefing-card-page` | 한 미팅 — 시간, 제목, 사람·고르기. VoiceOver는 제목에서 "Meeting 2 of 3, 11:05, Coffee with Emily" |
+| `briefing-card-pager` | 카드 아래 한 번: `-previous-button` · `-page-position` · `-next-button` (미팅 1개면 없음) |
+| `briefing-card-previous-button` | ‹ (44pt, `edge` 테두리) — 첫 페이지에선 비활성 |
+| `briefing-card-next-button` | › (44pt, `edge` 테두리) — 마지막 페이지에선 비활성 |
+| `briefing-card-page-position` | "1 of 3" — 점이 아니라 글자 |
 | `briefing-card-person-link` | 미팅의 사람 한 줄 — 이름(moss) + 노트 수. 누르면 그 사람 프로필 |
 | `briefing-card-pick` | 같은 이름이 여럿일 때 묻는 칸 — `-pick-label`, `-pick-note`, 후보들, `-pick-neither`. 미리 골라 둔 것 없음 |
 | `briefing-card-pick-label` | "Which Priya is this?" |
