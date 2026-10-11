@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
-import { colors } from "@/constants/theme";
+import { colors, textOpacity } from "@/constants/theme";
 
 /**
  * Structural stand-in for a screen that hasn't been built yet. Each use is
@@ -39,5 +39,5 @@ const styles = StyleSheet.create({
   },
   title: { color: colors.ink, fontSize: 20 },
   note: { color: colors.ink, fontSize: 15, opacity: 0.7 },
-  debug: { color: colors.ink, fontSize: 12, opacity: 0.4 },
+  debug: { color: colors.ink, fontSize: 12, opacity: textOpacity.quiet },
 });

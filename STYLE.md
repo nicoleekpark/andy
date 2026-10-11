@@ -16,6 +16,8 @@ The subject is _personal memory-keeping_ — closer to marginalia in a well-love
 | `brass` | `#B8935A` | **The signature.** Inside the signed-in app: the Briefing card only. Before sign-in: the thread (icon, launch screen, name mark). Nowhere else |
 | `line`  | `#B8B3A8` | dividers, borders                                                        |
 | `alert` | `#9F4C3B` | errors only — muted, not a bright red. Darkened from `#A8503E` (4.33:1) to pass WCAG AA 4.5:1 on `paper` |
+| `placeholder` | `#63605A` | placeholder text in a field — `ink` at 0.7 over `paper` as one colour (5.0:1). Was `line` (1.67:1) until 2026-10-11 |
+| `edge` | `#857E6D` | the edge of a field when it is the only sign of where to type — 3.2:1 (WCAG 1.4.11), 1pt wide. `line` stays for dividers, which are decoration |
 
 `src/constants/theme.ts` is the only place these hex values appear; screens
 import `colors`. `alert` has exactly one non-error use — destructive controls:
@@ -26,11 +28,13 @@ account in Settings. Each has earned the same weight as an error.
 Text 4.5:1 (3:1 at 18pt, or 14pt bold), the edges of controls and meaningful
 icons 3:1, touch targets at least 44×44pt. A colour that fails is changed here,
 not argued for case by case. `__tests__/contrast.test.ts` checks the pairs the
-app draws text with. `alert` was fixed first (4.33 → 4.71:1). **Known gaps, each
-its own slice, not yet in the test:** `ink` text dimmed to 0.5–0.6 opacity (2.9–3.8:1, about 45
-places; 0.7 is the floor at 5.0:1); `line` as placeholder text (1.67:1) and as
-the only edge of an input (1.67:1, needs 3:1). `brass` and `line` as pure
-decoration (the card's stripe, the thread, dividers) are exempt.
+app draws text with. `alert` was fixed first (4.33 → 4.71:1). The gaps found
+on 2026-10-08 are closed (2026-10-11): dimmed text is never below
+`textOpacity.quiet` (0.7, 5.0:1) — `__tests__/contrast.test.ts` reads every
+style in `src/` to keep it so, a disabled control being the only exception
+WCAG allows — placeholders use `placeholder`, and a field's only edge uses
+`edge`. `brass` and `line` as pure decoration (the card's stripe, the thread,
+dividers) are exempt.
 
 **The dim behind a dialog** is `colors.scrim`: `ink` at 42% opacity, not a new hue
 (added 2026-10-08 for `confirm-dialog`, QA #51). The screen behind stays

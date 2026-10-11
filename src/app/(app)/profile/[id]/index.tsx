@@ -19,7 +19,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import { imageContentType } from "../../../../lib/media";
 import type { Draft } from "../../../../components/draft-sheet";
 import type { Id } from "@convex/_generated/dataModel";
-import { colors, fonts } from "@/constants/theme";
+import { colors, fonts, textOpacity } from "@/constants/theme";
 import { formatDate, localToday } from "@/lib/dates";
 import { sourceLabel } from "@/lib/note-source";
 import { userMessage } from "@/lib/user-message";
@@ -692,7 +692,7 @@ const styles = StyleSheet.create({
   headerAction: { color: colors.ink, fontSize: 15 },
   name: { color: colors.ink, fontSize: 28, fontFamily: fonts.displayMedium },
   metaRow: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
-  meta: { color: colors.ink, fontSize: 14, opacity: 0.6 },
+  meta: { color: colors.ink, fontSize: 14, opacity: textOpacity.quiet },
 
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
@@ -722,7 +722,7 @@ const styles = StyleSheet.create({
   date: {
     color: colors.ink,
     fontSize: 12,
-    opacity: 0.5,
+    opacity: textOpacity.quiet,
     fontFamily: fonts.utility,
   },
   fact: { color: colors.ink, fontSize: 16, lineHeight: 24 },
@@ -752,12 +752,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   photoImage: { width: "100%", height: "100%" },
-  photoEmpty: { color: colors.ink, fontSize: 24, opacity: 0.35 },
+  photoEmpty: { color: colors.ink, fontSize: 24, opacity: textOpacity.quiet },
   actionNote: {
     color: colors.ink,
     fontSize: 14,
     lineHeight: 20,
-    opacity: 0.6,
+    opacity: textOpacity.quiet,
     marginHorizontal: 24,
   },
   actionError: {
@@ -800,7 +800,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     color: colors.ink,
     fontSize: 12,
-    opacity: 0.55,
+    opacity: textOpacity.quiet,
     textTransform: "uppercase",
     letterSpacing: 0.6,
     fontFamily: fonts.display,
@@ -811,7 +811,7 @@ const styles = StyleSheet.create({
   quiet: {
     color: colors.ink,
     fontSize: 15,
-    opacity: 0.6,
+    opacity: textOpacity.quiet,
     lineHeight: 22,
     textAlign: "center",
   },
