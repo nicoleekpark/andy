@@ -91,23 +91,49 @@ export function matchEventsIn(
       hits.push({ key, via: "title" });
     }
 
+    // Who the invitation itself names, resolved to one person each. Only
+    // these settle a title's name below: the attendee list is the event
+    // saying who is coming, while a second name in the title may be a second
+    // person ("Priya Shah / Priya").
+    const invited = new Set<string>();
+    for (const hit of hits) {
+      const matches = byName.get(hit.key) ?? [];
+      if (hit.via === "attendee" && matches.length === 1 && matches[0]) {
+        invited.add(matches[0]._id);
+      }
+    }
+
     const people = [];
     const ambiguous = [];
+    const shown = new Set<string>();
     for (const hit of hits) {
       const matches = byName.get(hit.key) ?? [];
       if (matches.length > 1) {
-        // The first of them supplies the spelling. They all answer to this
-        // name, so any of them is right, and which one is shown cannot imply
-        // anything about which one you are meeting — that is the whole point
-        // of not choosing.
+        // The invitation already said which one (device QA #11): Priya Shah
+        // is on the attendee list and answers to "Priya", so the title's
+        // "Priya" is her. Not a guess between two people — the event chose.
+        if (hit.via === "title" && matches.some((p) => invited.has(p._id))) {
+          continue;
+        }
+        // In the order `review`'s picker lists them (`candidatesForSpokenName`
+        // sorts each tier by name), so the same two people appear in the same
+        // order on both screens. The first supplies the spelling: they all
+        // answer to this name, so any of them is right, and which one is shown
+        // cannot imply anything about which one you are meeting.
+        const candidates = [...matches].sort((x, y) => x.name.localeCompare(y.name));
         ambiguous.push({
-          name: matches[0]?.name ?? hit.key,
-          count: matches.length,
+          name: candidates[0]?.name ?? hit.key,
+          key: hit.key,
+          count: candidates.length,
+          profileIds: candidates.map((p) => p._id),
         });
         continue;
       }
       const profile = matches[0];
-      if (profile === undefined) continue;
+      // Once per meeting, however many of their names the event uses
+      // ("PS / Priya Shah").
+      if (profile === undefined || shown.has(profile._id)) continue;
+      shown.add(profile._id);
       const seen = stats.get(profile._id);
       people.push({
         profileId: profile._id,

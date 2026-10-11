@@ -55,7 +55,11 @@ jest.mock("convex/react", () => ({ useConvex: jest.fn() }));
 jest.mock("../src/lib/offline-copy", () => ({ useReadingCopy: jest.fn() }));
 jest.mock("expo-router", () => ({ router: { push: jest.fn() } }));
 
-const AT = new Date("2026-09-22T09:30:00Z").getTime();
+/**
+ * A meeting two hours from now, on the minute. It used to be a fixed date in
+ * the past, which the card now drops: a meeting leaves it when it starts.
+ */
+const AT = Math.ceil((Date.now() + 2 * 3600_000) / 60_000) * 60_000;
 
 function grant(granted: boolean, canAskAgain = true) {
   (Calendar.getCalendarPermissions as jest.Mock).mockResolvedValue({
@@ -620,6 +624,87 @@ test("should skip the meetings that are about nobody and show the one that is no
   // feature exists for off the top of the screen.
   await waitFor(() => expect(screen.getByText("Coffee with Marcus")).toBeTruthy());
   expect(screen.queryByText("Standup")).toBeNull();
+});
+
+// ---------------------------------------------------------------------------
+// A meeting leaves the card when it starts (device QA #12)
+// ---------------------------------------------------------------------------
+
+/** Two meetings with Nina, starting at these times. */
+function meetingsAt(first: number, second: number) {
+  (calendarMatch.matchEventsIn as jest.Mock).mockRestore();
+  calendarSays([
+    { id: "a", title: "Coffee with Nina", startDate: new Date(first), endDate: new Date(first + 3600_000), allDay: false },
+    { id: "b", title: "Lunch with Nina", startDate: new Date(second), endDate: new Date(second + 3600_000), allDay: false },
+  ]);
+}
+
+test("should not show a meeting that has already started", async () => {
+  const now = Date.now();
+  meetingsAt(now - 10 * 60_000, now + 2 * 3600_000);
+  await render(<Harness />);
+
+  await waitFor(() => expect(screen.getByText("Lunch with Nina")).toBeTruthy());
+  expect(screen.queryByText("Coffee with Nina")).toBeNull();
+});
+
+test("should move on to the next meeting the moment one starts, with the app open", async () => {
+  jest.useFakeTimers();
+  try {
+    const now = Date.now();
+    meetingsAt(now + 5 * 60_000, now + 2 * 3600_000);
+    await render(<Harness />);
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(0);
+    });
+    expect(screen.getByText("Coffee with Nina")).toBeTruthy();
+
+    // No foreground, no tap: the clock passes the start.
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(5 * 60_000 + 2_000);
+    });
+    expect(screen.queryByText("Coffee with Nina")).toBeNull();
+    expect(screen.getByText("Lunch with Nina")).toBeTruthy();
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+test("should not keep refreshing after being switched off while a refresh was under way", async () => {
+  jest.useFakeTimers();
+  try {
+    const now = Date.now();
+    meetingsAt(now + 5 * 60_000, now + 2 * 3600_000);
+    // The calendar read is slow: still in flight when the switch flips.
+    let answer!: () => void;
+    const slow = new Promise<void>((resolve) => (answer = resolve));
+    const events = (Calendar.listEvents as jest.Mock).getMockImplementation();
+    (Calendar.listEvents as jest.Mock).mockImplementation(async (...args: unknown[]) => {
+      await slow;
+      return events?.(...args);
+    });
+
+    const { rerender } = await render(<Harness />);
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(0);
+    });
+    await rerender(<Harness enabled={false} />);
+    await act(async () => {
+      answer();
+      await jest.advanceTimersByTimeAsync(0);
+    });
+    const reads = (Calendar.listEvents as jest.Mock).mock.calls.length;
+
+    // Well past the first meeting's start: a timer left behind would read
+    // the calendar again for a feature that is off.
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(10 * 60_000);
+    });
+    expect((Calendar.listEvents as jest.Mock).mock.calls.length).toBe(reads);
+    expect(screen.queryByTestId("briefing-card")).toBeNull();
+  } finally {
+    jest.useRealTimers();
+  }
 });
 
 test("should say the day is clear rather than show an empty card body", async () => {

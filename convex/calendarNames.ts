@@ -78,7 +78,8 @@ function isWordy(character: string | undefined): boolean {
 }
 
 /**
- * Does `name` occur in `text` as a name rather than as part of a longer word?
+ * Where `name` occurs in `text` as a name rather than as part of a longer
+ * word — every start position, in order.
  *
  * Both are already folded by `matchKey`. The rule on each side:
  *
@@ -95,26 +96,32 @@ function isWordy(character: string | undefined): boolean {
  * "지선이랑 점심". The restriction excluded that and protected nothing — a
  * Latin word followed by Hangul is already a boundary either way.
  */
-function occursAsName(text: string, name: string): boolean {
-  if (name === "") return false;
+function occurrencesAsName(text: string, name: string): number[] {
+  if (name === "") return [];
 
+  const found: number[] = [];
   let from = 0;
   for (;;) {
     const at = text.indexOf(name, from);
-    if (at === -1) return false;
+    if (at === -1) return found;
     from = at + 1;
 
     if (isWordy(text[at - 1])) continue;
 
     const end = at + name.length;
     const next = text[end];
-    if (!isWordy(next)) return true;
+    if (!isWordy(next)) {
+      found.push(at);
+      continue;
+    }
 
     const rest = text.slice(end);
-    for (const particle of PARTICLES) {
-      if (rest.startsWith(particle) && !isWordy(rest[particle.length])) {
-        return true;
-      }
+    if (
+      PARTICLES.some(
+        (particle) => rest.startsWith(particle) && !isWordy(rest[particle.length]),
+      )
+    ) {
+      found.push(at);
     }
   }
 }
@@ -137,11 +144,32 @@ function occursAsName(text: string, name: string): boolean {
  * "the same name" means.
  */
 export function namesFoundIn(text: string, knownNames: string[]): string[] {
-  const found: string[] = [];
+  const spans = new Map<string, { start: number; end: number }[]>();
   for (const name of knownNames) {
-    if (occursAsName(text, name) && !found.includes(name)) {
-      found.push(name);
+    if (spans.has(name)) continue;
+    const starts = occurrencesAsName(text, name);
+    if (starts.length > 0) {
+      spans.set(
+        name,
+        starts.map((start) => ({ start, end: start + name.length })),
+      );
     }
   }
-  return found;
+
+  // A name that occurs only inside a longer name also found is not a second
+  // name (device QA #11): "Coffee with Priya Shah" says Priya Shah, not
+  // "Priya Shah and some Priya", and two people answering to "Priya" must
+  // not turn the first into a question. Said on its own as well — "Priya
+  // Shah / Priya" — it stays, because then the title does say it twice.
+  const longer = [...spans.entries()];
+  const standsAlone = (name: string, at: { start: number; end: number }) =>
+    !longer.some(
+      ([other, others]) =>
+        other.length > name.length &&
+        others.some((o) => o.start <= at.start && at.end <= o.end),
+    );
+
+  return [...spans.entries()]
+    .filter(([name, at]) => at.some((one) => standsAlone(name, one)))
+    .map(([name]) => name);
 }

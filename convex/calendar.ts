@@ -111,7 +111,11 @@ export const matchEvents = query({
            * filed as "Judy".
            */
           name: v.string(),
+          /** The folded name, which a pick on the phone is keyed by. */
+          key: v.string(),
           count: v.number(),
+          /** Everyone who answers to it, in the order a picker lists them. */
+          profileIds: v.array(v.id("profiles")),
         }),
       ),
     }),
