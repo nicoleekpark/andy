@@ -204,6 +204,19 @@ export default defineSchema({
    * something off, so an empty table — every deployment today — changes
    * nothing. Not per user, and holds nothing about anyone.
    */
+  /**
+   * The refresh token Sign in with Apple issues to Andy for one person —
+   * kept only so deleting the account can revoke it, as Apple requires
+   * (App Review 5.1.1(v), TN3194; `appleSignIn.ts`). A secret: written and
+   * read by internal functions only, never returned to the app. Goes with
+   * the account (`account.OWNED_TABLES`).
+   */
+  appleTokens: defineTable({
+    userId: v.id("users"),
+    refreshToken: v.string(),
+    keptAt: v.number(),
+  }).index("by_user", ["userId"]),
+
   featureFlags: defineTable({
     key: v.string(),
     enabled: v.boolean(),
