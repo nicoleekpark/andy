@@ -318,6 +318,7 @@ reach: a real screen, a real keyboard, and a real transcript at its real length.
 |---|---|---|
 | 14.1 | Home → `Ask Andy` | The search screen. The field reads `Who are you thinking of?` **in full** — a truncated placeholder means the Ask button has taken too much of the row |
 | 14.2 | Type a question, press the keyboard's **return** key (not the Ask button) | It searches. `onSubmitEditing` is a separate path from the button and only one of them is unit-tested |
+| 14.2a | Ask a question, and **while it is still answering** turn Wi-Fi off | The spinner stops at once and the offline line shows instead. With Wi-Fi on but the answer never arriving (e.g. a dead venue network), after **30 seconds**: "Andy didn't hear back in time. Try again." — never an endless spinner (device QA #44) | ⬜ |
 | 14.3 | Type slowly and watch the Convex logs (`npm run db` → Logs) | **One** `search:recall` call, on submit. One per keystroke is the way this feature becomes expensive |
 | 14.4 | Ask something that matches a long voice note | The transcript is clipped at four lines. One long note must not push every other result off the screen |
 | 14.5 | Ask something matching a note that mentions a **deleted** person | Their name still shows, dimmed, and **nothing happens when tapped**. Turn on VoiceOver: it must not be announced as a button, dimmed or otherwise |
