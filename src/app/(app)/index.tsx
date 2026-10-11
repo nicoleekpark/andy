@@ -4,6 +4,7 @@ import { useQuery } from "convex/react";
 import { useOffline } from "@/lib/connection";
 import { api } from "@convex/_generated/api";
 import { BriefingCard } from "@/components/briefing-card";
+import { useBriefingActions } from "@/lib/use-briefing-actions";
 import { ThreadLoop } from "@/components/thread-loop";
 import { useFeature } from "@/lib/feature-flags";
 import { useBriefing } from "@/lib/use-briefing";
@@ -136,6 +137,7 @@ export default function HomeScreen() {
   const { briefing, ask, alerts, askForAlerts } = useBriefing(
     useFeature("calendarBriefing"),
   );
+  const { askToMute, notNow, openIphoneSettings } = useBriefingActions();
 
   return (
     <>
@@ -191,6 +193,8 @@ export default function HomeScreen() {
                   state="ask"
                   onAsk={() => void ask()}
                   asking={briefing.asking}
+                  onNotNow={notNow}
+                  onMute={() => askToMute(false)}
                 />
               ) : briefing.state === "ready" ? (
                 <BriefingCard
@@ -198,9 +202,18 @@ export default function HomeScreen() {
                   briefing={briefing.briefing}
                   alerts={alerts}
                   onEnableAlerts={() => void askForAlerts()}
+                  onMute={() => askToMute(true)}
                 />
+              ) : briefing.state === "denied" ? (
+                <BriefingCard
+                  state="denied"
+                  onOpenSettings={openIphoneSettings}
+                  onMute={() => askToMute(false)}
+                />
+              ) : briefing.state === "empty" ? (
+                <BriefingCard state="empty" onMute={() => askToMute(true)} />
               ) : (
-                <BriefingCard state={briefing.state} />
+                <BriefingCard state="unavailable" />
               )}
             </>
           }

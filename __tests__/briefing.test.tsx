@@ -114,6 +114,7 @@ const EMPTY_COPY = {
 /** A harness that renders whatever the hook currently says. */
 function Harness({ enabled = true }: { enabled?: boolean }) {
   const { briefing, ask, alerts, askForAlerts } = useBriefing(enabled);
+  const onMute = jest.fn();
   if (
     briefing.state === "loading" ||
     briefing.state === "off" ||
@@ -124,7 +125,13 @@ function Harness({ enabled = true }: { enabled?: boolean }) {
   }
   if (briefing.state === "ask") {
     return (
-      <BriefingCard state="ask" onAsk={() => void ask()} asking={briefing.asking} />
+      <BriefingCard
+        state="ask"
+        onAsk={() => void ask()}
+        asking={briefing.asking}
+        onNotNow={jest.fn()}
+        onMute={onMute}
+      />
     );
   }
   if (briefing.state === "ready") {
@@ -134,10 +141,15 @@ function Harness({ enabled = true }: { enabled?: boolean }) {
         briefing={briefing.briefing}
         alerts={alerts}
         onEnableAlerts={() => void askForAlerts()}
+        onMute={onMute}
       />
     );
   }
-  return <BriefingCard state={briefing.state} />;
+  if (briefing.state === "denied") {
+    return <BriefingCard state="denied" onOpenSettings={jest.fn()} onMute={onMute} />;
+  }
+  if (briefing.state === "empty") return <BriefingCard state="empty" onMute={onMute} />;
+  return <BriefingCard state="unavailable" />;
 }
 
 beforeEach(() => {
@@ -387,7 +399,7 @@ test("should invite rather than prompt when calendar access has never been asked
   await render(<Harness />);
 
   await waitFor(() =>
-    expect(screen.getByLabelText("Let Andy read my calendar")).toBeTruthy(),
+    expect(screen.getByLabelText("Connect calendar")).toBeTruthy(),
   );
   // `CLAUDE.md`: permissions are opt-in per feature, requested at the point of
   // use. A card that asked iOS on render would be the app-wide prompt that
@@ -404,11 +416,11 @@ test("should ask iOS only when the invitation is taken", async () => {
   });
   await render(<Harness />);
   await waitFor(() =>
-    expect(screen.getByLabelText("Let Andy read my calendar")).toBeTruthy(),
+    expect(screen.getByLabelText("Connect calendar")).toBeTruthy(),
   );
 
   await act(async () => {
-    fireEvent.press(screen.getByLabelText("Let Andy read my calendar"));
+    fireEvent.press(screen.getByLabelText("Connect calendar"));
   });
 
   await waitFor(() =>
@@ -444,11 +456,11 @@ test("should show the meeting straight after access is allowed, asking for nothi
   ]);
   await render(<Harness />);
   await waitFor(() =>
-    expect(screen.getByLabelText("Let Andy read my calendar")).toBeTruthy(),
+    expect(screen.getByLabelText("Connect calendar")).toBeTruthy(),
   );
 
   await act(async () => {
-    fireEvent.press(screen.getByLabelText("Let Andy read my calendar"));
+    fireEvent.press(screen.getByLabelText("Connect calendar"));
   });
 
   // Found live: Allow was tapped and the card disappeared, because the read
@@ -467,14 +479,14 @@ test("should ask once however fast the invitation is tapped twice", async () => 
   );
   await render(<Harness />);
   await waitFor(() =>
-    expect(screen.getByLabelText("Let Andy read my calendar")).toBeTruthy(),
+    expect(screen.getByLabelText("Connect calendar")).toBeTruthy(),
   );
 
   // Two presses before the first resolves. Each one is a system permission
   // sheet; two of them stacked is the app asking twice for the same thing.
   await act(async () => {
-    fireEvent.press(screen.getByLabelText("Let Andy read my calendar"));
-    fireEvent.press(screen.getByLabelText("Let Andy read my calendar"));
+    fireEvent.press(screen.getByLabelText("Connect calendar"));
+    fireEvent.press(screen.getByLabelText("Connect calendar"));
   });
   expect(Calendar.requestCalendarPermissions).toHaveBeenCalledTimes(1);
 
@@ -483,16 +495,15 @@ test("should ask once however fast the invitation is tapped twice", async () => 
   });
 });
 
-test("should offer no button once iOS will not ask again", async () => {
+test("should offer iPhone Settings, not Connect, once iOS will not ask again", async () => {
   grant(false, false);
   await render(<Harness />);
 
-  // A button that cannot work is worse than no button: pressing it does
-  // nothing at all, which reads as the app being broken rather than as a
-  // choice that was already made.
+  // Connect would do nothing at all — iOS will not show its sheet twice — so
+  // the way forward is Andy's own page in iPhone Settings (R5).
   await waitFor(() => expect(screen.getByTestId("briefing-card")).toBeTruthy());
-  expect(screen.queryByLabelText("Let Andy read my calendar")).toBeNull();
-  expect(screen.getByText(/Settings/)).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Connect calendar" })).toBeNull();
+  expect(screen.getByRole("button", { name: "Open iPhone Settings" })).toBeTruthy();
 });
 
 test("should show nothing at all when the calendar module is not in this build", async () => {
@@ -831,11 +842,11 @@ test("should say why when the card goes the moment access is allowed", async () 
   (Calendar.getCalendars as jest.Mock).mockRejectedValue(cause);
   const view = await render(<Harness />);
   await waitFor(() =>
-    expect(screen.getByLabelText("Let Andy read my calendar")).toBeTruthy(),
+    expect(screen.getByLabelText("Connect calendar")).toBeTruthy(),
   );
 
   await act(async () => {
-    fireEvent.press(screen.getByLabelText("Let Andy read my calendar"));
+    fireEvent.press(screen.getByLabelText("Connect calendar"));
   });
 
   await waitFor(() => expect(briefingWarnings(warn)).toHaveLength(1));
@@ -1007,6 +1018,7 @@ test("should offer the reminder at the time it is actually scheduled", async () 
       briefing={{ title: "Coffee with Marcus", startsAt: AT, people: [], ambiguous: [] }}
       alerts="off"
       onEnableAlerts={jest.fn()}
+      onMute={jest.fn()}
     />,
   );
   expect(screen.getByText(`Remind me ${BRIEFING_LEAD_MINUTES} minutes before ›`)).toBeTruthy();
@@ -1017,7 +1029,7 @@ test("should draw no dashed border, which React Native cannot render on one side
   // appeared: React Native warns "Unsupported dashed / dotted border style"
   // and draws nothing (QA 18.3). It was dropped rather than hand-drawn, so a
   // dashed style here is a regression to something that silently does nothing.
-  const view = await render(<BriefingCard state="empty" />);
+  const view = await render(<BriefingCard state="empty" onMute={jest.fn()} />);
 
   const dashed: unknown[] = [];
   const walk = (node: unknown) => {

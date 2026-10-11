@@ -1,19 +1,24 @@
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { colors, fonts } from "../constants/theme";
+import { colors, fonts, radius, space, textOpacity, textSize } from "../constants/theme";
 
 /**
  * The Briefing card — who you are about to meet, and what you wrote about them.
  *
  * `STYLE.md` calls this "the single place that looks different from everything
- * else" and spends the app's one visual risk here: a `brass` left-edge stripe
- * and a `brass` timestamp, and nothing else in the app allowed to borrow
- * either. `brass` appears in exactly this file. (It once also had a dashed
- * "torn edge" on top; React Native cannot draw that, and `STYLE.md` dropped it.)
+ * else" and spends the app's one visual risk here: a `brass` left-edge stripe,
+ * and nothing else in the app allowed to borrow it. `brass` appears in exactly
+ * this file. (It once also had a dashed "torn edge" on top; React Native cannot
+ * draw that. The meeting time was `brass` too until 2026-10-11 — brass text on
+ * paper is 2.28:1, under WCAG AA, so it is `ink` now and the stripe carries the
+ * signature alone.)
  *
  * It sits at the top of home rather than on a screen of its own because the
  * thing it is for is the ten minutes before you walk into a room, and a
  * briefing you have to navigate to is a briefing you read afterwards.
+ *
+ * Every visible state carries the X (`briefing-card-mute-button`), which asks
+ * how long to mute (`docs/design/decisions/calendar-connection.md`, Option A).
  */
 
 export type BriefingPerson = {
@@ -33,24 +38,38 @@ export type Briefing = {
 type Props =
   /** The module is not in this build — say nothing rather than offer nothing. */
   | { state: "unavailable" }
-  /** Not asked yet. The card is the invitation, and the tap is the consent. */
-  | { state: "ask"; onAsk: () => void; asking: boolean }
-  /** Asked and refused, and iOS will not ask again. */
-  | { state: "denied" }
-  | { state: "empty" }
-  | {
-      state: "ready";
-      briefing: Briefing;
-      /**
-       * Whether the phone will say anything ten minutes before this.
-       *
-       * Offered here rather than at the first prompt, and that is the point:
-       * "remind me before this" means something in front of a real meeting and
-       * nothing in a stack of permission sheets on first launch.
-       */
-      alerts: "unavailable" | "off" | "blocked" | "on";
-      onEnableAlerts: () => void;
-    };
+  | ((
+      | {
+          /** Not asked yet. The card is the invitation, and the tap is the consent. */
+          state: "ask";
+          onAsk: () => void;
+          asking: boolean;
+          /** Off, at once and without a dialog (R4) — connecting is then in `settings`. */
+          onNotNow: () => void;
+        }
+      | {
+          /** Asked and refused, and iOS will not ask again. */
+          state: "denied";
+          onOpenSettings: () => void;
+        }
+      | { state: "empty" }
+      | {
+          state: "ready";
+          briefing: Briefing;
+          /**
+           * Whether the phone will say anything ten minutes before this.
+           *
+           * Offered here rather than at the first prompt, and that is the point:
+           * "remind me before this" means something in front of a real meeting
+           * and nothing in a stack of permission sheets on first launch.
+           */
+          alerts: "unavailable" | "off" | "blocked" | "on";
+          onEnableAlerts: () => void;
+        }
+    ) & {
+      /** The X: asks "Mute for today / until I turn it back on" (R3, R7). */
+      onMute: () => void;
+    });
 
 /** 09:30, in the device's own idea of what that looks like. */
 function atTime(startsAt: number): string {
@@ -68,41 +87,82 @@ export function BriefingCard(props: Props) {
       {/* The stripe, and the only place it is allowed. */}
       <View style={styles.stripe} />
 
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Mute the briefing"
+        onPress={props.onMute}
+        style={styles.mute}
+        testID="briefing-card-mute-button"
+      >
+        <Text style={styles.muteGlyph}>✕</Text>
+      </Pressable>
+
       {props.state === "ask" ? (
         <>
           <Text style={styles.heading}>Before you walk in</Text>
           <Text style={styles.body}>
-            Andy can read today&apos;s events and show what you already wrote
-            about whoever you are meeting. Your calendar stays on this phone,
-            and nothing is added to it.
+            Andy can read your calendar and show what you wrote about whoever
+            you&apos;re meeting next. It reads on this phone — your calendar
+            never leaves it, and nothing is added to it.
           </Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Let Andy read my calendar"
-            onPress={props.onAsk}
-            disabled={props.asking}
-            style={[styles.action, props.asking && styles.disabled]}
-          >
-            <Text style={styles.actionLabel}>
-              {props.asking ? "Asking…" : "Read my calendar"}
-            </Text>
-          </Pressable>
+          {/*
+            Said before the iOS sheet, because since iOS 17 the only access
+            that can read events is called "Full Access", and the sheet's own
+            wording cannot be changed.
+          */}
+          <Text style={styles.note}>
+            iPhone will ask for full access. It&apos;s the only kind that lets
+            an app read events.
+          </Text>
+          <View style={styles.buttons}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Connect calendar"
+              onPress={props.onAsk}
+              disabled={props.asking}
+              style={[styles.pill, props.asking && styles.disabled]}
+            >
+              <Text style={styles.pillLabel}>
+                {props.asking ? "Asking…" : "Connect calendar"}
+              </Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Not now"
+              onPress={props.onNotNow}
+              disabled={props.asking}
+              style={styles.plain}
+            >
+              <Text style={styles.plainLabel}>Not now</Text>
+            </Pressable>
+          </View>
+          <Text style={styles.note}>You can connect later in Settings.</Text>
         </>
       ) : null}
 
       {props.state === "denied" ? (
         <>
           <Text style={styles.heading}>Before you walk in</Text>
-          {/*
-            No button. iOS will not show the sheet a second time, so one here
-            would do nothing at all when pressed — worse than not being there,
-            because it looks like the app is broken rather than like a choice
-            that was made.
-          */}
           <Text style={styles.body}>
-            Calendar access is off, so Andy can&apos;t see who you are meeting.
-            Turn it on in Settings › Andy › Calendars.
+            Calendar access is off, so Andy can&apos;t see who you&apos;re
+            meeting. To turn it on, choose Full Access under Calendars.
           </Text>
+          {/*
+            iOS will not show its sheet a second time, so the way forward is
+            Andy's own page in iPhone Settings — "iPhone Settings", because
+            Andy has a Settings screen of its own and the bare word sends
+            people there.
+          */}
+          <View style={styles.buttons}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Open iPhone Settings"
+              onPress={props.onOpenSettings}
+              style={styles.pill}
+            >
+              <Text style={styles.pillLabel}>Open iPhone Settings</Text>
+            </Pressable>
+          </View>
         </>
       ) : null}
 
@@ -116,8 +176,8 @@ export function BriefingCard(props: Props) {
           */}
           <Text style={styles.heading}>Nothing coming up</Text>
           <Text style={styles.body}>
-            No meetings in the next twelve hours with anyone you keep notes
-            about.
+            No meetings in the next twelve hours with anyone you&apos;ve
+            written about.
           </Text>
         </>
       ) : null}
@@ -153,21 +213,20 @@ export function BriefingCard(props: Props) {
               accessibilityRole="button"
               accessibilityLabel="Remind me before meetings"
               onPress={props.onEnableAlerts}
-              style={styles.quiet}
+              style={styles.reminder}
             >
-              <Text style={styles.quietLabel}>
+              <Text style={styles.reminderLabel}>
                 Remind me 10 minutes before ›
               </Text>
             </Pressable>
           ) : null}
 
           {props.alerts === "blocked" ? (
-            // No button, for the same reason the denied calendar state has
-            // none: iOS will not show the sheet again, so one here would do
-            // nothing at all when pressed.
-            <Text style={styles.quietLabel}>
+            // No button: iOS will not show the sheet again. The `settings`
+            // Calendar section offers Open iPhone Settings for this.
+            <Text style={styles.body}>
               Notifications are off, so Andy can&apos;t remind you before this.
-              Turn them on in Settings › Andy.
+              Turn them on in iPhone Settings › Andy.
             </Text>
           ) : null}
 
@@ -186,20 +245,25 @@ export function BriefingCard(props: Props) {
   );
 }
 
+/** A tap target: 44pt, the WCAG/HIG minimum. No spacing token is 44. */
+const TARGET = 44;
+
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.paper,
-    marginHorizontal: 24,
-    marginBottom: 20,
-    paddingLeft: 20,
-    paddingRight: 16,
-    paddingTop: 18,
-    paddingBottom: 16,
+    marginHorizontal: space.xl,
+    marginBottom: space.xl,
+    paddingLeft: space.xl,
+    paddingRight: space.lg,
+    paddingTop: space.lg,
+    paddingBottom: space.lg,
     overflow: "hidden",
   },
   /**
    * The signature. `brass` lives here and nowhere else in the app — spreading
-   * it is the one thing `STYLE.md` says would stop it being a signature.
+   * it is the one thing `STYLE.md` says would stop it being a signature. A
+   * stripe, not text: it carries no words, so its 2.28:1 on paper is
+   * decoration under WCAG, not a failure.
    */
   stripe: {
     position: "absolute",
@@ -209,48 +273,85 @@ const styles = StyleSheet.create({
     width: 3,
     backgroundColor: colors.brass,
   },
+  mute: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    width: TARGET,
+    height: TARGET,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1,
+  },
+  muteGlyph: {
+    color: colors.ink,
+    fontSize: textSize.lg,
+    opacity: textOpacity.quiet,
+  },
   when: {
-    color: colors.brass,
+    color: colors.ink,
     fontFamily: fonts.utility,
-    fontSize: 13,
-    marginBottom: 4,
+    fontSize: textSize.sm,
+    opacity: textOpacity.secondary,
+    marginBottom: space.xs,
+    marginRight: TARGET,
   },
   heading: {
     color: colors.ink,
     fontFamily: fonts.display,
-    fontSize: 18,
-    lineHeight: 24,
+    fontSize: textSize.xxl,
+    // Clear of the X.
+    marginRight: TARGET,
   },
   body: {
     color: colors.ink,
-    fontSize: 14,
-    lineHeight: 20,
-    opacity: 0.7,
-    marginTop: 8,
+    fontSize: textSize.md,
+    opacity: textOpacity.quiet,
+    marginTop: space.sm,
   },
-  person: {
-    marginTop: 12,
+  note: {
+    color: colors.ink,
+    fontSize: textSize.sm,
+    opacity: textOpacity.quiet,
+    marginTop: space.sm,
+  },
+  buttons: {
     flexDirection: "row",
-    alignItems: "baseline",
-    gap: 10,
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: space.lg,
+    marginTop: space.md,
   },
-  personName: { color: colors.moss, fontSize: 16 },
-  personMeta: { color: colors.ink, fontFamily: fonts.utility, fontSize: 12, opacity: 0.55 },
-  quiet: { marginTop: 14, alignSelf: "flex-start" },
-  quietLabel: {
-    color: colors.moss,
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 12,
-  },
-  action: {
-    marginTop: 14,
-    alignSelf: "flex-start",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 10,
+  pill: {
+    minHeight: TARGET,
+    justifyContent: "center",
+    paddingHorizontal: space.lg,
+    borderRadius: radius.pill,
     backgroundColor: colors.moss,
   },
-  actionLabel: { color: colors.paper, fontSize: 15 },
+  pillLabel: { color: colors.paper, fontSize: textSize.base },
+  plain: { minHeight: TARGET, justifyContent: "center", paddingHorizontal: space.xs },
+  plainLabel: { color: colors.ink, fontSize: textSize.base, opacity: textOpacity.quiet },
+  // A disabled control: exempt from contrast, and visibly unavailable.
   disabled: { opacity: 0.5 },
+  person: {
+    marginTop: space.md,
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: space.sm,
+  },
+  personName: { color: colors.moss, fontSize: textSize.lg },
+  personMeta: {
+    color: colors.ink,
+    fontFamily: fonts.utility,
+    fontSize: textSize.xs,
+    opacity: textOpacity.quiet,
+  },
+  reminder: {
+    minHeight: TARGET,
+    justifyContent: "center",
+    alignSelf: "flex-start",
+    marginTop: space.xs,
+  },
+  reminderLabel: { color: colors.moss, fontSize: textSize.md },
 });

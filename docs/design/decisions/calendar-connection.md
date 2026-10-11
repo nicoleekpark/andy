@@ -846,5 +846,6 @@ Separate, smaller PRs first: pending reminders cancelled on sign-out and
 account deletion (R15, #129/#131), and the lead moved from 20 to 10 minutes (#130).
 
 **Build:** A1 — the setting and what it does to reading and reminders
-(R1–R2, R8–R10, R13–R15), no new UI; A2 — the card; A3 — the `settings`
-section.
+(R1–R2, R8–R10, R13–R15), no new UI (#132); A2 — the card: X and
+`briefing-mute-alert`, Not now, Open iPhone Settings, the brief's copy, moved
+onto tokens, time in ink (R3–R7, R11); A3 — the `settings` section.
