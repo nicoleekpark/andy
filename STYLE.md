@@ -27,8 +27,7 @@ Text 4.5:1 (3:1 at 18pt, or 14pt bold), the edges of controls and meaningful
 icons 3:1, touch targets at least 44×44pt. A colour that fails is changed here,
 not argued for case by case. `__tests__/contrast.test.ts` checks the pairs the
 app draws text with. `alert` was fixed first (4.33 → 4.71:1). **Known gaps, each
-its own slice, not yet in the test:** `brass` text on `paper` (2.28:1 — the time
-on the Briefing card); `ink` text dimmed to 0.5–0.6 opacity (2.9–3.8:1, about 45
+its own slice, not yet in the test:** `ink` text dimmed to 0.5–0.6 opacity (2.9–3.8:1, about 45
 places; 0.7 is the floor at 5.0:1); `line` as placeholder text (1.67:1) and as
 the only edge of an input (1.67:1, needs 3:1). `brass` and `line` as pure
 decoration (the card's stripe, the thread, dividers) are exempt.
@@ -81,14 +80,14 @@ Added 2026-10-08, the same way (`src/constants/theme.ts`):
 - **`textSize`**: **xs 12 · sm 13 · md 14 · base 15 · lg 16 · xl 17 · xxl 18**
   points. The sizes the screens already use; nothing outside it without adding
   it here first.
-- **`radius`**: **card 16 · pill 999**. `pill` is the app's button shape.
+- **`radius`**: **control 10 · card 16 · pill 999**. `pill` is the app's button shape; `control` the bordered secondary button (Sign out) and fields.
 - **`textOpacity`**: **secondary 0.8 · quiet 0.7**. Dimmed `ink` text never goes
   below 0.7, the lowest that still passes WCAG AA on `paper` (5.0:1).
 - **`colors.scrim`**: the dim behind a dialog, `ink` at 42%.
 
 ## Signature Element — spend the one risk here
 
-The **Briefing card** (pre-meeting digest / post-meeting nudge) is the single place that looks different from everything else — and it survived the day-4 scope cut precisely because it is the app's signature, not despite it: a `brass` left-edge accent stripe and a `brass` timestamp. Every other screen — profile list, search results, settings — stays plain and disciplined. Don't spread this treatment elsewhere or it stops being a signature.
+The **Briefing card** (pre-meeting digest / post-meeting nudge) is the single place that looks different from everything else — and it survived the day-4 scope cut precisely because it is the app's signature, not despite it: a `brass` left-edge accent stripe. Every other screen — profile list, search results, settings — stays plain and disciplined. Don't spread this treatment elsewhere or it stops being a signature.
 
 **Dropped: the torn edge and the quiet icon.** The first version of this
 section also asked for a soft dashed top border (a torn note edge) and a quiet
@@ -104,7 +103,9 @@ icon. Neither is in the app, on purpose.
   the slice that needed it. Revisit when an icon set is chosen for some other
   reason, not by inventing one here.
 
-The stripe and the `brass` timestamp carry the signal on their own.
+The stripe carries the signal on its own. **The timestamp was `brass` until
+2026-10-11** and is `ink` now: brass text on `paper` is 2.28:1, under WCAG AA,
+while the stripe holds no words and counts as decoration.
 
 ## App Icon — the Rising thread
 

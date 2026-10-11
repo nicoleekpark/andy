@@ -1,5 +1,6 @@
+import React from "react";
 import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
-import { useAction, useQuery } from "convex/react";
+import { useAction, useConvexConnectionState, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
 import { getFunctionName } from "convex/server";
 import { renderRouter } from "expo-router/testing-library";
@@ -372,6 +373,81 @@ describe("search screen", () => {
     });
     expect(screen.queryByLabelText("Searching")).toBeNull();
     expect(screen.getByText("Marcus")).toBeTruthy();
+  });
+
+  test("should stop waiting and say so when no answer comes back in time", async () => {
+    jest.useFakeTimers();
+    try {
+      let release: (value: unknown) => void = () => {};
+      recall.mockReturnValue(new Promise((resolve) => (release = resolve)));
+      await renderSearch();
+      await ask("who runs a climbing gym");
+      expect(screen.getByLabelText("Searching")).toBeTruthy();
+
+      // Device QA #44: a dropped connection left this spinning for ever.
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(30_000);
+      });
+      expect(screen.queryByLabelText("Searching")).toBeNull();
+      expect(screen.getByText("Andy didn't hear back in time. Try again.")).toBeTruthy();
+
+      // An answer that turns up afterwards is not put under a new question.
+      await act(async () => {
+        release({ answer: "late", query: "who runs a climbing gym", results: [buildResult()] });
+        await jest.advanceTimersByTimeAsync(0);
+      });
+      expect(screen.queryByText("Marcus")).toBeNull();
+      expect(screen.getByText("Andy didn't hear back in time. Try again.")).toBeTruthy();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  test("should not spin under the offline line when the connection drops mid-question", async () => {
+    // A connection whose state this test can change after rendering, the way
+    // the real one changes under the screen.
+    const connection = {
+      hasInflightRequests: true,
+      isWebSocketConnected: true,
+      timeOfOldestInflightRequest: null,
+      hasEverConnected: true,
+      connectionCount: 1,
+      connectionRetries: 0,
+      inflightMutations: 0,
+      inflightActions: 1,
+    };
+    let state = connection;
+    const listeners = new Set<() => void>();
+    // jest.setup.ts's own implementation, put back after: restoreMocks does
+    // not reset a factory mock, so a change here would leak into every test.
+    const original = (useConvexConnectionState as jest.Mock).getMockImplementation();
+    (useConvexConnectionState as jest.Mock).mockImplementation(() =>
+      React.useSyncExternalStore(
+        (listener) => {
+          listeners.add(listener);
+          return () => listeners.delete(listener);
+        },
+        () => state,
+      ),
+    );
+    try {
+      recall.mockReturnValue(new Promise(() => {}));
+      await renderSearch();
+      await ask("who runs a climbing gym");
+      expect(screen.getByLabelText("Searching")).toBeTruthy();
+
+      await act(async () => {
+        state = { ...connection, isWebSocketConnected: false, connectionRetries: 1 };
+        listeners.forEach((listener) => listener());
+      });
+
+      // The offline line says the answer cannot come; a spinner under it
+      // would say the opposite (device QA #44).
+      expect(screen.getByTestId("ask-offline-hint")).toBeTruthy();
+      expect(screen.queryByLabelText("Searching")).toBeNull();
+    } finally {
+      (useConvexConnectionState as jest.Mock).mockImplementation(original);
+    }
   });
 
   test("should send the trimmed question and show the note that answered it", async () => {

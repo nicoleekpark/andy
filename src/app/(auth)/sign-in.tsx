@@ -5,7 +5,7 @@ import { useSignInWithApple } from "@clerk/expo/apple";
 import { useAuth } from "@clerk/expo";
 import { NameMark } from "@/components/name-mark";
 import { forgetOnThisPhone } from "@/lib/on-phone";
-import { colors, fonts } from "@/constants/theme";
+import { colors, fonts, radius } from "@/constants/theme";
 
 /**
  * Apple is the only way in for V1. Adding a second social login would oblige
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
   appleButtonBusy: { opacity: 0.5 },
   signOut: {
     paddingVertical: 14,
-    borderRadius: 10,
+    borderRadius: radius.control,
     borderWidth: 1,
     borderColor: colors.line,
     alignItems: "center",
