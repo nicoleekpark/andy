@@ -104,7 +104,20 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `briefing-card-title` | 카드 제목 — 지금은 "Nothing coming up" |
 | `briefing-card-body` | 카드 설명 문장 |
 | `briefing-card--ask` | 캘린더 연결 전 상태 — "Before you walk in" + 캘린더가 폰을 떠나지 않는다는 설명 |
-| `briefing-card-connect-button` | Read my calendar — 누르면 iOS 권한 창 (누르는 중엔 "Asking…") |
+| `briefing-card-connect-button` | Connect calendar — 누르면 iOS 권한 창 (누르는 중엔 "Asking…") |
+| `briefing-card-not-now-button` | Not now — 바로 끔(창 없음). 연결은 Settings에서 |
+| `briefing-card-permission-note` | "iPhone will ask for full access…" — iOS 창 전에 하는 설명 |
+| `briefing-card-footnote` | "You can connect later in Settings." |
+| `briefing-card--denied` | 권한 거절 상태 — 설명 + `briefing-card-open-settings-button` |
+| `briefing-card-open-settings-button` | Open iPhone Settings — iPhone 설정의 Andy 페이지로 |
+| `briefing-card--empty` | Nothing coming up |
+| `briefing-card--ready` | 다가오는 미팅 — 시간(ink), 제목, 사람 |
+| `briefing-card-when` | 미팅 시간 — 2026-10-11부터 brass가 아니라 ink (대비) |
+| `briefing-card-reminder-button` | Remind me 10 minutes before › |
+| `briefing-card-mute-button` | 오른쪽 위 ✕ (44pt) — 모든 상태에 있음. 누르면 `briefing-mute-alert` |
+| `briefing-mute-alert` | `confirm-dialog`: Mute the briefing? — `-today` Mute for today / `-indefinite` Mute until I turn it back on / `-cancel` Cancel (둘 다 moss) |
+| `briefing-mute-alert-title` | Mute the briefing? |
+| `briefing-mute-alert-body` | 연결된 경우 "The card leaves home and meeting reminders stay quiet…", 연결 전 "The card leaves home. You can connect…" |
 | `profile-list` | 프로필 목록 전체 (알파벳순) |
 | `profile-row` | 목록의 한 프로필 (탭하면 그 프로필 페이지) |
 | `profile-row-name` | 프로필 이름 |

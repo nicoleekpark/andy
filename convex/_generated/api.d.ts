@@ -11,6 +11,8 @@
 import type * as account from "../account.js";
 import type * as answer from "../answer.js";
 import type * as answerPrompt from "../answerPrompt.js";
+import type * as appleSignIn from "../appleSignIn.js";
+import type * as appleTokens from "../appleTokens.js";
 import type * as calendar from "../calendar.js";
 import type * as calendarMatch from "../calendarMatch.js";
 import type * as calendarNames from "../calendarNames.js";
@@ -48,6 +50,8 @@ declare const fullApi: ApiFromModules<{
   account: typeof account;
   answer: typeof answer;
   answerPrompt: typeof answerPrompt;
+  appleSignIn: typeof appleSignIn;
+  appleTokens: typeof appleTokens;
   calendar: typeof calendar;
   calendarMatch: typeof calendarMatch;
   calendarNames: typeof calendarNames;

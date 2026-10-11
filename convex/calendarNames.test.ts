@@ -121,3 +121,30 @@ test("should say a shared name once, not once per person who answers to it", () 
   // title names her once; deciding *which* Judy is the caller's problem.
   expect(find("Lunch with Judy", ["Judy", "judy"])).toEqual(["judy"]);
 });
+
+// ---------------------------------------------------------------------------
+// A name inside a longer name (device QA #11)
+// ---------------------------------------------------------------------------
+
+test("should not find a name that only occurs inside a longer name also found", () => {
+  // "Coffee with Priya Shah" says Priya Shah. With two people answering to
+  // "Priya", reporting it too turned the card's one answer into a question.
+  expect(namesFoundIn("coffee with priya shah", ["priya", "priya shah"])).toEqual([
+    "priya shah",
+  ]);
+});
+
+test("should still find the shorter name when the title also says it on its own", () => {
+  expect(namesFoundIn("priya shah / priya", ["priya", "priya shah"])).toEqual([
+    "priya",
+    "priya shah",
+  ]);
+});
+
+test("should not let a longer name hide a shorter one it does not contain", () => {
+  // Same length is not longer: two names at the same place are both said.
+  expect(namesFoundIn("lunch with marc and priya shah", ["marc", "priya shah"])).toEqual([
+    "marc",
+    "priya shah",
+  ]);
+});

@@ -198,6 +198,19 @@ export default defineSchema({
     .index("by_user_and_event", ["userId", "calendarEventId"]),
 
   /**
+   * The refresh token Sign in with Apple issues to Andy for one person —
+   * kept only so deleting the account can revoke it, as Apple requires
+   * (App Review 5.1.1(v), TN3194; `appleSignIn.ts`). A secret: written and
+   * read by internal functions only, never returned to the app. Goes with
+   * the account (`account.OWNED_TABLES`).
+   */
+  appleTokens: defineTable({
+    userId: v.id("users"),
+    refreshToken: v.string(),
+    keptAt: v.number(),
+  }).index("by_user", ["userId"]),
+
+  /**
    * The remote kill switch (INFRA.md #6). One row per feature that can be
    * turned off without an App Store resubmission, written by hand in the
    * Convex dashboard. **No row means on**: the switch only ever turns

@@ -1,0 +1,310 @@
+<!--
+  DESIGN PROTOTYPE — not production code.
+  HTML approximation of the native `home` screen's `briefing-card` for Andy,
+  built to compare three options for two combined changes: the two-same-name
+  picker (brief §5, R-P1–R-P10) and the multi-meeting carousel (brief §6,
+  R-C1–R-C8). This is Option A — "Inline, always open": every candidate and
+  every page's full content is shown at once, no sheet, no accordion. Builds
+  on top of the card shipped in PR #133 (the ✕ mute button, the ask/denied
+  states, the meeting time moved from `brass` to `ink` on 2026-10-11).
+
+  Fonts: Lora and IBM Plex Mono are not loaded here, so this mock falls back
+  to a system serif/monospace that is visually close, not the real faces.
+  Colour, spacing, radius and opacity use the same values as
+  `src/constants/theme.ts`, named the same way, as CSS variables below.
+
+  The grey panel above the phone frame holds mock-only controls for
+  reviewing states and interactions — they do not exist on the real screen.
+  Inside the frame, the picker and the pager are really interactive (tap a
+  candidate, tap Next/Previous) so the one-tap-commits and no-auto-advance
+  behaviours can be felt, not just read.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>briefing-card-people — Option A: inline, always open</title>
+<style>
+  :root {
+    /* --- tokens, named as src/constants/theme.ts --- */
+    --color-ink: #2A2622;
+    --color-paper: #E8E6DE;
+    --color-moss: #5C6B4F;
+    --color-brass: #B8935A;
+    --color-line: #B8B3A8;
+    --color-alert: #9F4C3B;
+    --color-scrim: rgba(42, 38, 34, 0.42);
+    --space-xs: 4px; --space-sm: 8px; --space-md: 12px; --space-lg: 16px;
+    --space-xl: 24px; --space-xxl: 32px; --space-xxxl: 48px;
+    --text-xs: 12px; --text-sm: 13px; --text-md: 14px; --text-base: 15px;
+    --text-lg: 16px; --text-xl: 17px; --text-xxl: 18px;
+    --radius-card: 16px; --radius-pill: 999px;
+    --opacity-secondary: 0.8; --opacity-quiet: 0.7;
+    --font-display: Georgia, "Times New Roman", serif;   /* ~ Lora */
+    --font-utility: "Courier New", monospace;              /* ~ IBM Plex Mono */
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: #d8d4c8;
+    font-family: -apple-system, system-ui, sans-serif;
+    margin: 0;
+    padding: 24px;
+    color: var(--color-ink);
+  }
+  .note { max-width: 760px; margin: 0 auto 20px; font-size: 13px; opacity: 0.75; line-height: 1.5; }
+  .rig { max-width: 760px; margin: 0 auto 20px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .rig fieldset { border: 1px dashed #9a9488; border-radius: 8px; padding: 8px 10px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .rig legend { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.6; }
+  .rig button { font-size: 12px; padding: 6px 10px; border-radius: 6px; border: 1px solid #9a9488; background: #fff; cursor: pointer; }
+  .rig button.active { background: var(--color-moss); color: var(--color-paper); border-color: var(--color-moss); }
+
+  .frame { width: 390px; margin: 0 auto; border-radius: 44px; background: #111; padding: 14px; box-shadow: 0 20px 50px rgba(0,0,0,0.35); }
+  .screen { background: var(--color-paper); border-radius: 32px; overflow: hidden; min-height: 820px; position: relative; }
+  .ios-status-bar { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-size: 14px; font-weight: 600; }
+  .nav-bar { padding: 4px 20px 14px; border-bottom: 1px solid var(--color-line); display: flex; align-items: center; justify-content: space-between; }
+  .nav-bar-title { font-family: var(--font-display); font-size: 22px; }
+  .nav-bar-action-right { font-size: var(--text-base); color: var(--color-moss); }
+
+  /* --- briefing-card shell (unchanged from PR #133) --- */
+  .briefing-card { position: relative; background: var(--color-paper); margin: 20px 24px; padding: 18px 16px 16px 20px; overflow: hidden; }
+  .briefing-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--color-brass); }
+  .briefing-card-mute-button {
+    position: absolute; top: 2px; right: 2px; width: 44px; height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    background: none; border: none; cursor: pointer;
+  }
+  .briefing-card-mute-button span { font-size: 20px; line-height: 1; color: var(--color-ink); opacity: var(--opacity-quiet); }
+
+  /* time: moved from brass to ink, 2026-10-11 — see note below the frame */
+  .briefing-card-when { color: var(--color-ink); font-family: var(--font-utility); font-size: var(--text-sm); margin-bottom: 4px; }
+  .briefing-card-title { font-family: var(--font-display); font-size: var(--text-xxl); line-height: 24px; margin: 0 44px 0 0; }
+
+  .briefing-card-person-link { margin-top: var(--space-md); display: flex; align-items: baseline; gap: 10px; cursor: pointer; }
+  .briefing-card-person-link .name { color: var(--color-moss); font-size: var(--text-lg); }
+  .briefing-card-person-link .meta { font-family: var(--font-utility); font-size: var(--text-xs); opacity: var(--opacity-quiet); }
+
+  /* --- pick block (new) --- */
+  .briefing-card-pick { margin-top: var(--space-lg); padding-top: var(--space-md); border-top: 1px solid var(--color-line); }
+  .briefing-card-pick-label { font-size: var(--text-base); font-weight: 600; }
+  .briefing-card-pick-note { font-size: var(--text-sm); opacity: var(--opacity-quiet); margin-top: var(--space-xs); line-height: 1.4; }
+  .briefing-card-pick-choice {
+    display: block; width: 100%; text-align: left; background: none; border: none;
+    border-bottom: 1px solid var(--color-line);
+    padding: var(--space-md) 0; min-height: 44px; cursor: pointer;
+  }
+  .briefing-card-pick-choice:last-of-type { border-bottom: none; }
+  .briefing-card-pick-choice .name { color: var(--color-ink); font-size: var(--text-base); display: block; }
+  .briefing-card-pick-choice-meta { font-family: var(--font-utility); font-size: var(--text-xs); opacity: var(--opacity-quiet); display: block; margin-top: 2px; }
+  .briefing-card-pick-neither {
+    display: block; margin-top: var(--space-sm); background: none; border: none;
+    color: var(--color-ink); opacity: var(--opacity-quiet);
+    font-size: var(--text-base); padding: var(--space-sm) 0; min-height: 44px; cursor: pointer; text-align: left;
+  }
+  .briefing-card-pick-change-button {
+    display: inline-block; margin-top: var(--space-xs); background: none; border: none;
+    color: var(--color-moss); font-size: var(--text-sm); padding: var(--space-xs) 0; min-height: 44px; cursor: pointer;
+  }
+  .briefing-card-pick-none-line { font-size: var(--text-base); margin-top: var(--space-md); padding-top: var(--space-md); border-top: 1px solid var(--color-line); line-height: 1.4; }
+  .briefing-card-pick-none-line .change { color: var(--color-moss); background: none; border: none; font-size: var(--text-base); padding: 0; cursor: pointer; }
+
+  /* --- pager (new) --- */
+  .briefing-card-pager { margin-top: var(--space-lg); padding-top: var(--space-md); border-top: 1px solid var(--color-line); display: flex; align-items: center; justify-content: center; gap: var(--space-md); }
+  .briefing-card-previous-button, .briefing-card-next-button {
+    width: 44px; height: 44px; border-radius: var(--radius-pill); background: none; border: 1px solid var(--color-line);
+    display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--color-ink); cursor: pointer;
+  }
+  .briefing-card-previous-button[aria-disabled="true"], .briefing-card-next-button[aria-disabled="true"] { opacity: 0.35; cursor: default; }
+  .briefing-card-page-position { font-family: var(--font-utility); font-size: var(--text-sm); color: var(--color-ink); opacity: var(--opacity-secondary); min-width: 54px; text-align: center; }
+
+  .briefing-card-reminder-button { display: inline-block; margin-top: var(--space-md); background: none; border: none; color: var(--color-moss); font-size: var(--text-md); padding: var(--space-sm) 0; min-height: 44px; cursor: pointer; }
+
+  .profile-row { padding: 14px 24px; border-bottom: 1px solid var(--color-line); display: flex; justify-content: space-between; }
+  .profile-row-name { font-family: var(--font-display); font-size: var(--text-xl); }
+  .profile-row-meta { font-family: var(--font-utility); font-size: var(--text-xs); opacity: var(--opacity-quiet); }
+
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+</style>
+</head>
+<body>
+
+<p class="note">
+  Design prototype (Option A — <strong>inline, always open</strong>). Not production code.
+  Phone frame is a 390pt approximation. The grey panels above the frame are
+  mock-only controls for reviewing states — they aren't part of the design.
+  Inside the frame: tap a candidate, "Neither of them", "Not this Priya?",
+  "Change", and the pager arrows — they really change state, the way the
+  built card would (one tap, commits at once, no dialog).
+</p>
+
+<div class="rig">
+  <fieldset>
+    <legend>meetings in window</legend>
+    <button data-mode="single" class="active">1 — single meeting (no pager)</button>
+    <button data-mode="carousel">3 — carousel</button>
+  </fieldset>
+  <fieldset>
+    <legend>page 1's "Priya" question</legend>
+    <button data-forcepick="unanswered" class="active">reset to unanswered</button>
+  </fieldset>
+  <fieldset>
+    <legend>edge case</legend>
+    <button data-double="off" class="active">one ambiguous name</button>
+    <button data-double="on">two ambiguous names (Priya &amp; Sam)</button>
+  </fieldset>
+</div>
+
+<div class="frame">
+  <div class="screen">
+    <div class="ios-status-bar"><span>9:41</span><span>⚫︎⚫︎⚫︎ 🔋</span></div>
+    <div class="nav-bar"><div class="nav-bar-title">Andy</div><div class="nav-bar-action-right">⚙︎</div></div>
+
+    <div class="briefing-card" id="card" role="group" aria-label="Briefing">
+      <button class="briefing-card-mute-button" aria-label="Mute the briefing"><span>✕</span></button>
+
+      <!-- page 0: Coffee with Priya (ambiguous) -->
+      <div class="briefing-card-page" id="page-0" aria-label="Meeting 1 of 3, 2:30 PM, Coffee with Priya">
+        <div class="briefing-card-when">2:30 PM</div>
+        <div class="briefing-card-title" id="page-0-title">Coffee with Priya</div>
+
+        <!-- unanswered -->
+        <div class="pick-state" data-pick="unanswered">
+          <div class="briefing-card-pick">
+            <div class="briefing-card-pick-label">Which Priya is this?</div>
+            <div class="briefing-card-pick-note">You've written about 2 people called Priya. Andy will remember your answer for this event, every time it repeats. It stays on this phone.</div>
+            <button class="briefing-card-pick-choice" onclick="pickChoice('kapoor')" aria-label="Priya Kapoor, friend · 4 notes · 2026-09-30" data-hint="Remembers this Priya for this event.">
+              <span class="name">Priya Kapoor</span>
+              <span class="briefing-card-pick-choice-meta">friend · 4 notes · 2026-09-30</span>
+            </button>
+            <button class="briefing-card-pick-choice" onclick="pickChoice('shah')" aria-label="Priya Shah, colleague · 7 notes · 2026-10-05" data-hint="Remembers this Priya for this event.">
+              <span class="name">Priya Shah</span>
+              <span class="briefing-card-pick-choice-meta">colleague · 7 notes · 2026-10-05</span>
+            </button>
+            <button class="briefing-card-pick-neither" onclick="pickNone()">Neither of them</button>
+          </div>
+
+          <!-- second pick block, shown only in the "two ambiguous names" toggle -->
+          <div class="briefing-card-pick" id="pick-sam" style="display:none">
+            <div class="briefing-card-pick-label">Which Sam is this?</div>
+            <div class="briefing-card-pick-note">You've written about 2 people called Sam. Andy will remember your answer for this event, every time it repeats. It stays on this phone.</div>
+            <button class="briefing-card-pick-choice" aria-label="Sam Okafor, teammate · 2 notes · 2026-10-01">
+              <span class="name">Sam Okafor</span>
+              <span class="briefing-card-pick-choice-meta">teammate · 2 notes · 2026-10-01</span>
+            </button>
+            <button class="briefing-card-pick-choice" aria-label="Sam Lindqvist, client · 5 notes · 2026-09-20">
+              <span class="name">Sam Lindqvist</span>
+              <span class="briefing-card-pick-choice-meta">client · 5 notes · 2026-09-20</span>
+            </button>
+            <button class="briefing-card-pick-neither">Neither of them</button>
+          </div>
+        </div>
+
+        <!-- picked -->
+        <div class="pick-state" data-pick="picked" style="display:none">
+          <div class="briefing-card-person-link" onclick="void(0)">
+            <span class="name" id="picked-name">Priya Kapoor</span>
+            <span class="meta">4 notes</span>
+          </div>
+          <button class="briefing-card-pick-change-button" onclick="resetPick()">Not this Priya?</button>
+        </div>
+
+        <!-- neither -->
+        <div class="pick-state" data-pick="none" style="display:none">
+          <div class="briefing-card-pick-none-line">
+            Not a Priya you've written about. <button class="change" onclick="resetPick()">Change</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- page 1: 1:1 with Emily Chen (resolved) -->
+      <div class="briefing-card-page" id="page-1" style="display:none" aria-label="Meeting 2 of 3, 3:15 PM, 1:1 with Emily Chen">
+        <div class="briefing-card-when">3:15 PM</div>
+        <div class="briefing-card-title">1:1 with Emily Chen</div>
+        <div class="briefing-card-person-link"><span class="name">Emily Chen</span><span class="meta">6 notes</span></div>
+      </div>
+
+      <!-- page 2: Call with Jordan Lee (resolved) -->
+      <div class="briefing-card-page" id="page-2" style="display:none" aria-label="Meeting 3 of 3, 4:30 PM, Call with Jordan Lee">
+        <div class="briefing-card-when">4:30 PM</div>
+        <div class="briefing-card-title">Call with Jordan Lee</div>
+        <div class="briefing-card-person-link"><span class="name">Jordan Lee</span><span class="meta">3 notes</span></div>
+      </div>
+
+      <!-- pager: card-level, shown only when 2–10 meetings are in the window -->
+      <div class="briefing-card-pager" id="pager" style="display:none">
+        <button class="briefing-card-previous-button" id="prev-btn" aria-label="Previous meeting" aria-disabled="true" onclick="goPage(-1)">‹</button>
+        <span class="briefing-card-page-position" id="position">1 of 3</span>
+        <button class="briefing-card-next-button" id="next-btn" aria-label="Next meeting" onclick="goPage(1)">›</button>
+      </div>
+
+      <!-- reminder link: card-level, appears once regardless of page -->
+      <button class="briefing-card-reminder-button">Remind me 10 minutes before ›</button>
+    </div>
+
+    <div class="profile-row"><div class="profile-row-name">Jordan Lee</div><div class="profile-row-meta">friend · 3 notes</div></div>
+    <div class="profile-row"><div class="profile-row-name">Priya Kapoor</div><div class="profile-row-meta">friend · 4 notes</div></div>
+    <div class="profile-row"><div class="profile-row-name">Priya Shah</div><div class="profile-row-meta">colleague · 7 notes</div></div>
+  </div>
+</div>
+
+<p class="note" style="margin-top:20px;">
+  <strong>The time (<code>briefing-card-when</code>) is drawn in <code>ink</code>, not
+  <code>brass</code></strong>, per the 2026-10-11 decision — <code>brass</code> is now
+  the left stripe only. <code>ink</code> at full opacity on <code>paper</code> is
+  12.0:1, which also closes STYLE.md's previously-documented "known gap" for
+  this text (2.28:1 as <code>brass</code>); STYLE.md's "Known gaps" line should
+  drop that item in the same PR that ships this.
+</p>
+
+<script>
+  const state = { mode: 'single', page: 0, pick: 'unanswered', double: false };
+
+  function render() {
+    document.getElementById('page-0').style.display = state.page === 0 ? '' : 'none';
+    document.getElementById('page-1').style.display = state.page === 1 ? '' : 'none';
+    document.getElementById('page-2').style.display = state.page === 2 ? '' : 'none';
+    document.getElementById('pager').style.display = state.mode === 'carousel' ? 'flex' : 'none';
+    const total = state.mode === 'carousel' ? 3 : 1;
+    document.getElementById('position').textContent = (state.page + 1) + ' of ' + total;
+    document.getElementById('prev-btn').setAttribute('aria-disabled', state.page === 0 ? 'true' : 'false');
+    document.getElementById('next-btn').setAttribute('aria-disabled', state.page === total - 1 ? 'true' : 'false');
+    document.querySelectorAll('.pick-state').forEach(el => {
+      el.style.display = el.dataset.pick === state.pick ? '' : 'none';
+    });
+    document.getElementById('pick-sam').style.display = state.double && state.pick === 'unanswered' ? '' : 'none';
+    document.getElementById('page-0-title').textContent = state.double ? 'Coffee with Priya and Sam' : 'Coffee with Priya';
+  }
+
+  function goPage(delta) {
+    const total = state.mode === 'carousel' ? 3 : 1;
+    const next = state.page + delta;
+    if (next < 0 || next >= total) return; // never moves by itself past the ends
+    state.page = next;
+    render();
+  }
+  function pickChoice(who) {
+    document.getElementById('picked-name').textContent = who === 'kapoor' ? 'Priya Kapoor' : 'Priya Shah';
+    state.pick = 'picked';
+    render();
+  }
+  function pickNone() { state.pick = 'none'; render(); }
+  function resetPick() { state.pick = 'unanswered'; render(); }
+
+  document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => {
+    document.querySelectorAll('[data-mode]').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    state.mode = b.dataset.mode;
+    state.page = 0;
+    render();
+  });
+  document.querySelectorAll('[data-forcepick]').forEach(b => b.onclick = () => { state.pick = 'unanswered'; render(); });
+  document.querySelectorAll('[data-double]').forEach(b => b.onclick = () => {
+    document.querySelectorAll('[data-double]').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    state.double = b.dataset.double === 'on';
+    render();
+  });
+
+  render();
+</script>
+</body>
+</html>
