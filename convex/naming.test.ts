@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { candidatesForSpokenName, compareNamesForList, namesOverlap } from "./naming";
+import { candidatesForSpokenName, compareNamesForList, listLetterOf, namesOverlap } from "./naming";
 
 // ---------------------------------------------------------------------------
 // namesOverlap
@@ -155,4 +155,33 @@ test("should ignore case, accents and punctuation, and put a shorter name first"
 
 test("should put Hangul before any other script", () => {
   expect(listed(["Анна", "민호"])).toEqual(["민호", "Анна"]);
+});
+
+// ---------------------------------------------------------------------------
+// home's A–Z index (device QA #7, decided 2026-10-11)
+// ---------------------------------------------------------------------------
+
+test("should file a name under its first letter, whatever its case or accent", () => {
+  expect(listLetterOf("emily")).toBe("E");
+  expect(listLetterOf("Émile")).toBe("E");
+  expect(listLetterOf("O'Brien")).toBe("O");
+});
+
+test("should file Korean and anything not A–Z under #", () => {
+  expect(listLetterOf("김지선")).toBe("#");
+  expect(listLetterOf("42 Club")).toBe("#");
+});
+
+test("should file a name by its first letter when it starts with a symbol the sort ignores", () => {
+  // The sort key drops it, so "🙂 Sam" sits among the S names — and its
+  // letter has to say S, or the index would point somewhere it is not.
+  expect(listLetterOf("🙂 Sam")).toBe("S");
+});
+
+test("should keep every name under one letter together, with # last, in the list's own order", () => {
+  const names = ["Zoe", "김지선", "adam", "Émile", "Eve", "42 Club", "Bea"];
+  const letters = [...names].sort(compareNamesForList).map(listLetterOf);
+
+  // Grouped (no letter reappears after another) and in index order.
+  expect(letters).toEqual(["A", "B", "E", "E", "Z", "#", "#"]);
 });
