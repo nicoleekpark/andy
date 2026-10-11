@@ -479,7 +479,14 @@ your actual messy real calendar, not synthetic data".
 | 18.13 | Name an event with someone you have **no** notes about but do keep a profile for | The card still shows them, saying "nothing remembered yet". Knowing you have nothing is the reminder this app exists to give | ⬜ |
 | 18.14 | Deny calendar access, then reopen the app | The card says access is off and points at Settings — **and shows no button**, because iOS will not open the sheet a second time and a button that does nothing reads as a broken app | ⬜ |
 | 18.15 | Open the app on a build **without** `expo-calendar` (i.e. the current one) | **No card, and home works normally.** Day 6 lost a whole profile screen to a missing native module; this is the check that it cannot happen here | ⬜ |
-| 18.16 | Check the Convex logs (`npm run db` → Logs) after a briefing | One `calendar:matchEvents` per foreground, not one per event. Titles appear in the log as arguments — they are your own calendar reaching your own backend, and nothing stores them | ⬜ |
+| 18.16 | Check the Convex logs (`npm run db` → Logs) after a briefing, on **build 5 or later** | **No `calendar:matchEvents` call at all** — names are matched on the phone and the calendar never leaves it (#127). Build 4 and earlier still call it, once per foreground | ⬜ |
+| 18.17 | With someone in Andy and the calendar never connected, look at `home` | `briefing-card--ask`: "Before you walk in", the line that iPhone will ask for **full access**, **Connect calendar** (filled) beside **Not now**, "You can connect later in Settings.", and a ✕ top right | ⬜ |
+| 18.18 | Tap **Not now** | The card goes **at once, no dialog**, and stays gone after relaunching. It does not come back by itself | ⬜ |
+| 18.19 | (Fresh install) Tap **Connect calendar** → **Don't Allow** | `briefing-card--denied` with **Open iPhone Settings**. Tapping it opens **Andy's own page** in the Settings app. Allow there, come back to Andy → the briefing shows without another tap | ⬜ |
+| 18.20 | With a meeting showing, tap ✕ → **Mute for today** | The card leaves `home` at once. A meeting **later today** gets no reminder and no nudge; one **tomorrow** still does. After midnight (or next morning) the card is back by itself | ⬜ |
+| 18.21 | Tap ✕ → **Mute until I turn it back on** | The card leaves and **no reminders** come at all, until it is turned back on (A3 adds that to Settings; until then a reinstall resets it) | ⬜ |
+| 18.22 | Tap ✕ → **Cancel** | Nothing changes. Neither mute button is red; with VoiceOver the ✕ reads "Mute the briefing" | ⬜ |
+| 18.23 | Look at a meeting card's time | The time is **dark ink**, not gold — gold stays only on the left stripe (contrast, STYLE.md) | ⬜ |
 
 ---
 
