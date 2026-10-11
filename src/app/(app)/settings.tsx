@@ -136,7 +136,8 @@ const styles = StyleSheet.create({
     margin: space.xl,
     marginBottom: space.md,
     paddingVertical: space.md,
-    borderRadius: radius.pill,
+    // The same shape as the Sign out on the sign-in screen.
+    borderRadius: radius.control,
     borderWidth: 1,
     borderColor: colors.line,
     alignItems: "center",

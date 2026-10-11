@@ -81,7 +81,7 @@ Added 2026-10-08, the same way (`src/constants/theme.ts`):
 - **`textSize`**: **xs 12 · sm 13 · md 14 · base 15 · lg 16 · xl 17 · xxl 18**
   points. The sizes the screens already use; nothing outside it without adding
   it here first.
-- **`radius`**: **card 16 · pill 999**. `pill` is the app's button shape.
+- **`radius`**: **control 10 · card 16 · pill 999**. `pill` is the app's button shape; `control` the bordered secondary button (Sign out) and fields.
 - **`textOpacity`**: **secondary 0.8 · quiet 0.7**. Dimmed `ink` text never goes
   below 0.7, the lowest that still passes WCAG AA on `paper` (5.0:1).
 - **`colors.scrim`**: the dim behind a dialog, `ink` at 42%.

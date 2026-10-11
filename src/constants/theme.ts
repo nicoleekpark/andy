@@ -96,8 +96,13 @@ export const textSize = {
   xxl: 18,
 } as const;
 
-/** Corner radii. `pill` is the app's button shape; `card` a floating card. */
+/**
+ * Corner radii. `pill` is the app's button shape; `card` a floating card;
+ * `control` the bordered secondary button and fields (Sign out, search),
+ * the radius those already had.
+ */
 export const radius = {
+  control: 10,
   card: 16,
   pill: 999,
 } as const;

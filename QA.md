@@ -624,7 +624,7 @@ their rows.
 |---|---|---|---|
 | 21a.1 | Fresh install, calendar never connected → Settings | **CALENDAR** section: the "reads on this phone — nothing leaves it" sentence and **Connect calendar**. Tapping it shows the iOS sheet; allow → "On — Andy reads your calendar on this phone." | ⬜ |
 | 21a.2 | On → **Turn off in Andy** | At once, no dialog: "Off — Andy isn't reading your calendar, and no reminders are set." The home card is gone, and a meeting's reminder does not arrive. **Connect calendar** turns it straight back on — **no iOS sheet** | ⬜ |
-| 21a.3 | Home card ✕ → **Mute for today**, then Settings | "Muted until tomorrow · **Turn back on**". Tapping it brings the card back on home | ⬜ |
+| 21a.3 | *(Needs #133, the card's ✕.)* Home card ✕ → **Mute for today**, then Settings | "Muted until tomorrow · **Turn back on**". Tapping it brings the card back on home | ⬜ |
 | 21a.4 | **Open iPhone Settings** (under "To take away access completely…") | Andy's own page in the Settings app. Set Calendars to None, come back: the section says access is off, with **Open iPhone Settings** as the button | ⬜ |
 | 21a.5 | Reminder row, notifications never asked | "Andy can remind you 10 minutes before…" and **Remind me 10 minutes before** → the iOS notifications sheet. Allowed → "Reminders on — 10 minutes before, and a nudge after. They show a name, never what you wrote." | ⬜ |
 | 21a.6 | Airplane mode, then all of the above | Everything works offline — the setting and permissions are on the phone (R22) | ⬜ |
