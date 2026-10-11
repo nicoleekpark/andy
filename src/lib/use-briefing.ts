@@ -3,6 +3,12 @@ import { AppState } from "react-native";
 import { matchEventsIn } from "@convex/calendarMatch";
 import { useReadingCopy } from "./offline-copy";
 import {
+  nextLocalMidnight,
+  settingAt,
+  useCalendarSetting,
+  type CalendarSetting,
+} from "./calendar-setting";
+import {
   askForCalendar,
   calendarAccess,
   readUpcoming,
@@ -62,8 +68,23 @@ export type BriefingState =
   | { state: "ask"; asking: boolean }
   | { state: "denied" }
   | { state: "empty" }
-  /** Switched off remotely: nothing is shown and nothing is read. */
+  /**
+   * Switched off — remotely (`featureFlags`) or by the person (Not now, Mute
+   * until I turn it back on, Turn off in Andy): nothing is shown, nothing is
+   * read, and this app's reminders are cancelled.
+   */
   | { state: "off" }
+  /**
+   * Muted for today: no card, and no reminder for a meeting that starts
+   * before the stored midnight (R9) — but the calendar is still read, so
+   * tomorrow's early reminders are still scheduled.
+   */
+  | { state: "muted" }
+  /**
+   * Nobody in Andy yet: no card in any state (R2). With nobody to match
+   * against it could only ask for access it cannot use yet.
+   */
+  | { state: "nobody" }
   | {
       state: "ready";
       briefing: {
@@ -100,6 +121,10 @@ export function useBriefing(
   askForAlerts: () => Promise<void>;
 } {
   const copy = useReadingCopy();
+  const setting = useCalendarSetting();
+  /** The setting as of now, read when a refresh runs. */
+  const settingNow = useRef<CalendarSetting>(setting);
+  const off = !enabled || setting.mode === "off";
   /** The newest copy, read when a refresh runs rather than tying the refresh to it. */
   const copyNow = useRef(copy);
   const hasCopy = copy !== null;
@@ -147,9 +172,38 @@ export function useBriefing(
    */
   const mounted = useRef(true);
 
+  /**
+   * Cancel this app's reminders once any schedule already under way has
+   * landed — otherwise its reminders arrive after the cancel and survive it.
+   */
+  const cancelAfterScheduling = useCallback(() => {
+    scheduling.current = scheduling.current
+      .then(() => cancelBriefings())
+      .catch((thrown: unknown) =>
+        sayWhyInDevelopment("could not cancel the alerts", thrown),
+      );
+  }, []);
+
   const load = useCallback(
     async (access: CalendarAccess): Promise<BriefingState> => {
+      // Nothing to match against yet — a first session, before the server
+      // has answered once. The effect runs again when the copy arrives.
+      const known = copyNow.current;
+      if (known === null) return { state: "loading" };
+      if (!known.profiles.some((profile) => !profile.autoCreated)) {
+        // Including after the last person was deleted: a reminder already on
+        // the phone is about somebody no longer here.
+        cancelAfterScheduling();
+        return { state: "nobody" };
+      }
+
       if (access.state !== "granted") {
+        if (access.state === "denied") {
+          // Access taken away in iPhone Settings: reminders already on the
+          // phone must not keep buzzing about meetings Andy can no longer see
+          // (R14).
+          cancelAfterScheduling();
+        }
         return access.state === "unavailable"
           ? { state: "unavailable" }
           : access.state === "denied"
@@ -157,17 +211,23 @@ export function useBriefing(
             : { state: "ask", asking: false };
       }
 
-      const now = new Date();
+      const now = Date.now();
+      const applied = settingAt(settingNow.current, now);
+      const mutedUntil = applied.mode === "muted" ? applied.until : null;
+      // Reminders look further ahead than the card (R13): to the end of the
+      // next local day, so an 08:00 meeting is reminded at 07:50 even when
+      // Andy was last opened the afternoon before. The card stays on the next
+      // twelve hours.
       const events = await readUpcoming(
-        now,
-        new Date(now.getTime() + WINDOW_HOURS * 3600_000),
+        new Date(now),
+        new Date(nextLocalMidnight(nextLocalMidnight(now))),
       );
-      if (events.length === 0) return { state: "empty" };
+      if (events.length === 0) {
+        // A meeting deleted from the calendar takes its reminder with it.
+        cancelAfterScheduling();
+        return mutedUntil === null ? { state: "empty" } : { state: "muted" };
+      }
 
-      // Nothing to match against yet — a first session, before the server
-      // has answered once. The effect runs again when the copy arrives.
-      const known = copyNow.current;
-      if (known === null) return { state: "loading" };
       const matched = matchEventsIn(known.profiles, known.notes, events);
 
       // Scheduled from the same answer the card is drawn from, so what the
@@ -178,14 +238,18 @@ export function useBriefing(
       if (enabledNow.current) {
         scheduling.current = scheduleBriefings(
           briefable(
-            matched.map((event) => ({
-              eventId: event.eventId,
-              title: event.title,
-              startsAt: event.startsAt,
-              endsAt: event.endsAt,
-              attendeeNames: [],
-              people: event.people,
-            })),
+            matched
+              // Muted for today: decided by when the meeting *starts* (R9) —
+              // no reminder and no nudge for one that starts before midnight.
+              .filter((event) => mutedUntil === null || event.startsAt >= mutedUntil)
+              .map((event) => ({
+                eventId: event.eventId,
+                title: event.title,
+                startsAt: event.startsAt,
+                endsAt: event.endsAt,
+                attendeeNames: [],
+                people: event.people,
+              })),
           ),
           Date.now(),
         ).catch((thrown: unknown) =>
@@ -193,11 +257,17 @@ export function useBriefing(
         );
       }
 
+      if (mutedUntil !== null) return { state: "muted" };
+
       // The *next* one that is about somebody, not the next one at all. A
       // standup at 09:00 is not a briefing, and showing it would push the
-      // meeting this feature exists for off the top of the screen.
+      // meeting this feature exists for off the top of the screen. Only from
+      // the card's own twelve hours, though the read went further.
+      const cardUntil = now + WINDOW_HOURS * 3600_000;
       const briefing = matched.find(
-        (event) => event.people.length > 0 || event.ambiguous.length > 0,
+        (event) =>
+          event.startsAt < cardUntil &&
+          (event.people.length > 0 || event.ambiguous.length > 0),
       );
       return briefing === undefined
         ? { state: "empty" }
@@ -215,7 +285,7 @@ export function useBriefing(
             },
           };
     },
-    [],
+    [cancelAfterScheduling],
   );
 
   const refresh = useCallback(async (): Promise<BriefingState> => {
@@ -235,19 +305,18 @@ export function useBriefing(
   useEffect(() => {
     copyNow.current = copy;
   }, [copy]);
+  useEffect(() => {
+    settingNow.current = setting;
+  }, [setting]);
 
   useEffect(() => {
     // Cancelled on unmount rather than left to resolve into a dead component.
     // The read is three awaits deep — permission, device, backend — and home
     // is the screen a person leaves fastest.
     mounted.current = true;
-    enabledNow.current = enabled;
-    if (!enabled) {
-      void scheduling.current
-        .then(() => cancelBriefings())
-        .catch((thrown: unknown) =>
-          sayWhyInDevelopment("could not cancel the alerts", thrown),
-        );
+    enabledNow.current = !off;
+    if (off) {
+      cancelAfterScheduling();
       return () => {
         mounted.current = false;
       };
@@ -279,7 +348,9 @@ export function useBriefing(
     };
     // `hasCopy`, not `copy`: run again when the copy first arrives, not on
     // every edit to it.
-  }, [enabled, refresh, hasCopy]);
+    // `setting` too: muting or turning it back on refreshes at once, so the
+    // reminders follow before the dialog has closed (R10, R20).
+  }, [off, refresh, hasCopy, setting, cancelAfterScheduling]);
 
   const askForAlerts = useCallback(async () => {
     if (askingAlerts.current) return;
@@ -310,7 +381,7 @@ export function useBriefing(
   }, [load]);
 
   return {
-    briefing: enabled ? state : { state: "off" },
+    briefing: off ? { state: "off" } : state,
     ask,
     alerts,
     askForAlerts,

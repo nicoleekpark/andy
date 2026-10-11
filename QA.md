@@ -531,6 +531,9 @@ name only one person answers to.
 | 19.10 | A meeting named for nobody you keep ("Standup") | **No notification at all.** "You have a meeting" is what the calendar app already does | ⬜ |
 | 19.11 | Schedule something from another app (a reminder, a timer), then foreground Andy | **It survives.** Andy cancels only its own — every notification it schedules is marked, and `cancelAllScheduledNotificationsAsync` is deliberately not used | ⬜ |
 | 19.12 | With a meeting's reminder scheduled, Settings → **Sign out** (and, on a test account only, **Delete account**) | **No reminder arrives** at that meeting's time — nothing with that person's name reaches the lock screen after the account has left the phone. A reminder from another app still arrives (19.11). Unit-tested; that iOS really drops them is device-only | ⬜ |
+| 19.13 | In the afternoon, put an **08:00 tomorrow** meeting with somebody you've written about. Open Andy once, then **don't open it again** until after 07:50 | A reminder arrives at **07:50** anyway. Reminders are scheduled to the end of the next day (R13); the card itself still shows only the next 12 hours | ⬜ |
+| 19.14 | With a reminder scheduled, iPhone Settings → Andy → Calendars → **None**. Come back to Andy | The card says calendar access is off, and **no reminder arrives** at that meeting's time (R14) | ⬜ |
+| 19.15 | A fresh account with **nobody** in Andy yet, calendar never connected | **No briefing card at all** on `home` — not even the invitation (R2). It appears after the first person is added | ⬜ |
 
 ---
 

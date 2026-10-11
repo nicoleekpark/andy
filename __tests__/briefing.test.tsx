@@ -46,6 +46,7 @@ import { hasNativeModule } from "../src/lib/native";
 import { useBriefing } from "../src/lib/use-briefing";
 import { BRIEFING_LEAD_MINUTES } from "../src/lib/notifications";
 import { useReadingCopy } from "../src/lib/offline-copy";
+import { muteForToday, nextLocalMidnight, setCalendarSetting } from "../src/lib/calendar-setting";
 import * as calendarMatch from "@convex/calendarMatch";
 
 jest.mock("convex/react", () => ({ useConvex: jest.fn() }));
@@ -83,8 +84,19 @@ function backendSays(matched: Record<string, unknown>[]) {
     .mockImplementation(() => matched as ReturnType<typeof calendarMatch.matchEventsIn>);
 }
 
-/** A copy with nobody in it — enough for the briefing to start matching. */
-const EMPTY_COPY = { ownerId: "user_a", takenAt: 0, profiles: [], notes: [], links: [] };
+/**
+ * The phone's copy with one person in it — enough for the briefing to start.
+ * With nobody in Andy there is no card at all (R2), which has its own test.
+ */
+const EMPTY_COPY = {
+  ownerId: "user_a",
+  takenAt: 0,
+  profiles: [
+    { _id: "p-nina", _creationTime: 0, userId: "u", name: "Nina", entityType: "person", tags: [], autoCreated: false },
+  ],
+  notes: [],
+  links: [],
+};
 
 /**
  * `render` is awaited everywhere below, and that is not a style choice.
@@ -98,7 +110,14 @@ const EMPTY_COPY = { ownerId: "user_a", takenAt: 0, profiles: [], notes: [], lin
 /** A harness that renders whatever the hook currently says. */
 function Harness({ enabled = true }: { enabled?: boolean }) {
   const { briefing, ask, alerts, askForAlerts } = useBriefing(enabled);
-  if (briefing.state === "loading" || briefing.state === "off") return null;
+  if (
+    briefing.state === "loading" ||
+    briefing.state === "off" ||
+    briefing.state === "muted" ||
+    briefing.state === "nobody"
+  ) {
+    return null;
+  }
   if (briefing.state === "ask") {
     return (
       <BriefingCard state="ask" onAsk={() => void ask()} asking={briefing.asking} />
@@ -135,6 +154,7 @@ beforeEach(() => {
   (Notifications.cancelScheduledNotificationAsync as jest.Mock).mockResolvedValue(undefined);
   (Notifications.scheduleNotificationAsync as jest.Mock).mockResolvedValue("id");
   (useReadingCopy as jest.Mock).mockReturnValue(EMPTY_COPY);
+  setCalendarSetting({ mode: "on" });
   backendSays([]);
   calendarSays([]);
   grant(true);
@@ -229,6 +249,129 @@ test("should come back when switched on again, live", async () => {
 
   await rerender(<Harness enabled />);
   await waitFor(() => expect(screen.getByTestId("briefing-card")).toBeTruthy());
+});
+
+// ---------------------------------------------------------------------------
+// The person's own setting (docs/design/decisions/calendar-connection.md)
+// ---------------------------------------------------------------------------
+
+/** Two meetings with Nina: one later today, one at 08:00 tomorrow. */
+function todayAndTomorrow() {
+  (calendarMatch.matchEventsIn as jest.Mock).mockRestore();
+  const now = Date.now();
+  const midnight = nextLocalMidnight(now);
+  // Halfway to midnight, so its reminder is still ahead of now.
+  // Whole milliseconds: a Date drops the fraction, and a fractional time would
+  // make "this reminder was not scheduled" pass whatever was scheduled.
+  const today = Math.round(now + Math.max((midnight - now) / 2, 20 * 60_000));
+  const tomorrow = midnight + 8 * 3600_000;
+  calendarSays([
+    { id: "today", title: "Coffee with Nina", startDate: new Date(today), endDate: new Date(today + 1800_000), allDay: false },
+    { id: "tomorrow", title: "Breakfast with Nina", startDate: new Date(tomorrow), endDate: new Date(tomorrow + 3600_000), allDay: false },
+  ]);
+  return { today, tomorrow, midnight };
+}
+
+/** When each scheduled briefing (not nudge) will fire. */
+function briefingTimes(): number[] {
+  return (Notifications.scheduleNotificationAsync as jest.Mock).mock.calls
+    .map(([request]) => request as { content: { data: { capture?: boolean } }; trigger: { date: Date } })
+    .filter((request) => request.content.data.capture !== true)
+    .map((request) => request.trigger.date.getTime());
+}
+
+test("should show no card while nobody is in Andy yet", async () => {
+  (useReadingCopy as jest.Mock).mockReturnValue({ ...EMPTY_COPY, profiles: [] });
+  grant(false, true);
+  await render(<Harness />);
+  await act(async () => {});
+
+  // Not even the invitation: with nobody to match against, it could only ask
+  // for access it cannot use yet (R2).
+  expect(screen.queryByTestId("briefing-card")).toBeNull();
+  expect(Calendar.listEvents).not.toHaveBeenCalled();
+});
+
+test("should read nothing and cancel reminders when the person turned it off", async () => {
+  setCalendarSetting({ mode: "off" });
+  await render(<Harness />);
+
+  await waitFor(() => expect(Notifications.getAllScheduledNotificationsAsync).toHaveBeenCalled());
+  expect(screen.queryByTestId("briefing-card")).toBeNull();
+  expect(Calendar.listEvents).not.toHaveBeenCalled();
+});
+
+test("should schedule tomorrow's early reminder, beyond the card's twelve hours", async () => {
+  const { tomorrow, midnight } = todayAndTomorrow();
+  await render(<Harness />);
+
+  await waitFor(() => expect(briefingTimes()).toContain(tomorrow - BRIEFING_LEAD_MINUTES * 60_000));
+  // The read reaches the end of the next local day (R13).
+  const [, , until] = (Calendar.listEvents as jest.Mock).mock.calls[0] as [unknown, Date, Date];
+  expect(until.getTime()).toBe(nextLocalMidnight(midnight));
+});
+
+test("should hide the card and silence only today's meetings while muted for today", async () => {
+  const { today, tomorrow } = todayAndTomorrow();
+  muteForToday();
+  await render(<Harness />);
+
+  await waitFor(() => expect(briefingTimes()).toContain(tomorrow - BRIEFING_LEAD_MINUTES * 60_000));
+  // Decided by when the meeting starts (R9): nothing for today's, tomorrow's
+  // still comes.
+  expect(briefingTimes()).not.toContain(today - BRIEFING_LEAD_MINUTES * 60_000);
+  expect(briefingTimes()).toHaveLength(1);
+  expect(screen.queryByTestId("briefing-card")).toBeNull();
+});
+
+test("should be on again once the muted-until moment has passed", async () => {
+  todayAndTomorrow();
+  setCalendarSetting({ mode: "muted", until: Date.now() - 1000 });
+  await render(<Harness />);
+
+  await waitFor(() => expect(screen.getByText("Coffee with Nina")).toBeTruthy());
+});
+
+/** A reminder of this app's, already pending with iOS. */
+function reminderPending() {
+  (Notifications.getAllScheduledNotificationsAsync as jest.Mock).mockResolvedValue([
+    { identifier: "ours", content: { data: { kind: "andy.briefing" } } },
+  ]);
+}
+
+test("should cancel reminders once the last person has been deleted", async () => {
+  reminderPending();
+  (useReadingCopy as jest.Mock).mockReturnValue({ ...EMPTY_COPY, profiles: [] });
+  await render(<Harness />);
+
+  // Nobody left to be reminded about.
+  await waitFor(() =>
+    expect(Notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith("ours"),
+  );
+});
+
+test("should cancel the reminder of a meeting deleted from the calendar", async () => {
+  reminderPending();
+  calendarSays([]);
+  await render(<Harness />);
+
+  await waitFor(() =>
+    expect(Notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith("ours"),
+  );
+});
+
+test("should cancel reminders when calendar access has been taken away", async () => {
+  grant(false, false);
+  (Notifications.getAllScheduledNotificationsAsync as jest.Mock).mockResolvedValue([
+    { identifier: "ours", content: { data: { kind: "andy.briefing" } } },
+  ]);
+  await render(<Harness />);
+
+  // Taken away in iPhone Settings: nothing may keep buzzing about meetings
+  // Andy can no longer see (R14).
+  await waitFor(() =>
+    expect(Notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith("ours"),
+  );
 });
 
 // ---------------------------------------------------------------------------
