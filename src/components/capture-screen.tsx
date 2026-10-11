@@ -24,7 +24,7 @@ import { FORM_SCROLL } from "@/lib/form-scroll";
 import { useRowKeys } from "@/lib/use-row-keys";
 import { formatDate, localToday } from "@/lib/dates";
 import { sourceLabel } from "@/lib/note-source";
-import { colors, space, textOpacity, textSize } from "@/constants/theme";
+import { colors, radius, space, textOpacity, textSize } from "@/constants/theme";
 import { userMessage } from "@/lib/user-message";
 import { useOutbox } from "@/lib/outbox";
 import { useLiveOrCopy } from "@/lib/offline-copy";
@@ -2193,9 +2193,10 @@ const styles = StyleSheet.create({
   quiet: { color: colors.ink, fontSize: 14, opacity: textOpacity.quiet, lineHeight: 21 },
 
   candidate: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.line,
-    borderRadius: 10,
+    // Its only edge, so `edge` (3:1), not `line` (1.67:1) — WCAG 1.4.11.
+    borderWidth: 1,
+    borderColor: colors.edge,
+    borderRadius: radius.control,
     padding: 12,
     gap: 3,
   },
@@ -2249,13 +2250,15 @@ const styles = StyleSheet.create({
   editorContent: { flexGrow: 1, padding: 24, gap: 16 },
   editorSpacer: { flexGrow: 1 },
 
-  checkRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  // 44pt tall whatever the label: the box alone is 22, under the target size.
+  checkRow: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 44 },
   checkBox: {
     width: 22,
     height: 22,
     borderRadius: 5,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.line,
+    // An unticked box is only its outline: `edge`, 3:1.
+    borderWidth: 1,
+    borderColor: colors.edge,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -2288,8 +2291,9 @@ const styles = StyleSheet.create({
   },
   devRow: { flexDirection: "row", gap: 8 },
   devButton: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.line,
+    // Development builds only, but still a control whose ring is its edge.
+    borderWidth: 1,
+    borderColor: colors.edge,
     borderRadius: 6,
     paddingVertical: 6,
     paddingHorizontal: 10,

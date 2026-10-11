@@ -762,6 +762,17 @@ drawn natively, so jest never sees its title — this is the only check.
 | 27.1 | Open home | **"Andy" in the serif** the names below use, centred in the normal bar. Settings at the right, the briefing card exactly where it was — nothing below has moved | ⬜ |
 | 27.2 | Open a profile, Search, Settings | Their titles are **unchanged** (system face). Only home's title is Lora | ⬜ |
 
+## 30. Control edges
+
+WCAG 1.4.11: a control whose outline is all that marks it out needs 3:1
+(decided 2026-10-08, closed 2026-10-11). A colour difference is only judged by eye.
+
+| # | Look at | Expect | |
+|---|---|---|---|
+| 30.1 | **Ask Andy** on home, **Sign out** in Settings and on sign-in, **Add a note** and the empty **photo circle** on a profile | The outline is clearly visible against the page — darker than the thin divider lines, never faint | ⬜ |
+| 30.2 | Review: a name with several people (`name-choice` cards), and the unticked `first-met-checkbox` under "First met" | Each card and the box have a clearly visible outline; the box's row is at least 44pt tall | ⬜ |
+| 30.3 | Dividers between rows and sections | Unchanged — still the light line | ⬜ |
+
 ## Simulator pass, 2026-09-30 (Claude, while the developer was away)
 
 **How it was run.** iPhone 17 Pro simulator, the dev build of commit `47f3837`

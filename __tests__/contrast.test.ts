@@ -54,11 +54,13 @@ test("a field's edge on paper meets 3:1", () => {
  * reads every style in `src/` so a new one cannot slip back under it. Only a
  * disabled or busy control may go lower — WCAG exempts those.
  */
-test("no style in src/ dims below textOpacity.quiet except a disabled control", () => {
-  /* eslint-disable @typescript-eslint/no-require-imports */
-  const fs = require("fs") as typeof import("fs");
-  const path = require("path") as typeof import("path");
-  /* eslint-enable @typescript-eslint/no-require-imports */
+/* eslint-disable @typescript-eslint/no-require-imports */
+const fs = require("fs") as typeof import("fs");
+const path = require("path") as typeof import("path");
+/* eslint-enable @typescript-eslint/no-require-imports */
+
+/** Every source file under src/, as lines. */
+function sourceFiles(): { file: string; lines: string[] }[] {
   const files: string[] = [];
   const walk = (dir: string) => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -68,18 +70,59 @@ test("no style in src/ dims below textOpacity.quiet except a disabled control", 
     }
   };
   walk(path.join(__dirname, "..", "src"));
+  return files.map((file) => ({
+    file: path.relative(process.cwd(), file),
+    lines: fs.readFileSync(file, "utf8").split("\n"),
+  }));
+}
 
+/**
+ * The `StyleSheet.create` entry line `i` sits in: the nearest line above it
+ * opening a key at two spaces — the top level of a style sheet — so a nested
+ * object (`shadowOffset: { … }`) is not mistaken for the style's name.
+ */
+function styleNameAt(lines: string[], i: number): string {
+  let j = i;
+  while (j > 0 && !/^ {2}\w+: \{/.test(lines[j]!)) j--;
+  return /^ {2}(\w+):/.exec(lines[j] ?? "")?.[1] ?? "";
+}
+
+test("no style in src/ dims below textOpacity.quiet except a disabled control", () => {
   const offenders: string[] = [];
-  for (const file of files) {
-    const lines = fs.readFileSync(file, "utf8").split("\n");
+  for (const { file, lines } of sourceFiles()) {
     lines.forEach((line, i) => {
-      const dim = /opacity: 0\.(\d+)/.exec(line);
-      if (dim === null || Number(`0.${dim[1]}`) >= textOpacity.quiet) return;
-      // The style this line belongs to.
-      let j = i;
-      while (j > 0 && !/^\s+\w+: \{/.test(lines[j]!)) j--;
-      if (/disabled|busy/i.test(lines[j] ?? "")) return;
-      offenders.push(`${path.relative(process.cwd(), file)}:${i + 1}`);
+      // Any 0.x on an opacity line, so `opacity: busy ? 0.4 : 1` is read too,
+      // not only `opacity: 0.4`.
+      if (!/opacity:/.test(line)) return;
+      // Every 0.x on the line, so neither branch of `a ? 0.8 : 0.5` hides the other.
+      const dims = [...line.matchAll(/\b0\.(\d+)/g)].map((m) => Number(`0.${m[1]}`));
+      if (dims.every((dim) => dim >= textOpacity.quiet)) return;
+      if (/disabled|busy/i.test(styleNameAt(lines, i))) return;
+      offenders.push(`${file}:${i + 1}`);
+    });
+  }
+  expect(offenders).toEqual([]);
+});
+
+/**
+ * A full ring in `line` (1.67:1) is decoration only. Where a ring is a
+ * control's only edge it must be `edge` (3:1, WCAG 1.4.11) — Sign out, Ask
+ * Andy, add-note, a checkbox. Dividers (top or bottom only) are not rings and
+ * are not checked. A new decorative ring is named here, with why.
+ */
+const DECORATIVE_RINGS = new Set([
+  // profile tags: labels, not buttons.
+  "chip",
+]);
+
+test("no control in src/ has a `line` ring as its only edge", () => {
+  const offenders: string[] = [];
+  for (const { file, lines } of sourceFiles()) {
+    lines.forEach((line, i) => {
+      // `line` anywhere in the value, so `pressed ? colors.moss : colors.line` counts.
+      if (!/^\s+borderColor:.*\bcolors\.line\b/.test(line)) return;
+      const name = styleNameAt(lines, i);
+      if (!DECORATIVE_RINGS.has(name)) offenders.push(`${file}:${i + 1} (${name})`);
     });
   }
   expect(offenders).toEqual([]);
