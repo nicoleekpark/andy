@@ -58,6 +58,15 @@ const TYPING_SETTLES_MS = 180;
 
 type Results = FunctionReturnType<typeof api.search.recall>["results"];
 
+/**
+ * How long Ask waits for an answer. An answer is a few seconds (QA 11.12
+ * measured 5–7s); twice the slowest seen, and then some, before saying so.
+ */
+const ASK_TIMEOUT_MS = 30_000;
+
+/** The wait ran out — not an error the server wrote. */
+class TimedOut extends Error {}
+
 export default function SearchScreen() {
   const recall = useAction(api.search.recall);
 
@@ -129,10 +138,26 @@ export default function SearchScreen() {
     setAnswer("");
     setShowOthers(false);
     try {
-      const response = await recall({ query: question.trim() });
+      // Never wait for ever. A connection that drops after the question has
+      // gone can leave its answer with nowhere to arrive (device QA #44); after
+      // ASK_TIMEOUT_MS the wait ends and says so.
+      const response = await Promise.race([
+        recall({ query: question.trim() }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new TimedOut()), ASK_TIMEOUT_MS),
+        ),
+      ]);
+      // An answer arriving after the wait ran out never reaches here: the race
+      // is already settled. Asking again waits for this one (`busy`).
       setAnswer(response.answer);
       setResults(response.results);
     } catch (thrown) {
+      if (thrown instanceof TimedOut) {
+        setError("Andy didn't hear back in time. Try again.");
+        setResults(null);
+        setAnswer("");
+        return;
+      }
       // The server's own words when it wrote them for a person to read; a plain
       // line otherwise. Never the raw error — it can carry the question back.
       setError(
@@ -265,7 +290,11 @@ export default function SearchScreen() {
           </View>
         ) : null}
 
-        {busy ? (
+        {/*
+          Not while offline: the hint above already says the answer cannot
+          come, and a spinner under it would say the opposite (device QA #44).
+        */}
+        {busy && online ? (
           <View style={styles.centred}>
             <ActivityIndicator
               color={colors.moss}
