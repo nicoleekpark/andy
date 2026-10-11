@@ -45,6 +45,12 @@ import {
 const WINDOW_HOURS = 12;
 
 /**
+ * How long after a meeting's start the card refreshes: a second, so the clock
+ * has unambiguously passed the start and the meeting reads as begun.
+ */
+const START_GRACE_MS = 1000;
+
+/**
  * Why the card is not there, said to whoever is running a development build.
  *
  * Every failure below is swallowed on purpose: a briefing that cannot be built
@@ -262,10 +268,14 @@ export function useBriefing(
       // The *next* one that is about somebody, not the next one at all. A
       // standup at 09:00 is not a briefing, and showing it would push the
       // meeting this feature exists for off the top of the screen. Only from
-      // the card's own twelve hours, though the read went further.
+      // the card's own twelve hours, though the read went further — and only
+      // one that has not started: a meeting leaves the card when it begins
+      // (owner's decision, 2026-10-11, device QA #12). The nudge after it is
+      // the reminder's job, not the card's.
       const cardUntil = now + WINDOW_HOURS * 3600_000;
       const briefing = matched.find(
         (event) =>
+          event.startsAt > now &&
           event.startsAt < cardUntil &&
           (event.people.length > 0 || event.ambiguous.length > 0),
       );
@@ -321,12 +331,24 @@ export function useBriefing(
         mounted.current = false;
       };
     }
+    /**
+     * The moment the meeting on the card starts, the card moves on — with the
+     * app open too, not only on the next foreground (device QA #12).
+     */
+    let atStart: ReturnType<typeof setTimeout> | undefined;
     const run = async () => {
       if (refreshing.current) return;
       refreshing.current = true;
       try {
         const next = await refresh();
         if (mounted.current) setState(next);
+        clearTimeout(atStart);
+        if (mounted.current && next.state === "ready") {
+          atStart = setTimeout(
+            () => void run(),
+            Math.max(0, next.briefing.startsAt - Date.now()) + START_GRACE_MS,
+          );
+        }
         const permission = await notificationAccess();
         if (mounted.current) setAlerts(alertStateOf(permission.state));
       } finally {
@@ -344,6 +366,7 @@ export function useBriefing(
     });
     return () => {
       mounted.current = false;
+      clearTimeout(atStart);
       subscription.remove();
     };
     // `hasCopy`, not `copy`: run again when the copy first arrives, not on
