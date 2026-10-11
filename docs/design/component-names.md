@@ -300,6 +300,15 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | Name | 설명 |
 |---|---|
 | `settings-placeholder` | 임시 컴포넌트의 두 번째 제목 — 지울 예정 |
+| `calendar-section` | CALENDAR 섹션 — 상태 문장 + 그 상태의 버튼들 (A안). 원격 스위치가 꺼졌거나 모듈이 없으면 안 보임 |
+| `calendar-section-label` | CALENDAR |
+| `calendar-status-line` | 상태 문장 — 연결 전 설명 / 거절 / "On — …" / "Off — …" |
+| `calendar-connect-button` | Connect calendar (moss pill) — 이미 허용됐으면 iOS 창 없이 바로 켜짐 |
+| `calendar-off-button` | Turn off in Andy (moss 글씨) — 확인 없이 바로 끔 |
+| `calendar-muted-line` | Muted until tomorrow · `calendar-unmute-button` Turn back on |
+| `calendar-remove-line` | "To take away access completely…" — 앱은 권한을 스스로 돌려줄 수 없어서 |
+| `calendar-open-settings-button` | Open iPhone Settings (거절이면 pill, 아니면 조용한 글씨) |
+| `reminders-row` | 알림 줄 — 켜짐/오늘만 끔일 때만. `reminders-status-line`, `reminders-on-button` (Remind me 10 minutes before), `reminders-open-settings-button` |
 | `sign-out-button` | Sign out |
 | `account-delete-button` | Delete account (확인 창) |
 | `sign-out-alert` | 폰에 아직 안 읽힌 노트가 있을 때 Sign out 전에 묻는 창 — 로그아웃하면 지워진다. `confirm-dialog`로 그림, Sign out은 moss (QA #51) |

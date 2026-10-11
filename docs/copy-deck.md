@@ -13,7 +13,7 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 
 **For the designer:** read top to bottom and mark anything that sounds wrong, unclear, or unlike the rest. Quote the string and its `Where` when you report it.
 
-372 strings, 17 with a planned change.
+388 strings, 17 with a planned change.
 
 ## Sign-in
 
@@ -44,11 +44,11 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 | Andy | title | `src/app/(app)/index.tsx:144` |  |
 | Settings | VoiceOver | `src/app/(app)/index.tsx:162` |  |
 | Settings | text | `src/app/(app)/index.tsx:166` |  |
-| Loading… | text | `src/app/(app)/index.tsx:209` |  |
-| Ask Andy | VoiceOver | `src/app/(app)/index.tsx:258` |  |
-| Ask Andy | text | `src/app/(app)/index.tsx:262` |  |
-| Record | VoiceOver | `src/app/(app)/index.tsx:267` |  |
-| Record | text | `src/app/(app)/index.tsx:271` |  |
+| Loading… | text | `src/app/(app)/index.tsx:212` |  |
+| Ask Andy | VoiceOver | `src/app/(app)/index.tsx:261` |  |
+| Ask Andy | text | `src/app/(app)/index.tsx:265` |  |
+| Record | VoiceOver | `src/app/(app)/index.tsx:270` |  |
+| Record | text | `src/app/(app)/index.tsx:274` |  |
 | Before you walk in | text | `src/components/briefing-card.tsx:73` |  |
 | Andy can read today's events and show what you already wrote about whoever you are meeting. Your calendar stays on this phone, and nothing is added to it. | text | `src/components/briefing-card.tsx:75` |  |
 | Let Andy read my calendar | VoiceOver | `src/components/briefing-card.tsx:81` |  |
@@ -223,24 +223,24 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 | Draft a follow-up | text | `src/app/(app)/profile/[id]/index.tsx:637` |  |
 | Add a note | VoiceOver | `src/app/(app)/profile/[id]/index.tsx:652` |  |
 | Add a note | text | `src/app/(app)/profile/[id]/index.tsx:656` |  |
-| Message copied | text | `src/components/draft-sheet.tsx:77` |  |
-| Subject and message copied | text | `src/components/draft-sheet.tsx:77` |  |
-| Write another | button | `src/components/draft-sheet.tsx:181` |  |
-| Follow-up to {…} | text | `src/components/draft-sheet.tsx:201` |  |
-| Close the draft | VoiceOver | `src/components/draft-sheet.tsx:204` |  |
-| Done | text | `src/components/draft-sheet.tsx:208` |  |
-| Subject | text | `src/components/draft-sheet.tsx:237` |  |
-| Subject | VoiceOver | `src/components/draft-sheet.tsx:239` |  |
-| Message | text | `src/components/draft-sheet.tsx:248` |  |
-| Message | VoiceOver | `src/components/draft-sheet.tsx:250` |  |
-| Andy couldn't reach the clipboard in this build. The draft is still here — select the text to copy it by hand. | text | `src/components/draft-sheet.tsx:267` |  |
-| Copy the message | VoiceOver | `src/components/draft-sheet.tsx:291` |  |
-| Copy message | text | `src/components/draft-sheet.tsx:295` |  |
-| Copy the subject and message | VoiceOver | `src/components/draft-sheet.tsx:299` |  |
-| Copy with subject | text | `src/components/draft-sheet.tsx:303` |  |
-| Write another draft | VoiceOver | `src/components/draft-sheet.tsx:309` |  |
-| Write another | text | `src/components/draft-sheet.tsx:315` |  |
-| Nothing is sent by Andy. Copy this into whatever you use. | text | `src/components/draft-sheet.tsx:320` |  |
+| Message copied | text | `src/components/draft-sheet.tsx:85` |  |
+| Subject and message copied | text | `src/components/draft-sheet.tsx:85` |  |
+| Write another | button | `src/components/draft-sheet.tsx:189` |  |
+| Follow-up to {…} | text | `src/components/draft-sheet.tsx:209` |  |
+| Close the draft | VoiceOver | `src/components/draft-sheet.tsx:212` |  |
+| Done | text | `src/components/draft-sheet.tsx:216` |  |
+| Subject | text | `src/components/draft-sheet.tsx:245` |  |
+| Subject | VoiceOver | `src/components/draft-sheet.tsx:247` |  |
+| Message | text | `src/components/draft-sheet.tsx:256` |  |
+| Message | VoiceOver | `src/components/draft-sheet.tsx:258` |  |
+| Andy couldn't reach the clipboard in this build. The draft is still here — select the text to copy it by hand. | text | `src/components/draft-sheet.tsx:275` |  |
+| Copy the message | VoiceOver | `src/components/draft-sheet.tsx:299` |  |
+| Copy message | text | `src/components/draft-sheet.tsx:303` |  |
+| Copy the subject and message | VoiceOver | `src/components/draft-sheet.tsx:307` |  |
+| Copy with subject | text | `src/components/draft-sheet.tsx:311` |  |
+| Write another draft | VoiceOver | `src/components/draft-sheet.tsx:317` |  |
+| Write another | text | `src/components/draft-sheet.tsx:323` |  |
+| Nothing is sent by Andy. Copy this into whatever you use. | text | `src/components/draft-sheet.tsx:328` |  |
 
 ## Edit a person
 
@@ -345,18 +345,18 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 
 | What a person reads | Kind | Where | Planned change (STYLE.md → Terminology) |
 |---|---|---|---|
-| Andy couldn't delete your account. Check your connection and try again. | message | `src/app/(app)/settings.tsx:36` |  |
-| {…} Andy hasn't read yet | text | `src/app/(app)/settings.tsx:66` |  |
-| {…} made offline and not synced | text | `src/app/(app)/settings.tsx:69` |  |
-| Cancel | button | `src/app/(app)/settings.tsx:77` |  |
-| Sign out | button | `src/app/(app)/settings.tsx:78` |  |
-| Delete account | button | `src/app/(app)/settings.tsx:93` |  |
-| Settings | title | `src/app/(app)/settings.tsx:100` |  |
-| Manage your account. | note | `src/app/(app)/settings.tsx:100` |  |
-| Sign out | text | `src/app/(app)/settings.tsx:108` |  |
-| Delete account | VoiceOver | `src/app/(app)/settings.tsx:116` |  |
-| Deleting your account… | text | `src/app/(app)/settings.tsx:119` |  |
-| Delete account | text | `src/app/(app)/settings.tsx:119` |  |
+| Andy couldn't delete your account. Check your connection and try again. | message | `src/app/(app)/settings.tsx:37` |  |
+| {…} Andy hasn't read yet | text | `src/app/(app)/settings.tsx:67` |  |
+| {…} made offline and not synced | text | `src/app/(app)/settings.tsx:70` |  |
+| Cancel | button | `src/app/(app)/settings.tsx:78` |  |
+| Sign out | button | `src/app/(app)/settings.tsx:79` |  |
+| Delete account | button | `src/app/(app)/settings.tsx:94` |  |
+| Settings | title | `src/app/(app)/settings.tsx:101` |  |
+| Manage your account. | note | `src/app/(app)/settings.tsx:101` |  |
+| Sign out | text | `src/app/(app)/settings.tsx:111` |  |
+| Delete account | VoiceOver | `src/app/(app)/settings.tsx:119` |  |
+| Deleting your account… | text | `src/app/(app)/settings.tsx:122` |  |
+| Delete account | text | `src/app/(app)/settings.tsx:122` |  |
 
 ## App lock
 
@@ -374,10 +374,26 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 
 | What a person reads | Kind | Where | Planned change (STYLE.md → Terminology) |
 |---|---|---|---|
-| Coming up | body | `src/lib/notifications.ts:138` |  |
-| Anything to remember? | title | `src/lib/notifications.ts:159` |  |
-| How was {…}? | title | `src/lib/notifications.ts:159` |  |
-| Tap to add what you want to remember. | body | `src/lib/notifications.ts:160` |  |
+| Calendar | text | `src/components/calendar-section.tsx:89` |  |
+| Before a meeting, Andy shows what you wrote about whoever you're meeting. It reads your calendar on this phone — nothing leaves it, and nothing is added. | text | `src/components/calendar-section.tsx:95` |  |
+| Connect calendar | label | `src/components/calendar-section.tsx:99` |  |
+| Calendar access is off for Andy. To turn it on, choose Full Access under Calendars. | text | `src/components/calendar-section.tsx:104` |  |
+| Open iPhone Settings | label | `src/components/calendar-section.tsx:107` |  |
+| Muted until tomorrow · | text | `src/components/calendar-section.tsx:113` |  |
+| Turn back on | VoiceOver | `src/components/calendar-section.tsx:116` |  |
+| Turn back on | text | `src/components/calendar-section.tsx:120` |  |
+| On — Andy reads your calendar on this phone. | text | `src/components/calendar-section.tsx:127` |  |
+| Turn off in Andy | label | `src/components/calendar-section.tsx:129` |  |
+| Off — Andy isn't reading your calendar, and no reminders are set. | text | `src/components/calendar-section.tsx:136` |  |
+| To take away access completely, turn off Calendars for Andy in iPhone Settings. | text | `src/components/calendar-section.tsx:144` |  |
+| Andy can remind you 10 minutes before a meeting, and ask afterwards what's new. | text | `src/components/calendar-section.tsx:154` |  |
+| Remind me 10 minutes before | label | `src/components/calendar-section.tsx:158` |  |
+| Reminders on — 10 minutes before, and a nudge after. They show a name, never what you wrote. | text | `src/components/calendar-section.tsx:164` |  |
+| Notifications are off for Andy. | text | `src/components/calendar-section.tsx:169` |  |
+| Coming up | body | `src/lib/notifications.ts:137` |  |
+| Anything to remember? | title | `src/lib/notifications.ts:158` |  |
+| How was {…}? | title | `src/lib/notifications.ts:158` |  |
+| Tap to add what you want to remember. | body | `src/lib/notifications.ts:159` |  |
 | Andy looked at too many calendar events at once. Try a shorter range. | server error | `convex/calendar.ts:124` |  |
 
 ## Navigation titles

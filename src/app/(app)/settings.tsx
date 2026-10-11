@@ -1,11 +1,12 @@
 import { useAuth } from "@clerk/expo";
 import { useAction } from "convex/react";
 import { useCallback, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text } from "react-native";
+import { CalendarSection } from "@/components/calendar-section";
 import { useConfirm } from "@/components/confirm-dialog";
 import { api } from "@convex/_generated/api";
 import { ScreenPlaceholder } from "@/components/screen-placeholder";
-import { colors } from "@/constants/theme";
+import { colors, radius, space, textSize } from "@/constants/theme";
 import { userMessage } from "@/lib/user-message";
 import { useOutbox } from "@/lib/outbox";
 import { usePending } from "@/lib/pending-changes";
@@ -96,8 +97,10 @@ export default function SettingsScreen() {
   }, [confirm, deleteAccount]);
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <ScreenPlaceholder title="Settings" note="Manage your account." />
+
+      <CalendarSection />
 
       <Pressable
         style={styles.signOut}
@@ -121,25 +124,33 @@ export default function SettingsScreen() {
       </Pressable>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.paper },
+  // Grows with Dynamic Type and the Calendar section: the screen scrolls.
+  content: { paddingBottom: space.xxl },
   signOut: {
-    margin: 24,
-    marginBottom: 12,
-    paddingVertical: 14,
-    borderRadius: 10,
+    margin: space.xl,
+    marginBottom: space.md,
+    paddingVertical: space.md,
+    borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.line,
     alignItems: "center",
   },
-  signOutLabel: { color: colors.moss, fontSize: 16 },
+  signOutLabel: { color: colors.moss, fontSize: textSize.lg },
   // STYLE.md: `alert` for errors and the destructive controls that have earned
   // the same weight. Deleting the whole account is the heaviest of them.
-  delete: { marginHorizontal: 24, paddingVertical: 14, alignItems: "center" },
-  deleteLabel: { color: colors.alert, fontSize: 16 },
-  error: { color: colors.alert, marginHorizontal: 24, marginTop: 8, fontSize: 14, textAlign: "center" },
+  delete: { marginHorizontal: space.xl, paddingVertical: space.md, alignItems: "center" },
+  deleteLabel: { color: colors.alert, fontSize: textSize.lg },
+  error: {
+    color: colors.alert,
+    marginHorizontal: space.xl,
+    marginTop: space.sm,
+    fontSize: textSize.md,
+    textAlign: "center",
+  },
 });
