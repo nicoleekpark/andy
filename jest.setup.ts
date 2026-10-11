@@ -396,7 +396,7 @@ jest.mock("expo-file-system", () => {
   return {
     File,
     Directory,
-    Paths: { document: { uri: "file:///documents" } },
+    Paths: { document: { uri: "file:///documents" }, cache: { uri: "file:///caches" } },
     __files: files,
     __folders: folders,
   };

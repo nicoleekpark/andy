@@ -222,6 +222,31 @@ export async function scheduleBriefings(
   return scheduled;
 }
 
+/**
+ * Everything this app ever put in front of iOS: the briefings and nudges still
+ * pending, and those already delivered and sitting in Notification Center.
+ * Both carry a person's name. For a sign-out or account deletion
+ * (`forgetOnThisPhone`), after which nothing of Andy's may be left on the
+ * phone. Another app's notifications are never touched.
+ */
+export async function forgetBriefings(): Promise<void> {
+  const notifications = notificationsModule();
+  if (notifications === null) return;
+  await cancelOurs(notifications);
+  const shown = await notifications.getPresentedNotificationsAsync();
+  await Promise.all(
+    shown
+      .filter(
+        (notification) =>
+          (notification.request.content.data as { kind?: string } | undefined)
+            ?.kind === KIND,
+      )
+      .map((notification) =>
+        notifications.dismissNotificationAsync(notification.request.identifier),
+      ),
+  );
+}
+
 /** Clear this app's pending briefings and nudges, and nothing else's. */
 export async function cancelBriefings(): Promise<void> {
   const notifications = notificationsModule();

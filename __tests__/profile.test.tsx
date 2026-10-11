@@ -22,6 +22,7 @@ import { renderRouter } from "expo-router/testing-library";
 import { api } from "@convex/_generated/api";
 import { answerByName, nameOf, quietCall } from "../test-support/convex-mocks";
 import { spyOnConfirm } from "../test-support/dialog";
+import { fingerprintOf } from "@/lib/on-phone";
 
 /**
  * src/app/(app)/profile/[id]/index.tsx's three branches — loading, not-found,
@@ -607,6 +608,13 @@ describe("follow-up email", () => {
 
     expect(set).toHaveBeenCalledWith("Hope Berlin is treating you well.");
     expect(screen.getByTestId("copied")).toHaveTextContent("Message copied");
+    // Remembered as a fingerprint, never as the text, so a sign-out can clear
+    // the clipboard only while it still holds this.
+    const kept = (jest.requireMock("expo-file-system") as { __files: Map<string, string> }).__files.get(
+      "file:///documents/clipboard/copied.json",
+    );
+    expect(JSON.parse(kept!)).toEqual({ fingerprint: fingerprintOf("Hope Berlin is treating you well.") });
+    expect(kept).not.toContain("Berlin");
   });
 
   // The confirmation used to appear above the buttons and push them down a

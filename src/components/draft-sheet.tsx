@@ -9,6 +9,7 @@ import {
   View,
   StyleSheet,
 } from "react-native";
+import { copiedStore, fingerprintOf } from "@/lib/on-phone";
 import { ConfirmHost, useConfirm } from "@/components/confirm-dialog";
 import { colors, fonts } from "../constants/theme";
 import { useLocked } from "../lib/lock-context";
@@ -66,6 +67,13 @@ async function putOnClipboard(text: string): Promise<boolean> {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const clipboard = require("expo-clipboard") as typeof import("expo-clipboard");
     await clipboard.setStringAsync(text);
+    // Its fingerprint, not the text, so a sign-out can clear the clipboard
+    // only while it still holds this (`forgetOnThisPhone`).
+    try {
+      copiedStore.write(JSON.stringify({ fingerprint: fingerprintOf(text) }));
+    } catch {
+      // The copy worked; only the clean-up on sign-out is lost.
+    }
     return true;
   } catch {
     return false;
