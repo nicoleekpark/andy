@@ -15,6 +15,7 @@ import { api } from "@convex/_generated/api";
 import { colors, fonts, space } from "@/constants/theme";
 import { formatDate } from "@/lib/dates";
 import { userMessage } from "@/lib/user-message";
+import { TimedOut, withTimeout } from "@/lib/with-timeout";
 import { searchView } from "@convex/offlineViews";
 import { NOTHING_KEPT_OFFLINE, useLiveOrCopy, useNothingKeptOffline, useOnline } from "@/lib/offline-copy";
 import { OfflineCopyLine } from "@/components/offline-copy-line";
@@ -64,8 +65,6 @@ type Results = FunctionReturnType<typeof api.search.recall>["results"];
  */
 const ASK_TIMEOUT_MS = 30_000;
 
-/** The wait ran out — not an error the server wrote. */
-class TimedOut extends Error {}
 
 export default function SearchScreen() {
   const recall = useAction(api.search.recall);
@@ -141,12 +140,7 @@ export default function SearchScreen() {
       // Never wait for ever. A connection that drops after the question has
       // gone can leave its answer with nowhere to arrive (device QA #44); after
       // ASK_TIMEOUT_MS the wait ends and says so.
-      const response = await Promise.race([
-        recall({ query: question.trim() }),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new TimedOut()), ASK_TIMEOUT_MS),
-        ),
-      ]);
+      const response = await withTimeout(recall({ query: question.trim() }), ASK_TIMEOUT_MS);
       // An answer arriving after the wait ran out never reaches here: the race
       // is already settled. Asking again waits for this one (`busy`).
       setAnswer(response.answer);
