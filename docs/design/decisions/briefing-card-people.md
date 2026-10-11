@@ -698,3 +698,32 @@ for B; `briefing-card-meeting-strip`, `briefing-card-meeting-chip` with its
 `--selected` state, `briefing-card-pick-toggle`, `briefing-card-pick-detail`
 for C — listed here only so they exist if the owner picks either of those
 instead, not added to `component-names.md` unless chosen.)
+
+## Final design
+
+**Option A — inline, always open.** Chosen by the owner, 2026-10-11.
+
+The open questions were settled on the recommended side. The owner chose A
+after reading them, and none were overturned:
+
+- **§10.1 M2:** yes. The attendee list settles the title's shared name. Only the
+  attendee list does: a second Priya in the title, or a second attendee "Priya",
+  is still asked about.
+- **§10.2 R-P5:** no reminder until a Priya is picked.
+- **§10.3 R-P6:** "Neither of them" keeps the meeting on the card, with **Change**.
+- **§10.4 R-P8:** turning the calendar off in Andy keeps the picks. Only sign-out
+  and deletion clear them.
+- **Designer Q1:** two pick blocks stacked on one page is acceptable as shown in
+  `-a.html`.
+- **Designer Q2:** previous and next are two separate buttons, not one
+  `adjustable` pager.
+
+Build order, confirmed by the owner:
+
+1. Matching rules M1–M3 and M5 (`convex/calendarMatch.ts`), PR #141.
+2. Picks stored on the phone (R-P1–R-P8), after #134.
+3. The pick on the card, after #133.
+4. The carousel (R-C1–R-C8), after #133 and #134.
+
+Each slice adds its own names to `docs/design/component-names.md` when it builds
+the part.
