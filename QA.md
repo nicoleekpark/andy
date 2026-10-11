@@ -639,6 +639,7 @@ real-device pass. `CLERK_SECRET_KEY` was also not yet set on the dev deployment.
 | 22.2 | Tap it → **Cancel** | Nothing deleted; still signed in | ⬜ |
 | 22.3 | Tap it → **Delete account** | "Deleting your account…", then the sign-in screen. `npm run db`: no rows for that user in any table, no `users` row, and the profile photos gone from Files. Clerk dashboard: the user is gone | ⬜ |
 | 22.4 | Sign in again with the same Apple ID | A **fresh, empty** Andy. Nothing from before comes back | ⬜ |
+| 22.4a | Before 22.3 (and again for a plain **Sign out**): leave a delivered Andy reminder in Notification Center, open a profile with a photo, scan a business card, and **Copy the message** of a follow-up draft | After it: **no Andy notification** left in Notification Center; pasting anywhere gives **nothing** (the draft is gone from the clipboard) — but if you copied something in another app after the draft, iOS may ask "Allow Paste?" at sign-out, and that copy **stays** either way; signing in as a **different** account shows none of those photos, even briefly. Signing back in after a plain sign-out brings everything back from the server. Unit-tested that each is cleared; that iOS and the image cache really let go is device-only | ⬜ |
 | 22.5 | Unset `CLERK_SECRET_KEY`, tap Delete | "Andy can't delete accounts right now. Nothing was deleted." and every note still there | ⬜ |
 | 22.6 | Another account's data, checked in `npm run db` after 22.3 | Untouched | ⬜ |
 
