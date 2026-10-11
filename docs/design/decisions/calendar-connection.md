@@ -843,4 +843,8 @@ Carried into the build, from the brief and the owner's answers:
   (its `opacity: 0.55` text is under the AA floor).
 
 Separate, smaller PRs first: pending reminders cancelled on sign-out and
-account deletion (R15), and the lead moved from 20 to 10 minutes.
+account deletion (R15, #129/#131), and the lead moved from 20 to 10 minutes (#130).
+
+**Build:** A1 — the setting and what it does to reading and reminders
+(R1–R2, R8–R10, R13–R15), no new UI; A2 — the card; A3 — the `settings`
+section.

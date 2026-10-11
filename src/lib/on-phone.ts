@@ -83,6 +83,22 @@ export const pendingStore = jsonFileStore("pending", "changes.json");
  * since, and clear only its own.
  */
 export const copiedStore = jsonFileStore("clipboard", "copied.json");
+/**
+ * The person's own calendar setting — on, muted until a time, or off
+ * (`calendar-setting.ts`; `docs/design/decisions/calendar-connection.md`).
+ */
+export const calendarSettingStore = jsonFileStore("calendar-setting", "setting.json");
+
+/**
+ * Told after everything is forgotten, so anything holding a copy of what was
+ * on disk in memory lets go of it too — otherwise the next account on this
+ * phone would inherit it.
+ */
+const forgotten = new Set<() => void>();
+export function onForgetOnThisPhone(listener: () => void): () => void {
+  forgotten.add(listener);
+  return () => forgotten.delete(listener);
+}
 
 /**
  * A short, one-way fingerprint (32-bit FNV-1a, hex): enough to recognise the
@@ -136,7 +152,8 @@ async function forgetAndysCopy(): Promise<void> {
  * What it covers, and **what anything new that keeps data on the phone must
  * add here** (CLAUDE.md → "Sign-out and account deletion leave nothing"):
  * - the stores in this file (notes waiting offline, the offline copy, changes
- *   waiting for Sync);
+ *   waiting for Sync, the calendar setting) — and anything holding them in
+ *   memory, told through `onForgetOnThisPhone`;
  * - this app's reminders — pending, and already delivered in Notification
  *   Center (`forgetBriefings`) — which carry a person's name;
  * - photos: `expo-image`'s memory and disk caches (profile photos), and the
@@ -155,7 +172,7 @@ async function forgetAndysCopy(): Promise<void> {
  * Best effort: a failure to delete must not stop the sign-out itself.
  */
 export function forgetOnThisPhone(): void {
-  for (const store of [outboxStore, offlineCopyStore, pendingStore]) {
+  for (const store of [outboxStore, offlineCopyStore, pendingStore, calendarSettingStore]) {
     try {
       store.remove();
     } catch {
@@ -180,6 +197,13 @@ export function forgetOnThisPhone(): void {
       void forget().catch(() => undefined);
     } catch {
       // A native module missing from this build throws before it returns.
+    }
+  }
+  for (const listener of forgotten) {
+    try {
+      listener();
+    } catch {
+      // One listener failing must not stop the others.
     }
   }
 }

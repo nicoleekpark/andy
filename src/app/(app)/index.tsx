@@ -183,7 +183,10 @@ export default function HomeScreen() {
               <OfflineCopyLine takenAt={takenAt} />
               <OutboxLine />
               <PendingLine />
-              {briefing.state === "loading" || briefing.state === "off" ? null : briefing.state === "ask" ? (
+              {briefing.state === "loading" ||
+              briefing.state === "off" ||
+              briefing.state === "muted" ||
+              briefing.state === "nobody" ? null : briefing.state === "ask" ? (
                 <BriefingCard
                   state="ask"
                   onAsk={() => void ask()}
