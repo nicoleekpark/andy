@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { colors } from "@/constants/theme";
+import { colors, textOpacity } from "@/constants/theme";
 
 /**
  * What `(app)/_layout.tsx` shows in place of the real app while
@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
   quiet: {
     color: colors.ink,
     fontSize: 15,
-    opacity: 0.6,
+    opacity: textOpacity.quiet,
     lineHeight: 22,
     textAlign: "center",
   },

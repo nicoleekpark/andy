@@ -18,7 +18,7 @@ import { OfflineCopyLine } from "@/components/offline-copy-line";
 import { api } from "@convex/_generated/api";
 import { useJustAdded } from "@/lib/use-just-added";
 import { useRowKeys } from "@/lib/use-row-keys";
-import { colors } from "@/constants/theme";
+import { colors, textOpacity } from "@/constants/theme";
 import { formatDate } from "@/lib/dates";
 import { sourceLabel } from "@/lib/note-source";
 import { userMessage } from "@/lib/user-message";
@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
   content: { padding: 24, gap: 24, paddingBottom: 40 },
   onlyStatus: { justifyContent: "center", alignItems: "center", padding: 24 },
 
-  lead: { color: colors.ink, fontSize: 14, opacity: 0.6, lineHeight: 21 },
+  lead: { color: colors.ink, fontSize: 14, opacity: textOpacity.quiet, lineHeight: 21 },
   headerAction: { color: colors.ink, fontSize: 15 },
   fact: { color: colors.ink, fontSize: 16, lineHeight: 23 },
 
@@ -436,15 +436,16 @@ const styles = StyleSheet.create({
   fieldLabel: {
     color: colors.ink,
     fontSize: 12,
-    opacity: 0.55,
+    opacity: textOpacity.quiet,
     textTransform: "uppercase",
     letterSpacing: 0.6,
   },
+  // The field's only visible edge: `edge`, 3:1 (WCAG 1.4.11), and a whole point wide.
   input: {
     color: colors.ink,
     fontSize: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.line,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.edge,
     paddingVertical: 8,
   },
   // The same treatment the timeline already gives a saved note's raw text
@@ -462,7 +463,7 @@ const styles = StyleSheet.create({
     borderLeftColor: colors.line,
     paddingLeft: 10,
   },
-  hint: { color: colors.ink, fontSize: 12, opacity: 0.5, flex: 1 },
+  hint: { color: colors.ink, fontSize: 12, opacity: textOpacity.quiet, flex: 1 },
   factActions: {
     flexDirection: "row",
     alignItems: "center",
@@ -470,7 +471,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   addLine: { color: colors.moss, fontSize: 13 },
-  quiet: { color: colors.ink, fontSize: 15, opacity: 0.6, lineHeight: 22 },
+  quiet: { color: colors.ink, fontSize: 15, opacity: textOpacity.quiet, lineHeight: 22 },
   error: { color: colors.alert, fontSize: 14, lineHeight: 21 },
 
   save: {

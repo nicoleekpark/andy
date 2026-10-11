@@ -31,6 +31,18 @@ export const colors = {
    * stays readable as where you are (`confirm-dialog`, 2026-10-08).
    */
   scrim: "rgba(42, 38, 34, 0.42)",
+  /**
+   * Placeholder text in a field: `ink` at `textOpacity.quiet` over `paper`,
+   * as one colour, because `placeholderTextColor` takes no opacity. 5.0:1 —
+   * `line` was used before and is 1.67:1 (2026-10-11).
+   */
+  placeholder: "#63605A",
+  /**
+   * The edge of a field when that edge is the only thing showing where to
+   * type: 3.2:1 on `paper` (WCAG 1.4.11 asks 3:1). `line` stays for dividers,
+   * which are decoration (2026-10-11).
+   */
+  edge: "#857E6D",
 } as const;
 
 export type ColorToken = keyof typeof colors;

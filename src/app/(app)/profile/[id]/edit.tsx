@@ -14,7 +14,7 @@ import { api } from "@convex/_generated/api";
 import { useJustAdded } from "@/lib/use-just-added";
 import { FORM_SCROLL } from "@/lib/form-scroll";
 import { useRowKeys } from "@/lib/use-row-keys";
-import { colors } from "@/constants/theme";
+import { colors, textOpacity } from "@/constants/theme";
 import { userMessage } from "@/lib/user-message";
 import { NOTHING_KEPT_OFFLINE, useLiveOrCopy, useOnline } from "@/lib/offline-copy";
 import { personFields, usePending } from "@/lib/pending-changes";
@@ -280,7 +280,7 @@ export default function EditProfileScreen() {
             onChangeText={(relationshipContext) => edit({ relationshipContext })}
             style={styles.input}
             placeholder="client, friend, foster…"
-            placeholderTextColor={colors.line}
+            placeholderTextColor={colors.placeholder}
             accessibilityLabel="How you know them"
           />
         </View>
@@ -292,7 +292,7 @@ export default function EditProfileScreen() {
             onChangeText={(firstMetDate) => edit({ firstMetDate })}
             style={styles.input}
             placeholder="2026-08-31"
-            placeholderTextColor={colors.line}
+            placeholderTextColor={colors.placeholder}
             accessibilityLabel="First met"
           />
           <Text style={styles.hint}>
@@ -379,19 +379,20 @@ const styles = StyleSheet.create({
   fieldLabel: {
     color: colors.ink,
     fontSize: 12,
-    opacity: 0.55,
+    opacity: textOpacity.quiet,
     textTransform: "uppercase",
     letterSpacing: 0.6,
   },
+  // The field's only visible edge: `edge`, 3:1 (WCAG 1.4.11), and a whole point wide.
   input: {
     color: colors.ink,
     fontSize: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.line,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.edge,
     paddingVertical: 8,
   },
-  hint: { color: colors.ink, fontSize: 12, opacity: 0.5, flex: 1 },
-  quiet: { color: colors.ink, fontSize: 15, opacity: 0.6, lineHeight: 22 },
+  hint: { color: colors.ink, fontSize: 12, opacity: textOpacity.quiet, flex: 1 },
+  quiet: { color: colors.ink, fontSize: 15, opacity: textOpacity.quiet, lineHeight: 22 },
   error: { color: colors.alert, fontSize: 14, lineHeight: 21 },
 
   tagActions: {

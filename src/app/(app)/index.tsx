@@ -7,7 +7,7 @@ import { BriefingCard } from "@/components/briefing-card";
 import { ThreadLoop } from "@/components/thread-loop";
 import { useFeature } from "@/lib/feature-flags";
 import { useBriefing } from "@/lib/use-briefing";
-import { colors, fonts, space } from "@/constants/theme";
+import { colors, fonts, space, textOpacity } from "@/constants/theme";
 import { useOncePerSession } from "@/lib/use-once-per-session";
 import { formatDate } from "@/lib/dates";
 import { useOutbox } from "@/lib/outbox";
@@ -280,9 +280,9 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  outboxLine: { color: colors.ink, fontSize: 14, opacity: 0.55, lineHeight: 21, marginBottom: space.lg },
+  outboxLine: { color: colors.ink, fontSize: 14, opacity: textOpacity.quiet, lineHeight: 21, marginBottom: space.lg },
   outboxRow: { flexDirection: "row", flexWrap: "wrap", columnGap: space.xs, marginBottom: space.lg },
-  outboxText: { color: colors.ink, fontSize: 14, opacity: 0.55, lineHeight: 21 },
+  outboxText: { color: colors.ink, fontSize: 14, opacity: textOpacity.quiet, lineHeight: 21 },
   outboxAction: { color: colors.moss, fontSize: 14, lineHeight: 21 },
   container: { flex: 1, backgroundColor: colors.paper, padding: 24, gap: 16 },
   headerAction: { color: colors.ink, fontSize: 15 },
@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
   rowMeta: {
     color: colors.ink,
     fontSize: 13,
-    opacity: 0.55,
+    opacity: textOpacity.quiet,
     fontFamily: fonts.utility,
   },
 
@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
   quiet: {
     color: colors.ink,
     fontSize: 15,
-    opacity: 0.6,
+    opacity: textOpacity.quiet,
     lineHeight: 22,
     textAlign: "center",
   },

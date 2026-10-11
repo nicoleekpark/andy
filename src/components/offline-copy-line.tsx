@@ -1,5 +1,5 @@
 import { StyleSheet, Text } from "react-native";
-import { colors, space } from "@/constants/theme";
+import { colors, space, textOpacity } from "@/constants/theme";
 import { formatMoment } from "@/lib/dates";
 
 /**
@@ -20,7 +20,7 @@ const styles = StyleSheet.create({
   line: {
     color: colors.ink,
     fontSize: 13,
-    opacity: 0.55,
+    opacity: textOpacity.quiet,
     lineHeight: 19,
     marginBottom: space.md,
   },

@@ -5,7 +5,7 @@ import { useSignInWithApple } from "@clerk/expo/apple";
 import { useAuth } from "@clerk/expo";
 import { NameMark } from "@/components/name-mark";
 import { forgetOnThisPhone } from "@/lib/on-phone";
-import { colors, fonts } from "@/constants/theme";
+import { colors, fonts, textOpacity } from "@/constants/theme";
 
 /**
  * Apple is the only way in for V1. Adding a second social login would oblige
@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
   actions: { gap: 12, paddingBottom: 24 },
   error: { color: colors.alert, fontSize: 14 },
   stuck: { color: colors.alert, fontSize: 14 },
-  waiting: { color: colors.ink, fontSize: 14, opacity: 0.5 },
+  waiting: { color: colors.ink, fontSize: 14, opacity: textOpacity.quiet },
   appleButton: { height: 50 },
   appleButtonBusy: { opacity: 0.5 },
   signOut: {

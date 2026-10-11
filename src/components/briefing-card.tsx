@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { colors, fonts } from "../constants/theme";
+import { colors, fonts, textOpacity } from "../constants/theme";
 
 /**
  * The Briefing card — who you are about to meet, and what you wrote about them.
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   personName: { color: colors.moss, fontSize: 16 },
-  personMeta: { color: colors.ink, fontFamily: fonts.utility, fontSize: 12, opacity: 0.55 },
+  personMeta: { color: colors.ink, fontFamily: fonts.utility, fontSize: 12, opacity: textOpacity.quiet },
   quiet: { marginTop: 14, alignSelf: "flex-start" },
   quietLabel: {
     color: colors.moss,

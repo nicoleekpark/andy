@@ -24,7 +24,7 @@ import { FORM_SCROLL } from "@/lib/form-scroll";
 import { useRowKeys } from "@/lib/use-row-keys";
 import { formatDate, localToday } from "@/lib/dates";
 import { sourceLabel } from "@/lib/note-source";
-import { colors, space } from "@/constants/theme";
+import { colors, space, textOpacity } from "@/constants/theme";
 import { userMessage } from "@/lib/user-message";
 import { useOutbox } from "@/lib/outbox";
 import { useLiveOrCopy } from "@/lib/offline-copy";
@@ -1404,7 +1404,7 @@ export function CaptureScreen({
               onChangeText={(name) => editPrimary({ name })}
               style={styles.input}
               placeholder="Who is this about?"
-              placeholderTextColor={colors.line}
+              placeholderTextColor={colors.placeholder}
               accessibilityLabel="Name"
             />
             {/*
@@ -1465,7 +1465,7 @@ export function CaptureScreen({
                   }
                   style={styles.input}
                   placeholder="client, friend, foster…"
-                  placeholderTextColor={colors.line}
+                  placeholderTextColor={colors.placeholder}
                   accessibilityLabel="How you know them"
                 />
               </Field>
@@ -1522,7 +1522,7 @@ export function CaptureScreen({
                     }
                     style={styles.input}
                     placeholder="YYYY-MM-DD"
-                    placeholderTextColor={colors.line}
+                    placeholderTextColor={colors.placeholder}
                     accessibilityLabel="First met date"
                   />
                 ) : null}
@@ -1694,7 +1694,7 @@ export function CaptureScreen({
                   style={[styles.input, styles.mentionQuoteInput]}
                   multiline
                   placeholder="What the note says about them"
-                  placeholderTextColor={colors.line}
+                  placeholderTextColor={colors.placeholder}
                   accessibilityLabel={`Mentioned quote ${index + 1}`}
                 />
                 {/*
@@ -1898,7 +1898,7 @@ export function CaptureScreen({
                 ? "What do you want to remember?"
                 : `What do you want to remember about ${aboutName}?`
             }
-            placeholderTextColor={colors.line}
+            placeholderTextColor={colors.placeholder}
             accessibilityLabel={heard ? "What you said" : "Type a note"}
           />
 
@@ -2199,11 +2199,11 @@ const styles = StyleSheet.create({
   },
   transcript: { color: colors.ink, fontSize: 18, lineHeight: 27 },
   /** The unfinalised tail, dimmed so it reads as "still deciding". */
-  interim: { color: colors.ink, opacity: 0.45 },
+  interim: { color: colors.ink, opacity: textOpacity.quiet },
   empty: {
     color: colors.ink,
     fontSize: 15,
-    opacity: 0.6,
+    opacity: textOpacity.quiet,
     lineHeight: 22,
     textAlign: "center",
   },
@@ -2212,20 +2212,21 @@ const styles = StyleSheet.create({
   fieldLabel: {
     color: colors.ink,
     fontSize: 12,
-    opacity: 0.55,
+    opacity: textOpacity.quiet,
     textTransform: "uppercase",
     letterSpacing: 0.6,
   },
+  // The field's only visible edge: `edge`, 3:1 (WCAG 1.4.11), and a whole point wide.
   input: {
     color: colors.ink,
     fontSize: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.line,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.edge,
     paddingVertical: 8,
   },
   factRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
   factInput: { flex: 1 },
-  quiet: { color: colors.ink, fontSize: 14, opacity: 0.55, lineHeight: 21 },
+  quiet: { color: colors.ink, fontSize: 14, opacity: textOpacity.quiet, lineHeight: 21 },
 
   candidate: {
     borderWidth: StyleSheet.hairlineWidth,
@@ -2245,7 +2246,7 @@ const styles = StyleSheet.create({
   },
   candidateName: { color: colors.ink, fontSize: 16 },
   candidateView: { color: colors.moss, fontSize: 13 },
-  candidateMeta: { color: colors.ink, fontSize: 13, opacity: 0.6 },
+  candidateMeta: { color: colors.ink, fontSize: 13, opacity: textOpacity.quiet },
   candidateNameOn: { color: colors.paper, opacity: 1 },
 
   mentionBlock: { gap: 4, paddingBottom: 8 },
@@ -2265,6 +2266,7 @@ const styles = StyleSheet.create({
   fateText: { flex: 1 },
   disagree: { color: colors.moss, fontSize: 13 },
   /** The note being typed, filling the space the transcript would. */
+  // The field's only visible edge: `edge`, 3:1 (WCAG 1.4.11), and a whole point wide.
   typedNote: {
     color: colors.ink,
     fontSize: 18,
@@ -2275,8 +2277,8 @@ const styles = StyleSheet.create({
     // (seen on the simulator, 2026-09-30). A blank note still has its
     // placeholder line to tap, and opens with the keyboard up anyway.
     // The same line as the review screen's `input`: this is a field.
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.line,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.edge,
   },
   editorScroll: { flex: 1, backgroundColor: colors.paper },
   editorContent: { flexGrow: 1, padding: 24, gap: 16 },
@@ -2297,7 +2299,7 @@ const styles = StyleSheet.create({
   checkLabel: { color: colors.ink, fontSize: 15 },
 
   remove: { paddingHorizontal: 10, paddingVertical: 8 },
-  removeLabel: { color: colors.ink, fontSize: 18, opacity: 0.5 },
+  removeLabel: { color: colors.ink, fontSize: 18, opacity: textOpacity.quiet },
 
   error: { color: colors.alert, fontSize: 14 },
 
@@ -2327,5 +2329,5 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 10,
   },
-  devText: { color: colors.ink, fontSize: 12, opacity: 0.6 },
+  devText: { color: colors.ink, fontSize: 12, opacity: textOpacity.quiet },
 });

@@ -39,8 +39,50 @@ test.each([
   ["paper text on an alert button (Delete, Stop)", colors.paper, colors.alert],
   ["secondary (dimmed) ink text on paper", dimmed(textOpacity.secondary), colors.paper],
   ["quiet (most dimmed) ink text on paper", dimmed(textOpacity.quiet), colors.paper],
+  ["placeholder text on paper", colors.placeholder, colors.paper],
 ])("%s meets 4.5:1", (_name, foreground, background) => {
   expect(contrast(foreground, background)).toBeGreaterThanOrEqual(TEXT);
+});
+
+/** The edges of controls and fields: WCAG 1.4.11, 3:1. */
+test("a field's edge on paper meets 3:1", () => {
+  expect(contrast(colors.edge, colors.paper)).toBeGreaterThanOrEqual(3);
+});
+
+/**
+ * Text dimmed below `textOpacity.quiet` fails AA on paper (0.6 is 3.8:1). This
+ * reads every style in `src/` so a new one cannot slip back under it. Only a
+ * disabled or busy control may go lower — WCAG exempts those.
+ */
+test("no style in src/ dims below textOpacity.quiet except a disabled control", () => {
+  /* eslint-disable @typescript-eslint/no-require-imports */
+  const fs = require("fs") as typeof import("fs");
+  const path = require("path") as typeof import("path");
+  /* eslint-enable @typescript-eslint/no-require-imports */
+  const files: string[] = [];
+  const walk = (dir: string) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (/\.tsx?$/.test(entry.name)) files.push(full);
+    }
+  };
+  walk(path.join(__dirname, "..", "src"));
+
+  const offenders: string[] = [];
+  for (const file of files) {
+    const lines = fs.readFileSync(file, "utf8").split("\n");
+    lines.forEach((line, i) => {
+      const dim = /opacity: 0\.(\d+)/.exec(line);
+      if (dim === null || Number(`0.${dim[1]}`) >= textOpacity.quiet) return;
+      // The style this line belongs to.
+      let j = i;
+      while (j > 0 && !/^\s+\w+: \{/.test(lines[j]!)) j--;
+      if (/disabled|busy/i.test(lines[j] ?? "")) return;
+      offenders.push(`${path.relative(process.cwd(), file)}:${i + 1}`);
+    });
+  }
+  expect(offenders).toEqual([]);
 });
 
 test("measures the way WCAG does", () => {
