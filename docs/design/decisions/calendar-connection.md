@@ -65,9 +65,11 @@ prompt shows **once**, so an in-app explanation comes before it.
 2. **Remove access entirely:** "Turn off Calendars for Andy in iPhone
    Settings", with **Open Settings**.
 
-When "this meeting's Priya is this Priya" is remembered (device QA #10, using
-`calendarLinks`), turning the calendar off has to say whether those choices
-are forgotten. Open — decide with #10.
+When "this meeting's Priya is this Priya" is remembered (device QA #10),
+turning the calendar off has to say whether those choices are forgotten.
+**Decided (2026-10-11):** they are kept. Off is reversible and the answers
+never leave the phone; only sign-out and deletion clear them. They live on the
+phone, not in `calendarLinks`. See `briefing-card-people.md` R-P1 and R-P8.
 
 ## 4. Muting from the card (X)
 
