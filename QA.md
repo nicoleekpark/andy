@@ -480,6 +480,7 @@ your actual messy real calendar, not synthetic data".
 | 18.14 | Deny calendar access, then reopen the app | The card says access is off and points at Settings — **and shows no button**, because iOS will not open the sheet a second time and a button that does nothing reads as a broken app | ⬜ |
 | 18.15 | Open the app on a build **without** `expo-calendar` (i.e. the current one) | **No card, and home works normally.** Day 6 lost a whole profile screen to a missing native module; this is the check that it cannot happen here | ⬜ |
 | 18.16 | Check the Convex logs (`npm run db` → Logs) after a briefing | One `calendar:matchEvents` per foreground, not one per event. Titles appear in the log as arguments — they are your own calendar reaching your own backend, and nothing stores them | ⬜ |
+| 18.16a | Two meetings with people you've written about, the first ~5 minutes away. Keep Andy **open on home** past its start | At the start time the card moves on to the second meeting **by itself**, without leaving the app. A meeting already in progress is never on the card (device QA #12). Its reminder and nudge are unaffected | ⬜ |
 
 ---
 
