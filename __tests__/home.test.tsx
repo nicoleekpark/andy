@@ -41,6 +41,7 @@ function buildPerson(overrides: Partial<Record<string, unknown>> = {}) {
     lastNoteAt: new Date("2026-08-20").getTime(),
     noteCount: 1,
     latestFact: null,
+    photoUrl: null,
     ...overrides,
   };
 }
@@ -207,6 +208,46 @@ describe("home screen", () => {
       screen.getByRole("button", { name: "Marcus, Opening a gym in Oakland" }),
     ).toBeTruthy();
     expect(screen.getByRole("button", { name: "Nina" })).toBeTruthy();
+  });
+
+  test("should show a person's photo beside their name", async () => {
+    mockPeopleQuery([buildPerson({ photoUrl: "https://example.test/nina.jpg" })]);
+    await renderRouter("src/app", { initialUrl: "/" });
+
+    const photo = screen.getByTestId("profile-row-avatar-photo", HIDDEN);
+    // expo-image hands its native view a list of sources.
+    expect(photo.props.source).toEqual([{ uri: "https://example.test/nina.jpg" }]);
+  });
+
+  test("should show initials in the circle for someone with no photo", async () => {
+    mockPeopleQuery([buildPerson({ profile: { name: "Emily Watson" } })]);
+    await renderRouter("src/app", { initialUrl: "/" });
+
+    // Device QA #8: names stay lined up, and a row reads as a person.
+    expect(screen.getByText("EW", HIDDEN)).toBeTruthy();
+    expect(screen.queryByTestId("profile-row-avatar-photo", HIDDEN)).toBeNull();
+  });
+
+  test("should fall back to initials when a photo cannot be loaded", async () => {
+    mockPeopleQuery([buildPerson({ photoUrl: "https://example.test/gone.jpg" })]);
+    await renderRouter("src/app", { initialUrl: "/" });
+
+    await act(async () => {
+      fireEvent(screen.getByTestId("profile-row-avatar-photo", HIDDEN), "error", {
+        nativeEvent: { error: "not found" },
+      });
+    });
+
+    // Not an empty ring: a photo deleted elsewhere, or never cached offline.
+    expect(screen.getByText("N", HIDDEN)).toBeTruthy();
+  });
+
+  test("should keep the circle out of VoiceOver, which already hears the name", async () => {
+    mockPeopleQuery([buildPerson()]);
+    await renderRouter("src/app", { initialUrl: "/" });
+
+    expect(screen.queryByText("N")).toBeNull();
+    expect(screen.getByLabelText("Nina")).toBeTruthy();
   });
 
   test("should route to that person's profile when a row is tapped", async () => {

@@ -120,6 +120,7 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `briefing-mute-alert-body` | 연결된 경우 "The card leaves home and meeting reminders stay quiet…", 연결 전 "The card leaves home. You can connect…" |
 | `profile-list` | 프로필 목록 전체 (알파벳순) |
 | `profile-row` | 목록의 한 프로필 (탭하면 그 프로필 페이지) |
+| `profile-row-avatar` | 이름 왼쪽 원 (40pt) — 사진, 없으면 이니셜(예: EW). VoiceOver엔 숨김 (줄 이름이 이미 말함) |
 | `profile-row-name` | 프로필 이름 |
 | `profile-row-detail` | 그 프로필의 최근 기억할 내용 한 줄 (detail) |
 | `profile-row-meta` | 노트 수 · 마지막 날짜 |

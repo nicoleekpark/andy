@@ -762,6 +762,20 @@ drawn natively, so jest never sees its title — this is the only check.
 | 27.1 | Open home | **"Andy" in the serif** the names below use, centred in the normal bar. Settings at the right, the briefing card exactly where it was — nothing below has moved | ⬜ |
 | 27.2 | Open a profile, Search, Settings | Their titles are **unchanged** (system face). Only home's title is Lora | ⬜ |
 
+## 28. Home list: photos and initials
+
+Device QA #8 (decided 2026-10-11). Whether a real photo loads, is cached and
+fits the circle is only visible on a device.
+
+| # | Do this | Expect | |
+|---|---|---|---|
+| 28.1 | Add a photo to someone (their profile → photo circle), go back to home | Their photo in a **40pt circle** left of the name, filling it without stretching | ⬜ |
+| 28.2 | Look at someone with no photo | Their **initials** in the same circle ("Emily Watson" → EW, "Marcus" → M). Names with and without photos line up | ⬜ |
+| 28.3 | A long latest detail under a name | Cut at the right edge with "…", never pushed off-screen by the circle | ⬜ |
+| 28.4 | Airplane mode, reopen Andy | Rows show **initials**, not empty rings (photos offline are still to come) | ⬜ |
+| 28.5 | VoiceOver on a row | Reads the name and the latest detail once — the circle and initials are not read | ⬜ |
+| 28.6 | Largest text size (Settings › Accessibility › Larger Text) | Initials still fit the circle; the row grows, nothing overlaps | ⬜ |
+
 ## Simulator pass, 2026-09-30 (Claude, while the developer was away)
 
 **How it was run.** iPhone 17 Pro simulator, the dev build of commit `47f3837`
