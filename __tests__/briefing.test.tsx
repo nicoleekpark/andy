@@ -659,6 +659,43 @@ test("should move on to the next meeting the moment one starts, with the app ope
   }
 });
 
+test("should not keep refreshing after being switched off while a refresh was under way", async () => {
+  jest.useFakeTimers();
+  try {
+    const now = Date.now();
+    meetingsAt(now + 5 * 60_000, now + 2 * 3600_000);
+    // The calendar read is slow: still in flight when the switch flips.
+    let answer!: () => void;
+    const slow = new Promise<void>((resolve) => (answer = resolve));
+    const events = (Calendar.listEvents as jest.Mock).getMockImplementation();
+    (Calendar.listEvents as jest.Mock).mockImplementation(async (...args: unknown[]) => {
+      await slow;
+      return events?.(...args);
+    });
+
+    const { rerender } = await render(<Harness />);
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(0);
+    });
+    await rerender(<Harness enabled={false} />);
+    await act(async () => {
+      answer();
+      await jest.advanceTimersByTimeAsync(0);
+    });
+    const reads = (Calendar.listEvents as jest.Mock).mock.calls.length;
+
+    // Well past the first meeting's start: a timer left behind would read
+    // the calendar again for a feature that is off.
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(10 * 60_000);
+    });
+    expect((Calendar.listEvents as jest.Mock).mock.calls.length).toBe(reads);
+    expect(screen.queryByTestId("briefing-card")).toBeNull();
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
 test("should say the day is clear rather than show an empty card body", async () => {
   calendarSays([]);
   await render(<Harness />);

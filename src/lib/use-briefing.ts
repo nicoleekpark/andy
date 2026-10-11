@@ -336,21 +336,30 @@ export function useBriefing(
      * app open too, not only on the next foreground (device QA #12).
      */
     let atStart: ReturnType<typeof setTimeout> | undefined;
+    /**
+     * This effect's own liveness, not the shared `mounted`: a refresh still
+     * in flight when the briefing is switched off or muted would otherwise
+     * see the next effect's `mounted = true`, set its stale answer and start
+     * a timer nothing clears — bringing the card back after it was turned
+     * off (review of #134).
+     */
+    let live = true;
     const run = async () => {
       if (refreshing.current) return;
       refreshing.current = true;
       try {
         const next = await refresh();
-        if (mounted.current) setState(next);
+        if (!live) return;
+        setState(next);
         clearTimeout(atStart);
-        if (mounted.current && next.state === "ready") {
+        if (next.state === "ready") {
           atStart = setTimeout(
             () => void run(),
             Math.max(0, next.briefing.startsAt - Date.now()) + START_GRACE_MS,
           );
         }
         const permission = await notificationAccess();
-        if (mounted.current) setAlerts(alertStateOf(permission.state));
+        if (live) setAlerts(alertStateOf(permission.state));
       } finally {
         refreshing.current = false;
       }
@@ -365,6 +374,7 @@ export function useBriefing(
       if (phase === "active") void run();
     });
     return () => {
+      live = false;
       mounted.current = false;
       clearTimeout(atStart);
       subscription.remove();
