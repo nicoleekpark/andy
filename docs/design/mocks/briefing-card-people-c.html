@@ -1,0 +1,257 @@
+<!--
+  DESIGN PROTOTYPE — not production code.
+  HTML approximation of the native `home` screen's `briefing-card` for Andy.
+  Option C — "Meeting strip + expand-in-place": every upcoming meeting is
+  visible at once as a small tappable chip (time + name), so browsing to the
+  second or third meeting needs no paging at all; an ambiguous name collapses
+  to a question row that expands downward in place when tapped. Builds on top
+  of the card shipped in PR #133 (✕ mute, ask/denied states, time now `ink`).
+
+  Fonts: Lora/IBM Plex Mono not loaded — falls back to a close system face.
+  Tokens are declared as CSS variables below, named as `src/constants/theme.ts`.
+
+  The grey panel above the frame holds mock-only review controls. Inside the
+  frame: tap a chip to focus that meeting below it, tap the question row to
+  expand/collapse the candidates, tap a candidate or "Neither of them" to
+  answer. The chip strip also has a hidden linear "Next meeting"/"Previous
+  meeting" pair for VoiceOver, so swiping the strip is never the only way in —
+  toggle "VoiceOver order" to see it.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>briefing-card-people — Option C: meeting strip + expand-in-place</title>
+<style>
+  :root {
+    --color-ink: #2A2622; --color-paper: #E8E6DE; --color-moss: #5C6B4F;
+    --color-brass: #B8935A; --color-line: #B8B3A8; --color-alert: #9F4C3B;
+    --color-scrim: rgba(42, 38, 34, 0.42);
+    --space-xs: 4px; --space-sm: 8px; --space-md: 12px; --space-lg: 16px;
+    --space-xl: 24px; --space-xxl: 32px; --space-xxxl: 48px;
+    --text-xs: 12px; --text-sm: 13px; --text-md: 14px; --text-base: 15px;
+    --text-lg: 16px; --text-xl: 17px; --text-xxl: 18px;
+    --radius-card: 16px; --radius-pill: 999px;
+    --opacity-secondary: 0.8; --opacity-quiet: 0.7;
+    --font-display: Georgia, "Times New Roman", serif;
+    --font-utility: "Courier New", monospace;
+  }
+  * { box-sizing: border-box; }
+  body { background: #d8d4c8; font-family: -apple-system, system-ui, sans-serif; margin: 0; padding: 24px; color: var(--color-ink); }
+  .note { max-width: 760px; margin: 0 auto 20px; font-size: 13px; opacity: 0.75; line-height: 1.5; }
+  .rig { max-width: 760px; margin: 0 auto 20px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .rig fieldset { border: 1px dashed #9a9488; border-radius: 8px; padding: 8px 10px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .rig legend { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.6; }
+  .rig button { font-size: 12px; padding: 6px 10px; border-radius: 6px; border: 1px solid #9a9488; background: #fff; cursor: pointer; }
+  .rig button.active { background: var(--color-moss); color: var(--color-paper); border-color: var(--color-moss); }
+
+  .frame { width: 390px; margin: 0 auto; border-radius: 44px; background: #111; padding: 14px; box-shadow: 0 20px 50px rgba(0,0,0,0.35); }
+  .screen { background: var(--color-paper); border-radius: 32px; overflow: hidden; min-height: 800px; position: relative; }
+  .ios-status-bar { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-size: 14px; font-weight: 600; }
+  .nav-bar { padding: 4px 20px 14px; border-bottom: 1px solid var(--color-line); display: flex; align-items: center; justify-content: space-between; }
+  .nav-bar-title { font-family: var(--font-display); font-size: 22px; }
+  .nav-bar-action-right { font-size: var(--text-base); color: var(--color-moss); }
+
+  .briefing-card { position: relative; background: var(--color-paper); margin: 20px 24px; padding: 18px 16px 16px 20px; overflow: hidden; }
+  .briefing-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--color-brass); }
+  .briefing-card-mute-button { position: absolute; top: 2px; right: 2px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: none; border: none; cursor: pointer; }
+  .briefing-card-mute-button span { font-size: 20px; line-height: 1; color: var(--color-ink); opacity: var(--opacity-quiet); }
+
+  /* --- meeting strip (new) --- */
+  .briefing-card-meeting-strip { display: flex; gap: var(--space-sm); overflow-x: auto; padding-bottom: var(--space-sm); margin: 0 44px var(--space-md) 0; scrollbar-width: none; }
+  .briefing-card-meeting-strip::-webkit-scrollbar { display: none; }
+  .briefing-card-meeting-chip {
+    flex: 0 0 auto; border: 1px solid var(--color-line); border-radius: var(--radius-pill);
+    padding: var(--space-sm) var(--space-md); min-height: 44px; background: none; cursor: pointer;
+    font-family: var(--font-utility); font-size: var(--text-xs); color: var(--color-ink); white-space: nowrap;
+  }
+  .briefing-card-meeting-chip--selected { background: var(--color-moss); color: var(--color-paper); border-color: var(--color-moss); font-weight: 700; text-decoration: underline; }
+
+  .briefing-card-when { color: var(--color-ink); font-family: var(--font-utility); font-size: var(--text-sm); margin-bottom: 4px; }
+  .briefing-card-title { font-family: var(--font-display); font-size: var(--text-xxl); line-height: 24px; margin: 0 44px 0 0; }
+
+  .briefing-card-person-link { margin-top: var(--space-md); display: flex; align-items: baseline; gap: 10px; cursor: pointer; }
+  .briefing-card-person-link .name { color: var(--color-moss); font-size: var(--text-lg); }
+  .briefing-card-person-link .meta { font-family: var(--font-utility); font-size: var(--text-xs); opacity: var(--opacity-quiet); }
+
+  /* --- expand-in-place pick (new) --- */
+  .briefing-card-pick-toggle {
+    display: flex; width: 100%; align-items: center; justify-content: space-between;
+    background: none; border: none; border-top: 1px solid var(--color-line);
+    margin-top: var(--space-md); padding: var(--space-md) 0; min-height: 44px; cursor: pointer;
+    font-size: var(--text-base); color: var(--color-ink); text-align: left;
+  }
+  .briefing-card-pick-toggle .chev { opacity: var(--opacity-quiet); transition: none; }
+  .briefing-card-pick-detail { display: none; padding-top: var(--space-sm); }
+  .briefing-card-pick-detail.expanded { display: block; }
+  .briefing-card-pick-note { font-size: var(--text-sm); opacity: var(--opacity-quiet); line-height: 1.4; margin-bottom: var(--space-sm); }
+  .briefing-card-pick-choice { display: block; width: 100%; text-align: left; background: none; border: none; border-bottom: 1px solid var(--color-line); padding: var(--space-md) 0; min-height: 44px; cursor: pointer; }
+  .briefing-card-pick-choice:last-of-type { border-bottom: none; }
+  .briefing-card-pick-choice .name { font-size: var(--text-base); display: block; }
+  .briefing-card-pick-choice-meta { font-family: var(--font-utility); font-size: var(--text-xs); opacity: var(--opacity-quiet); display: block; margin-top: 2px; }
+  .briefing-card-pick-neither { display: block; width: 100%; text-align: left; background: none; border: none; color: var(--color-ink); opacity: var(--opacity-quiet); font-size: var(--text-base); padding: var(--space-sm) 0; min-height: 44px; cursor: pointer; }
+  .briefing-card-pick-change-button { display: inline-block; margin-top: var(--space-xs); background: none; border: none; color: var(--color-moss); font-size: var(--text-sm); padding: var(--space-xs) 0; min-height: 44px; cursor: pointer; }
+  .briefing-card-pick-none-line { font-size: var(--text-base); margin-top: var(--space-md); padding-top: var(--space-md); border-top: 1px solid var(--color-line); line-height: 1.4; }
+  .briefing-card-pick-none-line .change { color: var(--color-moss); background: none; border: none; font-size: var(--text-base); padding: 0; cursor: pointer; }
+
+  .briefing-card-reminder-button { display: inline-block; margin-top: var(--space-md); background: none; border: none; color: var(--color-moss); font-size: var(--text-md); padding: var(--space-sm) 0; min-height: 44px; cursor: pointer; }
+
+  /* --- hidden linear VoiceOver path through the strip (R-C8: swipe is never the only way in) --- */
+  .vo-linear-path { display: none; }
+  .vo-linear-path.shown { display: flex; gap: var(--space-sm); margin: var(--space-sm) 44px var(--space-md) 0; }
+  .vo-linear-path button { min-height: 44px; padding: var(--space-sm) var(--space-md); border-radius: var(--radius-pill); border: 1px dashed var(--color-moss); background: none; color: var(--color-moss); font-size: var(--text-sm); cursor: pointer; }
+
+  .profile-row { padding: 14px 24px; border-bottom: 1px solid var(--color-line); display: flex; justify-content: space-between; }
+  .profile-row-name { font-family: var(--font-display); font-size: var(--text-xl); }
+  .profile-row-meta { font-family: var(--font-utility); font-size: var(--text-xs); opacity: var(--opacity-quiet); }
+</style>
+</head>
+<body>
+
+<p class="note">
+  Design prototype (Option C — <strong>meeting strip + expand-in-place</strong>).
+  Not production code. The grey panels above the frame are mock-only review
+  controls. Inside the frame: tap a chip in the strip to focus that meeting;
+  tap "Which Priya is this? ›" to expand the candidates in place; tap a
+  candidate or "Neither of them" to answer.
+</p>
+
+<div class="rig">
+  <fieldset>
+    <legend>meetings in window</legend>
+    <button data-mode="single" class="active">1 — single meeting (no strip)</button>
+    <button data-mode="carousel">3 — strip</button>
+  </fieldset>
+  <fieldset>
+    <legend>reset</legend>
+    <button onclick="resetPick()">reset Priya question to unanswered</button>
+  </fieldset>
+  <fieldset>
+    <legend>VoiceOver path (always built, rarely shown sighted)</legend>
+    <button onclick="toggleVO()">show/hide the linear Next/Previous pair</button>
+  </fieldset>
+</div>
+
+<div class="frame">
+  <div class="screen">
+    <div class="ios-status-bar"><span>9:41</span><span>⚫︎⚫︎⚫︎ 🔋</span></div>
+    <div class="nav-bar"><div class="nav-bar-title">Andy</div><div class="nav-bar-action-right">⚙︎</div></div>
+
+    <div class="briefing-card" id="card">
+      <button class="briefing-card-mute-button" aria-label="Mute the briefing"><span>✕</span></button>
+
+      <div class="briefing-card-meeting-strip" id="strip" style="display:none">
+        <button class="briefing-card-meeting-chip briefing-card-meeting-chip--selected" data-i="0" aria-label="2:30 PM, Coffee with Priya, selected" onclick="goTo(0)">2:30 Priya</button>
+        <button class="briefing-card-meeting-chip" data-i="1" aria-label="3:15 PM, 1:1 with Emily Chen" onclick="goTo(1)">3:15 Emily</button>
+        <button class="briefing-card-meeting-chip" data-i="2" aria-label="4:30 PM, Call with Jordan Lee" onclick="goTo(2)">4:30 Jordan</button>
+      </div>
+      <div class="vo-linear-path" id="vo-path">
+        <button aria-label="Previous meeting" onclick="goPage(-1)">‹ Previous meeting</button>
+        <button aria-label="Next meeting" onclick="goPage(1)">Next meeting ›</button>
+      </div>
+
+      <div class="briefing-card-page" id="page-0">
+        <div class="briefing-card-when">2:30 PM</div>
+        <div class="briefing-card-title">Coffee with Priya</div>
+
+        <div id="pick-unanswered">
+          <button class="briefing-card-pick-toggle" onclick="toggleExpand()" aria-expanded="false" id="pick-toggle">
+            <span>Which Priya is this?</span><span class="chev" id="pick-chev">›</span>
+          </button>
+          <div class="briefing-card-pick-detail" id="pick-detail">
+            <div class="briefing-card-pick-note">You've written about 2 people called Priya. Andy will remember your answer for this event, every time it repeats. It stays on this phone.</div>
+            <button class="briefing-card-pick-choice" onclick="pickChoice('kapoor')">
+              <span class="name">Priya Kapoor</span><span class="briefing-card-pick-choice-meta">friend · 4 notes · 2026-09-30</span>
+            </button>
+            <button class="briefing-card-pick-choice" onclick="pickChoice('shah')">
+              <span class="name">Priya Shah</span><span class="briefing-card-pick-choice-meta">colleague · 7 notes · 2026-10-05</span>
+            </button>
+            <button class="briefing-card-pick-neither" onclick="pickNone()">Neither of them</button>
+          </div>
+        </div>
+
+        <div id="pick-picked" style="display:none">
+          <div class="briefing-card-person-link"><span class="name" id="picked-name">Priya Kapoor</span><span class="meta">4 notes</span></div>
+          <button class="briefing-card-pick-change-button" onclick="resetPick()">Not this Priya?</button>
+        </div>
+
+        <div id="pick-none" style="display:none">
+          <div class="briefing-card-pick-none-line">Not a Priya you've written about. <button class="change" onclick="resetPick()">Change</button></div>
+        </div>
+      </div>
+
+      <div class="briefing-card-page" id="page-other" style="display:none">
+        <div class="briefing-card-when" id="other-when">3:15 PM</div>
+        <div class="briefing-card-title" id="other-title">1:1 with Emily Chen</div>
+        <div class="briefing-card-person-link"><span class="name" id="other-name">Emily Chen</span><span class="meta">6 notes</span></div>
+      </div>
+
+      <button class="briefing-card-reminder-button">Remind me 10 minutes before ›</button>
+    </div>
+
+    <div class="profile-row"><div class="profile-row-name">Priya Kapoor</div><div class="profile-row-meta">friend · 4 notes</div></div>
+    <div class="profile-row"><div class="profile-row-name">Priya Shah</div><div class="profile-row-meta">colleague · 7 notes</div></div>
+  </div>
+</div>
+
+<p class="note" style="margin-top:20px;">
+  <strong>The expand-in-place pick adds a tap to the card's one necessary
+  action</strong> (named as this option's main risk): the question is the
+  thing the card exists to resolve, so collapsing it by default trades a
+  little calm for a little friction on the highest-priority task here — the
+  opposite trade-off from <code>calendar-section</code>'s accordion option,
+  which collapsed a once-glanced-at status line, not an open question.
+</p>
+
+<script>
+  const state = { mode: 'single', page: 0, pick: 'unanswered', expanded: false };
+  const others = [
+    { when: '3:15 PM', title: '1:1 with Emily Chen', name: 'Emily Chen', meta: '6 notes' },
+    { when: '4:30 PM', title: 'Call with Jordan Lee', name: 'Jordan Lee', meta: '3 notes' },
+  ];
+
+  function render() {
+    document.getElementById('strip').style.display = state.mode === 'carousel' ? 'flex' : 'none';
+    document.getElementById('page-0').style.display = state.page === 0 ? '' : 'none';
+    document.getElementById('page-other').style.display = state.page > 0 ? '' : 'none';
+    if (state.page > 0) {
+      const o = others[state.page - 1];
+      document.getElementById('other-when').textContent = o.when;
+      document.getElementById('other-title').textContent = o.title;
+      document.getElementById('other-name').textContent = o.name;
+      document.getElementById('other-name').nextElementSibling.textContent = o.meta;
+    }
+    document.querySelectorAll('.briefing-card-meeting-chip').forEach((c, i) => c.classList.toggle('briefing-card-meeting-chip--selected', i === state.page));
+    document.getElementById('pick-unanswered').style.display = state.pick === 'unanswered' ? '' : 'none';
+    document.getElementById('pick-picked').style.display = state.pick === 'picked' ? '' : 'none';
+    document.getElementById('pick-none').style.display = state.pick === 'none' ? '' : 'none';
+    document.getElementById('pick-detail').classList.toggle('expanded', state.expanded);
+    document.getElementById('pick-toggle').setAttribute('aria-expanded', state.expanded ? 'true' : 'false');
+    document.getElementById('pick-chev').textContent = state.expanded ? '⌄' : '›';
+  }
+  function goTo(i) { state.page = i; render(); }
+  function goPage(delta) {
+    const total = state.mode === 'carousel' ? 3 : 1;
+    const next = state.page + delta;
+    if (next < 0 || next >= total) return;
+    state.page = next; render();
+  }
+  function toggleExpand() { state.expanded = !state.expanded; render(); }
+  function pickChoice(who) {
+    document.getElementById('picked-name').textContent = who === 'kapoor' ? 'Priya Kapoor' : 'Priya Shah';
+    state.pick = 'picked'; state.expanded = false; render();
+  }
+  function pickNone() { state.pick = 'none'; state.expanded = false; render(); }
+  function resetPick() { state.pick = 'unanswered'; render(); }
+  function toggleVO() { document.getElementById('vo-path').classList.toggle('shown'); }
+
+  document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => {
+    document.querySelectorAll('[data-mode]').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    state.mode = b.dataset.mode; state.page = 0; render();
+  });
+
+  render();
+</script>
+</body>
+</html>
