@@ -70,6 +70,34 @@ afterEach(() => {
   (useAction as jest.Mock).mockReturnValue(jest.fn(async () => undefined));
 });
 
+/**
+ * This app's meeting reminders, pending with iOS. They carry a person's name,
+ * so a sign-out the person chose takes them too (R15 in
+ * docs/design/decisions/calendar-connection.md). The module is mocked whole —
+ * its exports cannot be spied on — with only what the app calls.
+ */
+jest.mock("expo-notifications", () => ({
+  getAllScheduledNotificationsAsync: jest.fn(async () => []),
+  cancelScheduledNotificationAsync: jest.fn(async () => undefined),
+  scheduleNotificationAsync: jest.fn(async () => "id"),
+  getPermissionsAsync: jest.fn(async () => ({ granted: false, canAskAgain: true })),
+  requestPermissionsAsync: jest.fn(async () => ({ granted: false, canAskAgain: true })),
+  addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+  getLastNotificationResponse: jest.fn(() => null),
+  clearLastNotificationResponse: jest.fn(),
+  SchedulableTriggerInputTypes: { DATE: "date" },
+}));
+
+function remindersPending() {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const notifications = require("expo-notifications");
+  (notifications.getAllScheduledNotificationsAsync as jest.Mock).mockResolvedValue([
+    { identifier: "ours", content: { data: { kind: "andy.briefing" } } },
+    { identifier: "someone-else", content: { data: {} } },
+  ]);
+  return notifications.cancelScheduledNotificationAsync as jest.Mock;
+}
+
 describe("outbox store", () => {
   test("should give each account only its own notes, and remove anyone else's from the phone", () => {
     const store = memory(JSON.stringify([note("me", "mine"), note("someone-else", "theirs")]));
@@ -203,6 +231,7 @@ describe("outbox in the app", () => {
   test("should forget the notes kept on this phone when its owner chooses to sign out", async () => {
     files().set(OUTBOX, JSON.stringify([note("user_default", "one")]));
     const signOut = signedInAs("user_default");
+    const cancel = remindersPending();
     spyOnConfirm().mockImplementation((_title, _message, buttons) => {
       buttons?.find((b) => b.text === "Sign out")?.onPress?.();
     });
@@ -214,6 +243,9 @@ describe("outbox in the app", () => {
 
     expect(signOut).toHaveBeenCalledTimes(1);
     expect(files().has(OUTBOX)).toBe(false);
+    // A reminder naming somebody must not outlive the account on this phone.
+    await waitFor(() => expect(cancel).toHaveBeenCalledWith("ours"));
+    expect(cancel).not.toHaveBeenCalledWith("someone-else");
   });
 
   test("should ask before signing out while notes are still waiting", async () => {
@@ -252,6 +284,7 @@ describe("outbox in the app", () => {
     try {
       files().set(OUTBOX, JSON.stringify([note("user_default", "one")]));
       const signOut = signedInAs("user_default");
+      const cancel = remindersPending();
       (useConvexAuth as jest.Mock).mockReturnValue({ isLoading: false, isAuthenticated: false });
 
       await renderRouter("src/app", { initialUrl: "/" });
@@ -262,6 +295,8 @@ describe("outbox in the app", () => {
 
       expect(signOut).toHaveBeenCalledTimes(1);
       expect(files().has(OUTBOX)).toBe(false);
+      await act(async () => {});
+      expect(cancel).toHaveBeenCalledWith("ours");
     } finally {
       (useConvexAuth as jest.Mock).mockReturnValue({ isLoading: false, isAuthenticated: true });
       jest.useRealTimers();
@@ -272,6 +307,7 @@ describe("outbox in the app", () => {
     files().set(OUTBOX, JSON.stringify([note("user_default", "one")]));
     const signOut = signedInAs("user_default");
     (useAction as jest.Mock).mockReturnValue(jest.fn(async () => undefined));
+    const cancel = remindersPending();
 
     await renderRouter("src/app", { initialUrl: "/settings" });
     await act(async () => {
@@ -281,5 +317,6 @@ describe("outbox in the app", () => {
 
     await waitFor(() => expect(signOut).toHaveBeenCalledTimes(1));
     expect(files().has(OUTBOX)).toBe(false);
+    await waitFor(() => expect(cancel).toHaveBeenCalledWith("ours"));
   });
 });
