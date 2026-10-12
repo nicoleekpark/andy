@@ -50,7 +50,7 @@ them, are registered in `src/app/_layout.tsx`, and are named by role in
 `src/constants/theme.ts` — use `fonts.display` / `fonts.utility`, never a
 family string in a screen.
 
-- **Display (profile names, section headers, the home title only)**: **Lora**, a warm,
+- **Display (profile names — and the initials standing in for a photo on home, `profile-row-avatar` — section headers, the home title only)**: **Lora**, a warm,
   low-contrast serif. Regular for list rows, Medium for a profile's own name
   and for "Andy" in home's navigation bar (decided 2026-10-01 over the system
   face, a large title and the thread mark — `dev/design/home-title.html`).
@@ -85,6 +85,7 @@ Added 2026-10-08, the same way (`src/constants/theme.ts`):
   points. The sizes the screens already use; nothing outside it without adding
   it here first.
 - **`radius`**: **control 10 · card 16 · pill 999**. `pill` is the app's button shape; `control` the bordered secondary button (Sign out) and fields.
+- **`size`**: **avatar 40** — the photo-or-initials circle beside a name on home, Contacts' list size.
 - **`textOpacity`**: **secondary 0.8 · quiet 0.7**. Dimmed `ink` text never goes
   below 0.7, the lowest that still passes WCAG AA on `paper` (5.0:1).
 - **`colors.scrim`**: the dim behind a dialog, `ink` at 42%.

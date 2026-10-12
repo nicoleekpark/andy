@@ -190,6 +190,41 @@ test("should exclude a profile that exists only because it was mentioned in anot
   expect(result[0]?.profile.name).toBe("Nina");
 });
 
+test("should carry a photo for the people who have one, and nothing for the rest", async () => {
+  const t = convexTest(schema, modules);
+  const aliceUserId = await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+
+  await t.run(async (ctx) => {
+    const photoStorageId = await ctx.storage.store(new Blob(["Marcus's face"]));
+    for (const [name, photo] of [["Marcus", photoStorageId], ["Nina", undefined]] as const) {
+      const profileId = await ctx.db.insert("profiles", {
+        userId: aliceUserId,
+        name,
+        entityType: "person",
+        tags: [],
+        autoCreated: false,
+        ...(photo === undefined ? {} : { photoStorageId: photo }),
+      });
+      await ctx.db.insert("notes", {
+        userId: aliceUserId,
+        profileId,
+        text: "A note.",
+        source: "voice",
+        createdAt: 1,
+      });
+    }
+  });
+
+  const result = await asAlice.query(api.profiles.people, {});
+  const byName = Object.fromEntries(result.map((row) => [row.profile.name, row.photoUrl]));
+
+  // Home's circle (device QA #8): a URL only the backend can sign, and null
+  // for somebody with no photo, who gets their initials instead.
+  expect(byName.Marcus).toEqual(expect.any(String));
+  expect(byName.Nina).toBeNull();
+});
+
 test("should carry each person's latest saved fact, verbatim, skipping notes that have none", async () => {
   const t = convexTest(schema, modules);
   const aliceUserId = await ensureUser(t, ALICE);
