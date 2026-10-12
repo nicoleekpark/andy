@@ -198,6 +198,12 @@ export default function AppLayout() {
                 headerStyle: { backgroundColor: colors.paper },
                 headerTintColor: colors.ink,
                 contentStyle: { backgroundColor: colors.paper },
+                // Back is the chevron alone, on every screen (owner's choice,
+                // docs/design/decisions/copy-build-4.md #27/#37). "‹ Andy"
+                // read as the app or the assistant rather than home, and
+                // "‹ Check this over" named a task, not a place. VoiceOver
+                // still says "Back". iOS only; Android already shows no title.
+                headerBackButtonDisplayMode: "minimal",
               }}
             >
               <Stack.Screen name="index" options={{ title: "Andy" }} />
