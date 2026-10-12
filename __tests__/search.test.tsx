@@ -310,6 +310,11 @@ describe("search screen", () => {
     await renderSearch();
 
     expect(screen.getByText(/Type a name, or ask in your own words/)).toBeTruthy();
+    // Its own paragraph, and the limit stays said: Andy answers only from
+    // what you told it, so "nothing saved about that" reads as expected.
+    expect(screen.getByTestId("ask-hint-detail").props.children).toMatch(
+      /It can only answer from what you've told it\.$/,
+    );
     // Nothing has been asked, so nothing has been spent.
     expect(recall).not.toHaveBeenCalled();
   });

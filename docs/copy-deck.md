@@ -13,7 +13,7 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 
 **For the designer:** read top to bottom and mark anything that sounds wrong, unclear, or unlike the rest. Quote the string and its `Where` when you report it.
 
-415 strings, 13 with a planned change.
+416 strings, 13 with a planned change.
 
 ## Sign-in
 
@@ -353,11 +353,12 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 | Came up in | text | `src/app/(app)/search.tsx:269` |  |
 | Open the note about {…} | VoiceOver | `src/app/(app)/search.tsx:274` |  |
 | Searching | VoiceOver | `src/app/(app)/search.tsx:297` |  |
-| Type a name, or ask in your own words — like “who runs a climbing gym?” Andy looks through all your notes, even where someone only came up in passing. | text | `src/app/(app)/search.tsx:307` |  |
-| From the marked notes below | text | `src/app/(app)/search.tsx:333` |  |
-| Nothing saved about that yet — try other words, or record it. | text | `src/app/(app)/search.tsx:341` |  |
-| used in the answer | text | `src/app/(app)/search.tsx:397` |  |
-| Also came up | text | `src/app/(app)/search.tsx:423` |  |
+| Type a name, or ask in your own words — like “who just started a new job?” | text | `src/app/(app)/search.tsx:309` |  |
+| Andy looks through all your notes, even where someone only came up in passing. It can only answer from what you've told it. | text | `src/app/(app)/search.tsx:313` |  |
+| From the marked notes below | text | `src/app/(app)/search.tsx:340` |  |
+| Nothing saved about that yet — try other words, or record it. | text | `src/app/(app)/search.tsx:348` |  |
+| used in the answer | text | `src/app/(app)/search.tsx:404` |  |
+| Also came up | text | `src/app/(app)/search.tsx:430` |  |
 | Ask Andy something first. | server error | `convex/search.ts:259` |  |
 | That's a long question. Try a shorter one. | server error | `convex/search.ts:264` |  |
 
