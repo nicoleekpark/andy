@@ -185,6 +185,7 @@ beforeEach(() => {
 afterEach(() => {
   jest.clearAllMocks();
   jest.restoreAllMocks();
+  jest.useRealTimers();
 });
 
 // ---------------------------------------------------------------------------
@@ -280,6 +281,31 @@ test("should come back when switched on again, live", async () => {
 /** Two meetings with Nina: one later today, one at 08:00 tomorrow. */
 function todayAndTomorrow() {
   (calendarMatch.matchEventsIn as jest.Mock).mockRestore();
+  // Two in the afternoon, whenever the suite runs. Run within twenty minutes
+  // of midnight, "today's" meeting below landed after it — tomorrow — and the
+  // muted-for-today test failed for the last twenty minutes of every day.
+  // Only the clock is fixed; timers stay real, so `waitFor` still waits.
+  const afternoon = new Date();
+  afternoon.setHours(14, 0, 0, 0);
+  jest.useFakeTimers({
+    now: afternoon,
+    doNotFake: [
+      "nextTick",
+      "setImmediate",
+      "clearImmediate",
+      "setInterval",
+      "clearInterval",
+      "setTimeout",
+      "clearTimeout",
+      "queueMicrotask",
+      "hrtime",
+      "performance",
+      "requestAnimationFrame",
+      "cancelAnimationFrame",
+      "requestIdleCallback",
+      "cancelIdleCallback",
+    ],
+  });
   const now = Date.now();
   const midnight = nextLocalMidnight(now);
   // Halfway to midnight, so its reminder is still ahead of now.

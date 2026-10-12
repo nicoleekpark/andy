@@ -560,6 +560,9 @@ name only one person answers to.
 | 19.15 | A fresh account with **nobody** in Andy yet, calendar never connected | **No briefing card at all** on `home` — not even the invitation (R2). It appears after the first person is added | ⬜ |
 | 19.16 | Keep Andy **open on home** until a reminder's time (10 minutes before a meeting) | The **banner and sound** come anyway, over Andy (device QA #13). Before, an open app got nothing. It also stays in Notification Center; no badge number on the icon. The after-meeting nudge ("How was …?") shows the same way while Andy is open — on purpose | ⬜ |
 | 19.17 | A meeting with someone you've written about ends; **open Andy 5 minutes later**, then leave it | The "How was …?" nudge still arrives **15 minutes after the end** (device QA #39). Before, opening Andy in that window cancelled it for good | ⬜ |
+| 19.18 | **Time zones.** iPhone Settings › General › Date & Time → turn off Set Automatically, pick a zone where it is now about **11:20 pm**. Add a meeting with someone you've written about at **11:45 pm** local, open Andy | The card shows **11:45 PM**. The reminder comes at **11:35 pm**, the "How was …?" nudge 15 minutes after it ends — past midnight is fine | ⬜ |
+| 19.19 | Same zone: ✕ → **Mute for today**, with one meeting at **11:45 pm** and one at **12:10 am** | 11:45 pm: **no** reminder (today, on this phone's clock). 12:10 am: reminder **comes** (tomorrow). After midnight the card is back | ⬜ |
+| 19.20 | Mute for today, then switch the phone to a zone **3 hours behind** | The mute still ends at the midnight it was set for — the moment does not move with the zone. Reminders already scheduled keep their absolute times. Put Set Automatically back afterwards | ⬜ |
 
 ---
 
