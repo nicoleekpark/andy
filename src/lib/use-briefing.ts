@@ -59,6 +59,12 @@ const WINDOW_HOURS = 12;
 const START_GRACE_MS = 1000;
 
 /**
+ * At most this many meetings on the card. Twelve hours rarely hold more; a
+ * "+N more" line would be a state nobody tests (R-C1, §3).
+ */
+export const MAX_PAGES = 10;
+
+/**
  * Why the card is not there, said to whoever is running a development build.
  *
  * Every failure below is swallowed on purpose: a briefing that cannot be built
@@ -134,7 +140,20 @@ export type BriefingState =
    * against it could only ask for access it cannot use yet.
    */
   | { state: "nobody" }
-  | { state: "ready"; briefing: Briefing };
+  | {
+      state: "ready";
+      /**
+       * Every meeting coming up in the card's twelve hours that is about
+       * somebody, in order (R-C1, R-C2) — at most `MAX_PAGES`.
+       */
+      briefings: Briefing[];
+      /**
+       * The card's clock: a meeting that starts at or before it has left the
+       * card (R-C1). Moved on at each start while the app is open (R-C5),
+       * without reading the calendar again.
+       */
+      now: number;
+    };
 
 /**
  * Whether the phone will actually say anything, and whether it can be asked.
@@ -365,42 +384,50 @@ export function useBriefing(
 
       if (mutedUntil !== null) return { state: "muted" };
 
-      // The *next* one that is about somebody, not the next one at all. A
-      // standup at 09:00 is not a briefing, and showing it would push the
-      // meeting this feature exists for off the top of the screen. Only from
-      // the card's own twelve hours, though the read went further — and only
-      // one that has not started: a meeting leaves the card when it begins
-      // (owner's decision, 2026-10-11, device QA #12). The nudge after it is
-      // the reminder's job, not the card's.
+      // Every one that is about somebody, not every meeting: a standup at
+      // 09:00 is not a briefing. Only from the card's own twelve hours, though
+      // the read went further — and only those that have not started: a
+      // meeting leaves the card when it begins (owner's decision, 2026-10-11,
+      // device QA #12). The nudge after it is the reminder's job, not the card's.
       const cardUntil = now + WINDOW_HOURS * 3600_000;
-      const briefing = matched.find(
-        (event) =>
-          event.startsAt > now &&
-          event.startsAt < cardUntil &&
-          (event.people.length > 0 ||
-            event.ambiguous.length > 0 ||
-            // "Neither of them" stays on the card until it starts, so the
-            // answer can be undone where it was given (R-P6).
-            event.declined.length > 0),
-      );
-      return briefing === undefined
+      const briefings = matched
+        .filter(
+          (event) =>
+            event.startsAt > now &&
+            event.startsAt < cardUntil &&
+            (event.people.length > 0 ||
+              event.ambiguous.length > 0 ||
+              // "Neither of them" stays on the card until it starts, so the
+              // answer can be undone where it was given (R-P6).
+              event.declined.length > 0),
+        )
+        // The same order on every refresh, so a page never swaps places with
+        // its neighbour between two reads (R-C2).
+        .sort(
+          (a, b) =>
+            a.startsAt - b.startsAt ||
+            a.title.localeCompare(b.title) ||
+            (a.eventId < b.eventId ? -1 : a.eventId > b.eventId ? 1 : 0),
+        )
+        .slice(0, MAX_PAGES)
+        .map(
+          (event): Briefing => ({
+            eventId: event.eventId,
+            title: event.title,
+            startsAt: event.startsAt,
+            people: event.people,
+            ambiguous: event.ambiguous.map((entry) => ({
+              name: entry.name,
+              key: entry.key,
+              count: entry.count,
+              candidates: entry.profileIds.flatMap((id) => candidateFor(id) ?? []),
+            })),
+            declined: event.declined,
+          }),
+        );
+      return briefings.length === 0
         ? { state: "empty" }
-        : {
-            state: "ready",
-            briefing: {
-              eventId: briefing.eventId,
-              title: briefing.title,
-              startsAt: briefing.startsAt,
-              people: briefing.people,
-              ambiguous: briefing.ambiguous.map((entry) => ({
-                name: entry.name,
-                key: entry.key,
-                count: entry.count,
-                candidates: entry.profileIds.flatMap((id) => candidateFor(id) ?? []),
-              })),
-              declined: briefing.declined,
-            },
-          };
+        : { state: "ready", briefings, now };
     },
     [cancelAfterScheduling],
   );
@@ -439,10 +466,26 @@ export function useBriefing(
       };
     }
     /**
-     * The moment the meeting on the card starts, the card moves on — with the
-     * app open too, not only on the next foreground (device QA #12).
+     * The moment a meeting on the card starts, it leaves — with the app open
+     * too, not only on the next foreground (device QA #12). Only the clock
+     * moves: the calendar is not read again and no reminder is rescheduled,
+     * so this touches what is on screen and nothing else (R-C5).
      */
     let atStart: ReturnType<typeof setTimeout> | undefined;
+    const tickAtNextStart = (briefings: Briefing[], from: number) => {
+      clearTimeout(atStart);
+      const next = briefings.find((briefing) => briefing.startsAt > from);
+      if (next === undefined) return;
+      atStart = setTimeout(
+        () => {
+          if (!live) return;
+          const now = Date.now();
+          setState((current) => (current.state === "ready" ? { ...current, now } : current));
+          tickAtNextStart(briefings, now);
+        },
+        Math.max(0, next.startsAt - Date.now()) + START_GRACE_MS,
+      );
+    };
     /**
      * This effect's own liveness, not the shared `mounted`: a refresh still
      * in flight when the briefing is switched off or muted would otherwise
@@ -466,12 +509,7 @@ export function useBriefing(
         if (!live) return;
         setState(next);
         clearTimeout(atStart);
-        if (next.state === "ready") {
-          atStart = setTimeout(
-            () => void run(),
-            Math.max(0, next.briefing.startsAt - Date.now()) + START_GRACE_MS,
-          );
-        }
+        if (next.state === "ready") tickAtNextStart(next.briefings, next.now);
         const permission = await notificationAccess();
         if (live) setAlerts(alertStateOf(permission.state));
       } finally {
