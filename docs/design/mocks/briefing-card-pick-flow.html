@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--
+  Storyboard: QA build 4 #10 and #11. Two people called Priya on the calendar
+  used to be a dead end on the briefing card; now the card asks once and
+  remembers. Before and after, screen by screen. An HTML approximation of
+  native screens for explaining the flow, not production code. Example people
+  only. Built by PRs #141 (matching), #142 (answers on the phone) and the
+  slice 3 PR (the pick on the card). Option A of
+  docs/design/decisions/briefing-card-people.md.
+-->
+<title>Which Priya, asked once</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500&family=IBM+Plex+Mono:wght@400&display=swap">
+<style>
+:root{
+  --page:#EDEBE4; --page-ink:#2A2622; --page-quiet:#6F6A62; --rule:#CFCAC0;
+  --paper:#E8E6DE; --ink:#2A2622; --moss:#5C6B4F; --brass:#B8935A; --line:#B8B3A8; --alert:#9F4C3B;
+  --serif:"Lora",Georgia,serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){--page:#1E1C19;--page-ink:#ECE8E0;--page-quiet:#A39D93;--rule:#3A3631;color-scheme:dark}
+}
+:root[data-theme="dark"]{--page:#1E1C19;--page-ink:#ECE8E0;--page-quiet:#A39D93;--rule:#3A3631;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--page);color:var(--page-ink);font-family:var(--sans);font-size:15px;line-height:1.55;padding:0 20px;margin:0}
+.wrap{max-width:1180px;margin:0 auto;padding-block:40px 64px;display:grid;gap:40px}
+h1{font-family:var(--serif);font-weight:500;font-size:clamp(28px,4vw,38px);line-height:1.15;margin:0}
+header p{margin:6px 0 0;color:var(--page-quiet);max-width:70ch}
+section{display:grid;gap:14px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.before .eyebrow{color:var(--alert)} .after .eyebrow{color:var(--moss)}
+h2{font-family:var(--serif);font-weight:500;font-size:22px;margin:0}
+.strip{display:flex;gap:12px;overflow-x:auto;padding:4px 2px 14px}
+.step{flex:0 0 262px;display:grid;gap:8px;align-content:start}
+.cap{font-size:13px;color:var(--page-quiet)}
+.cap b{color:var(--page-ink)}
+.phone{background:var(--paper);color:var(--ink);border-radius:22px;padding:18px 12px;min-height:300px;border:1px solid var(--rule)}
+.card{position:relative;background:var(--paper);padding:12px 12px 12px 18px;border:1px solid var(--line);border-radius:4px}
+.card:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--brass)}
+.x{position:absolute;right:8px;top:6px;opacity:.7}
+.when{font-family:var(--mono);font-size:12px;opacity:.8}
+.title{font-family:var(--serif);font-size:17px;margin-right:24px}
+.body{font-size:13px;opacity:.7;margin-top:6px}
+.person{margin-top:8px;display:flex;gap:8px;align-items:baseline}
+.person .n{color:var(--moss)} .meta{font-family:var(--mono);font-size:11px;opacity:.7}
+.pick{margin-top:10px;padding-top:8px;border-top:1px solid var(--line)}
+.pick .q{font-weight:600;font-size:14px}
+.choice{padding:7px 0;border-bottom:1px solid var(--line);font-size:14px}
+.choice:last-of-type{border-bottom:none}
+.plain{font-size:14px;opacity:.7;padding:7px 0}
+.link{color:var(--moss);font-size:13px;padding:6px 0}
+.tap{outline:2px dashed var(--moss);outline-offset:2px;border-radius:4px}
+.bad{outline:2px dashed var(--alert);outline-offset:2px;border-radius:4px}
+.home{font-size:12px;opacity:.6;margin-top:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Which Priya, asked once</h1>
+  <p>QA #10·#11. Two people called Priya, and a calendar event "Coffee with Priya". Before: the card said it couldn't tell, and nothing on it fixed that. After: the card asks, one tap answers, and the answer covers the event every time it repeats. It stays on this phone.</p>
+</header>
+
+<section class="before">
+  <div class="eyebrow">Before</div>
+  <h2>A sentence, and no way forward</h2>
+  <div class="strip">
+    <div class="step">
+      <div class="phone"><div class="card"><span class="x">✕</span>
+        <div class="when">2:30 PM</div><div class="title">Coffee with Priya</div>
+        <div class="body bad">You've written about 2 people called "Priya", so Andy can't tell which one this is.</div>
+      </div><div class="home">…home…</div></div>
+      <div class="cap"><b>1.</b> Nothing to tap. No reminder either — it can't say who it's about.</div>
+    </div>
+    <div class="step">
+      <div class="phone"><div class="card"><span class="x">✕</span>
+        <div class="when">2:30 PM</div><div class="title">Coffee with Priya Shah</div>
+        <div class="person"><span class="n">Priya</span><span class="meta">7 notes</span></div>
+        <div class="body bad">You've written about 2 people called "Priya", so Andy can't tell which one this is.</div>
+      </div></div>
+      <div class="cap"><b>2. #11.</b> Even with the full name in the title (her alias), the card found her <i>and</i> still said it couldn't tell.</div>
+    </div>
+  </div>
+</section>
+
+<section class="after">
+  <div class="eyebrow">After</div>
+  <h2>Asked once, on the card</h2>
+  <div class="strip">
+    <div class="step">
+      <div class="phone"><div class="card"><span class="x">✕</span>
+        <div class="when">2:30 PM</div><div class="title">Coffee with Priya Shah</div>
+        <div class="person"><span class="n">Priya</span><span class="meta">7 notes</span></div>
+      </div></div>
+      <div class="cap"><b>1. #11 fixed (#141).</b> A fuller name in the title, or Priya Shah on the invitation, settles it. Nothing to ask.</div>
+    </div>
+    <div class="step">
+      <div class="phone"><div class="card"><span class="x">✕</span>
+        <div class="when">2:30 PM</div><div class="title">Coffee with Priya</div>
+        <div class="pick"><div class="q">Which Priya is this?</div>
+          <div class="body">You've written about 2 people called Priya. Andy will remember your answer for this event, every time it repeats. It stays on this phone.</div>
+          <div class="choice">Priya<br><span class="meta">friend · 4 notes · last Sep 30</span></div>
+          <div class="choice tap">Priya<br><span class="meta">colleague · 7 notes · last Oct 5</span></div>
+          <div class="plain">Neither of them</div>
+        </div>
+      </div></div>
+      <div class="cap"><b>2.</b> Everyone who answers to the name, each with how you know them — the same wording and order as the review screen. <b>Nothing pre-selected.</b> Tap one.</div>
+    </div>
+    <div class="step">
+      <div class="phone"><div class="card"><span class="x">✕</span>
+        <div class="when">2:30 PM</div><div class="title">Coffee with Priya</div>
+        <div class="person"><span class="n">Priya</span><span class="meta">7 notes</span></div>
+        <div class="link">Not this Priya?</div>
+      </div></div>
+      <div class="cap"><b>3.</b> Saved at once, no dialog. Her reminder now comes 10 minutes before. Next week's coffee isn't asked about again.</div>
+    </div>
+    <div class="step">
+      <div class="phone"><div class="card"><span class="x">✕</span>
+        <div class="when">2:30 PM</div><div class="title">Coffee with Priya</div>
+        <div class="pick" style="font-size:14px">Not a Priya you've written about. <span style="color:var(--moss)">Change</span></div>
+      </div></div>
+      <div class="cap"><b>4. Or "Neither of them".</b> The meeting stays until it starts, so the answer can be undone here. No reminder — nobody to brief about.</div>
+    </div>
+    <div class="step">
+      <div class="phone"><div class="card"><span class="x">✕</span>
+        <div class="when">2:30 PM</div><div class="title">Coffee with Priya</div>
+        <div class="pick"><div class="q">Which Priya is this?</div><div class="body">…</div></div>
+      </div></div>
+      <div class="cap"><b>5. Asked again only when it must:</b> after "Not this Priya?" or Change, after a sign-out (answers go with it), or when the picked Priya is deleted.</div>
+    </div>
+  </div>
+</section>
+</div>
+</body>
+</html>

@@ -1,6 +1,10 @@
 import { router } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef, useState, type Ref } from "react";
+import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from "react-native";
 import { colors, fonts, radius, space, textOpacity, textSize } from "../constants/theme";
+import { NONE } from "../lib/briefing-picks";
+import { describePerson } from "../lib/describe-person";
+import type { Briefing, BriefingPerson } from "../lib/use-briefing";
 
 /**
  * The Briefing card — who you are about to meet, and what you wrote about them.
@@ -20,20 +24,6 @@ import { colors, fonts, radius, space, textOpacity, textSize } from "../constant
  * Every visible state carries the X (`briefing-card-mute-button`), which asks
  * how long to mute (`docs/design/decisions/calendar-connection.md`, Option A).
  */
-
-export type BriefingPerson = {
-  profileId: string;
-  name: string;
-  noteCount: number;
-};
-
-export type Briefing = {
-  title: string;
-  startsAt: number;
-  people: BriefingPerson[];
-  /** Names the event uses that more than one person answers to. */
-  ambiguous: { name: string; count: number }[];
-};
 
 type Props =
   /** The module is not in this build — say nothing rather than offer nothing. */
@@ -55,7 +45,10 @@ type Props =
       | { state: "empty" }
       | {
           state: "ready";
-          briefing: Briefing;
+          /** Every meeting coming up that is about somebody, in order (R-C1, R-C2). */
+          briefings: Briefing[];
+          /** The card's clock: a meeting starting at or before it has left (R-C5). */
+          now: number;
           /**
            * Whether the phone will say anything ten minutes before this.
            *
@@ -65,6 +58,13 @@ type Props =
            */
           alerts: "unavailable" | "off" | "blocked" | "on";
           onEnableAlerts: () => void;
+          /**
+           * Which person a shared name means — a candidate's id, or `NONE`.
+           * One tap, saved at once, no dialog: it is one tap to undo (R-P4).
+           */
+          onAnswer: (eventId: string, nameKey: string, profileId: string) => void;
+          /** "Not this Priya?" / Change: back to the question (R-P10). */
+          onUnanswer: (eventId: string, nameKey: string) => void;
         }
     ) & {
       /** The X: asks "Mute for today / until I turn it back on" (R3, R7). */
@@ -174,39 +174,18 @@ export function BriefingCard(props: Props) {
             in front of a 7am meeting would have read as "nothing on today"
             while the thing this card exists for was twelve hours away.
           */}
-          <Text style={styles.heading}>Nothing coming up</Text>
-          <Text style={styles.body}>
-            No meetings in the next twelve hours with anyone you&apos;ve
-            written about.
-          </Text>
+          <NothingComingUp />
         </>
       ) : null}
 
       {props.state === "ready" ? (
         <>
-          <Text style={styles.when}>{atTime(props.briefing.startsAt)}</Text>
-          <Text style={styles.heading} numberOfLines={2}>
-            {props.briefing.title}
-          </Text>
-
-          {props.briefing.people.map((person) => (
-            <Pressable
-              key={person.profileId}
-              accessibilityRole="button"
-              accessibilityLabel={`Open ${person.name}`}
-              onPress={() => router.push(`/profile/${person.profileId}`)}
-              style={styles.person}
-            >
-              <Text style={styles.personName}>{person.name}</Text>
-              <Text style={styles.personMeta}>
-                {person.noteCount === 0
-                  ? "nothing remembered yet"
-                  : person.noteCount === 1
-                    ? "1 note"
-                    : `${person.noteCount} notes`}
-              </Text>
-            </Pressable>
-          ))}
+          <Meetings
+            briefings={props.briefings}
+            now={props.now}
+            onAnswer={props.onAnswer}
+            onUnanswer={props.onUnanswer}
+          />
 
           {props.alerts === "off" ? (
             <Pressable
@@ -230,18 +209,265 @@ export function BriefingCard(props: Props) {
             </Text>
           ) : null}
 
-          {props.briefing.ambiguous.map((name) => (
-            // Said rather than guessed. Two people answer to this name and the
-            // app does not know which one you are meeting — picking the one
-            // with more notes would be it pretending to know.
-            <Text key={name.name} style={styles.body}>
-              You&apos;ve written about {name.count} people called “{name.name}”,
-              so Andy can&apos;t tell which one this is.
-            </Text>
-          ))}
         </>
       ) : null}
     </View>
+  );
+}
+
+/** `briefing-card--empty`'s words — also what the carousel shows once every meeting has started. */
+function NothingComingUp({ headingRef }: { headingRef?: Ref<Text> }) {
+  return (
+    <>
+      <Text ref={headingRef} style={styles.heading} accessibilityRole="header">
+        Nothing coming up
+      </Text>
+      <Text style={styles.body}>
+        No meetings in the next twelve hours with anyone you&apos;ve written about.
+      </Text>
+    </>
+  );
+}
+
+/** A page's identity (R-C3): two occurrences of a recurring event share an id. */
+function pageKeyOf(briefing: Briefing): string {
+  return `${briefing.eventId}@${briefing.startsAt}`;
+}
+
+/**
+ * `briefing-card--carousel`: one meeting at a time, the next one first, the
+ * rest a tap away (`briefing-card-people.md`, Option A). Never moves by itself
+ * (R-C7); pages change only when asked, with no animation to reduce.
+ */
+function Meetings({
+  briefings,
+  now,
+  onAnswer,
+  onUnanswer,
+}: {
+  briefings: Briefing[];
+  now: number;
+  onAnswer: (eventId: string, nameKey: string, profileId: string) => void;
+  onUnanswer: (eventId: string, nameKey: string) => void;
+}) {
+  /** The page asked for. Kept across refreshes while that meeting is still there (R-C6). */
+  const [shown, setShown] = useState<string | null>(null);
+  // A meeting leaves when it starts (R-C1) — except the page on screen while
+  // its "which Priya?" is still unanswered: that waits until it is answered,
+  // so nothing is pulled from under a finger mid-choice (R-C5).
+  // On screen means the page asked for, or — before any was — the first,
+  // which is the earliest (the list is in time order).
+  const onScreen = shown ?? (briefings[0] === undefined ? null : pageKeyOf(briefings[0]));
+  const visible = briefings.filter(
+    (briefing) =>
+      briefing.startsAt > now ||
+      (pageKeyOf(briefing) === onScreen && briefing.ambiguous.length > 0),
+  );
+  const at = Math.max(
+    0,
+    visible.findIndex((briefing) => pageKeyOf(briefing) === shown),
+  );
+  const page = visible[at];
+  const pageKey = page === undefined ? null : pageKeyOf(page);
+
+  // When the page on screen leaves, VoiceOver goes to the heading of whatever
+  // took its place — the next page, or "Nothing coming up" after the last —
+  // rather than into nothing (R-C8). A ref on each heading, not on a wrapper:
+  // the wrapper of a page that left is gone by the time this runs.
+  const heading = useRef<Text>(null);
+  const lastShown = useRef<string | null>(null);
+  useEffect(() => {
+    const before = lastShown.current;
+    lastShown.current = pageKey;
+    if (before !== null && before !== pageKey && !visible.some((b) => pageKeyOf(b) === before)) {
+      if (heading.current !== null) {
+        AccessibilityInfo.sendAccessibilityEvent(heading.current, "focus");
+      }
+    }
+  });
+
+  if (page === undefined) return <NothingComingUp headingRef={heading} />;
+  const position = visible.length > 1 ? { at: at + 1, of: visible.length } : null;
+
+  return (
+    <>
+      <View>
+        <MeetingPage
+          headingRef={heading}
+          briefing={page}
+          position={position}
+          onAnswer={(nameKey, profileId) => onAnswer(page.eventId, nameKey, profileId)}
+          onUnanswer={(nameKey) => onUnanswer(page.eventId, nameKey)}
+        />
+      </View>
+      {position !== null ? (
+        <View style={styles.pager} testID="briefing-card-pager">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Previous meeting"
+            disabled={at === 0}
+            onPress={() => setShown(pageKeyOf(visible[at - 1]!))}
+            style={[styles.pageButton, at === 0 && styles.disabled]}
+            testID="briefing-card-previous-button"
+          >
+            <Text style={styles.pageGlyph}>‹</Text>
+          </Pressable>
+          <Text style={styles.position} testID="briefing-card-page-position">
+            {position.at} of {position.of}
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Next meeting"
+            disabled={at === visible.length - 1}
+            onPress={() => setShown(pageKeyOf(visible[at + 1]!))}
+            style={[styles.pageButton, at === visible.length - 1 && styles.disabled]}
+            testID="briefing-card-next-button"
+          >
+            <Text style={styles.pageGlyph}>›</Text>
+          </Pressable>
+        </View>
+      ) : null}
+    </>
+  );
+}
+
+/** `briefing-card-page`: one meeting — when, what, and who. */
+function MeetingPage({
+  headingRef,
+  briefing,
+  position,
+  onAnswer,
+  onUnanswer,
+}: {
+  headingRef: Ref<Text>;
+  briefing: Briefing;
+  position: { at: number; of: number } | null;
+  onAnswer: (nameKey: string, profileId: string) => void;
+  onUnanswer: (nameKey: string) => void;
+}) {
+  const time = atTime(briefing.startsAt);
+  return (
+    <View testID="briefing-card-page">
+      {/* Read as part of the heading below, which says it once with its place. */}
+      <Text
+        style={styles.when}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        {time}
+      </Text>
+      <Text
+        ref={headingRef}
+        style={styles.heading}
+        numberOfLines={2}
+        accessibilityRole="header"
+        accessibilityLabel={
+          position === null
+            ? `${time}, ${briefing.title}`
+            : `Meeting ${position.at} of ${position.of}, ${time}, ${briefing.title}`
+        }
+      >
+        {briefing.title}
+      </Text>
+      {briefing.people.map(({ pickedFor, ...person }) => (
+        <View key={person.profileId}>
+          <PersonLink person={person} />
+          {pickedFor !== undefined ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Choose a different ${pickedFor.name} for this event`}
+              onPress={() => onUnanswer(pickedFor.key)}
+              style={styles.change}
+              testID="briefing-card-pick-change-button"
+            >
+              <Text style={styles.changeLabelSmall}>Not this {pickedFor.name}?</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ))}
+
+      {briefing.ambiguous.map((name) => (
+        // Asked rather than guessed, and nothing is pre-selected: picking
+        // the one with more notes would be the app pretending to know
+        // (R-P10). Every candidate shows how you know them, so the right
+        // one can be recognised rather than recalled.
+        <View key={name.key} style={styles.pick} testID="briefing-card-pick">
+          <Text style={styles.pickLabel}>Which {name.name} is this?</Text>
+          <Text style={styles.note}>
+            You&apos;ve written about {name.count} people called {name.name}. Andy
+            will remember your answer for this event, every time it repeats.
+            It stays on this phone.
+          </Text>
+          {name.candidates.map((candidate, index) => (
+            <Pressable
+              key={candidate.profileId}
+              accessibilityRole="button"
+              accessibilityLabel={`${candidate.name}, ${describePerson(candidate)}`}
+              accessibilityHint={`Remembers this ${name.name} for this event.`}
+              onPress={() => onAnswer(name.key, candidate.profileId)}
+              style={[
+                styles.choice,
+                index < name.candidates.length - 1 && styles.choiceDivided,
+              ]}
+              testID="briefing-card-pick-choice"
+            >
+              <Text style={styles.choiceName}>{candidate.name}</Text>
+              <Text style={styles.personMeta}>{describePerson(candidate)}</Text>
+            </Pressable>
+          ))}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Neither of them"
+            accessibilityHint={`Remembers that this ${name.name} is someone you haven't written about.`}
+            onPress={() => onAnswer(name.key, NONE)}
+            style={styles.plain}
+            testID="briefing-card-pick-neither"
+          >
+            <Text style={styles.plainLabel}>Neither of them</Text>
+          </Pressable>
+        </View>
+      ))}
+
+      {briefing.declined.map((name) => (
+        // Kept on the card until the meeting starts, so the answer can be
+        // undone where it was given (R-P6).
+        <View key={name.key} style={styles.noneLine} testID="briefing-card-pick-none-line">
+          <Text style={styles.noneText}>
+            Not a {name.name} you&apos;ve written about.
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Change who ${name.name} is for this event`}
+            onPress={() => onUnanswer(name.key)}
+            style={styles.inlineChange}
+          >
+            <Text style={styles.changeLabel}>Change</Text>
+          </Pressable>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/** `briefing-card-person-link`: opens the person, with how much is written. */
+function PersonLink({ person }: { person: BriefingPerson }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Open ${person.name}`}
+      onPress={() => router.push(`/profile/${person.profileId}`)}
+      style={styles.person}
+      testID="briefing-card-person-link"
+    >
+      <Text style={styles.personName}>{person.name}</Text>
+      <Text style={styles.personMeta}>
+        {person.noteCount === 0
+          ? "nothing remembered yet"
+          : person.noteCount === 1
+            ? "1 note"
+            : `${person.noteCount} notes`}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -354,4 +580,66 @@ const styles = StyleSheet.create({
     marginTop: space.xs,
   },
   reminderLabel: { color: colors.moss, fontSize: textSize.md },
+  /** `briefing-card-pick`: set off from the meeting by a divider (decoration). */
+  pick: {
+    marginTop: space.lg,
+    paddingTop: space.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
+  },
+  pickLabel: { color: colors.ink, fontSize: textSize.base, fontWeight: "600" },
+  choice: { minHeight: TARGET, justifyContent: "center", paddingVertical: space.sm },
+  /** Between candidates only — not under the last, above Neither. */
+  choiceDivided: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line },
+  choiceName: { color: colors.ink, fontSize: textSize.base },
+  change: { minHeight: TARGET, justifyContent: "center", alignSelf: "flex-start" },
+  /** Change, in the none-line's own sentence size. */
+  changeLabel: { color: colors.moss, fontSize: textSize.base },
+  /** Not this Priya?, under the person — a size down, as the mock has it. */
+  changeLabelSmall: { color: colors.moss, fontSize: textSize.sm },
+  inlineChange: { minHeight: TARGET, justifyContent: "center" },
+  /** The sentence and its Change on one line, wrapping when the text is large. */
+  noneLine: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    columnGap: space.sm,
+    marginTop: space.md,
+    paddingTop: space.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
+  },
+  noneText: { color: colors.ink, fontSize: textSize.base },
+  /** `briefing-card-pager`: once per card, under the page, never under each one (R-C4). */
+  pager: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: space.md,
+    marginTop: space.lg,
+    paddingTop: space.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
+  },
+  /**
+   * Previous / next: 44pt, and their ring is their only edge, so it is `edge`
+   * (3:1), not `line` — a control's outline is not decoration.
+   */
+  pageButton: {
+    width: TARGET,
+    height: TARGET,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.edge,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pageGlyph: { color: colors.ink, fontSize: textSize.xxl },
+  /** `briefing-card-page-position`: "2 of 3", as text — not dots (R-C8). */
+  position: {
+    color: colors.ink,
+    fontFamily: fonts.utility,
+    fontSize: textSize.sm,
+    opacity: textOpacity.secondary,
+  },
 });
