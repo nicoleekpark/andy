@@ -7,6 +7,7 @@ jest.mock("expo-notifications", () => ({
   cancelScheduledNotificationAsync: jest.fn(async () => undefined),
   scheduleNotificationAsync: jest.fn(async () => "id"),
   SchedulableTriggerInputTypes: { DATE: "date" },
+  setNotificationHandler: jest.fn(),
 }));
 
 import * as Notifications from "expo-notifications";
@@ -18,6 +19,7 @@ import {
   notificationAccess,
   nudgeText,
   scheduleBriefings,
+  showWhileOpen,
   type BriefingSubject,
 } from "../src/lib/notifications";
 
@@ -274,3 +276,51 @@ test("should tell a blocked permission apart from one never asked", async () => 
   // never honour — the card says different things for each.
   await expect(notificationAccess()).resolves.toEqual({ state: "denied" });
 });
+
+// ---------------------------------------------------------------------------
+// While Andy is open (device QA #13)
+// ---------------------------------------------------------------------------
+
+describe("showWhileOpen", () => {
+  /** What the installed handler decides for a notification carrying `data`. */
+  async function decide(data: Record<string, unknown>) {
+    const handler = (Notifications.setNotificationHandler as jest.Mock).mock.calls.at(-1)?.[0];
+    return handler.handleNotification({ request: { content: { data } } });
+  }
+
+  test("should show this app's reminder with a banner and a sound while Andy is open", async () => {
+    showWhileOpen();
+    await scheduleBriefings([meeting()], NOW);
+    const ours = scheduled()[0]!.content.data;
+
+    // Without a handler iOS says nothing to an app in the foreground: the
+    // 10:50 reminder was silent to someone looking at Andy at 10:50.
+    expect(await decide(ours)).toEqual({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    });
+  });
+
+  test("should not show anything that is not ours", async () => {
+    showWhileOpen();
+    expect(await decide({ kind: "someone.else" })).toMatchObject({
+      shouldShowBanner: false,
+      shouldPlaySound: false,
+    });
+  });
+
+  test("should take the handler away again on sign-out", () => {
+    const uninstall = showWhileOpen();
+    uninstall();
+    expect(Notifications.setNotificationHandler).toHaveBeenLastCalledWith(null);
+  });
+
+  test("should do nothing in a build without the module", () => {
+    (hasNativeModule as jest.Mock).mockReturnValue(false);
+    showWhileOpen()();
+    expect(Notifications.setNotificationHandler).not.toHaveBeenCalled();
+  });
+});
+

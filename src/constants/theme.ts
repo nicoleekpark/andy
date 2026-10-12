@@ -120,6 +120,14 @@ export const radius = {
 } as const;
 
 /**
+ * Fixed sizes that are not spacing. `avatar` is the circle beside a name on
+ * home (`profile-row-avatar`) — Contacts' list size.
+ */
+export const size = {
+  avatar: 40,
+} as const;
+
+/**
  * How far `ink` text may be dimmed. WCAG 2.2 AA needs 4.5:1 on `paper`: 0.8
  * gives 6.8:1 and 0.7 gives 5.0:1, the floor. Below 0.7 text fails — 0.6 is
  * 3.8:1 — so lighter is for disabled controls only, never for text someone

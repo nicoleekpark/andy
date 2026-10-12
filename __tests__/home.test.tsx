@@ -1,5 +1,5 @@
 import { act, fireEvent, screen } from "@testing-library/react-native";
-import { AccessibilityInfo } from "react-native";
+import { AccessibilityInfo, SectionList } from "react-native";
 import { useQuery } from "convex/react";
 import { renderRouter } from "expo-router/testing-library";
 import { api } from "@convex/_generated/api";
@@ -8,6 +8,7 @@ import { drawn } from "../test-support/drawn";
 import { LOOP_WRITE_MS } from "@/components/thread-loop";
 import { answerByName, nameOf } from "../test-support/convex-mocks";
 import * as briefingModule from "@/lib/use-briefing";
+import { INDEX_FROM } from "@/lib/name-index";
 
 /**
  * src/app/(app)/index.tsx's three branches — loading, empty, populated — are
@@ -41,6 +42,7 @@ function buildPerson(overrides: Partial<Record<string, unknown>> = {}) {
     lastNoteAt: new Date("2026-08-20").getTime(),
     noteCount: 1,
     latestFact: null,
+    photoUrl: null,
     ...overrides,
   };
 }
@@ -209,6 +211,46 @@ describe("home screen", () => {
     expect(screen.getByRole("button", { name: "Nina" })).toBeTruthy();
   });
 
+  test("should show a person's photo beside their name", async () => {
+    mockPeopleQuery([buildPerson({ photoUrl: "https://example.test/nina.jpg" })]);
+    await renderRouter("src/app", { initialUrl: "/" });
+
+    const photo = screen.getByTestId("profile-row-avatar-photo", HIDDEN);
+    // expo-image hands its native view a list of sources.
+    expect(photo.props.source).toEqual([{ uri: "https://example.test/nina.jpg" }]);
+  });
+
+  test("should show initials in the circle for someone with no photo", async () => {
+    mockPeopleQuery([buildPerson({ profile: { name: "Emily Watson" } })]);
+    await renderRouter("src/app", { initialUrl: "/" });
+
+    // Device QA #8: names stay lined up, and a row reads as a person.
+    expect(screen.getByText("EW", HIDDEN)).toBeTruthy();
+    expect(screen.queryByTestId("profile-row-avatar-photo", HIDDEN)).toBeNull();
+  });
+
+  test("should fall back to initials when a photo cannot be loaded", async () => {
+    mockPeopleQuery([buildPerson({ photoUrl: "https://example.test/gone.jpg" })]);
+    await renderRouter("src/app", { initialUrl: "/" });
+
+    await act(async () => {
+      fireEvent(screen.getByTestId("profile-row-avatar-photo", HIDDEN), "error", {
+        nativeEvent: { error: "not found" },
+      });
+    });
+
+    // Not an empty ring: a photo deleted elsewhere, or never cached offline.
+    expect(screen.getByText("N", HIDDEN)).toBeTruthy();
+  });
+
+  test("should keep the circle out of VoiceOver, which already hears the name", async () => {
+    mockPeopleQuery([buildPerson()]);
+    await renderRouter("src/app", { initialUrl: "/" });
+
+    expect(screen.queryByText("N")).toBeNull();
+    expect(screen.getByLabelText("Nina")).toBeTruthy();
+  });
+
   test("should route to that person's profile when a row is tapped", async () => {
     mockPeopleQuery([buildPerson({ profile: { _id: "profile-42", name: "Nina" } })]);
 
@@ -261,3 +303,80 @@ describe("home screen", () => {
     expect(router.getPathname()).toBe("/search");
   });
 });
+
+describe("the A–Z index", () => {
+  // Device QA #7 (decided 2026-10-11): letters and an index from INDEX_FROM
+  // people, like Contacts; a short list stays one calm column.
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  /** n people, sorted the way home sorts them: Adam…, then the names given. */
+  function people(n: number, last: string[] = []) {
+    const names = [
+      ...Array.from({ length: n - last.length }, (_, i) => `Adam ${String(i).padStart(2, "0")}`),
+      ...last,
+    ];
+    return names.map((name, i) => buildPerson({ profile: { _id: `p-${i}`, name } }));
+  }
+
+  test("should show no letters and no index below the threshold", async () => {
+    mockPeopleQuery(people(INDEX_FROM - 1));
+    await renderRouter("src/app", { initialUrl: "/" });
+
+    expect(screen.queryByTestId("home-index")).toBeNull();
+    expect(screen.queryByRole("header", { name: "A" })).toBeNull();
+  });
+
+  test("should show a letter over each group and the index from the threshold", async () => {
+    mockPeopleQuery(people(INDEX_FROM, ["Eve", "김지선"]));
+    await renderRouter("src/app", { initialUrl: "/" });
+
+    expect(screen.getByTestId("home-index")).toBeTruthy();
+    expect(screen.getByRole("header", { name: "A" })).toBeTruthy();
+    // The list draws only its first screenful, so the later groups are read
+    // through the index: stepping it visits each letter that has anybody.
+    // Korean names under #, last (V1 launches English-only).
+    const index = screen.getByRole("adjustable", { name: "Jump to a letter" });
+    const seen: string[] = [];
+    for (let i = 0; i < 4; i++) {
+      await fireEvent(index, "accessibilityAction", { nativeEvent: { actionName: "increment" } });
+      seen.push(index.props.accessibilityValue.text);
+    }
+    expect(seen).toEqual(["A", "E", "#", "#"]);
+  });
+
+  test("should jump to a letter tapped on the index, or the next one with anybody", async () => {
+    const scroll = jest.spyOn(SectionList.prototype, "scrollToLocation").mockImplementation(() => {});
+    mockPeopleQuery(people(INDEX_FROM, ["Eve", "김지선"]));
+    await renderRouter("src/app", { initialUrl: "/" });
+    const index = screen.getByTestId("home-index");
+    // 27 letters in 270pt: one per 10pt, A at the top.
+    await fireEvent(index, "layout", { nativeEvent: { layout: { height: 270 } } });
+
+    await fireEvent(index, "responderGrant", { nativeEvent: { locationY: 45 } }); // E
+    expect(scroll).toHaveBeenLastCalledWith(expect.objectContaining({ sectionIndex: 1, itemIndex: 0 }));
+
+    await fireEvent(index, "responderMove", { nativeEvent: { locationY: 15 } }); // B: nobody
+    // Contacts' way: on to the next letter that has somebody, E.
+    expect(scroll).toHaveBeenLastCalledWith(expect.objectContaining({ sectionIndex: 1 }));
+
+    await fireEvent(index, "responderMove", { nativeEvent: { locationY: 265 } }); // #
+    expect(scroll).toHaveBeenLastCalledWith(expect.objectContaining({ sectionIndex: 2 }));
+  });
+
+  test("should be one adjustable control to VoiceOver, stepping through letters with anybody", async () => {
+    const scroll = jest.spyOn(SectionList.prototype, "scrollToLocation").mockImplementation(() => {});
+    mockPeopleQuery(people(INDEX_FROM, ["Eve", "김지선"]));
+    await renderRouter("src/app", { initialUrl: "/" });
+    const index = screen.getByRole("adjustable", { name: "Jump to a letter" });
+
+    await fireEvent(index, "accessibilityAction", { nativeEvent: { actionName: "increment" } });
+    await fireEvent(index, "accessibilityAction", { nativeEvent: { actionName: "increment" } });
+
+    // A, then E — never a letter with nobody under it.
+    expect(scroll).toHaveBeenLastCalledWith(expect.objectContaining({ sectionIndex: 1 }));
+    expect(index.props.accessibilityValue).toEqual({ text: "E" });
+  });
+});
+

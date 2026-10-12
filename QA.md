@@ -558,6 +558,7 @@ name only one person answers to.
 | 19.13 | In the afternoon, put an **08:00 tomorrow** meeting with somebody you've written about. Open Andy once, then **don't open it again** until after 07:50 | A reminder arrives at **07:50** anyway. Reminders are scheduled to the end of the next day (R13); the card itself still shows only the next 12 hours | ⬜ |
 | 19.14 | With a reminder scheduled, iPhone Settings → Andy → Calendars → **None**. Come back to Andy | The card says calendar access is off, and **no reminder arrives** at that meeting's time (R14) | ⬜ |
 | 19.15 | A fresh account with **nobody** in Andy yet, calendar never connected | **No briefing card at all** on `home` — not even the invitation (R2). It appears after the first person is added | ⬜ |
+| 19.16 | Keep Andy **open on home** until a reminder's time (10 minutes before a meeting) | The **banner and sound** come anyway, over Andy (device QA #13). Before, an open app got nothing. It also stays in Notification Center; no badge number on the icon. The after-meeting nudge ("How was …?") shows the same way while Andy is open — on purpose | ⬜ |
 | 19.17 | A meeting with someone you've written about ends; **open Andy 5 minutes later**, then leave it | The "How was …?" nudge still arrives **15 minutes after the end** (device QA #39). Before, opening Andy in that window cancelled it for good | ⬜ |
 
 ---
@@ -776,6 +777,36 @@ drawn natively, so jest never sees its title — this is the only check.
 |---|---|---|---|
 | 27.1 | Open home | **"Andy" in the serif** the names below use, centred in the normal bar. Settings at the right, the briefing card exactly where it was — nothing below has moved | ⬜ |
 | 27.2 | Open a profile, Search, Settings | Their titles are **unchanged** (system face). Only home's title is Lora | ⬜ |
+
+## 28. Home list: photos and initials
+
+Device QA #8 (decided 2026-10-11). Whether a real photo loads, is cached and
+fits the circle is only visible on a device.
+
+| # | Do this | Expect | |
+|---|---|---|---|
+| 28.1 | Add a photo to someone (their profile → photo circle), go back to home | Their photo in a **40pt circle** left of the name, filling it without stretching | ⬜ |
+| 28.2 | Look at someone with no photo | Their **initials** in the same circle ("Emily Watson" → EW, "Marcus" → M). Names with and without photos line up | ⬜ |
+| 28.3 | A long latest detail under a name | Cut at the right edge with "…", never pushed off-screen by the circle | ⬜ |
+| 28.4 | Airplane mode, reopen Andy | Rows show **initials**, not empty rings (photos offline are still to come) | ⬜ |
+| 28.5 | VoiceOver on a row | Reads the name and the latest detail once — the circle and initials are not read | ⬜ |
+| 28.6 | Largest text size (Settings › Accessibility › Larger Text) | Initials still fit the circle; the row grows, nothing overlaps | ⬜ |
+
+## 29. Home list: the A–Z index
+
+Device QA #7 (decided 2026-10-11). Dragging, the pinned heading and VoiceOver's
+adjustable control are only real on a device. Needs **20 or more people**.
+
+| # | Do this | Expect | |
+|---|---|---|---|
+| 29.1 | With **19** people, look at home | No letters, no index — the list as before | ⬜ |
+| 29.2 | Add a 20th | A letter over each group (A, B, …) and **A–Z, #** down the right. Korean names under **#**, at the end | ⬜ |
+| 29.3 | Tap **M** on the index | The list jumps so **M** is at the top. Tap a letter with nobody under it → the next letter that has someone | ⬜ |
+| 29.4 | Drag a thumb down the index | The list follows letter by letter, without lag or jumping back | ⬜ |
+| 29.5 | Scroll the list | The current letter stays pinned at the top over the rows, on `paper` (rows don't show through) | ⬜ |
+| 29.6 | Jump to **Z** with a long list (50+) | Lands on Z — not short of it — even though those rows had not been drawn yet | ⬜ |
+| 29.7 | VoiceOver: find the index | Reads "Jump to a letter, adjustable". Swipe up/down → "A", "E", … only letters with someone, and the list moves with it | ⬜ |
+| 29.8 | The right edge of a long name or detail | Not hidden under the index — the text ends before it | ⬜ |
 
 ## Simulator pass, 2026-09-30 (Claude, while the developer was away)
 

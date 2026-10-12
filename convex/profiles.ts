@@ -200,6 +200,8 @@ export const people = query({
        * way the user did not write. `null` when no note has a fact yet.
        */
       latestFact: v.union(v.string(), v.null()),
+      /** Their photo, for the row's circle; `null` shows their initials. */
+      photoUrl: v.union(v.string(), v.null()),
     }),
   ),
   handler: async (ctx) => {
@@ -212,8 +214,17 @@ export const people = query({
       .query("profiles")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect();
+    // Only for this user's own profiles, read above through `by_user`.
+    const photoUrls = new Map<string, string>();
+    await Promise.all(
+      profiles.map(async (profile) => {
+        if (profile.photoStorageId === undefined) return;
+        const url = await ctx.storage.getUrl(profile.photoStorageId);
+        if (url !== null) photoUrls.set(profile._id, url);
+      }),
+    );
     // Built by the function the phone's offline copy uses too.
-    return peopleView(profiles, notes.map(withoutEmbedding));
+    return peopleView(profiles, notes.map(withoutEmbedding), photoUrls);
   },
 });
 
