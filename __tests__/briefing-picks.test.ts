@@ -155,7 +155,7 @@ test("should brief the picked person, marked as picked for that name", () => {
   );
 
   expect(applied.people).toEqual([
-    { profileId: "p-shah", name: "Priya", noteCount: 3, pickedFor: "priya" },
+    { profileId: "p-shah", name: "Priya", noteCount: 3, pickedFor: { key: "priya", name: "Priya" } },
   ]);
   expect(applied.ambiguous).toEqual([]);
   expect(applied.declined).toEqual([]);

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--
+  Storyboard: QA build 4 #8. Home rows gain a photo, or initials when there is
+  none, like Contacts. Before and after. An HTML approximation of native
+  screens for explaining the change, not production code. Example people only.
+-->
+<title>Faces on home</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500&family=IBM+Plex+Mono&display=swap">
+<style>
+:root{--page:#EDEBE4;--page-ink:#2A2622;--quiet:#6F6A62;--rule:#CFCAC0;--paper:#E8E6DE;--ink:#2A2622;--line:#B8B3A8;--moss:#5C6B4F;
+  --serif:"Lora",Georgia,serif;--mono:"IBM Plex Mono",ui-monospace,monospace;--sans:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--page:#1E1C19;--page-ink:#ECE8E0;--quiet:#A39D93;--rule:#3A3631;color-scheme:dark}}
+:root[data-theme="dark"]{--page:#1E1C19;--page-ink:#ECE8E0;--quiet:#A39D93;--rule:#3A3631;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--page-ink);font-family:var(--sans);padding:0 20px}
+.wrap{max-width:900px;margin:0 auto;padding-block:40px 64px;display:grid;gap:28px}
+h1{font-family:var(--serif);font-weight:500;margin:0;font-size:clamp(26px,4vw,36px)}
+p{color:var(--quiet);margin:6px 0 0;max-width:68ch}
+.pair{display:flex;flex-wrap:wrap;gap:20px}
+.col{flex:1 1 300px;display:grid;gap:8px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.before .eyebrow{color:#9F4C3B}.after .eyebrow{color:var(--moss)}
+.phone{background:var(--paper);color:var(--ink);border:1px solid var(--rule);border-radius:22px;padding:16px}
+.row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--rule)}
+.row:last-child{border-bottom:none}
+.av{flex:0 0 40px;height:40px;border-radius:50%;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:15px;overflow:hidden;background:var(--paper)}
+.av.photo{background:linear-gradient(135deg,#b79c7e,#7a6a58);border-color:transparent}
+.t{min-width:0;flex:1}
+.name{font-family:var(--serif);font-size:18px}
+.fact{font-size:14px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta{font-family:var(--mono);font-size:12px;opacity:.7}
+.cap{font-size:13px;color:var(--quiet)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Faces on home</h1>
+  <p>QA #8. Each row now starts with the person's photo, or their initials when there is none, so a row reads as a person and names line up. Offline, every row shows initials (photos offline come later).</p>
+</header>
+<div class="pair">
+  <div class="col before"><div class="eyebrow">Before</div>
+    <div class="phone">
+      <div class="row"><div class="t"><div class="name">Emily Watson</div><div class="fact">Moving to Lisbon in March</div><div class="meta">client · 4 notes · Oct 5</div></div></div>
+      <div class="row"><div class="t"><div class="name">Marcus</div><div class="fact">Opening a climbing gym in Oakland</div><div class="meta">friend · 2 notes · Sep 30</div></div></div>
+      <div class="row"><div class="t"><div class="name">Priya Shah</div><div class="meta">colleague · 1 note · Oct 9</div></div></div>
+    </div>
+    <div class="cap">Names only. Nothing to recognise at a glance.</div>
+  </div>
+  <div class="col after"><div class="eyebrow">After</div>
+    <div class="phone">
+      <div class="row"><div class="av">EW</div><div class="t"><div class="name">Emily Watson</div><div class="fact">Moving to Lisbon in March</div><div class="meta">client · 4 notes · Oct 5</div></div></div>
+      <div class="row"><div class="av photo"></div><div class="t"><div class="name">Marcus</div><div class="fact">Opening a climbing gym in Oakland</div><div class="meta">friend · 2 notes · Sep 30</div></div></div>
+      <div class="row"><div class="av">PS</div><div class="t"><div class="name">Priya Shah</div><div class="meta">colleague · 1 note · Oct 9</div></div></div>
+    </div>
+    <div class="cap">A photo where there is one (Marcus), initials otherwise. The circle is not read by VoiceOver: the row already says the name.</div>
+  </div>
+</div>
+</div>
+</body>
+</html>

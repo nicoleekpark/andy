@@ -4,6 +4,7 @@ import { useQuery } from "convex/react";
 import { useOffline } from "@/lib/connection";
 import { api } from "@convex/_generated/api";
 import { BriefingCard } from "@/components/briefing-card";
+import { PersonAvatar } from "@/components/person-avatar";
 import { useBriefingActions } from "@/lib/use-briefing-actions";
 import { ThreadLoop } from "@/components/thread-loop";
 import { useFeature } from "@/lib/feature-flags";
@@ -134,7 +135,7 @@ export default function HomeScreen() {
   const { data: people, takenAt } = useLiveOrCopy(useQuery(api.profiles.people), (copy) =>
     peopleView(copy.profiles, copy.notes),
   );
-  const { briefing, ask, alerts, askForAlerts } = useBriefing(
+  const { briefing, ask, alerts, askForAlerts, answer, unanswer } = useBriefing(
     useFeature("calendarBriefing"),
   );
   const { askToMute, notNow, openIphoneSettings } = useBriefingActions();
@@ -199,9 +200,12 @@ export default function HomeScreen() {
               ) : briefing.state === "ready" ? (
                 <BriefingCard
                   state="ready"
-                  briefing={briefing.briefing}
+                  briefings={briefing.briefings}
+                  now={briefing.now}
                   alerts={alerts}
                   onEnableAlerts={() => void askForAlerts()}
+                  onAnswer={answer}
+                  onUnanswer={unanswer}
                   onMute={() => askToMute(true)}
                 />
               ) : briefing.state === "denied" ? (
@@ -241,6 +245,7 @@ export default function HomeScreen() {
               onPress={() => router.push(`/profile/${item.profile._id}`)}
               style={styles.row}
             >
+              <PersonAvatar name={item.profile.name} photoUrl={item.photoUrl} />
               <View style={styles.rowText}>
                 <Text style={styles.rowName}>{item.profile.name}</Text>
                 {/*
@@ -301,8 +306,9 @@ const styles = StyleSheet.create({
   headerAction: { color: colors.ink, fontSize: 15 },
 
   list: { gap: 4, paddingBottom: 8, flexGrow: 1 },
-  row: { paddingVertical: 14 },
-  rowText: { gap: 3 },
+  row: { flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: space.md },
+  // `flex: 1` so a long fact is cut at the edge, not pushed past it by the circle.
+  rowText: { flex: 1, gap: 3 },
   rowName: { color: colors.ink, fontSize: 18, fontFamily: fonts.display },
   rowFact: { color: colors.ink, fontSize: 14, opacity: 0.8, lineHeight: 19 },
   rowMeta: {

@@ -190,25 +190,31 @@ export function tidyPicks(
 
 type Person = { profileId: string; name: string; noteCount: number };
 type Ambiguous = { name: string; key: string; count: number; profileIds: string[] };
+/** Which shared name a person was picked for: its key, and the spelling asked about. */
+export type PickedFor = { key: string; name: string };
 
 /**
  * One matched event with its answers applied (R-P3): an answered name becomes
- * that person (`pickedFor` says which name, so the card can offer "Not this
- * Priya?"), "none" becomes `declined`, and only unanswered names stay
+ * that person (`pickedFor` says which name, in the spelling the card asks
+ * about, so it can offer "Not this Priya?"), "none" becomes `declined`, and only unanswered names stay
  * `ambiguous`. An answer counts only while its person is still one of that
  * name's candidates.
  */
-export function applyPicks<P extends Person, E extends { eventId: string; people: P[]; ambiguous: Ambiguous[] }>(
+export function applyPicks<
+  P extends Person,
+  A extends Ambiguous,
+  E extends { eventId: string; people: P[]; ambiguous: A[] },
+>(
   event: E,
   picks: Pick[],
   personFor: (profileId: string) => P | undefined,
 ): Omit<E, "people" | "ambiguous"> & {
-  people: (P & { pickedFor?: string })[];
-  ambiguous: Ambiguous[];
+  people: (P & { pickedFor?: PickedFor })[];
+  ambiguous: A[];
   declined: { name: string; key: string }[];
 } {
-  const people: (P & { pickedFor?: string })[] = [...event.people];
-  const ambiguous: Ambiguous[] = [];
+  const people: (P & { pickedFor?: PickedFor })[] = [...event.people];
+  const ambiguous: A[] = [];
   const declined: { name: string; key: string }[] = [];
   for (const entry of event.ambiguous) {
     const answer = picks.find((p) => p.eventId === event.eventId && p.nameKey === entry.key);
@@ -227,7 +233,7 @@ export function applyPicks<P extends Person, E extends { eventId: string; people
     // Once per meeting, as matching does (M3): the person may already be on it
     // under another name.
     if (!people.some((p) => p.profileId === person.profileId)) {
-      people.push({ ...person, pickedFor: entry.key });
+      people.push({ ...person, pickedFor: { key: entry.key, name: entry.name } });
     }
   }
   return { ...event, people, ambiguous, declined };

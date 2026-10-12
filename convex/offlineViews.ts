@@ -43,8 +43,18 @@ export function newestFirst(
 /** How many "mentioned in" rows a profile shows before "and N more". */
 export const MENTIONED_IN_SHOWN = 5;
 
-/** `profiles.people`: home's list. */
-export function peopleView(profiles: Doc<"profiles">[], notes: NoteRow[]) {
+/**
+ * `profiles.people`: home's list.
+ *
+ * `photoUrls` are signed storage URLs, which only the backend can make — the
+ * phone's copy has none, so offline every row shows initials (photos offline
+ * are still to come, `PROJECT_SCOPE.md`).
+ */
+export function peopleView(
+  profiles: Doc<"profiles">[],
+  notes: NoteRow[],
+  photoUrls: ReadonlyMap<string, string> = new Map(),
+) {
   const byProfile = new Map<
     string,
     {
@@ -85,6 +95,7 @@ export function peopleView(profiles: Doc<"profiles">[], notes: NoteRow[]) {
               lastNoteAt: stats.lastNoteAt,
               noteCount: stats.noteCount,
               latestFact: stats.latestFact,
+              photoUrl: photoUrls.get(profile._id) ?? null,
             },
           ];
     })

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--
+  Storyboard: QA build 4 #12 and #14. More than one meeting on the briefing
+  card. Before and after. An HTML approximation of native screens for
+  explaining the flow, not production code. Example people only. Option A of
+  docs/design/decisions/briefing-card-people.md (slice 4).
+-->
+<title>Every meeting, one at a time</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500&family=IBM+Plex+Mono&display=swap">
+<style>
+:root{--page:#EDEBE4;--page-ink:#2A2622;--quiet:#6F6A62;--rule:#CFCAC0;--paper:#E8E6DE;--ink:#2A2622;--line:#B8B3A8;--edge:#857E6D;--moss:#5C6B4F;--brass:#B8935A;
+  --serif:"Lora",Georgia,serif;--mono:"IBM Plex Mono",ui-monospace,monospace;--sans:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--page:#1E1C19;--page-ink:#ECE8E0;--quiet:#A39D93;--rule:#3A3631;color-scheme:dark}}
+:root[data-theme="dark"]{--page:#1E1C19;--page-ink:#ECE8E0;--quiet:#A39D93;--rule:#3A3631;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--page-ink);font-family:var(--sans);padding:0 20px}
+.wrap{max-width:1180px;margin:0 auto;padding-block:40px 64px;display:grid;gap:34px}
+h1{font-family:var(--serif);font-weight:500;margin:0;font-size:clamp(26px,4vw,36px)}
+header p{color:var(--quiet);margin:6px 0 0;max-width:70ch}
+section{display:grid;gap:12px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.b .eyebrow{color:#9F4C3B}.a .eyebrow{color:var(--moss)}
+h2{font-family:var(--serif);font-weight:500;font-size:21px;margin:0}
+.strip{display:flex;gap:12px;overflow-x:auto;padding:4px 2px 14px}
+.step{flex:0 0 250px;display:grid;gap:8px;align-content:start}
+.phone{background:var(--paper);color:var(--ink);border:1px solid var(--rule);border-radius:22px;padding:16px 12px;min-height:230px}
+.card{position:relative;background:var(--paper);padding:12px 12px 12px 18px;border:1px solid var(--line);border-radius:4px}
+.card:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--brass)}
+.x{position:absolute;right:8px;top:6px;opacity:.7}
+.when{font-family:var(--mono);font-size:12px;opacity:.8}
+.title{font-family:var(--serif);font-size:17px;margin-right:22px}
+.person{margin-top:8px;display:flex;gap:8px;align-items:baseline}.person .n{color:var(--moss)}.meta{font-family:var(--mono);font-size:11px;opacity:.7}
+.pager{margin-top:12px;padding-top:8px;border-top:1px solid var(--line);display:flex;justify-content:center;align-items:center;gap:10px}
+.pb{width:34px;height:34px;border-radius:50%;border:1px solid var(--edge);display:flex;align-items:center;justify-content:center}
+.pb.off{opacity:.5}
+.pos{font-family:var(--mono);font-size:12px;opacity:.8}
+.bad{outline:2px dashed #9F4C3B;outline-offset:3px}
+.tap{outline:2px dashed var(--moss);outline-offset:2px}
+.cap{font-size:13px;color:var(--quiet)}.cap b{color:var(--page-ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Every meeting, one at a time</h1>
+  <p>QA #12 and #14. 11:00 coffee with Priya, 11:05 1:1 with Emily. Before: only Priya could be seen, and she stayed after the meeting had started. After: the next meeting first, the rest one tap away, and each one leaves the card when it starts.</p>
+</header>
+
+<section class="b"><div class="eyebrow">Before</div><h2>One meeting, even after it started</h2>
+  <div class="strip">
+    <div class="step"><div class="phone"><div class="card"><span class="x">✕</span>
+      <div class="when">11:00 AM</div><div class="title">Coffee with Priya</div>
+      <div class="person"><span class="n">Priya</span><span class="meta">7 notes</span></div></div></div>
+      <div class="cap"><b>10:50.</b> Emily's 11:05 can't be seen until Priya's meeting is over.</div></div>
+    <div class="step"><div class="phone"><div class="card bad"><span class="x">✕</span>
+      <div class="when">11:00 AM</div><div class="title">Coffee with Priya</div>
+      <div class="person"><span class="n">Priya</span><span class="meta">7 notes</span></div></div></div>
+      <div class="cap"><b>11:02. #12.</b> Still Priya, in a meeting already happening.</div></div>
+  </div>
+</section>
+
+<section class="a"><div class="eyebrow">After</div><h2>The next one first, the rest a tap away</h2>
+  <div class="strip">
+    <div class="step"><div class="phone"><div class="card"><span class="x">✕</span>
+      <div class="when">11:00 AM</div><div class="title">Coffee with Priya</div>
+      <div class="person"><span class="n">Priya</span><span class="meta">7 notes</span></div>
+      <div class="pager"><span class="pb off">‹</span><span class="pos">1 of 2</span><span class="pb tap">›</span></div></div></div>
+      <div class="cap"><b>10:50.</b> Priya first. "1 of 2" in words; ‹ dimmed on the first page. Tap ›.</div></div>
+    <div class="step"><div class="phone"><div class="card"><span class="x">✕</span>
+      <div class="when">11:05 AM</div><div class="title">1:1 with Emily</div>
+      <div class="person"><span class="n">Emily</span><span class="meta">3 notes</span></div>
+      <div class="pager"><span class="pb">‹</span><span class="pos">2 of 2</span><span class="pb off">›</span></div></div></div>
+      <div class="cap"><b>#14 fixed.</b> Emily readable before 11:00. Nothing moves by itself; leaving and coming back keeps this page.</div></div>
+    <div class="step"><div class="phone"><div class="card"><span class="x">✕</span>
+      <div class="when">11:05 AM</div><div class="title">1:1 with Emily</div>
+      <div class="person"><span class="n">Emily</span><span class="meta">3 notes</span></div></div></div>
+      <div class="cap"><b>11:00, app open. #12 fixed.</b> Priya's page goes by itself; one meeting left, so no pager. Reminders unchanged.</div></div>
+    <div class="step"><div class="phone"><div class="card"><span class="x">✕</span>
+      <div class="when">11:00 AM</div><div class="title">Coffee with Priya</div>
+      <div class="meta" style="margin-top:8px">Which Priya is this? …</div>
+      <div class="pager"><span class="pb off">‹</span><span class="pos">1 of 2</span><span class="pb">›</span></div></div></div>
+      <div class="cap"><b>Mid-question at 11:00.</b> A page still asking "Which Priya?" waits until answered — nothing pulled from under a finger.</div></div>
+  </div>
+</section>
+</div>
+</body>
+</html>

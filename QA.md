@@ -490,6 +490,20 @@ your actual messy real calendar, not synthetic data".
 | 18.21 | Tap ✕ → **Mute until I turn it back on** | The card leaves and **no reminders** come at all, until it is turned back on (A3 adds that to Settings; until then a reinstall resets it) | ⬜ |
 | 18.22 | Tap ✕ → **Cancel** | Nothing changes. Neither mute button is red; with VoiceOver the ✕ reads "Mute the briefing" | ⬜ |
 | 18.23 | Look at a meeting card's time | The time is **dark ink**, not gold — gold stays only on the left stripe (contrast, STYLE.md) | ⬜ |
+| 18.24 | Keep two people called Priya (different "how you know them"). Add an event "Coffee with Priya" in the next 12 hours | The card asks **"Which Priya is this?"** with both Priyas, each with how you know them, notes and last date — in the same order and wording as `review`'s picker. **Neither is highlighted.** No reminder is scheduled yet | ⬜ |
+| 18.25 | Tap one Priya | Saved **at once, no dialog**: that Priya shows as a link, with **Not this Priya?** under it. Her reminder now comes 10 minutes before. Relaunch the app → still that Priya, not asked again | ⬜ |
+| 18.26 | Make the event **repeat weekly**, look again next week (or move the date forward) | Not asked again — one answer covers the series | ⬜ |
+| 18.27 | Tap **Not this Priya?** | Back to the question, with neither Priya chosen | ⬜ |
+| 18.28 | Tap **Neither of them** | "Not a Priya you've written about." with **Change**. The meeting stays on the card; no reminder for it | ⬜ |
+| 18.29 | Answer a Priya, then sign out and sign back in | Asked again — answers stay on the phone only and go with a sign-out | ⬜ |
+| 18.30 | Answer a Priya, then delete that Priya from Andy | The card asks again (if two Priyas are still left) or shows the one Priya left | ⬜ |
+| 18.31 | VoiceOver on the pick | Each choice reads "Priya, friend · 4 notes · last …", hint "Remembers this Priya for this event." Every choice, Neither and Not this Priya? is at least 44pt tall | ⬜ |
+| 18.32 | Two meetings with people you've written about in the next 12 hours (e.g. 11:00 Priya, 11:05 Emily) | The first one, with **‹ 1 of 2 ›** under it. **›** shows Emily; **‹** is dimmed on the first page and **›** on the last. Nothing moves by itself | ⬜ |
+| 18.33 | Stay on Emily's page, switch apps and come back | Still Emily's page, not back to the first | ⬜ |
+| 18.34 | Keep Andy open on home past 11:00 | Priya's page goes **by itself**, Emily alone, no pager. Reminders unaffected | ⬜ |
+| 18.35 | A meeting with an **unanswered** "Which Priya?" on screen, past its start | It **waits** — not pulled away mid-choice. Answer it → it goes. (Only while Andy stays open: leave and come back and a started meeting is gone, like any other — expected) | ⬜ |
+| 18.36 | VoiceOver on the card with 2+ meetings | Title reads "Meeting 1 of 2, 11:00, Coffee with Priya". Previous/Next are buttons; the dimmed one says dimmed. When the page you're on leaves, focus goes to the card's title, not nowhere | ⬜ |
+| 18.37 | Largest text size with 2+ meetings | Each page grows with its text, nothing cut; the list below moves down | ⬜ |
 
 ---
 
@@ -761,6 +775,20 @@ drawn natively, so jest never sees its title — this is the only check.
 |---|---|---|---|
 | 27.1 | Open home | **"Andy" in the serif** the names below use, centred in the normal bar. Settings at the right, the briefing card exactly where it was — nothing below has moved | ⬜ |
 | 27.2 | Open a profile, Search, Settings | Their titles are **unchanged** (system face). Only home's title is Lora | ⬜ |
+
+## 28. Home list: photos and initials
+
+Device QA #8 (decided 2026-10-11). Whether a real photo loads, is cached and
+fits the circle is only visible on a device.
+
+| # | Do this | Expect | |
+|---|---|---|---|
+| 28.1 | Add a photo to someone (their profile → photo circle), go back to home | Their photo in a **40pt circle** left of the name, filling it without stretching | ⬜ |
+| 28.2 | Look at someone with no photo | Their **initials** in the same circle ("Emily Watson" → EW, "Marcus" → M). Names with and without photos line up | ⬜ |
+| 28.3 | A long latest detail under a name | Cut at the right edge with "…", never pushed off-screen by the circle | ⬜ |
+| 28.4 | Airplane mode, reopen Andy | Rows show **initials**, not empty rings (photos offline are still to come) | ⬜ |
+| 28.5 | VoiceOver on a row | Reads the name and the latest detail once — the circle and initials are not read | ⬜ |
+| 28.6 | Largest text size (Settings › Accessibility › Larger Text) | Initials still fit the circle; the row grows, nothing overlaps | ⬜ |
 
 ## 30. Control edges
 

@@ -115,11 +115,27 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `briefing-card-when` | 미팅 시간 — 2026-10-11부터 brass가 아니라 ink (대비) |
 | `briefing-card-reminder-button` | Remind me 10 minutes before › |
 | `briefing-card-mute-button` | 오른쪽 위 ✕ (44pt) — 모든 상태에 있음. 누르면 `briefing-mute-alert` |
+| `briefing-card--carousel` | 미팅이 2~10개일 때 — 다음 미팅이 첫 페이지, 나머지는 이전/다음으로. 저절로 넘어가지 않음 |
+| `briefing-card-page` | 한 미팅 — 시간, 제목, 사람·고르기. VoiceOver는 제목에서 "Meeting 2 of 3, 11:05, Coffee with Emily" |
+| `briefing-card-pager` | 카드 아래 한 번: `-previous-button` · `-page-position` · `-next-button` (미팅 1개면 없음) |
+| `briefing-card-previous-button` | ‹ (44pt, `edge` 테두리) — 첫 페이지에선 비활성 |
+| `briefing-card-next-button` | › (44pt, `edge` 테두리) — 마지막 페이지에선 비활성 |
+| `briefing-card-page-position` | "1 of 3" — 점이 아니라 글자 |
+| `briefing-card-person-link` | 미팅의 사람 한 줄 — 이름(moss) + 노트 수. 누르면 그 사람 프로필 |
+| `briefing-card-pick` | 같은 이름이 여럿일 때 묻는 칸 — `-pick-label`, `-pick-note`, 후보들, `-pick-neither`. 미리 골라 둔 것 없음 |
+| `briefing-card-pick-label` | "Which Priya is this?" |
+| `briefing-card-pick-note` | "You've written about 2 people called Priya. Andy will remember your answer…" |
+| `briefing-card-pick-choice` | 후보 한 줄 — 이름 + `briefing-card-pick-choice-meta`. 한 번 누르면 바로 저장 (창 없음) |
+| `briefing-card-pick-choice-meta` | 후보 설명 "friend · 4 notes · last …" — `review`의 `name-choice`와 같은 문장 (`describePerson`) |
+| `briefing-card-pick-neither` | Neither of them — Andy에 없는 Priya |
+| `briefing-card-pick-change-button` | 고른 사람 아래 "Not this Priya?" — 다시 묻는 상태로 |
+| `briefing-card-pick-none-line` | Neither를 고른 뒤 "Not a Priya you've written about." + Change |
 | `briefing-mute-alert` | `confirm-dialog`: Mute the briefing? — `-today` Mute for today / `-indefinite` Mute until I turn it back on / `-cancel` Cancel (둘 다 moss) |
 | `briefing-mute-alert-title` | Mute the briefing? |
 | `briefing-mute-alert-body` | 연결된 경우 "The card leaves home and meeting reminders stay quiet…", 연결 전 "The card leaves home. You can connect…" |
 | `profile-list` | 프로필 목록 전체 (알파벳순) |
 | `profile-row` | 목록의 한 프로필 (탭하면 그 프로필 페이지) |
+| `profile-row-avatar` | 이름 왼쪽 원 (40pt) — 사진, 없으면 이니셜(예: EW). VoiceOver엔 숨김 (줄 이름이 이미 말함) |
 | `profile-row-name` | 프로필 이름 |
 | `profile-row-detail` | 그 프로필의 최근 기억할 내용 한 줄 (detail) |
 | `profile-row-meta` | 노트 수 · 마지막 날짜 |

@@ -113,6 +113,8 @@ test("no style in src/ dims below textOpacity.quiet except a disabled control", 
 const DECORATIVE_RINGS = new Set([
   // profile tags: labels, not buttons.
   "chip",
+  // `profile-row-avatar`: hidden from VoiceOver; the row is the control, and says so.
+  "circle",
 ]);
 
 test("no control in src/ has a `line` ring as its only edge", () => {
