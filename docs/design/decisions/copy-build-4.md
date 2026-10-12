@@ -538,3 +538,22 @@ for the owner, not settled here:
 
 **Scope:** no change needed. Every item is copy on an existing screen, or one
 navigator option. Nothing adds a screen, an integration or a feature.
+
+## Final choice
+
+**The owner chose option A for every item, 2026-10-11.**
+
+| # | Chosen |
+|---|---|
+| 1 | Keep the tagline. Description: "A private notebook for the people you meet, so next time you know what to ask about." |
+| 22 | "Let Andy read it" (busy: "Reading…") |
+| 23 | "Is this what you said? Fix any name or word, then let Andy read it." |
+| 24 / 34 | Remove `note-source-hint` |
+| 25 | `review` title "New note" |
+| 27 / 37 | Back is a chevron with no words on every pushed screen. VoiceOver says "Back" |
+| 32 | "To change how you know {name} or when you first met, edit their page." |
+| 33 | "Someone new" / "A different person, also called {name}". VoiceOver: "Someone new: a different person, also called {name}" |
+| 35 | "Type a name, or ask in your own words — like “who runs a climbing gym?” Andy looks through all your notes, even where someone only came up in passing." |
+| 46 | Delete QA 20.11a and 20.11b |
+
+Built in two slices: the strings (#1, #22–25, #32–35, #46), then the back rule (#27/#37). The back rule is a native header setting, so it is checked against the SDK before it is built and has its own QA row.
