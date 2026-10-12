@@ -91,7 +91,8 @@ export default function SignInScreen() {
         <NameMark style={styles.mark} draw />
         <Text style={styles.tagline}>Remember what they told you.</Text>
         <Text style={styles.body}>
-          Notes about the people you meet, so you can ask about it next time.
+          A private notebook for the people you meet, so next time you know
+          what to ask about.
         </Text>
       </View>
 

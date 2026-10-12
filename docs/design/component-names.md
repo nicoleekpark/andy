@@ -167,10 +167,10 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `transcript-live` | 실시간 받아쓰기 |
 | `mic-button--listening` | Stop — 듣기 끝 |
 | `start-over-button` | 처음부터 다시 |
-| `transcript-lead` | 이름·단어를 먼저 고치라는 안내 |
+| `transcript-lead` | "Is this what you said? Fix any name or word, then let Andy read it." |
 | `note-source-label` | WHAT YOU SAID — 원문 섹션 제목 (노트 화면과 같은 이름) |
 | `note-source-field` | 원문 — 여기선 고칠 수 있음 |
-| `read-button` | Read it — Andy가 읽고 review로 |
+| `read-button` | Let Andy read it — Andy가 읽고 review로 (2026-10-11, 원래 "Read it") |
 | `record-again-button` | 다시 녹음 |
 | `offline-hint` | 오프라인일 때 Read it 자리 위의 안내 — 폰에 보관했다가 온라인이 되면 읽는다 |
 | `keep-note-button` | 오프라인일 때 Read it 대신 — Keep this note (폰에 보관하고 돌아감) |
@@ -180,10 +180,10 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 
 | Capture | State | 설명 |
 |---|---|---|
-| S6 | `review` | Check this over — 같은 이름 중 아직 안 고름 |
-| S6b | `review` | Check this over — 아래쪽, 아직 저장 못 함 |
-| S6c | `review` | Check this over — 한 명 고름 |
-| S6d | `review` | Check this over — 아래쪽, 저장 가능 |
+| S6 | `review` | New note (원래 "Check this over") — 같은 이름 중 아직 안 고름 |
+| S6b | `review` | New note (원래 "Check this over") — 아래쪽, 아직 저장 못 함 |
+| S6c | `review` | New note (원래 "Check this over") — 한 명 고름 |
+| S6d | `review` | New note (원래 "Check this over") — 아래쪽, 저장 가능 |
 
 | Name | 설명 |
 |---|---|
@@ -209,7 +209,6 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `mention-quote-field` | 노트에서 그 사람에 대한 부분 |
 | `mention-add-button` | Add someone — 빠진 사람 추가 |
 | `note-source-label` | WHAT YOU SAID |
-| `note-source-hint` | 원문을 고쳐도 위 내용은 그대로라는 안내 |
 | `note-source-field` | 원문 (고칠 수 있음) |
 | `reread-button` | Read it again — 고친 원문으로 다시 읽기 |
 | `note-source-edited-line` | "The details above still come from the old wording." — 원문을 고치면 그 아래 바로 뜸. 저장할 때 따로 묻지 않음 (QA #18/#19) |
@@ -217,7 +216,7 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `remember-blocked-reason` | 왜 저장 못 하는지 한 줄 |
 | `discard-button` | Discard and start over |
 | `name-choice--selected` | 고른 카드 (초록) |
-| `name-choice-kept-note` | 기존 프로필 정보는 안 바뀐다는 안내 — 관계·첫 만남 칸 대신 나옴 |
+| `name-choice-kept-note` | "To change how you know {name} or when you first met, edit their page." — 관계·첫 만남 칸 대신 나옴 |
 | `remember-button` | Remember this — 저장 |
 
 ### `profile`

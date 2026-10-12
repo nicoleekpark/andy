@@ -304,9 +304,9 @@ export default function SearchScreen() {
           error === null ? (
             <View style={styles.centred}>
               <Text style={styles.quiet}>
-                Ask in your own words. Andy reads everything you have saved —
-                including people who only came up inside someone else&apos;s
-                note.
+                Type a name, or ask in your own words — like “who runs a
+                climbing gym?” Andy looks through all your notes, even where
+                someone only came up in passing.
               </Text>
             </View>
           ) : null

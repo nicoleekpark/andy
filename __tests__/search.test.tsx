@@ -309,7 +309,7 @@ describe("search screen", () => {
   test("should invite a question rather than apologise for having no results yet", async () => {
     await renderSearch();
 
-    expect(screen.getByText(/Ask in your own words/)).toBeTruthy();
+    expect(screen.getByText(/Type a name, or ask in your own words/)).toBeTruthy();
     // Nothing has been asked, so nothing has been spent.
     expect(recall).not.toHaveBeenCalled();
   });
@@ -362,7 +362,7 @@ describe("search screen", () => {
     await ask("who runs a climbing gym");
     expect(screen.getByLabelText("Searching")).toBeTruthy();
     // And not the invitation, which would read as though nothing was asked.
-    expect(screen.queryByText(/Ask in your own words/)).toBeNull();
+    expect(screen.queryByText(/Type a name, or ask in your own words/)).toBeNull();
 
     await act(async () => {
       release({
@@ -751,7 +751,7 @@ describe("search screen", () => {
     ).toBeTruthy();
     // And not the untouched-state invitation, which would read as though the
     // question had never been asked.
-    expect(screen.queryByText(/Ask in your own words/)).toBeNull();
+    expect(screen.queryByText(/Type a name, or ask in your own words/)).toBeNull();
   });
 
   test("should show the server's own words when it refuses, since they were written for a person", async () => {
@@ -792,7 +792,7 @@ describe("search screen", () => {
     );
     // The invitation says nothing has happened yet. Printed under an apology it
     // makes the screen contradict itself.
-    expect(screen.queryByText(/Ask in your own words/)).toBeNull();
+    expect(screen.queryByText(/Type a name, or ask in your own words/)).toBeNull();
   });
 
   test("should clear a previous refusal once a later question succeeds", async () => {

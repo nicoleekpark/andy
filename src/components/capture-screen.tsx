@@ -234,7 +234,9 @@ function NamePicker({
           */}
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`New person called ${question.name}`}
+        // Starts with the words on screen, so a Voice Control user can say
+        // what they see (WCAG 2.5.3, Label in Name).
+        accessibilityLabel={`Someone new: a different person, also called ${question.name}`}
         accessibilityState={{ selected: answered === null }}
         onPress={() => onPick(question.name, null)}
         style={[styles.candidate, answered === null && styles.candidateOn]}
@@ -253,7 +255,7 @@ function NamePicker({
             answered === null && styles.candidateNameOn,
           ]}
         >
-          A different {question.name}, kept separately
+          A different person, also called {question.name}
         </Text>
       </Pressable>
     </Field>
@@ -286,7 +288,7 @@ function Fate({
   const only = candidates[0];
   if (only === undefined) {
     return (
-      <Text style={styles.quiet}>New person — nobody by this name yet.</Text>
+      <Text style={styles.quiet}>Someone new — no one by this name yet.</Text>
     );
   }
   return (
@@ -1312,7 +1314,8 @@ export function CaptureScreen({
 
     return (
       <>
-        <Stack.Screen options={{ title: "Check this over" }} />
+        {/* The same title as every other step of making a note. */}
+        <Stack.Screen options={{ title: "New note" }} />
         <ScrollView
           style={styles.container}
           contentContainerStyle={styles.reviewContent}
@@ -1460,8 +1463,8 @@ export function CaptureScreen({
             </>
           ) : (
             <Text style={styles.quiet}>
-              {subjectKept.name}&apos;s details stay as they are. Change them
-              from their profile.
+              To change how you know {subjectKept.name} or when you first met,
+              edit their page.
             </Text>
           )}
 
@@ -1686,10 +1689,6 @@ export function CaptureScreen({
           </Field>
 
           <Field label={sourceLabel(source, { draft: true })}>
-            <Text style={styles.quiet}>
-              Correcting this fixes the note itself. The facts above stay as
-              they are — unless you ask Andy to read it again.
-            </Text>
             <TextInput
               value={transcript}
               onChangeText={setTranscript}
@@ -1811,8 +1810,8 @@ export function CaptureScreen({
         >
           {heard ? (
             <Text style={styles.lead}>
-              Check what Andy heard. Fix any names or words before it&apos;s
-              read.
+              Is this what you said? Fix any name or word, then let Andy read
+              it.
             </Text>
           ) : null}
           {/*
@@ -1891,7 +1890,7 @@ export function CaptureScreen({
           ) : (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Read it"
+              accessibilityLabel="Let Andy read it"
               onPress={() => void runExtraction(typing)}
               disabled={empty || busy}
               style={[styles.primaryButton, (empty || busy) && styles.disabled]}
@@ -1899,7 +1898,7 @@ export function CaptureScreen({
               <Text style={styles.primaryLabel}>
                 {/* The same words the wait is labelled with, so pressing it
                     shows the sentence continuing rather than a new one. */}
-                {phase === "extracting" ? "Reading…" : "Read it"}
+                {phase === "extracting" ? "Reading…" : "Let Andy read it"}
               </Text>
             </Pressable>
           )}
