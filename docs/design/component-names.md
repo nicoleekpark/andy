@@ -29,7 +29,7 @@ These appear on most screens and mean the same thing everywhere.
 |---|---|
 | `ios-status-bar` | iOS 상태줄 (시간·배터리) — 앱 것이 아님 |
 | `nav-bar` | 맨 위 줄 전체 (뒤로가기 · 제목 · 오른쪽 버튼)와 그 아래 가는 선 |
-| `nav-bar-back` | iOS 뒤로가기 (< 이전 화면 제목) |
+| `nav-bar-back` | iOS 뒤로가기 — 어느 화면이든 ‹ 아이콘만, 글자 없음 (2026-10-12, copy-build-4 #27/#37). VoiceOver는 "Back" |
 | `nav-bar-title` | 맨 위 가운데 제목 |
 | `nav-bar-action-right` | 맨 위 오른쪽 자리 — 화면마다 다름 (Settings, Edit) |
 | `expo-dev-menu` | 왼쪽 위 톱니 — 개발용 빌드에만 있음, 테스터 앱엔 없음 |
