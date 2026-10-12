@@ -12,7 +12,7 @@ import { useBriefingActions } from "@/lib/use-briefing-actions";
 import { ThreadLoop } from "@/components/thread-loop";
 import { useFeature } from "@/lib/feature-flags";
 import { useBriefing } from "@/lib/use-briefing";
-import { colors, fonts, space, textOpacity, textSize } from "@/constants/theme";
+import { colors, fonts, radius, space, textOpacity, textSize } from "@/constants/theme";
 import { useOncePerSession } from "@/lib/use-once-per-session";
 import { formatDate } from "@/lib/dates";
 import { useOutbox } from "@/lib/outbox";
@@ -397,9 +397,10 @@ const styles = StyleSheet.create({
 
   actions: { gap: 10 },
   askAndy: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.line,
-    borderRadius: 999,
+    // Its only edge, so `edge` (3:1), not `line` (1.67:1) — WCAG 1.4.11.
+    borderWidth: 1,
+    borderColor: colors.edge,
+    borderRadius: radius.pill,
     paddingVertical: 15,
     alignItems: "center",
   },

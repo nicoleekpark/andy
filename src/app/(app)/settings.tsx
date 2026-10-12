@@ -139,7 +139,8 @@ const styles = StyleSheet.create({
     // The same shape as the Sign out on the sign-in screen.
     borderRadius: radius.control,
     borderWidth: 1,
-    borderColor: colors.line,
+    // Its only edge, so `edge` (3:1), not `line` (1.67:1) — WCAG 1.4.11.
+    borderColor: colors.edge,
     alignItems: "center",
   },
   signOutLabel: { color: colors.moss, fontSize: textSize.lg },

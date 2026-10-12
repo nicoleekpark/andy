@@ -19,7 +19,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import { imageContentType } from "../../../../lib/media";
 import type { Draft } from "../../../../components/draft-sheet";
 import type { Id } from "@convex/_generated/dataModel";
-import { colors, fonts, textOpacity } from "@/constants/theme";
+import { colors, fonts, radius, textOpacity } from "@/constants/theme";
 import { formatDate, localToday } from "@/lib/dates";
 import { sourceLabel } from "@/lib/note-source";
 import { userMessage } from "@/lib/user-message";
@@ -729,9 +729,10 @@ const styles = StyleSheet.create({
 
   actions: { gap: 10, marginBottom: 24 },
   addNote: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.line,
-    borderRadius: 999,
+    // Its only edge, so `edge` (3:1), not `line` (1.67:1) — WCAG 1.4.11.
+    borderWidth: 1,
+    borderColor: colors.edge,
+    borderRadius: radius.pill,
     paddingVertical: 14,
     alignItems: "center",
     marginHorizontal: 24,
@@ -743,9 +744,10 @@ const styles = StyleSheet.create({
   photo: {
     width: 64,
     height: 64,
-    borderRadius: 32,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.line,
+    borderRadius: radius.pill,
+    // A tap target whose ring is all that shows when empty: `edge`, 3:1.
+    borderWidth: 1,
+    borderColor: colors.edge,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
