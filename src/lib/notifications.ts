@@ -323,6 +323,40 @@ export function captureTargetOf(response: {
 }
 
 /**
+ * Let this app's reminders show while Andy is open (device QA #13).
+ *
+ * Without a handler iOS delivers a notification to an app in the foreground
+ * silently — no banner, no sound — so the 10:50 reminder said nothing to
+ * someone looking at Andy at 10:50. A reminder exists to interrupt, and
+ * being in the app is no reason for it not to. Only ours (`KIND`): banner,
+ * Notification Center and sound, never a badge (Andy keeps no count). Returns
+ * the uninstall, for sign-out.
+ */
+export function showWhileOpen(): () => void {
+  // Checked first, then caught, like `onNudgeOpened`: a build without the
+  // module must cost the banner, not the signed-in layout.
+  if (!hasNativeModule("ExpoNotificationsHandlerModule")) return () => {};
+  const notifications = notificationsModule();
+  if (notifications === null) return () => {};
+  try {
+    notifications.setNotificationHandler({
+      handleNotification: async (notification) => {
+        const ours = notification.request.content.data?.kind === KIND;
+        return {
+          shouldShowBanner: ours,
+          shouldShowList: ours,
+          shouldPlaySound: ours,
+          shouldSetBadge: false,
+        };
+      },
+    });
+    return () => notifications.setNotificationHandler(null);
+  } catch {
+    return () => {};
+  }
+}
+
+/**
  * Calls `open` with the person a tapped nudge is about — the tap that launched
  * the app as well as a tap while it runs — once per tap. The response is
  * cleared as it is handled, so the same tap is not replayed the next time this

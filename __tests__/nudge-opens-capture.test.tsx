@@ -11,6 +11,7 @@ jest.mock("expo-notifications", () => ({
   cancelScheduledNotificationAsync: jest.fn(async () => undefined),
   scheduleNotificationAsync: jest.fn(async () => "id"),
   SchedulableTriggerInputTypes: { DATE: "date" },
+  setNotificationHandler: jest.fn(),
 }));
 
 import { act, screen, waitFor } from "@testing-library/react-native";
@@ -65,6 +66,18 @@ describe("tapping the nudge", () => {
     await waitFor(() => expect(result.getPathname()).toBe("/profile/p1/capture"));
     // Handled once: cleared, so the next unlock does not replay it.
     expect(Notifications.clearLastNotificationResponse).toHaveBeenCalledTimes(1);
+  });
+
+  test("should let reminders show while the signed-in app is open", async () => {
+    const result = renderRouter("src/app", { initialUrl: "/" });
+    await result;
+
+    // Device QA #13: installed by the signed-in layout, not left to chance.
+    await waitFor(() =>
+      expect(Notifications.setNotificationHandler).toHaveBeenCalledWith(
+        expect.objectContaining({ handleNotification: expect.any(Function) }),
+      ),
+    );
   });
 
   test("should open it when the nudge is tapped while the app is open", async () => {

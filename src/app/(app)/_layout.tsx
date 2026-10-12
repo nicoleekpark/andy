@@ -15,7 +15,7 @@ import { PendingProvider } from "@/lib/pending-changes";
 import { useOffline } from "@/lib/connection";
 import { forgetOnThisPhone, outboxStore } from "@/lib/on-phone";
 import { useAppLock } from "@/lib/use-app-lock";
-import { onNudgeOpened } from "@/lib/notifications";
+import { onNudgeOpened, showWhileOpen } from "@/lib/notifications";
 
 /**
  * The gate for everything that reads user data.
@@ -121,6 +121,14 @@ export default function AppLayout() {
   // person's page to whoever is holding a locked phone. A person deleted since
   // the nudge was scheduled lands on the capture screen's own "doesn't have
   // anyone by that link".
+  // Reminders show while Andy is open, for as long as somebody is signed in
+  // (device QA #13). They say only a name and a meeting, which the lock
+  // screen shows anyway.
+  useEffect(() => {
+    if (!inApp) return;
+    return showWhileOpen();
+  }, [inApp]);
+
   const unlocked = inApp && lock.state.phase === "unlocked";
   useEffect(() => {
     if (!unlocked) return;
