@@ -1,15 +1,18 @@
 import { Stack, router } from "expo-router";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { useRef } from "react";
+import { Pressable, SectionList, StyleSheet, Text, View } from "react-native";
 import { useQuery } from "convex/react";
 import { useOffline } from "@/lib/connection";
 import { api } from "@convex/_generated/api";
 import { BriefingCard } from "@/components/briefing-card";
 import { PersonAvatar } from "@/components/person-avatar";
+import { AzIndex } from "@/components/az-index";
+import { sectionFor, sectionsOf } from "@/lib/name-index";
 import { useBriefingActions } from "@/lib/use-briefing-actions";
 import { ThreadLoop } from "@/components/thread-loop";
 import { useFeature } from "@/lib/feature-flags";
 import { useBriefing } from "@/lib/use-briefing";
-import { colors, fonts, space, textOpacity } from "@/constants/theme";
+import { colors, fonts, space, textOpacity, textSize } from "@/constants/theme";
 import { useOncePerSession } from "@/lib/use-once-per-session";
 import { formatDate } from "@/lib/dates";
 import { useOutbox } from "@/lib/outbox";
@@ -139,6 +142,23 @@ export default function HomeScreen() {
     useFeature("calendarBriefing"),
   );
   const { askToMute, notNow, openIphoneSettings } = useBriefingActions();
+  // Letters and the A–Z index only once the list is long (`INDEX_FROM`).
+  const { indexed, sections } = sectionsOf(people ?? [], (row) => row.profile.name);
+  const list = useRef<SectionList<NonNullable<typeof people>[number], { letter: string }>>(null);
+  /** The letter last asked for, so a jump that has to wait can be retried. */
+  const wanted = useRef<string | null>(null);
+  /** Retried once, then left where it got to — never a loop. */
+  const retried = useRef(false);
+  const jumpTo = (letter: string, retry = false) => {
+    wanted.current = letter;
+    retried.current = retry;
+    list.current?.scrollToLocation({
+      sectionIndex: sectionFor(letter, sections),
+      // 0 is the section's own heading, so the letter lands at the top.
+      itemIndex: 0,
+      animated: false,
+    });
+  };
 
   return (
     <>
@@ -172,106 +192,136 @@ export default function HomeScreen() {
         }}
       />
       <View style={styles.container}>
-        <FlatList
-          data={people ?? []}
-          keyExtractor={(item) => item.profile._id}
-          contentContainerStyle={styles.list}
-          /*
-            Above the list rather than beside it. The briefing is about the next
-            ten minutes and the list is about everybody — putting the two in
-            the same scroll, in that order, is the whole hierarchy.
-          */
-          ListHeaderComponent={
-            <>
-              <OfflineCopyLine takenAt={takenAt} />
-              <OutboxLine />
-              <PendingLine />
-              {briefing.state === "loading" ||
-              briefing.state === "off" ||
-              briefing.state === "muted" ||
-              briefing.state === "nobody" ? null : briefing.state === "ask" ? (
-                <BriefingCard
-                  state="ask"
-                  onAsk={() => void ask()}
-                  asking={briefing.asking}
-                  onNotNow={notNow}
-                  onMute={() => askToMute(false)}
-                />
-              ) : briefing.state === "ready" ? (
-                <BriefingCard
-                  state="ready"
-                  briefings={briefing.briefings}
-                  now={briefing.now}
-                  alerts={alerts}
-                  onEnableAlerts={() => void askForAlerts()}
-                  onAnswer={answer}
-                  onUnanswer={unanswer}
-                  onMute={() => askToMute(true)}
-                />
-              ) : briefing.state === "denied" ? (
-                <BriefingCard
-                  state="denied"
-                  onOpenSettings={openIphoneSettings}
-                  onMute={() => askToMute(false)}
-                />
-              ) : briefing.state === "empty" ? (
-                <BriefingCard state="empty" onMute={() => askToMute(true)} />
-              ) : (
-                <BriefingCard state="unavailable" />
-              )}
-            </>
-          }
-          ListEmptyComponent={
-            // Centred in the space the list would have filled. `list` already
-            // grows to that space, so the wrapper only has to say where in it.
-            <View style={styles.emptyState}>
-              {people === undefined ? (
-                <Text style={styles.quiet}>{nothingKept ? NOTHING_KEPT_OFFLINE : "Loading…"}</Text>
-              ) : (
-                <EmptyHome />
-              )}
-            </View>
-          }
-          renderItem={({ item }) => (
-            <Pressable
-              accessibilityRole="button"
-              // The fact too: two rows called Marcus should not sound the same
-              // to VoiceOver either.
-              accessibilityLabel={
-                item.latestFact === null
-                  ? item.profile.name
-                  : `${item.profile.name}, ${item.latestFact}`
-              }
-              onPress={() => router.push(`/profile/${item.profile._id}`)}
-              style={styles.row}
-            >
-              <PersonAvatar name={item.profile.name} photoUrl={item.photoUrl} />
-              <View style={styles.rowText}>
-                <Text style={styles.rowName}>{item.profile.name}</Text>
-                {/*
-                  What they told you most recently, in your own saved words —
-                  recognising somebody beats recalling them, and two people
-                  who share a name stop looking identical. One line: the
-                  profile is where the rest is.
-                */}
-                {item.latestFact !== null ? (
-                  <Text style={styles.rowFact} numberOfLines={1}>
-                    {item.latestFact}
-                  </Text>
-                ) : null}
-                <Text style={styles.rowMeta}>
-                  {[
-                    item.profile.relationshipContext,
-                    `${item.noteCount} ${item.noteCount === 1 ? "note" : "notes"}`,
-                    formatDate(item.lastNoteAt),
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
+        <View style={styles.listArea}>
+          <SectionList
+            ref={list}
+            // Its own width beside the index: in a row, the list's box needs
+            // `flex` — `contentContainerStyle` only sizes what scrolls inside it.
+            style={styles.listBox}
+            sections={sections}
+            keyExtractor={(item) => item.profile._id}
+            contentContainerStyle={styles.list}
+            renderSectionHeader={({ section }) =>
+              indexed ? (
+                <Text style={styles.letterHeading} accessibilityRole="header">
+                  {section.letter}
                 </Text>
+              ) : null
+            }
+            // Rows have no fixed height (the latest detail is optional), so a
+            // jump far down may land before they are measured: go roughly there,
+            // then again once they are.
+            // `info.index` counts every heading and row, not sections — so the
+            // retry is of the letter asked for, not of `sections[info.index]`.
+            onScrollToIndexFailed={(info) => {
+              list.current
+                ?.getScrollResponder()
+                ?.scrollTo({ y: info.averageItemLength * info.index, animated: false });
+              if (retried.current) return;
+              setTimeout(() => {
+                if (wanted.current !== null) jumpTo(wanted.current, true);
+              }, 50);
+            }}
+            /*
+              Above the list rather than beside it. The briefing is about the next
+              ten minutes and the list is about everybody — putting the two in
+              the same scroll, in that order, is the whole hierarchy.
+            */
+            ListHeaderComponent={
+              <>
+                <OfflineCopyLine takenAt={takenAt} />
+                <OutboxLine />
+                <PendingLine />
+                {briefing.state === "loading" ||
+                briefing.state === "off" ||
+                briefing.state === "muted" ||
+                briefing.state === "nobody" ? null : briefing.state === "ask" ? (
+                  <BriefingCard
+                    state="ask"
+                    onAsk={() => void ask()}
+                    asking={briefing.asking}
+                    onNotNow={notNow}
+                    onMute={() => askToMute(false)}
+                  />
+                ) : briefing.state === "ready" ? (
+                  <BriefingCard
+                    state="ready"
+                    briefings={briefing.briefings}
+                    now={briefing.now}
+                    alerts={alerts}
+                    onEnableAlerts={() => void askForAlerts()}
+                    onAnswer={answer}
+                    onUnanswer={unanswer}
+                    onMute={() => askToMute(true)}
+                  />
+                ) : briefing.state === "denied" ? (
+                  <BriefingCard
+                    state="denied"
+                    onOpenSettings={openIphoneSettings}
+                    onMute={() => askToMute(false)}
+                  />
+                ) : briefing.state === "empty" ? (
+                  <BriefingCard state="empty" onMute={() => askToMute(true)} />
+                ) : (
+                  <BriefingCard state="unavailable" />
+                )}
+              </>
+            }
+            ListEmptyComponent={
+              // Centred in the space the list would have filled. `list` already
+              // grows to that space, so the wrapper only has to say where in it.
+              <View style={styles.emptyState}>
+                {people === undefined ? (
+                  <Text style={styles.quiet}>{nothingKept ? NOTHING_KEPT_OFFLINE : "Loading…"}</Text>
+                ) : (
+                  <EmptyHome />
+                )}
               </View>
-            </Pressable>
-          )}
-        />
+            }
+            renderItem={({ item }) => (
+              <Pressable
+                accessibilityRole="button"
+                // The fact too: two rows called Marcus should not sound the same
+                // to VoiceOver either.
+                accessibilityLabel={
+                  item.latestFact === null
+                    ? item.profile.name
+                    : `${item.profile.name}, ${item.latestFact}`
+                }
+                onPress={() => router.push(`/profile/${item.profile._id}`)}
+                style={styles.row}
+              >
+                <PersonAvatar name={item.profile.name} photoUrl={item.photoUrl} />
+                <View style={styles.rowText}>
+                  <Text style={styles.rowName}>{item.profile.name}</Text>
+                  {/*
+                    What they told you most recently, in your own saved words —
+                    recognising somebody beats recalling them, and two people
+                    who share a name stop looking identical. One line: the
+                    profile is where the rest is.
+                  */}
+                  {item.latestFact !== null ? (
+                    <Text style={styles.rowFact} numberOfLines={1}>
+                      {item.latestFact}
+                    </Text>
+                  ) : null}
+                  <Text style={styles.rowMeta}>
+                    {[
+                      item.profile.relationshipContext,
+                      `${item.noteCount} ${item.noteCount === 1 ? "note" : "notes"}`,
+                      formatDate(item.lastNoteAt),
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </Text>
+                </View>
+              </Pressable>
+            )}
+          />
+          {indexed ? (
+            <AzIndex available={sections.map((section) => section.letter)} onJump={(letter) => jumpTo(letter)} />
+          ) : null}
+        </View>
 
         <View style={styles.actions}>
           <Pressable
@@ -305,7 +355,24 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.paper, padding: 24, gap: 16 },
   headerAction: { color: colors.ink, fontSize: 15 },
 
+  /** The list, and the A–Z index beside it when there is one. */
+  listArea: { flex: 1, flexDirection: "row" },
+  listBox: { flex: 1 },
   list: { gap: 4, paddingBottom: 8, flexGrow: 1 },
+  /**
+   * A letter over its group. Lora, as STYLE.md gives section headers; on
+   * `paper`, because iOS keeps the current one pinned over the rows scrolling
+   * beneath it.
+   */
+  letterHeading: {
+    color: colors.ink,
+    fontFamily: fonts.display,
+    fontSize: textSize.sm,
+    opacity: textOpacity.quiet,
+    backgroundColor: colors.paper,
+    paddingTop: space.md,
+    paddingBottom: space.xs,
+  },
   row: { flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: space.md },
   // `flex: 1` so a long fact is cut at the edge, not pushed past it by the circle.
   rowText: { flex: 1, gap: 3 },

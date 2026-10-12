@@ -193,3 +193,16 @@ export function compareNamesForList(a: string, b: string): number {
   }
   return left.length - right.length;
 }
+
+/**
+ * The letter a name is filed under in home's A–Z index: its first letter,
+ * from the same key the list sorts by — so "Émile" is under E and "O'Brien"
+ * under O — and `#` for anything that is not A–Z, Korean included (decided
+ * 2026-10-11; V1 launches English-only). Because it comes from the sort key,
+ * every name under a letter sits together in the sorted list, and `#` comes
+ * last, after Z, exactly where the list puts those names.
+ */
+export function listLetterOf(name: string): string {
+  const first = [...sortKey(name)][0];
+  return first !== undefined && /[a-z]/.test(first) ? first.toUpperCase() : "#";
+}

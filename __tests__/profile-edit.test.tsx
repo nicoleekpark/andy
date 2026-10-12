@@ -202,12 +202,16 @@ describe("edit profile screen", () => {
   });
 
   test("should count what is about to be lost before deleting", async () => {
-    (useQuery as jest.Mock).mockReturnValue({
-      ...profile({ name: "Emma" }),
-      notes: [
-        { note: { _id: "note-1", createdAt: 0, text: "one", source: "voice" }, mentions: [] },
-        { note: { _id: "note-2", createdAt: 0, text: "two", source: "voice" }, mentions: [] },
-      ],
+    // By name: deleting lands on home, which must get a list, not this person.
+    answerByName(useQuery, {
+      [nameOf(api.profiles.withNotes)]: {
+        ...profile({ name: "Emma" }),
+        notes: [
+          { note: { _id: "note-1", createdAt: 0, text: "one", source: "voice" }, mentions: [] },
+          { note: { _id: "note-2", createdAt: 0, text: "two", source: "voice" }, mentions: [] },
+        ],
+      },
+      [nameOf(api.profiles.people)]: [],
     });
     const remove = jest.fn(async () => ({
       removedNoteCount: 2,

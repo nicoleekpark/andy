@@ -790,6 +790,22 @@ fits the circle is only visible on a device.
 | 28.5 | VoiceOver on a row | Reads the name and the latest detail once — the circle and initials are not read | ⬜ |
 | 28.6 | Largest text size (Settings › Accessibility › Larger Text) | Initials still fit the circle; the row grows, nothing overlaps | ⬜ |
 
+## 29. Home list: the A–Z index
+
+Device QA #7 (decided 2026-10-11). Dragging, the pinned heading and VoiceOver's
+adjustable control are only real on a device. Needs **20 or more people**.
+
+| # | Do this | Expect | |
+|---|---|---|---|
+| 29.1 | With **19** people, look at home | No letters, no index — the list as before | ⬜ |
+| 29.2 | Add a 20th | A letter over each group (A, B, …) and **A–Z, #** down the right. Korean names under **#**, at the end | ⬜ |
+| 29.3 | Tap **M** on the index | The list jumps so **M** is at the top. Tap a letter with nobody under it → the next letter that has someone | ⬜ |
+| 29.4 | Drag a thumb down the index | The list follows letter by letter, without lag or jumping back | ⬜ |
+| 29.5 | Scroll the list | The current letter stays pinned at the top over the rows, on `paper` (rows don't show through) | ⬜ |
+| 29.6 | Jump to **Z** with a long list (50+) | Lands on Z — not short of it — even though those rows had not been drawn yet | ⬜ |
+| 29.7 | VoiceOver: find the index | Reads "Jump to a letter, adjustable". Swipe up/down → "A", "E", … only letters with someone, and the list moves with it | ⬜ |
+| 29.8 | The right edge of a long name or detail | Not hidden under the index — the text ends before it | ⬜ |
+
 ## Simulator pass, 2026-09-30 (Claude, while the developer was away)
 
 **How it was run.** iPhone 17 Pro simulator, the dev build of commit `47f3837`
