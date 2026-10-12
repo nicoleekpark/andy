@@ -182,7 +182,8 @@ function scopeTo(name: string, ambiguous: unknown[] = []) {
   // `profiles.resolveNames` which of the user's people answer to each name in
   // the draft, and one `mockReturnValue` hands it a profile where it expects a
   // list of questions.
-  answerByName(useQuery, { "profiles:resolveNames": ambiguous }, () => ({
+  // Home's list too: a test that ends back on home must hand it a list.
+  answerByName(useQuery, { "profiles:resolveNames": ambiguous, "profiles:people": [] }, () => ({
           profile: {
             _id: "contact-1",
             name,

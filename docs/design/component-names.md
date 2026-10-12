@@ -135,6 +135,8 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `briefing-mute-alert-body` | 연결된 경우 "The card leaves home and meeting reminders stay quiet…", 연결 전 "The card leaves home. You can connect…" |
 | `profile-list` | 프로필 목록 전체 (알파벳순) |
 | `profile-row` | 목록의 한 프로필 (탭하면 그 프로필 페이지) |
+| `home-index` | 오른쪽 A–Z·# 세로 줄 (20명부터) — 누르거나 끌면 그 글자로. 아무도 없는 글자는 다음 글자로. VoiceOver엔 하나의 조절 컨트롤("Jump to a letter", 위·아래로 쓸어 넘김) |
+| `home-letter-heading` | 목록의 글자 제목 (A, B, … #) — 20명부터. 스크롤하면 맨 위에 붙어 있음 |
 | `profile-row-avatar` | 이름 왼쪽 원 (40pt) — 사진, 없으면 이니셜(예: EW). VoiceOver엔 숨김 (줄 이름이 이미 말함) |
 | `profile-row-name` | 프로필 이름 |
 | `profile-row-detail` | 그 프로필의 최근 기억할 내용 한 줄 (detail) |
