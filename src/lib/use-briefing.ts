@@ -2,7 +2,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
 import { matchEventsIn } from "@convex/calendarMatch";
 import { useReadingCopy } from "./offline-copy";
-import { applyPicks, tidyPicks, useBriefingPicksVersion } from "./briefing-picks";
+import {
+  applyPicks,
+  pick,
+  tidyPicks,
+  unpick,
+  useBriefingPicksVersion,
+  type PickedFor,
+} from "./briefing-picks";
 import {
   nextLocalMidnight,
   settingAt,
@@ -69,6 +76,41 @@ function sayWhyInDevelopment(what: string, thrown: unknown) {
   if (__DEV__) console.warn(`Briefing: ${what}`, thrown);
 }
 
+/** Somebody the card can open, with how much is written about them. */
+export type BriefingPerson = {
+  profileId: string;
+  name: string;
+  noteCount: number;
+  /** Answered on the card: which shared name this person was picked for. */
+  pickedFor?: PickedFor;
+};
+
+/** One person a shared name could mean, as the card's pick offers them. */
+export type BriefingCandidate = {
+  profileId: string;
+  name: string;
+  relationshipContext?: string;
+  entityType: "person" | "animal";
+  noteCount: number;
+  lastNoteAt: number | null;
+};
+
+/** One meeting, as the `briefing-card` draws it. */
+export type Briefing = {
+  /** EventKit's id — what an answer to "which Priya?" is kept against. */
+  eventId: string;
+  title: string;
+  startsAt: number;
+  people: BriefingPerson[];
+  /**
+   * Shared names not answered yet, with everyone who answers to each, in the
+   * order `review`'s picker lists them (R-P10).
+   */
+  ambiguous: { name: string; key: string; count: number; candidates: BriefingCandidate[] }[];
+  /** Shared names answered "Neither of them" (R-P6). */
+  declined: { name: string; key: string }[];
+};
+
 export type BriefingState =
   | { state: "loading" }
   | { state: "unavailable" }
@@ -92,24 +134,7 @@ export type BriefingState =
    * against it could only ask for access it cannot use yet.
    */
   | { state: "nobody" }
-  | {
-      state: "ready";
-      briefing: {
-        title: string;
-        startsAt: number;
-        people: {
-          profileId: string;
-          name: string;
-          noteCount: number;
-          /** Answered on the card: which shared name this person was picked for. */
-          pickedFor?: string;
-        }[];
-        /** Shared names not answered yet — who could be meant, for the card to ask. */
-        ambiguous: { name: string; key: string; count: number; profileIds: string[] }[];
-        /** Shared names answered "Neither of them" (R-P6). */
-        declined: { name: string; key: string }[];
-      };
-    };
+  | { state: "ready"; briefing: Briefing };
 
 /**
  * Whether the phone will actually say anything, and whether it can be asked.
@@ -135,6 +160,10 @@ export function useBriefing(
   ask: () => Promise<void>;
   alerts: AlertState;
   askForAlerts: () => Promise<void>;
+  /** Which person `nameKey` means on `eventId` — or `NONE`. Saved at once (R-P4). */
+  answer: (eventId: string, nameKey: string, profileId: string) => void;
+  /** "Not this Priya?" / Change: back to the question. */
+  unanswer: (eventId: string, nameKey: string) => void;
 } {
   const copy = useReadingCopy();
   const setting = useCalendarSetting();
@@ -264,15 +293,32 @@ export function useBriefing(
         new Set(events.map((event) => event.eventId)),
         now,
       );
-      const noteCounts = new Map<string, number>();
+      const written = new Map<string, { noteCount: number; lastNoteAt: number }>();
       for (const note of known.notes) {
-        noteCounts.set(note.profileId, (noteCounts.get(note.profileId) ?? 0) + 1);
+        const seen = written.get(note.profileId);
+        written.set(note.profileId, {
+          noteCount: (seen?.noteCount ?? 0) + 1,
+          lastNoteAt: Math.max(seen?.lastNoteAt ?? 0, note.createdAt),
+        });
       }
-      const personFor = (profileId: string) => {
+      const candidateFor = (profileId: string): BriefingCandidate | undefined => {
         const profile = known.profiles.find((p) => p._id === profileId);
-        return profile === undefined
+        if (profile === undefined) return undefined;
+        const seen = written.get(profileId);
+        return {
+          profileId,
+          name: profile.name,
+          relationshipContext: profile.relationshipContext,
+          entityType: profile.entityType,
+          noteCount: seen?.noteCount ?? 0,
+          lastNoteAt: seen?.lastNoteAt ?? null,
+        };
+      };
+      const personFor = (profileId: string): BriefingPerson | undefined => {
+        const candidate = candidateFor(profileId);
+        return candidate === undefined
           ? undefined
-          : { profileId, name: profile.name, noteCount: noteCounts.get(profileId) ?? 0 };
+          : { profileId, name: candidate.name, noteCount: candidate.noteCount };
       };
       const matched = matchEventsIn(known.profiles, known.notes, events).map((event) =>
         applyPicks(
@@ -342,10 +388,16 @@ export function useBriefing(
         : {
             state: "ready",
             briefing: {
+              eventId: briefing.eventId,
               title: briefing.title,
               startsAt: briefing.startsAt,
               people: briefing.people,
-              ambiguous: briefing.ambiguous,
+              ambiguous: briefing.ambiguous.map((entry) => ({
+                name: entry.name,
+                key: entry.key,
+                count: entry.count,
+                candidates: entry.profileIds.flatMap((id) => candidateFor(id) ?? []),
+              })),
               declined: briefing.declined,
             },
           };
@@ -480,11 +532,24 @@ export function useBriefing(
     }
   }, [load]);
 
+  // Against the account the copy belongs to: an answer is this person's, on
+  // this phone, and nobody else's (R-P1).
+  const answer = useCallback((eventId: string, nameKey: string, profileId: string) => {
+    const ownerId = copyNow.current?.ownerId;
+    if (ownerId !== undefined) pick(ownerId, eventId, nameKey, profileId);
+  }, []);
+  const unanswer = useCallback((eventId: string, nameKey: string) => {
+    const ownerId = copyNow.current?.ownerId;
+    if (ownerId !== undefined) unpick(ownerId, eventId, nameKey);
+  }, []);
+
   return {
     briefing: off ? { state: "off" } : state,
     ask,
     alerts,
     askForAlerts,
+    answer,
+    unanswer,
   };
 }
 

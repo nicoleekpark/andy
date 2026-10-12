@@ -1,6 +1,9 @@
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors, fonts, radius, space, textOpacity, textSize } from "../constants/theme";
+import { NONE } from "../lib/briefing-picks";
+import { describePerson } from "../lib/describe-person";
+import type { Briefing, BriefingPerson } from "../lib/use-briefing";
 
 /**
  * The Briefing card — who you are about to meet, and what you wrote about them.
@@ -20,20 +23,6 @@ import { colors, fonts, radius, space, textOpacity, textSize } from "../constant
  * Every visible state carries the X (`briefing-card-mute-button`), which asks
  * how long to mute (`docs/design/decisions/calendar-connection.md`, Option A).
  */
-
-export type BriefingPerson = {
-  profileId: string;
-  name: string;
-  noteCount: number;
-};
-
-export type Briefing = {
-  title: string;
-  startsAt: number;
-  people: BriefingPerson[];
-  /** Names the event uses that more than one person answers to. */
-  ambiguous: { name: string; count: number }[];
-};
 
 type Props =
   /** The module is not in this build — say nothing rather than offer nothing. */
@@ -65,6 +54,13 @@ type Props =
            */
           alerts: "unavailable" | "off" | "blocked" | "on";
           onEnableAlerts: () => void;
+          /**
+           * Which person a shared name means — a candidate's id, or `NONE`.
+           * One tap, saved at once, no dialog: it is one tap to undo (R-P4).
+           */
+          onAnswer: (nameKey: string, profileId: string) => void;
+          /** "Not this Priya?" / Change: back to the question (R-P10). */
+          onUnanswer: (nameKey: string) => void;
         }
     ) & {
       /** The X: asks "Mute for today / until I turn it back on" (R3, R7). */
@@ -189,23 +185,81 @@ export function BriefingCard(props: Props) {
             {props.briefing.title}
           </Text>
 
-          {props.briefing.people.map((person) => (
-            <Pressable
-              key={person.profileId}
-              accessibilityRole="button"
-              accessibilityLabel={`Open ${person.name}`}
-              onPress={() => router.push(`/profile/${person.profileId}`)}
-              style={styles.person}
-            >
-              <Text style={styles.personName}>{person.name}</Text>
-              <Text style={styles.personMeta}>
-                {person.noteCount === 0
-                  ? "nothing remembered yet"
-                  : person.noteCount === 1
-                    ? "1 note"
-                    : `${person.noteCount} notes`}
+          {props.briefing.people.map(({ pickedFor, ...person }) => (
+            <View key={person.profileId}>
+              <PersonLink person={person} />
+              {pickedFor !== undefined ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Choose a different ${pickedFor.name} for this event`}
+                  onPress={() => props.onUnanswer(pickedFor.key)}
+                  style={styles.change}
+                  testID="briefing-card-pick-change-button"
+                >
+                  <Text style={styles.changeLabelSmall}>Not this {pickedFor.name}?</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          ))}
+
+          {props.briefing.ambiguous.map((name) => (
+            // Asked rather than guessed, and nothing is pre-selected: picking
+            // the one with more notes would be the app pretending to know
+            // (R-P10). Every candidate shows how you know them, so the right
+            // one can be recognised rather than recalled.
+            <View key={name.key} style={styles.pick} testID="briefing-card-pick">
+              <Text style={styles.pickLabel}>Which {name.name} is this?</Text>
+              <Text style={styles.note}>
+                You&apos;ve written about {name.count} people called {name.name}. Andy
+                will remember your answer for this event, every time it repeats.
+                It stays on this phone.
               </Text>
-            </Pressable>
+              {name.candidates.map((candidate, index) => (
+                <Pressable
+                  key={candidate.profileId}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${candidate.name}, ${describePerson(candidate)}`}
+                  accessibilityHint={`Remembers this ${name.name} for this event.`}
+                  onPress={() => props.onAnswer(name.key, candidate.profileId)}
+                  style={[
+                    styles.choice,
+                    index < name.candidates.length - 1 && styles.choiceDivided,
+                  ]}
+                  testID="briefing-card-pick-choice"
+                >
+                  <Text style={styles.choiceName}>{candidate.name}</Text>
+                  <Text style={styles.personMeta}>{describePerson(candidate)}</Text>
+                </Pressable>
+              ))}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Neither of them"
+                accessibilityHint={`Remembers that this ${name.name} is someone you haven't written about.`}
+                onPress={() => props.onAnswer(name.key, NONE)}
+                style={styles.plain}
+                testID="briefing-card-pick-neither"
+              >
+                <Text style={styles.plainLabel}>Neither of them</Text>
+              </Pressable>
+            </View>
+          ))}
+
+          {props.briefing.declined.map((name) => (
+            // Kept on the card until the meeting starts, so the answer can be
+            // undone where it was given (R-P6).
+            <View key={name.key} style={styles.noneLine} testID="briefing-card-pick-none-line">
+              <Text style={styles.noneText}>
+                Not a {name.name} you&apos;ve written about.
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Change who ${name.name} is for this event`}
+                onPress={() => props.onUnanswer(name.key)}
+                style={styles.inlineChange}
+              >
+                <Text style={styles.changeLabel}>Change</Text>
+              </Pressable>
+            </View>
           ))}
 
           {props.alerts === "off" ? (
@@ -230,18 +284,31 @@ export function BriefingCard(props: Props) {
             </Text>
           ) : null}
 
-          {props.briefing.ambiguous.map((name) => (
-            // Said rather than guessed. Two people answer to this name and the
-            // app does not know which one you are meeting — picking the one
-            // with more notes would be it pretending to know.
-            <Text key={name.name} style={styles.body}>
-              You&apos;ve written about {name.count} people called “{name.name}”,
-              so Andy can&apos;t tell which one this is.
-            </Text>
-          ))}
         </>
       ) : null}
     </View>
+  );
+}
+
+/** `briefing-card-person-link`: opens the person, with how much is written. */
+function PersonLink({ person }: { person: BriefingPerson }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Open ${person.name}`}
+      onPress={() => router.push(`/profile/${person.profileId}`)}
+      style={styles.person}
+      testID="briefing-card-person-link"
+    >
+      <Text style={styles.personName}>{person.name}</Text>
+      <Text style={styles.personMeta}>
+        {person.noteCount === 0
+          ? "nothing remembered yet"
+          : person.noteCount === 1
+            ? "1 note"
+            : `${person.noteCount} notes`}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -354,4 +421,34 @@ const styles = StyleSheet.create({
     marginTop: space.xs,
   },
   reminderLabel: { color: colors.moss, fontSize: textSize.md },
+  /** `briefing-card-pick`: set off from the meeting by a divider (decoration). */
+  pick: {
+    marginTop: space.lg,
+    paddingTop: space.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
+  },
+  pickLabel: { color: colors.ink, fontSize: textSize.base, fontWeight: "600" },
+  choice: { minHeight: TARGET, justifyContent: "center", paddingVertical: space.sm },
+  /** Between candidates only — not under the last, above Neither. */
+  choiceDivided: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line },
+  choiceName: { color: colors.ink, fontSize: textSize.base },
+  change: { minHeight: TARGET, justifyContent: "center", alignSelf: "flex-start" },
+  /** Change, in the none-line's own sentence size. */
+  changeLabel: { color: colors.moss, fontSize: textSize.base },
+  /** Not this Priya?, under the person — a size down, as the mock has it. */
+  changeLabelSmall: { color: colors.moss, fontSize: textSize.sm },
+  inlineChange: { minHeight: TARGET, justifyContent: "center" },
+  /** The sentence and its Change on one line, wrapping when the text is large. */
+  noneLine: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    columnGap: space.sm,
+    marginTop: space.md,
+    paddingTop: space.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
+  },
+  noneText: { color: colors.ink, fontSize: textSize.base },
 });
