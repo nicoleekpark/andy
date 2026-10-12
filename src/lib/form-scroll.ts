@@ -1,13 +1,13 @@
 import type { ScrollViewProps } from "react-native";
 
 /**
- * How every full-screen form scrolls: the note editor, Check this over, a
+ * How every full-screen form scrolls: the note editor, review ("New note"), a
  * note's edit screen, a person's edit screen.
  *
  * `automaticallyAdjustKeyboardInsets` is the part that matters. Without it the
  * keyboard covers the bottom of the form and the scroll view does not know,
  * so the last fields cannot be scrolled into view at all (device QA build 4
- * #28: What you said on Check this over). iOS measures the keyboard itself;
+ * #28: What you said on review). iOS measures the keyboard itself;
  * see the note editor in `capture-screen.tsx` for why not a
  * `KeyboardAvoidingView`.
  *

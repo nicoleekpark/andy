@@ -303,11 +303,18 @@ export default function SearchScreen() {
           // was never asked.
           error === null ? (
             <View style={styles.centred}>
-              <Text style={styles.quiet}>
-                Ask in your own words. Andy reads everything you have saved —
-                including people who only came up inside someone else&apos;s
-                note.
-              </Text>
+              {/* Two paragraphs: what to type, then what Andy reads (owner, 2026-10-12). */}
+              <View style={styles.hint}>
+                <Text style={styles.quiet}>
+                  Type a name, or ask in your own words — like “who just
+                  started a new job?”
+                </Text>
+                <Text style={styles.quiet} testID="ask-hint-detail">
+                  Andy looks through all your notes, even where someone only
+                  came up in passing. It can only answer from what you&apos;ve
+                  told it.
+                </Text>
+              </View>
             </View>
           ) : null
         ) : (
@@ -569,6 +576,7 @@ const styles = StyleSheet.create({
   mentionGone: { color: colors.ink, opacity: 0.75 },
 
   centred: { flex: 1, justifyContent: "center", alignItems: "center" },
+  hint: { gap: space.sm },
   quiet: {
     color: colors.ink,
     fontSize: 15,

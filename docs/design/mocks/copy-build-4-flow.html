@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--
+  Before / after for the build-4 copy items the owner chose (option A for
+  every item, docs/design/decisions/copy-build-4.md → Final choice). An HTML
+  approximation of native screens for explaining the change, not production
+  code. Example people only.
+-->
+<title>Build-4 wording, before and after</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono&display=swap">
+<style>
+:root{
+  --page:#EDEBE4;--page-ink:#2A2622;--quiet:#6F6A62;--rule:#CFCAC0;--card:#F6F4EE;
+  --paper:#E8E6DE;--ink:#2A2622;--moss:#5C6B4F;--line:#B8B3A8;--edge:#857E6D;--old:#9F4C3B;--new:#5C6B4F;
+  --serif:"Lora",Georgia,serif;--mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--page:#1E1C19;--page-ink:#ECE8E0;--quiet:#A39D93;--rule:#3A3631;--card:#26231F;--new:#9DB08A;--old:#D98C7A;color-scheme:dark}}
+:root[data-theme="dark"]{--page:#1E1C19;--page-ink:#ECE8E0;--quiet:#A39D93;--rule:#3A3631;--card:#26231F;--new:#9DB08A;--old:#D98C7A;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--page-ink);font-family:var(--sans);font-size:15px;line-height:1.5;padding:0 20px}
+.wrap{max-width:1100px;margin:0 auto;padding-block:40px 72px;display:grid;gap:40px}
+header{display:grid;gap:8px;max-width:72ch}
+h1{font-family:var(--serif);font-weight:500;font-size:clamp(28px,4vw,38px);line-height:1.15;margin:0}
+header p{margin:0;color:var(--quiet)}
+nav.toc{display:flex;flex-wrap:wrap;gap:6px 10px;font-family:var(--mono);font-size:12px}
+nav.toc a{color:var(--page-ink);text-decoration:none;border:1px solid var(--rule);border-radius:999px;padding:3px 10px}
+section.item{display:grid;gap:12px;scroll-margin-top:16px}
+.head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+.num{font-family:var(--mono);font-size:12px;color:var(--quiet)}
+h2{font-family:var(--serif);font-weight:500;font-size:22px;margin:0}
+.why{color:var(--quiet);margin:0;max-width:72ch}
+.pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.side{display:grid;gap:6px;align-content:start}
+.tag{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.before .tag{color:var(--old)}.after .tag{color:var(--new)}
+.phone{background:var(--paper);color:var(--ink);border:1px solid var(--rule);border-radius:22px;padding:14px 16px 18px;min-height:150px}
+.bar{display:flex;align-items:center;justify-content:space-between;font-size:15px;margin-bottom:12px;min-height:22px}
+.bar .back{color:#2F6FDE;font-size:15px;display:flex;align-items:center;gap:2px}
+.bar .back b{font-size:22px;line-height:1;font-weight:400}
+.bar .t{font-weight:600}
+.lead{font-size:15px;line-height:1.45;margin:0 0 10px}
+.label{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.8;margin-top:10px}
+.quiet{font-size:13px;opacity:.7;margin:4px 0}
+.field{border-bottom:1px solid var(--edge);padding:6px 0;font-size:15px}
+.pill{display:inline-block;background:var(--moss);color:var(--paper);border-radius:999px;padding:11px 18px;margin-top:12px;font-size:15px}
+.plain{display:inline-block;padding:11px 8px;opacity:.7}
+.cand{border:1px solid var(--edge);border-radius:10px;padding:9px 12px;margin-top:8px}
+.cand .n{font-size:16px}.cand .m{font-size:13px;opacity:.7}
+.serif{font-family:var(--serif)}
+.center{text-align:center}
+.vo{font-family:var(--mono);font-size:12px;background:var(--card);border:1px dashed var(--rule);border-radius:8px;padding:6px 8px;color:var(--page-ink)}
+.strike{text-decoration:line-through;text-decoration-color:var(--old)}
+.hl{background:color-mix(in srgb,var(--new) 18%,transparent);border-radius:4px;padding:0 2px}
+.gone{border:1px dashed var(--old);border-radius:6px;padding:4px 6px;color:var(--old);font-size:13px}
+.note{font-size:13px;color:var(--quiet);max-width:72ch;margin:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Build-4 wording, before and after</h1>
+  <p>Every item you chose on 2026-10-11 (option A throughout). Red is what is on the phone today, green what replaces it. Screens are approximations; the words are exact.</p>
+  <nav class="toc">
+    <a href="#i1">#1 sign-in</a><a href="#i22">#22 button</a><a href="#i23">#23 lead</a><a href="#i24">#24/34 hint</a><a href="#i25">#25 title</a><a href="#i27">#27/37 back</a><a href="#i32">#32 line</a><a href="#i33">#33 someone new</a><a href="#i35">#35 ask</a><a href="#i46">#46 QA row</a>
+  </nav>
+</header>
+
+<section class="item" id="i1">
+  <div class="head"><span class="num">#1 · sign-in</span><h2>The line under the tagline</h2></div>
+  <p class="why">The tagline stays. The description's "it" pointed at nothing.</p>
+  <div class="pair">
+    <div class="side before"><span class="tag">Before</span><div class="phone center">
+      <div class="serif" style="font-size:30px;margin:10px 0 4px">andy</div>
+      <div class="serif" style="font-style:italic">Remember what they told you.</div>
+      <p class="quiet">Notes about the people you meet, so you can ask about <span class="strike">it</span> next time.</p></div></div>
+    <div class="side after"><span class="tag">After</span><div class="phone center">
+      <div class="serif" style="font-size:30px;margin:10px 0 4px">andy</div>
+      <div class="serif" style="font-style:italic">Remember what they told you.</div>
+      <p class="quiet"><span class="hl">A private notebook for the people you meet, so next time you know what to ask about.</span></p></div></div>
+  </div>
+</section>
+
+<section class="item" id="i22">
+  <div class="head"><span class="num">#22 · record--transcript</span><h2>The button after recording or typing</h2></div>
+  <p class="why">Not "Confirm": nothing is saved yet — that is Remember this, one screen later. Says who reads, and matches Read it again / Read it now / Reading….</p>
+  <div class="pair">
+    <div class="side before"><span class="tag">Before</span><div class="phone">
+      <div class="label">What you said</div><div class="field">Had coffee with Priya, she's fostering a second dog</div>
+      <span class="pill">Read it</span> <span class="plain">Record again</span></div></div>
+    <div class="side after"><span class="tag">After</span><div class="phone">
+      <div class="label">What you said</div><div class="field">Had coffee with Priya, she's fostering a second dog</div>
+      <span class="pill hl" style="color:var(--paper)">Let Andy read it</span> <span class="plain">Record again</span>
+      <div class="vo" style="margin-top:8px">VoiceOver: "Let Andy read it, button" · while reading: "Reading…"</div></div></div>
+  </div>
+</section>
+
+<section class="item" id="i23">
+  <div class="head"><span class="num">#23 · record--transcript</span><h2>The line above what Andy heard</h2></div>
+  <p class="why">A question you can answer at a glance, ending in the button's own words.</p>
+  <div class="pair">
+    <div class="side before"><span class="tag">Before</span><div class="phone">
+      <p class="lead">Check what Andy heard. Fix any names or words before it's read.</p>
+      <div class="label">What you said</div><div class="field">Met Prisley at the booth</div></div></div>
+    <div class="side after"><span class="tag">After</span><div class="phone">
+      <p class="lead"><span class="hl">Is this what you said? Fix any name or word, then let Andy read it.</span></p>
+      <div class="label">What you said</div><div class="field">Met Prisley at the booth</div></div></div>
+  </div>
+</section>
+
+<section class="item" id="i24">
+  <div class="head"><span class="num">#24 / #34 · review</span><h2>The explanation over "What you said"</h2></div>
+  <p class="why">Removed. Since #136 the line under the words says it — only once you have actually changed them.</p>
+  <div class="pair">
+    <div class="side before"><span class="tag">Before</span><div class="phone">
+      <div class="label">What you said</div>
+      <p class="quiet">Correcting this fixes the note itself. The facts above stay as they are — unless you ask Andy to read it again.</p>
+      <div class="field">Had coffee with Priya</div><span class="plain" style="color:var(--moss);opacity:1">Read it again</span></div></div>
+    <div class="side after"><span class="tag">After</span><div class="phone">
+      <div class="label">What you said</div>
+      <div class="gone">(no explanation until you change something)</div>
+      <div class="field">Had coffee with Priya</div><span class="plain" style="color:var(--moss);opacity:1">Read it again</span>
+      <p class="quiet" style="margin-top:10px">After you edit the words, this appears under them:<br><i>The details above still come from the old wording.</i></p></div></div>
+  </div>
+</section>
+
+<section class="item" id="i25">
+  <div class="head"><span class="num">#25 · review</span><h2>The review screen's title</h2></div>
+  <p class="why">"Check this over" was an instruction, and the second "check" in a row. Now the same title as every other step of making a note.</p>
+  <div class="pair">
+    <div class="side before"><span class="tag">Before</span><div class="phone"><div class="bar"><span class="back"><b>‹</b> Andy</span><span class="t">Check this over</span><span style="width:50px"></span></div><div class="label">Name</div><div class="field">Priya</div></div></div>
+    <div class="side after"><span class="tag">After</span><div class="phone"><div class="bar"><span class="back"><b>‹</b></span><span class="t hl">New note</span><span style="width:20px"></span></div><div class="label">Name</div><div class="field">Priya</div></div></div>
+  </div>
+</section>
+
+<section class="item" id="i27">
+  <div class="head"><span class="num">#27 / #37 · every pushed screen</span><h2>Back buttons</h2></div>
+  <p class="why">One rule everywhere: the chevron alone. "‹ Andy" read as the app — or the assistant — not "back to home"; "‹ Check this over" was a task, not a place. VoiceOver still says "Back". (Second slice: a native header setting, checked against the SDK first.)</p>
+  <div class="pair">
+    <div class="side before"><span class="tag">Before</span><div class="phone">
+      <div class="bar"><span class="back"><b>‹</b> Andy</span><span class="t">Priya</span><span style="width:40px"></span></div>
+      <div class="bar"><span class="back"><b>‹</b> Check this over</span><span class="t">Priya</span><span></span></div>
+      <div class="bar"><span class="back"><b>‹</b> Ask Andy</span><span class="t">Note</span><span></span></div></div></div>
+    <div class="side after"><span class="tag">After</span><div class="phone">
+      <div class="bar"><span class="back hl"><b>‹</b></span><span class="t">Priya</span><span style="width:20px"></span></div>
+      <div class="bar"><span class="back hl"><b>‹</b></span><span class="t">Priya</span><span style="width:20px"></span></div>
+      <div class="bar"><span class="back hl"><b>‹</b></span><span class="t">Note</span><span style="width:20px"></span></div>
+      <div class="vo">VoiceOver: "Back, button"</div></div></div>
+  </div>
+</section>
+
+<section class="item" id="i32">
+  <div class="head"><span class="num">#32 · review, after picking someone you know</span><h2>Why "How you know them" isn't there</h2></div>
+  <p class="why">"Details" is also the word for the list right below it, so it read as "these won't be saved". "Profile" isn't a word the app uses on screen.</p>
+  <div class="pair">
+    <div class="side before"><span class="tag">Before</span><div class="phone">
+      <div class="label">Name</div><div class="field">Nina</div>
+      <p class="quiet">Nina's details stay as they are. Change them from their profile.</p>
+      <div class="label">What to remember</div><div class="field">Moving to Lisbon in March</div></div></div>
+    <div class="side after"><span class="tag">After</span><div class="phone">
+      <div class="label">Name</div><div class="field">Nina</div>
+      <p class="quiet"><span class="hl">To change how you know Nina or when you first met, edit their page.</span></p>
+      <div class="label">What to remember</div><div class="field">Moving to Lisbon in March</div></div></div>
+  </div>
+</section>
+
+<section class="item" id="i33">
+  <div class="head"><span class="num">#33 · review, a name several people share</span><h2>Someone new</h2></div>
+  <p class="why">"Kept separately" sounded like storage. And VoiceOver said "New person called Emily Watson" — not the words on screen, so saying "Someone new" to Voice Control did nothing (WCAG 2.5.3). Now the label starts with what you see.</p>
+  <div class="pair">
+    <div class="side before"><span class="tag">Before</span><div class="phone">
+      <div class="cand"><div class="n">This Emily Watson?</div><div class="m">client · 4 notes · last Oct 5</div></div>
+      <div class="cand"><div class="n">Someone new</div><div class="m">A different Emily Watson, kept separately</div></div>
+      <div class="vo" style="margin-top:8px">VoiceOver: "New person called Emily Watson"</div></div></div>
+    <div class="side after"><span class="tag">After</span><div class="phone">
+      <div class="cand"><div class="n">This Emily Watson?</div><div class="m">client · 4 notes · last Oct 5</div></div>
+      <div class="cand"><div class="n">Someone new</div><div class="m hl">A different person, also called Emily Watson</div></div>
+      <div class="vo" style="margin-top:8px">VoiceOver: "<span class="hl">Someone new: a different person, also called Emily Watson</span>"</div></div></div>
+  </div>
+</section>
+
+<section class="item" id="i35">
+  <div class="head"><span class="num">#35 · ask</span><h2>What Ask Andy says before you type</h2></div>
+  <p class="why">Says you can just type a name, with an everyday example question (a new job — news almost anyone has been told, not a niche hobby). What Andy reads is its own paragraph, and it says plainly that Andy answers only from what you've told it, so "nothing saved about that" feels expected, not broken.</p>
+  <div class="pair">
+    <div class="side before"><span class="tag">Before</span><div class="phone"><div class="field" style="opacity:.6">Ask Andy</div>
+      <p class="quiet center" style="margin-top:28px">Ask in your own words. Andy reads everything you have saved — including people who only came up inside someone else's note.</p></div></div>
+    <div class="side after"><span class="tag">After</span><div class="phone"><div class="field" style="opacity:.6">Ask Andy</div>
+      <p class="quiet center" style="margin-top:28px"><span class="hl">Type a name, or ask in your own words — like “who just started a new job?”</span></p>
+      <p class="quiet center" style="margin-top:8px"><span class="hl">Andy looks through all your notes, even where someone only came up in passing. It can only answer from what you've told it.</span></p></div></div>
+  </div>
+</section>
+
+<section class="item" id="i46">
+  <div class="head"><span class="num">#46 · QA.md</span><h2>"Note opens to read"</h2></div>
+  <p class="why">Rows 20.11a and 20.11b are deleted: <code>__tests__/note.test.tsx</code> already checks that a note opened from Came up in is read-only and that Edit goes straight to the editor. QA.md keeps only what a test cannot see.</p>
+  <div class="pair">
+    <div class="side before"><span class="tag">Before</span><div class="phone" style="font-size:13px">| 20.11a | Tap one of those Came up in rows | The note opens to read: date, the facts as plain text… |<br>| 20.11b | On a profile, tap Edit beside a note | Straight into the editor… |</div></div>
+    <div class="side after"><span class="tag">After</span><div class="phone" style="font-size:13px"><div class="gone">(rows removed — covered by jest)</div></div></div>
+  </div>
+</section>
+
+<p class="note">Built in two PRs: the words (#1, #22–25, #32–35, #46), then the back rule (#27/#37). Device checks for both are in QA.md.</p>
+</div>
+</body>
+</html>

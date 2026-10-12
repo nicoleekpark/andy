@@ -94,7 +94,7 @@ describe("sign-in screen", () => {
 
     expect(screen.getByText("Remember what they told you.")).toBeOnTheScreen();
     expect(
-      screen.getByText("Notes about the people you meet, so you can ask about it next time."),
+      screen.getByText("A private notebook for the people you meet, so next time you know what to ask about."),
     ).toBeOnTheScreen();
   });
 

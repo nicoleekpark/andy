@@ -214,7 +214,7 @@ async function reachReview(handlers: Record<string, Listener>, spoken: string) {
   // A finished recording waits on the editor first (2026-09-29), so the words
   // can be fixed before anything reads them. Reading them is one more tap.
   await act(async () => {
-    fireEvent.press(await screen.findByRole("button", { name: "Read it" }));
+    fireEvent.press(await screen.findByRole("button", { name: "Let Andy read it" }));
   });
   await waitFor(() => expect(screen.getByRole("button", { name: "Remember this" })).toBeTruthy());
 }
@@ -497,7 +497,7 @@ describe("capture screen review step", () => {
 
     // Stopped, and nothing has been read yet.
     expect(extract).not.toHaveBeenCalled();
-    expect(screen.getByText(/Fix any names or words before it/)).toBeTruthy();
+    expect(screen.getByText(/Fix any name or word, then let Andy read it/)).toBeTruthy();
     const said = screen.getByLabelText("What you said");
     // Most of the time there is nothing to fix, so no keyboard in the way.
     expect(said.props.autoFocus).toBe(false);
@@ -510,7 +510,7 @@ describe("capture screen review step", () => {
       fireEvent.changeText(said, "Met Nina for lunch");
     });
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Read it" }));
+      fireEvent.press(screen.getByRole("button", { name: "Let Andy read it" }));
     });
     await waitFor(() => expect(extract).toHaveBeenCalledTimes(1));
     expect(JSON.stringify(extract.mock.calls[0])).toContain("Met Nina for lunch");
@@ -553,7 +553,7 @@ describe("capture screen review step", () => {
     expect(scrollsAboveKeyboard("What you said")).toBe(true);
     // And Read it is inside what scrolls, so it can always be reached.
     expect(
-      within(scrollViewAround("What you said")!).getByRole("button", { name: "Read it" }),
+      within(scrollViewAround("What you said")!).getByRole("button", { name: "Let Andy read it" }),
     ).toBeTruthy();
   });
 
@@ -693,7 +693,7 @@ describe("capture screen review step", () => {
     });
     expect(screen.getByDisplayValue("Met Nina for lunch")).toBeTruthy();
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Read it" }));
+      fireEvent.press(screen.getByRole("button", { name: "Let Andy read it" }));
     });
     await waitFor(() => expect(extract).toHaveBeenCalledTimes(1));
     expect(JSON.stringify(extract.mock.calls[0])).toContain("Met Nina for lunch");
@@ -879,7 +879,7 @@ describe("capture screen review step", () => {
     ).toBeTruthy();
     await act(async () => {
       fireEvent.press(
-        screen.getByLabelText("New person called Prisley"),
+        screen.getByLabelText("Someone new: a different person, also called Prisley"),
       );
     });
     expect(screen.getByLabelText("Remember this")).not.toBeDisabled();
@@ -922,7 +922,7 @@ describe("capture screen review step", () => {
 
     expect(screen.queryByLabelText("How you know them")).toBeNull();
     expect(screen.queryByLabelText("This was the first time we met")).toBeNull();
-    expect(screen.getByText(/Nina's details stay as they are/)).toBeTruthy();
+    expect(screen.getByText(/To change how you know Nina or when you first met/)).toBeTruthy();
 
     await act(async () => {
       fireEvent.press(screen.getByLabelText("Remember this"));
@@ -982,7 +982,7 @@ describe("capture screen review step", () => {
 
     // Somebody new after all: their details are theirs to fill in.
     await act(async () => {
-      fireEvent.press(screen.getByLabelText("New person called Prisley"));
+      fireEvent.press(screen.getByLabelText("Someone new: a different person, also called Prisley"));
     });
     expect(screen.getByLabelText("How you know them")).toBeTruthy();
 
@@ -1196,8 +1196,31 @@ describe("capture screen review step", () => {
     // nothing. Position is the fix, so position is what this asserts: the
     // choices sit inside the same Name field as the input.
     const nameField = within(screen.getByTestId("field-Name"));
-    expect(nameField.getByLabelText("New person called Nina")).toBeTruthy();
+    expect(nameField.getByLabelText("Someone new: a different person, also called Nina")).toBeTruthy();
     expect(nameField.getByText("This Nina?")).toBeTruthy();
+  });
+
+  test("should name Someone new to VoiceOver with the words it shows (WCAG 2.5.3)", async () => {
+    (useAction as jest.Mock).mockReturnValue(jest.fn(async () => makeDraft()));
+    scopeTo("Nina", [
+      {
+        name: "Nina",
+        viaPossessive: false,
+        candidates: [
+          { profileId: "profile-a", name: "Nina", relationshipContext: "client", entityType: "person", noteCount: 1, lastNoteAt: null },
+        ],
+      },
+    ]);
+    const handlers = captureListeners();
+    await renderRouter("src/app", { initialUrl: "/capture" });
+    await reachReview(handlers, "Met Nina today.");
+
+    // Label in Name: someone using Voice Control says what they see. The old
+    // label, "New person called Nina", did not contain "Someone new" at all.
+    const option = within(screen.getByTestId("field-Name")).getByText("Someone new");
+    const button = screen.getByRole("button", { name: /^Someone new:/ });
+    expect(button.props.accessibilityLabel.startsWith(option.props.children)).toBe(true);
+    expect(screen.getByText("A different person, also called Nina")).toBeTruthy();
   });
 
   test("should still show a question that has no field to sit beside", async () => {
@@ -1364,7 +1387,7 @@ describe("capture screen review step", () => {
     await result;
     await reachReview(handlers, "Met Joe King today.");
 
-    expect(screen.getByText("New person — nobody by this name yet.")).toBeTruthy();
+    expect(screen.getByText("Someone new — no one by this name yet.")).toBeTruthy();
     // Still saveable: inventing somebody is often exactly right. The screen
     // says which it is, it does not decide.
     expect(screen.getByLabelText("Remember this")).not.toBeDisabled();
@@ -1606,7 +1629,7 @@ describe("capture screen review step", () => {
       );
     });
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Read it" }));
+      fireEvent.press(screen.getByRole("button", { name: "Let Andy read it" }));
     });
 
     // Same extraction, same review step, same save — only the door differs.
@@ -1644,7 +1667,7 @@ describe("capture screen review step", () => {
       screen.queryByRole("button", { name: "Scan a business card" }),
     ).toBeNull();
     expect(screen.getByLabelText("Type a note")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Read it" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Let Andy read it" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Stop typing" })).toBeTruthy();
   });
 
@@ -1679,7 +1702,7 @@ describe("capture screen review step", () => {
       fireEvent.press(screen.getByRole("button", { name: "Type it instead" }));
     });
 
-    expect(screen.getByLabelText("Read it")).toBeDisabled();
+    expect(screen.getByLabelText("Let Andy read it")).toBeDisabled();
     expect(extract).not.toHaveBeenCalled();
   });
 
@@ -1775,7 +1798,7 @@ describe("capture screen review step", () => {
     expect(
       screen.getByLabelText("Emma, friend · 3 notes · last 2026-08-30"),
     ).toBeTruthy();
-    expect(screen.getByText("New person — nobody by this name yet.")).toBeTruthy();
+    expect(screen.getByText("Someone new — no one by this name yet.")).toBeTruthy();
     expect(screen.getByLabelText("Remember this")).toBeDisabled();
   });
 
@@ -1804,7 +1827,7 @@ describe("capture screen review step", () => {
 
     // Once, for the subject — not twice.
     expect(
-      screen.getAllByText("New person — nobody by this name yet."),
+      screen.getAllByText("Someone new — no one by this name yet."),
     ).toHaveLength(1);
   });
 
@@ -1859,7 +1882,7 @@ describe("capture screen review step", () => {
 
     await act(async () => {
       fireEvent.press(
-        screen.getByRole("button", { name: "New person called Priya" }),
+        screen.getByRole("button", { name: "Someone new: a different person, also called Priya" }),
       );
     });
     await act(async () => {
@@ -2015,7 +2038,7 @@ describe("capture screen review step", () => {
     // kept, which is the case it exists to handle.
     await act(async () => {
       fireEvent.press(
-        screen.getByRole("button", { name: "New person called Emma" }),
+        screen.getByRole("button", { name: "Someone new: a different person, also called Emma" }),
       );
     });
     await act(async () => {
@@ -2080,7 +2103,7 @@ describe("capture screen review step", () => {
     expect(screen.getByLabelText("Remember this")).toBeDisabled();
     await act(async () => {
       fireEvent.press(
-        screen.getByRole("button", { name: "New person called Marcus" }),
+        screen.getByRole("button", { name: "Someone new: a different person, also called Marcus" }),
       );
     });
     await act(async () => {
@@ -2135,7 +2158,7 @@ describe("capture screen review step", () => {
     // Answer "someone new" for the name as first heard.
     await act(async () => {
       fireEvent.press(
-        screen.getByRole("button", { name: "New person called priya" }),
+        screen.getByRole("button", { name: "Someone new: a different person, also called priya" }),
       );
     });
 
@@ -2523,6 +2546,18 @@ describe("capture screen review step", () => {
     });
     return result;
   }
+
+  test("should not explain What you said before anything has changed", async () => {
+    (useAction as jest.Mock).mockReturnValue(jest.fn(async () => makeDraft()));
+    const handlers = captureListeners();
+    await renderRouter("src/app", { initialUrl: "/capture" });
+    await reachReview(handlers, "Met Nina today.");
+
+    // Removed (owner, 2026-10-11, copy-build-4 #24): the line that says the
+    // details no longer match shows up at the moment it becomes true instead.
+    expect(screen.queryByText(/Correcting this fixes the note itself/)).toBeNull();
+    expect(screen.queryByText("The details above still come from the old wording.")).toBeNull();
+  });
 
   test("should say under the wording, not in a dialog, that the details no longer match it", async () => {
     const asked = spyOnConfirm().mockImplementation(() => {});
@@ -2948,7 +2983,7 @@ describe("capture screen offline", () => {
 
     await typeNote("Met Rowan at the booth, fosters two greyhounds.");
 
-    expect(screen.queryByRole("button", { name: "Read it" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Let Andy read it" })).toBeNull();
     expect(screen.getByText(/You're offline\. Andy will keep this note on this phone/)).toBeTruthy();
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Keep this note" }));
@@ -2973,7 +3008,7 @@ describe("capture screen offline", () => {
 
     await typeNote("Met Rowan at the booth.");
 
-    expect(screen.getByRole("button", { name: "Read it" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Let Andy read it" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Keep this note" })).toBeNull();
     expect(files().has(OUTBOX)).toBe(false);
   });
@@ -3069,7 +3104,7 @@ describe("capture screen offline", () => {
     expect(screen.getByLabelText("Type a note").props.value).toBe("Met Rowan at the booth.");
     expect(screen.getByText(/This note is still kept on this phone/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Keep this note" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Read it" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Let Andy read it" })).toBeNull();
     expect(kept()).toHaveLength(1);
     expect(extract).not.toHaveBeenCalled();
   });

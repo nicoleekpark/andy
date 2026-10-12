@@ -13,7 +13,7 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 
 **For the designer:** read top to bottom and mark anything that sounds wrong, unclear, or unlike the rest. Quote the string and its `Where` when you report it.
 
-412 strings, 16 with a planned change.
+416 strings, 13 with a planned change.
 
 ## Sign-in
 
@@ -21,66 +21,70 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 |---|---|---|---|
 | Couldn't reach Apple. Check your connection and try again. | message | `src/app/(auth)/sign-in.tsx:80` |  |
 | Remember what they told you. | text | `src/app/(auth)/sign-in.tsx:92` |  |
-| Notes about the people you meet, so you can ask about it next time. | text | `src/app/(auth)/sign-in.tsx:94` |  |
-| You're signed in with Apple, but Andy can't reach your account. Sign out and try again. | text | `src/app/(auth)/sign-in.tsx:103` |  |
-| Sign out | text | `src/app/(auth)/sign-in.tsx:119` |  |
-| Finishing sign-in… | text | `src/app/(auth)/sign-in.tsx:123` |  |
+| A private notebook for the people you meet, so next time you know what to ask about. | text | `src/app/(auth)/sign-in.tsx:94` |  |
+| You're signed in with Apple, but Andy can't reach your account. Sign out and try again. | text | `src/app/(auth)/sign-in.tsx:104` |  |
+| Sign out | text | `src/app/(auth)/sign-in.tsx:120` |  |
+| Finishing sign-in… | text | `src/app/(auth)/sign-in.tsx:124` |  |
 
 ## Home
 
 | What a person reads | Kind | Where | Planned change (STYLE.md → Terminology) |
 |---|---|---|---|
-| No one yet — tap record to remember your first person. | text | `src/app/(app)/index.tsx:46` |  |
-| {…} notes | text | `src/app/(app)/index.tsx:63` |  |
-| {…}kept on this phone, waiting for Andy to read {…}. | text | `src/app/(app)/index.tsx:66` |  |
-| {…} kept on this phone. Read {…} now | VoiceOver | `src/app/(app)/index.tsx:77` |  |
-| {…}kept on this phone. | text | `src/app/(app)/index.tsx:89` |  |
-| Read {…}now | text | `src/app/(app)/index.tsx:90` |  |
-| {…} changes | text | `src/app/(app)/index.tsx:107` |  |
-| {…}made offline, not saved yet. | text | `src/app/(app)/index.tsx:110` |  |
-| Sync | VoiceOver | `src/app/(app)/index.tsx:115` |  |
-| Syncing… | text | `src/app/(app)/index.tsx:121` |  |
-| Sync | text | `src/app/(app)/index.tsx:121` |  |
-| Andy | title | `src/app/(app)/index.tsx:146` |  |
-| Settings | VoiceOver | `src/app/(app)/index.tsx:164` |  |
-| Settings | text | `src/app/(app)/index.tsx:168` |  |
-| Loading… | text | `src/app/(app)/index.tsx:229` |  |
-| Ask Andy | VoiceOver | `src/app/(app)/index.tsx:278` |  |
-| Ask Andy | text | `src/app/(app)/index.tsx:282` |  |
-| Record | VoiceOver | `src/app/(app)/index.tsx:287` |  |
-| Record | text | `src/app/(app)/index.tsx:291` |  |
-| Mute the briefing | VoiceOver | `src/components/briefing-card.tsx:88` |  |
-| Before you walk in | text | `src/components/briefing-card.tsx:98` |  |
-| Andy can read your calendar and show what you wrote about whoever you're meeting next. It reads on this phone — your calendar never leaves it, and nothing is added to it. | text | `src/components/briefing-card.tsx:100` |  |
-| iPhone will ask for full access. It's the only kind that lets an app read events. | text | `src/components/briefing-card.tsx:110` |  |
-| Connect calendar | VoiceOver | `src/components/briefing-card.tsx:116` |  |
-| Asking… | text | `src/components/briefing-card.tsx:122` |  |
-| Connect calendar | text | `src/components/briefing-card.tsx:122` |  |
-| Not now | VoiceOver | `src/components/briefing-card.tsx:127` |  |
-| Not now | text | `src/components/briefing-card.tsx:132` |  |
-| You can connect later in Settings. | text | `src/components/briefing-card.tsx:135` |  |
-| Calendar access is off, so Andy can't see who you're meeting. To turn it on, choose Full Access under Calendars. | text | `src/components/briefing-card.tsx:143` |  |
-| Open iPhone Settings | VoiceOver | `src/components/briefing-card.tsx:155` |  |
-| Open iPhone Settings | text | `src/components/briefing-card.tsx:159` |  |
-| Nothing coming up | text | `src/components/briefing-card.tsx:173` |  |
-| No meetings in the next twelve hours with anyone you've written about. | text | `src/components/briefing-card.tsx:175` |  |
-| Choose a different {…} for this event | VoiceOver | `src/components/briefing-card.tsx:194` |  |
-| Not this {…}? | text | `src/components/briefing-card.tsx:199` |  |
-| Which {…}is this? | text | `src/components/briefing-card.tsx:211` |  |
-| You've written about {…}people called {…}. Andy will remember your answer for this event, every time it repeats. It stays on this phone. | text | `src/components/briefing-card.tsx:212` |  |
-| Remembers this {…} for this event. | VoiceOver | `src/components/briefing-card.tsx:222` |  |
-| Neither of them | VoiceOver | `src/components/briefing-card.tsx:236` |  |
-| Remembers that this {…} is someone you haven't written about. | VoiceOver | `src/components/briefing-card.tsx:237` |  |
-| Neither of them | text | `src/components/briefing-card.tsx:242` |  |
-| Not a {…}you've written about. | text | `src/components/briefing-card.tsx:251` |  |
-| Change who {…} is for this event | VoiceOver | `src/components/briefing-card.tsx:256` |  |
-| Change | text | `src/components/briefing-card.tsx:260` |  |
-| Remind me before meetings | VoiceOver | `src/components/briefing-card.tsx:268` |  |
-| Remind me 10 minutes before › | text | `src/components/briefing-card.tsx:273` |  |
-| Notifications are off, so Andy can't remind you before this. Turn them on in iPhone Settings › Andy. | text | `src/components/briefing-card.tsx:282` |  |
-| Open {…} | VoiceOver | `src/components/briefing-card.tsx:298` |  |
-| nothing remembered yet | text | `src/components/briefing-card.tsx:306` |  |
-| 1 note | text | `src/components/briefing-card.tsx:308` |  |
+| No one yet — tap record to remember your first person. | text | `src/app/(app)/index.tsx:50` |  |
+| {…} notes | text | `src/app/(app)/index.tsx:67` |  |
+| {…}kept on this phone, waiting for Andy to read {…}. | text | `src/app/(app)/index.tsx:70` |  |
+| {…} kept on this phone. Read {…} now | VoiceOver | `src/app/(app)/index.tsx:81` |  |
+| {…}kept on this phone. | text | `src/app/(app)/index.tsx:93` |  |
+| Read {…}now | text | `src/app/(app)/index.tsx:94` |  |
+| {…} changes | text | `src/app/(app)/index.tsx:111` |  |
+| {…}made offline, not saved yet. | text | `src/app/(app)/index.tsx:114` |  |
+| Sync | VoiceOver | `src/app/(app)/index.tsx:119` |  |
+| Syncing… | text | `src/app/(app)/index.tsx:125` |  |
+| Sync | text | `src/app/(app)/index.tsx:125` |  |
+| Andy | title | `src/app/(app)/index.tsx:167` |  |
+| Settings | VoiceOver | `src/app/(app)/index.tsx:185` |  |
+| Settings | text | `src/app/(app)/index.tsx:189` |  |
+| Loading… | text | `src/app/(app)/index.tsx:275` |  |
+| Ask Andy | VoiceOver | `src/app/(app)/index.tsx:329` |  |
+| Ask Andy | text | `src/app/(app)/index.tsx:333` |  |
+| Record | VoiceOver | `src/app/(app)/index.tsx:338` |  |
+| Record | text | `src/app/(app)/index.tsx:342` |  |
+| Mute the briefing | VoiceOver | `src/components/briefing-card.tsx:92` |  |
+| Before you walk in | text | `src/components/briefing-card.tsx:102` |  |
+| Andy can read your calendar and show what you wrote about whoever you're meeting next. It reads on this phone — your calendar never leaves it, and nothing is added to it. | text | `src/components/briefing-card.tsx:104` |  |
+| iPhone will ask for full access. It's the only kind that lets an app read events. | text | `src/components/briefing-card.tsx:114` |  |
+| Connect calendar | VoiceOver | `src/components/briefing-card.tsx:120` |  |
+| Asking… | text | `src/components/briefing-card.tsx:126` |  |
+| Connect calendar | text | `src/components/briefing-card.tsx:126` |  |
+| Not now | VoiceOver | `src/components/briefing-card.tsx:131` |  |
+| Not now | text | `src/components/briefing-card.tsx:136` |  |
+| You can connect later in Settings. | text | `src/components/briefing-card.tsx:139` |  |
+| Calendar access is off, so Andy can't see who you're meeting. To turn it on, choose Full Access under Calendars. | text | `src/components/briefing-card.tsx:147` |  |
+| Open iPhone Settings | VoiceOver | `src/components/briefing-card.tsx:159` |  |
+| Open iPhone Settings | text | `src/components/briefing-card.tsx:163` |  |
+| Remind me before meetings | VoiceOver | `src/components/briefing-card.tsx:193` |  |
+| Remind me 10 minutes before › | text | `src/components/briefing-card.tsx:198` |  |
+| Notifications are off, so Andy can't remind you before this. Turn them on in iPhone Settings › Andy. | text | `src/components/briefing-card.tsx:207` |  |
+| Nothing coming up | text | `src/components/briefing-card.tsx:223` |  |
+| No meetings in the next twelve hours with anyone you've written about. | text | `src/components/briefing-card.tsx:226` |  |
+| Previous meeting | VoiceOver | `src/components/briefing-card.tsx:307` |  |
+| {…}of {…} | text | `src/components/briefing-card.tsx:315` |  |
+| Next meeting | VoiceOver | `src/components/briefing-card.tsx:320` |  |
+| Meeting {…} of {…}, {…}, {…} | VoiceOver | `src/components/briefing-card.tsx:367` |  |
+| Choose a different {…} for this event | VoiceOver | `src/components/briefing-card.tsx:378` |  |
+| Not this {…}? | text | `src/components/briefing-card.tsx:383` |  |
+| Which {…}is this? | text | `src/components/briefing-card.tsx:395` |  |
+| You've written about {…}people called {…}. Andy will remember your answer for this event, every time it repeats. It stays on this phone. | text | `src/components/briefing-card.tsx:396` |  |
+| Remembers this {…} for this event. | VoiceOver | `src/components/briefing-card.tsx:406` |  |
+| Neither of them | VoiceOver | `src/components/briefing-card.tsx:420` |  |
+| Remembers that this {…} is someone you haven't written about. | VoiceOver | `src/components/briefing-card.tsx:421` |  |
+| Neither of them | text | `src/components/briefing-card.tsx:426` |  |
+| Not a {…}you've written about. | text | `src/components/briefing-card.tsx:435` |  |
+| Change who {…} is for this event | VoiceOver | `src/components/briefing-card.tsx:440` |  |
+| Change | text | `src/components/briefing-card.tsx:444` |  |
+| Open {…} | VoiceOver | `src/components/briefing-card.tsx:457` |  |
+| nothing remembered yet | text | `src/components/briefing-card.tsx:465` |  |
+| 1 note | text | `src/components/briefing-card.tsx:467` |  |
 | Andy can't reach the server. | text | `src/components/connecting.tsx:125` |  |
 | Try again | VoiceOver | `src/components/connecting.tsx:128` |  |
 | Try again | text | `src/components/connecting.tsx:132` |  |
@@ -104,109 +108,107 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 | This note goes to whoever you pick — or to somebody new. | text | `src/components/capture-screen.tsx:172` | This note goes to whoever you pick — or to someone new. |
 | View {…}, {…} | VoiceOver | `src/components/capture-screen.tsx:206` |  |
 | View | text | `src/components/capture-screen.tsx:216` |  |
-| New person called {…} | VoiceOver | `src/components/capture-screen.tsx:237` |  |
-| Someone new | text | `src/components/capture-screen.tsx:248` |  |
-| A different {…}, kept separately | text | `src/components/capture-screen.tsx:250` | A different {…}, with their own notes |
-| New person — nobody by this name yet. | text | `src/components/capture-screen.tsx:289` | Someone new — no one by this name yet. |
-| Adding to {…}· {…} | text | `src/components/capture-screen.tsx:294` |  |
-| Not this {…}? | VoiceOver | `src/components/capture-screen.tsx:310` |  |
-| Different person? | text | `src/components/capture-screen.tsx:314` |  |
-| Andy couldn't make sense of that one. Try again. | message | `src/components/capture-screen.tsx:798` |  |
-| Andy needs the camera to photograph a card. You can turn it on in Settings. | message | `src/components/capture-screen.tsx:834` |  |
-| Andy needs access to your photos to read a card. You can turn it on in Settings. | message | `src/components/capture-screen.tsx:835` |  |
-| That photo didn't come through. Try again. | message | `src/components/capture-screen.tsx:861` |  |
-| Andy couldn't read that card. Try again. | message | `src/components/capture-screen.tsx:881` |  |
-| Take a photo | button | `src/components/capture-screen.tsx:890` |  |
-| Choose from library | button | `src/components/capture-screen.tsx:891` |  |
-| Cancel | button | `src/components/capture-screen.tsx:892` |  |
-| Andy needs the microphone and speech recognition to take a voice note. You can turn them on in Settings. | message | `src/components/capture-screen.tsx:975` |  |
-| Speech needs a connection for this language — type it instead. | message | `src/components/capture-screen.tsx:989` |  |
-| Read it again | button | `src/components/capture-screen.tsx:1128` |  |
-| Andy couldn't save that one. Try again. | message | `src/components/capture-screen.tsx:1239` |  |
-| Check this over | title | `src/components/capture-screen.tsx:1315` |  |
-| This is what Andy will remember. Change anything first. | text | `src/components/capture-screen.tsx:1328` |  |
-| Name | label | `src/components/capture-screen.tsx:1331` |  |
-| Who is this about? | placeholder | `src/components/capture-screen.tsx:1336` |  |
-| Name | VoiceOver | `src/components/capture-screen.tsx:1338` |  |
-| How you know them | label | `src/components/capture-screen.tsx:1386` |  |
-| client, friend, foster… | placeholder | `src/components/capture-screen.tsx:1397` |  |
-| How you know them | VoiceOver | `src/components/capture-screen.tsx:1399` |  |
-| First met | label | `src/components/capture-screen.tsx:1403` |  |
-| This was the first time we met | VoiceOver | `src/components/capture-screen.tsx:1414` |  |
-| This was the first time we met | text | `src/components/capture-screen.tsx:1441` |  |
-| YYYY-MM-DD | placeholder | `src/components/capture-screen.tsx:1454` |  |
-| First met date | VoiceOver | `src/components/capture-screen.tsx:1456` |  |
-| {…}'s details stay as they are. Change them from their profile. | text | `src/components/capture-screen.tsx:1462` |  |
-| What to remember | label | `src/components/capture-screen.tsx:1468` |  |
-| Nothing pulled out of this one. | text | `src/components/capture-screen.tsx:1470` |  |
-| Fact {…} | VoiceOver | `src/components/capture-screen.tsx:1486` | Detail {…} *(by rule)* |
-| Remove fact {…} | VoiceOver | `src/components/capture-screen.tsx:1490` | Remove detail {…} *(by rule)* |
-| Add a fact | VoiceOver | `src/components/capture-screen.tsx:1513` | Add a detail *(by rule)* |
-| Add a fact | text | `src/components/capture-screen.tsx:1520` | Add a detail *(by rule)* |
-| Tags | label | `src/components/capture-screen.tsx:1528` |  |
-| Tag {…} | VoiceOver | `src/components/capture-screen.tsx:1542` |  |
-| Remove tag {…} | VoiceOver | `src/components/capture-screen.tsx:1546` |  |
-| Add a tag | VoiceOver | `src/components/capture-screen.tsx:1561` |  |
-| Add a tag | text | `src/components/capture-screen.tsx:1568` |  |
-| Also came up | label | `src/components/capture-screen.tsx:1577` |  |
-| Mentioned name {…} | VoiceOver | `src/components/capture-screen.tsx:1586` |  |
-| Remove mention {…} | VoiceOver | `src/components/capture-screen.tsx:1590` |  |
-| What the note says about them | placeholder | `src/components/capture-screen.tsx:1626` |  |
-| Mentioned quote {…} | VoiceOver | `src/components/capture-screen.tsx:1628` |  |
-| Add someone | VoiceOver | `src/components/capture-screen.tsx:1671` |  |
-| Add someone | text | `src/components/capture-screen.tsx:1684` |  |
-| Correcting this fixes the note itself. The facts above stay as they are — unless you ask Andy to read it again. | text | `src/components/capture-screen.tsx:1690` | Correcting this fixes the note itself. The details above stay as they are — unless you ask Andy to read it again. *(by rule)* |
-| The details above still come from the old wording. | text | `src/components/capture-screen.tsx:1708` |  |
-| Read it again | VoiceOver | `src/components/capture-screen.tsx:1719` |  |
-| Reading… | text | `src/components/capture-screen.tsx:1725` |  |
-| Read it again | text | `src/components/capture-screen.tsx:1725` |  |
-| Remember this | VoiceOver | `src/components/capture-screen.tsx:1744` |  |
-| Remembering… | text | `src/components/capture-screen.tsx:1750` |  |
-| Remember this | text | `src/components/capture-screen.tsx:1750` |  |
-| Add a name first — Andy couldn't tell who this is about. | text | `src/components/capture-screen.tsx:1755` |  |
-| Say which person each name above means, and this can be saved. | text | `src/components/capture-screen.tsx:1760` |  |
-| Discard and start over | VoiceOver | `src/components/capture-screen.tsx:1766` |  |
-| Discard and start over | text | `src/components/capture-screen.tsx:1771` |  |
-| New note | title | `src/components/capture-screen.tsx:1794` |  |
-| Check what Andy heard. Fix any names or words before it's read. | text | `src/components/capture-screen.tsx:1814` |  |
-| What you said | text | `src/components/capture-screen.tsx:1824` |  |
-| What do you want to remember? | placeholder | `src/components/capture-screen.tsx:1839` |  |
-| What do you want to remember about {…}? | placeholder | `src/components/capture-screen.tsx:1840` |  |
-| What you said | VoiceOver | `src/components/capture-screen.tsx:1843` |  |
-| Type a note | VoiceOver | `src/components/capture-screen.tsx:1843` |  |
-| You're offline. This note is still kept on this phone — Andy will read it when you're back online. | text | `src/components/capture-screen.tsx:1855` |  |
-| You're offline. Andy will keep this note on this phone and read it when you're back online. | text | `src/components/capture-screen.tsx:1856` |  |
-| Keep this note | VoiceOver | `src/components/capture-screen.tsx:1863` |  |
-| Andy couldn't keep this note on the phone. Copy it somewhere before leaving. | message | `src/components/capture-screen.tsx:1876` |  |
-| Keep this note | text | `src/components/capture-screen.tsx:1889` |  |
-| Read it | VoiceOver | `src/components/capture-screen.tsx:1894` |  |
-| Read it | text | `src/components/capture-screen.tsx:1902` |  |
-| Record again | VoiceOver | `src/components/capture-screen.tsx:1910` |  |
-| Record again | text | `src/components/capture-screen.tsx:1919` |  |
-| Stop typing | VoiceOver | `src/components/capture-screen.tsx:1924` |  |
-| Cancel | text | `src/components/capture-screen.tsx:1935` |  |
-| Listening — say what's new. | text | `src/components/capture-screen.tsx:1974` |  |
-| Reading the card… | text | `src/components/capture-screen.tsx:1979` |  |
-| That note isn't waiting on this phone any more — it may already be saved. Tap record to start a new one. | text | `src/components/capture-screen.tsx:1982` |  |
-| Andy doesn't have anyone by that link. | text | `src/components/capture-screen.tsx:1984` |  |
-| Finding out who this is about… | text | `src/components/capture-screen.tsx:1986` |  |
-| Tap record. This note goes to {…}, whoever else comes up. | text | `src/components/capture-screen.tsx:1988` |  |
-| Tap record and say what you want to remember. | text | `src/components/capture-screen.tsx:1989` |  |
-| Stop recording | VoiceOver | `src/components/capture-screen.tsx:1998` |  |
-| Start recording | VoiceOver | `src/components/capture-screen.tsx:1998` |  |
-| Starting… | text | `src/components/capture-screen.tsx:2017` |  |
-| Stop | text | `src/components/capture-screen.tsx:2019` |  |
-| Record | text | `src/components/capture-screen.tsx:2020` |  |
-| Start over | VoiceOver | `src/components/capture-screen.tsx:2035` |  |
-| Start over | text | `src/components/capture-screen.tsx:2039` |  |
-| Scan a business card | VoiceOver | `src/components/capture-screen.tsx:2047` |  |
-| Scan a business card | text | `src/components/capture-screen.tsx:2052` |  |
-| Type it instead | VoiceOver | `src/components/capture-screen.tsx:2057` |  |
-| Type it instead | text | `src/components/capture-screen.tsx:2066` |  |
-| not started yet | text | `src/components/capture-screen.tsx:2080` |  |
-| scoped to: {…} | text | `src/components/capture-screen.tsx:2082` |  |
-| lang: {…} | text | `src/components/capture-screen.tsx:2092` |  |
-| on-device: {…} | text | `src/components/capture-screen.tsx:2098` |  |
+| Someone new: a different person, also called {…} | VoiceOver | `src/components/capture-screen.tsx:239` |  |
+| Someone new | text | `src/components/capture-screen.tsx:250` |  |
+| A different person, also called {…} | text | `src/components/capture-screen.tsx:252` |  |
+| Someone new — no one by this name yet. | text | `src/components/capture-screen.tsx:291` |  |
+| Adding to {…}· {…} | text | `src/components/capture-screen.tsx:296` |  |
+| Not this {…}? | VoiceOver | `src/components/capture-screen.tsx:312` |  |
+| Different person? | text | `src/components/capture-screen.tsx:316` |  |
+| Andy couldn't make sense of that one. Try again. | message | `src/components/capture-screen.tsx:800` |  |
+| Andy needs the camera to photograph a card. You can turn it on in Settings. | message | `src/components/capture-screen.tsx:836` |  |
+| Andy needs access to your photos to read a card. You can turn it on in Settings. | message | `src/components/capture-screen.tsx:837` |  |
+| That photo didn't come through. Try again. | message | `src/components/capture-screen.tsx:863` |  |
+| Andy couldn't read that card. Try again. | message | `src/components/capture-screen.tsx:883` |  |
+| Take a photo | button | `src/components/capture-screen.tsx:892` |  |
+| Choose from library | button | `src/components/capture-screen.tsx:893` |  |
+| Cancel | button | `src/components/capture-screen.tsx:894` |  |
+| Andy needs the microphone and speech recognition to take a voice note. You can turn them on in Settings. | message | `src/components/capture-screen.tsx:977` |  |
+| Speech needs a connection for this language — type it instead. | message | `src/components/capture-screen.tsx:991` |  |
+| Read it again | button | `src/components/capture-screen.tsx:1130` |  |
+| Andy couldn't save that one. Try again. | message | `src/components/capture-screen.tsx:1241` |  |
+| New note | title | `src/components/capture-screen.tsx:1318` |  |
+| This is what Andy will remember. Change anything first. | text | `src/components/capture-screen.tsx:1331` |  |
+| Name | label | `src/components/capture-screen.tsx:1334` |  |
+| Who is this about? | placeholder | `src/components/capture-screen.tsx:1339` |  |
+| Name | VoiceOver | `src/components/capture-screen.tsx:1341` |  |
+| How you know them | label | `src/components/capture-screen.tsx:1389` |  |
+| client, friend, foster… | placeholder | `src/components/capture-screen.tsx:1400` |  |
+| How you know them | VoiceOver | `src/components/capture-screen.tsx:1402` |  |
+| First met | label | `src/components/capture-screen.tsx:1406` |  |
+| This was the first time we met | VoiceOver | `src/components/capture-screen.tsx:1417` |  |
+| This was the first time we met | text | `src/components/capture-screen.tsx:1444` |  |
+| YYYY-MM-DD | placeholder | `src/components/capture-screen.tsx:1457` |  |
+| First met date | VoiceOver | `src/components/capture-screen.tsx:1459` |  |
+| To change how you know {…}or when you first met, edit their page. | text | `src/components/capture-screen.tsx:1465` |  |
+| What to remember | label | `src/components/capture-screen.tsx:1471` |  |
+| Nothing pulled out of this one. | text | `src/components/capture-screen.tsx:1473` |  |
+| Fact {…} | VoiceOver | `src/components/capture-screen.tsx:1489` | Detail {…} *(by rule)* |
+| Remove fact {…} | VoiceOver | `src/components/capture-screen.tsx:1493` | Remove detail {…} *(by rule)* |
+| Add a fact | VoiceOver | `src/components/capture-screen.tsx:1516` | Add a detail *(by rule)* |
+| Add a fact | text | `src/components/capture-screen.tsx:1523` | Add a detail *(by rule)* |
+| Tags | label | `src/components/capture-screen.tsx:1531` |  |
+| Tag {…} | VoiceOver | `src/components/capture-screen.tsx:1545` |  |
+| Remove tag {…} | VoiceOver | `src/components/capture-screen.tsx:1549` |  |
+| Add a tag | VoiceOver | `src/components/capture-screen.tsx:1564` |  |
+| Add a tag | text | `src/components/capture-screen.tsx:1571` |  |
+| Also came up | label | `src/components/capture-screen.tsx:1580` |  |
+| Mentioned name {…} | VoiceOver | `src/components/capture-screen.tsx:1589` |  |
+| Remove mention {…} | VoiceOver | `src/components/capture-screen.tsx:1593` |  |
+| What the note says about them | placeholder | `src/components/capture-screen.tsx:1629` |  |
+| Mentioned quote {…} | VoiceOver | `src/components/capture-screen.tsx:1631` |  |
+| Add someone | VoiceOver | `src/components/capture-screen.tsx:1674` |  |
+| Add someone | text | `src/components/capture-screen.tsx:1687` |  |
+| The details above still come from the old wording. | text | `src/components/capture-screen.tsx:1707` |  |
+| Read it again | VoiceOver | `src/components/capture-screen.tsx:1718` |  |
+| Reading… | text | `src/components/capture-screen.tsx:1724` |  |
+| Read it again | text | `src/components/capture-screen.tsx:1724` |  |
+| Remember this | VoiceOver | `src/components/capture-screen.tsx:1743` |  |
+| Remembering… | text | `src/components/capture-screen.tsx:1749` |  |
+| Remember this | text | `src/components/capture-screen.tsx:1749` |  |
+| Add a name first — Andy couldn't tell who this is about. | text | `src/components/capture-screen.tsx:1754` |  |
+| Say which person each name above means, and this can be saved. | text | `src/components/capture-screen.tsx:1759` |  |
+| Discard and start over | VoiceOver | `src/components/capture-screen.tsx:1765` |  |
+| Discard and start over | text | `src/components/capture-screen.tsx:1770` |  |
+| Is this what you said? Fix any name or word, then let Andy read it. | text | `src/components/capture-screen.tsx:1813` |  |
+| What you said | text | `src/components/capture-screen.tsx:1823` |  |
+| What do you want to remember? | placeholder | `src/components/capture-screen.tsx:1838` |  |
+| What do you want to remember about {…}? | placeholder | `src/components/capture-screen.tsx:1839` |  |
+| What you said | VoiceOver | `src/components/capture-screen.tsx:1842` |  |
+| Type a note | VoiceOver | `src/components/capture-screen.tsx:1842` |  |
+| You're offline. This note is still kept on this phone — Andy will read it when you're back online. | text | `src/components/capture-screen.tsx:1854` |  |
+| You're offline. Andy will keep this note on this phone and read it when you're back online. | text | `src/components/capture-screen.tsx:1855` |  |
+| Keep this note | VoiceOver | `src/components/capture-screen.tsx:1862` |  |
+| Andy couldn't keep this note on the phone. Copy it somewhere before leaving. | message | `src/components/capture-screen.tsx:1875` |  |
+| Keep this note | text | `src/components/capture-screen.tsx:1888` |  |
+| Let Andy read it | VoiceOver | `src/components/capture-screen.tsx:1893` |  |
+| Let Andy read it | text | `src/components/capture-screen.tsx:1901` |  |
+| Record again | VoiceOver | `src/components/capture-screen.tsx:1909` |  |
+| Record again | text | `src/components/capture-screen.tsx:1918` |  |
+| Stop typing | VoiceOver | `src/components/capture-screen.tsx:1923` |  |
+| Cancel | text | `src/components/capture-screen.tsx:1934` |  |
+| Listening — say what's new. | text | `src/components/capture-screen.tsx:1973` |  |
+| Reading the card… | text | `src/components/capture-screen.tsx:1978` |  |
+| That note isn't waiting on this phone any more — it may already be saved. Tap record to start a new one. | text | `src/components/capture-screen.tsx:1981` |  |
+| Andy doesn't have anyone by that link. | text | `src/components/capture-screen.tsx:1983` |  |
+| Finding out who this is about… | text | `src/components/capture-screen.tsx:1985` |  |
+| Tap record. This note goes to {…}, whoever else comes up. | text | `src/components/capture-screen.tsx:1987` |  |
+| Tap record and say what you want to remember. | text | `src/components/capture-screen.tsx:1988` |  |
+| Stop recording | VoiceOver | `src/components/capture-screen.tsx:1997` |  |
+| Start recording | VoiceOver | `src/components/capture-screen.tsx:1997` |  |
+| Starting… | text | `src/components/capture-screen.tsx:2016` |  |
+| Stop | text | `src/components/capture-screen.tsx:2018` |  |
+| Record | text | `src/components/capture-screen.tsx:2019` |  |
+| Start over | VoiceOver | `src/components/capture-screen.tsx:2034` |  |
+| Start over | text | `src/components/capture-screen.tsx:2038` |  |
+| Scan a business card | VoiceOver | `src/components/capture-screen.tsx:2046` |  |
+| Scan a business card | text | `src/components/capture-screen.tsx:2051` |  |
+| Type it instead | VoiceOver | `src/components/capture-screen.tsx:2056` |  |
+| Type it instead | text | `src/components/capture-screen.tsx:2065` |  |
+| not started yet | text | `src/components/capture-screen.tsx:2079` |  |
+| scoped to: {…} | text | `src/components/capture-screen.tsx:2081` |  |
+| lang: {…} | text | `src/components/capture-screen.tsx:2091` |  |
+| on-device: {…} | text | `src/components/capture-screen.tsx:2097` |  |
 
 ## Profile
 
@@ -351,11 +353,12 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 | Came up in | text | `src/app/(app)/search.tsx:269` |  |
 | Open the note about {…} | VoiceOver | `src/app/(app)/search.tsx:274` |  |
 | Searching | VoiceOver | `src/app/(app)/search.tsx:297` |  |
-| Ask in your own words. Andy reads everything you have saved — including people who only came up inside someone else's note. | text | `src/app/(app)/search.tsx:307` |  |
-| From the marked notes below | text | `src/app/(app)/search.tsx:333` |  |
-| Nothing saved about that yet — try other words, or record it. | text | `src/app/(app)/search.tsx:341` |  |
-| used in the answer | text | `src/app/(app)/search.tsx:397` |  |
-| Also came up | text | `src/app/(app)/search.tsx:423` |  |
+| Type a name, or ask in your own words — like “who just started a new job?” | text | `src/app/(app)/search.tsx:309` |  |
+| Andy looks through all your notes, even where someone only came up in passing. It can only answer from what you've told it. | text | `src/app/(app)/search.tsx:313` |  |
+| From the marked notes below | text | `src/app/(app)/search.tsx:340` |  |
+| Nothing saved about that yet — try other words, or record it. | text | `src/app/(app)/search.tsx:348` |  |
+| used in the answer | text | `src/app/(app)/search.tsx:404` |  |
+| Also came up | text | `src/app/(app)/search.tsx:430` |  |
 | Ask Andy something first. | server error | `convex/search.ts:259` |  |
 | That's a long question. Try a shorter one. | server error | `convex/search.ts:264` |  |
 
@@ -424,11 +427,11 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 
 | What a person reads | Kind | Where | Planned change (STYLE.md → Terminology) |
 |---|---|---|---|
-| Andy | title | `src/app/(app)/_layout.tsx:195` |  |
-| New note | title | `src/app/(app)/_layout.tsx:196` |  |
-| Ask Andy | title | `src/app/(app)/_layout.tsx:197` |  |
-| Settings | title | `src/app/(app)/_layout.tsx:198` |  |
-| Note | title | `src/app/(app)/_layout.tsx:201` |  |
+| Andy | title | `src/app/(app)/_layout.tsx:203` |  |
+| New note | title | `src/app/(app)/_layout.tsx:204` |  |
+| Ask Andy | title | `src/app/(app)/_layout.tsx:205` |  |
+| Settings | title | `src/app/(app)/_layout.tsx:206` |  |
+| Note | title | `src/app/(app)/_layout.tsx:209` |  |
 
 ## Server messages
 
@@ -464,19 +467,20 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 | Andy couldn't use that photo. | server error | `convex/photos.ts:88` |  |
 | That photo didn't finish uploading. Try again. | server error | `convex/photos.ts:95` |  |
 | That photo is too large. Try a smaller one. | server error | `convex/photos.ts:118` |  |
-| A person needs a name. | server error | `convex/profiles.ts:277` |  |
-| That name is longer than Andy can store. | server error | `convex/profiles.ts:280` |  |
-| A first-met date looks like 2026-08-31. | server error | `convex/profiles.ts:285` |  |
-| That is more tags than Andy can keep on one person. | server error | `convex/profiles.ts:292` |  |
-| That's longer than a tag. Try a shorter one. | server error | `convex/profiles.ts:295` |  |
-| That is more names than Andy can keep for one person. | server error | `convex/profiles.ts:300` |  |
-| That's longer than a relationship. Try a shorter one. | server error | `convex/profiles.ts:308` |  |
+| A person needs a name. | server error | `convex/profiles.ts:288` |  |
+| That name is longer than Andy can store. | server error | `convex/profiles.ts:291` |  |
+| A first-met date looks like 2026-08-31. | server error | `convex/profiles.ts:296` |  |
+| That is more tags than Andy can keep on one person. | server error | `convex/profiles.ts:303` |  |
+| That's longer than a tag. Try a shorter one. | server error | `convex/profiles.ts:306` |  |
+| That is more names than Andy can keep for one person. | server error | `convex/profiles.ts:311` |  |
+| That's longer than a relationship. Try a shorter one. | server error | `convex/profiles.ts:319` |  |
 | Your account isn't set up yet. Sign in again. | server error | `convex/users.ts:30` |  |
 
 ## Other
 
 | What a person reads | Kind | Where | Planned change (STYLE.md → Terminology) |
 |---|---|---|---|
+| Jump to a letter | VoiceOver | `src/components/az-index.tsx:65` |  |
 | M-4 118 C 24 114, 36 90, 46 74 C 54 60, 72 56, 84 64 C 70 56, 56 66, 56 82 C 56 100, 80 100, 85 68 C 84 84, 86 96, 94 98 C 100 96, 104 72, 106 62 C 108 80, 108 94, 108 100 C 110 80, 118 60, 128 62 C 138 64, 134 88, 138 98 C 140 102, 146 100, 150 92 C 153 72, 160 56, 174 56 C 180 56, 184 60, 185 64 C 172 58, 158 68, 158 84 C 158 100, 184 100, 188 70 C 190 50, 192 32, 190 20 C 188 40, 186 80, 192 98 C 194 102, 202 102, 206 94 C 208 86, 210 72, 212 62 C 212 80, 214 96, 224 96 C 234 96, 236 78, 238 62 C 238 90, 238 120, 232 136 C 226 150, 208 146, 216 130 C 224 116, 252 104, 270 96 C 288 90, 300 84, 312 76 C 328 64, 338 42, 324 38 C 310 34, 304 54, 318 64 C 332 74, 356 60, 404 46 | text | `src/components/name-mark.tsx:25` |  |
 | Andy | VoiceOver | `src/components/name-mark.tsx:46` |  |
 | Offline — showing what Andy had at {…}. | text | `src/components/offline-copy-line.tsx:13` |  |
