@@ -559,6 +559,7 @@ name only one person answers to.
 | 19.14 | With a reminder scheduled, iPhone Settings → Andy → Calendars → **None**. Come back to Andy | The card says calendar access is off, and **no reminder arrives** at that meeting's time (R14) | ⬜ |
 | 19.15 | A fresh account with **nobody** in Andy yet, calendar never connected | **No briefing card at all** on `home` — not even the invitation (R2). It appears after the first person is added | ⬜ |
 | 19.16 | Keep Andy **open on home** until a reminder's time (10 minutes before a meeting) | The **banner and sound** come anyway, over Andy (device QA #13). Before, an open app got nothing. It also stays in Notification Center; no badge number on the icon. The after-meeting nudge ("How was …?") shows the same way while Andy is open — on purpose | ⬜ |
+| 19.17 | A meeting with someone you've written about ends; **open Andy 5 minutes later**, then leave it | The "How was …?" nudge still arrives **15 minutes after the end** (device QA #39). Before, opening Andy in that window cancelled it for good | ⬜ |
 
 ---
 

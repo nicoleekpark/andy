@@ -851,6 +851,29 @@ test("should move on to the next meeting the moment one starts, with the app ope
   }
 });
 
+test("should keep the nudge of a meeting that just ended when Andy is opened before it", async () => {
+  // Device QA #39. EventKit as it behaves: only events still running at the
+  // read's start come back. Every refresh cancels and reschedules from that
+  // read, so opening Andy five minutes after a meeting ended dropped its
+  // "How was Nina?" — the moment somebody waiting for it would open the app.
+  (calendarMatch.matchEventsIn as jest.Mock).mockRestore();
+  const now = Date.now();
+  const endedAt = now - 5 * 60_000;
+  const coffee = { id: "a", title: "Coffee with Nina", startDate: new Date(endedAt - 3600_000), endDate: new Date(endedAt), allDay: false };
+  (Calendar.listEvents as jest.Mock).mockImplementation(async (_ids: unknown, from: Date) =>
+    [coffee].filter((event) => event.endDate.getTime() > from.getTime()),
+  );
+  await render(<Harness />);
+
+  await waitFor(() => expect(Calendar.listEvents).toHaveBeenCalled());
+  const nudges = () =>
+    (Notifications.scheduleNotificationAsync as jest.Mock).mock.calls
+      .map(([request]) => request as { content: { data: { capture?: boolean } }; trigger: { date: Date } })
+      .filter((request) => request.content.data.capture === true)
+      .map((request) => request.trigger.date.getTime());
+  await waitFor(() => expect(nudges()).toEqual([endedAt + 15 * 60_000]));
+});
+
 // ---------------------------------------------------------------------------
 // More than one meeting (docs/design/decisions/briefing-card-people.md, R-C1–R-C8)
 // ---------------------------------------------------------------------------
