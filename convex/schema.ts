@@ -97,6 +97,9 @@ export default defineSchema({
       v.literal("voice"),
       v.literal("manual"),
       v.literal("business_card"),
+      // A photo of a page of notes or a screenshot, read into words and
+      // checked (2026-10-13, capture-doors.md). Additive.
+      v.literal("photo"),
       v.literal("calendar_nudge"),
     ),
     // Explicit, so a note can be backdated to when the interaction actually

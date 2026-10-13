@@ -172,6 +172,7 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | S5c | `record--transcript` | 기록 — 들은 내용 확인 (Read it 전) |
 | S5d | `record--scoped` | 기록 — 프로필에서 시작 (노트가 그 프로필로 감) |
 | S5f | `record--paused` | 기록 — 멈춤 (Paused, ▶ Resume). 들은 말은 그대로 |
+| S5g | `photo-words` | 사진 글 확인 — 작은 사진 + "WHAT THE PHOTO SAYS ABOUT" + 이름 + 글 (고칠 수 있음) + Let Andy read it + Retake/Choose another |
 | S5e | `write` | Write — orbit의 Write 문 (또는 Type it instead). 키보드가 바로 올라오고 본문만, 버튼은 Let Andy read it 하나 (예전 `record--typing`) |
 
 | Name | 설명 |
@@ -183,6 +184,14 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `paused-label` | 멈췄을 때 시간 위의 작은 "Paused" |
 | `pause-button` | 가운데 76pt 원 — 듣는 중엔 빨간(`alert`) ⏸ "Pause", 멈췄을 땐 ▶ "Resume" (글은 남고 이어서 받아씀) |
 | `done-button` | 오른쪽 초록 채운 ✓ "Done" — 다 말함. 받아쓴 글을 고칠 수 있는 화면으로 |
+| `photo-words-thumb` | `photo-words` 맨 위 작은 사진 — 누르면 `photo-viewer` (전체 크기, ✕로 닫음) |
+| `photo-viewer` | 작은 사진을 누르면 뜨는 전체 크기 사진 (어두운 배경) — 이름을 원본과 비교 |
+| `photo-viewer-close` | `photo-viewer` 왼쪽 위 ✕ (44pt) |
+| `photo-words-about` | 사진에서 읽은 이름 칸 (비면 "who?"). 사람 페이지에서 왔으면 고정된 이름 |
+| `photo-words-field` | 사진에 적힌 그대로의 글 — 고칠 수 있음 |
+| `photo-words-read-button` | Let Andy read it — 고친 글과 이름으로 읽음 |
+| `photo-words-retake` | Retake (앨범이면 Choose another) — 이 사진을 버리고 다시 |
+| `photo-nothing` | 글이 없는 사진 — "Andy couldn't find any words in this photo. Try again closer, with more light." + 초록 Retake |
 | `write-instead-button` | 음성을 쓸 수 없을 때(마이크 거부, 오프라인+모델 없음) 안내 아래 초록 **Write instead** → Write 화면 |
 | ~~`scan-card-button`~~ | 없어짐 — orbit의 Photo 문으로 (2026-10-13) |
 | ~~`type-instead-button`~~ | 없어짐 — orbit의 Write 문, 또는 `write-instead-button` (2026-10-13) |

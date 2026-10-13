@@ -25,6 +25,8 @@ export function sourceLabel(
   switch (source) {
     case "business_card":
       return draft ? "What the card says" : "What the card said";
+    case "photo":
+      return draft ? "What the photo says" : "What the photo said";
     case "manual":
       return "What you wrote";
     default:

@@ -200,13 +200,20 @@ live here rather than in §7 because that is the screen they happen on.
 | 8.7 | Paste a very long text (over 11,000 characters) | A count appears at the bottom right ("11,240 / 12,000"); over 12,000 it turns red, *"That note is longer than Andy can take in one go. Try splitting it into two."* shows, and Read is off | ⬜ |
 | 8.8 | Wi-Fi off, Write, type, **Keep this note** | Back on home with no question; home says the note is kept | ⬜ |
 
-## 9. Business cards
+## 9. Photo: cards, notes, screenshots (capture-doors.md, Final choice: the Photo screens)
 
-| # | Do this | Expect |
-|---|---|---|
-| 9.1 | Photograph an English card | Name is **`Joe King`**, not `JOE KING` |
-| 9.2 | Save, open the timeline | Toggle reads **`▸ What the card said`** |
-| 9.3 | On a phone that has **never** been asked for Photos: Record → Scan a business card → **Choose from library** | The photo picker opens straight away — **no "Andy would like to access your photos" prompt**. Pick a card → it is read as before. Andy never appears under iPhone Settings › Privacy › Photos | ⬜ |
+Until Andy's own camera (Photo 5c), + → **Photo** asks *"Add a photo"* — Take a photo / Choose from library — and uses iOS's camera.
+
+| # | Do this | Expect | |
+|---|---|---|---|
+| 9.1 | Photograph an English business card | *"Reading the photo…"*, then the words step: a small photo on top, **WHAT THE PHOTO SAYS ABOUT**, the name **Joe King** (not `JOE KING`), and under it the rest of the card. Nothing is read into facts yet | ⬜ |
+| 9.2 | Photograph a handwritten page that starts "Priya — coffee at Tartine" and has "ask Marcus?" on it | Name **Priya**; the words start "coffee at Tartine" and keep **"ask Marcus?"** exactly, question mark included | ⬜ |
+| 9.3 | On a phone that has **never** been asked for Photos: + → Photo → **Choose from library** | The picker opens straight away — **no "Andy would like to access your photos" prompt**. Andy never appears under iPhone Settings › Privacy › Photos. The button under the words reads **Choose another** | ⬜ |
+| 9.4 | Tap the small photo | It opens full size; ✕ closes it | ⬜ |
+| 9.5 | Change the name, fix a word, **Let Andy read it**, then **Remember this** | The note is filed under the name as corrected; its toggle reads **▸ What the photo said** and holds the corrected words | ⬜ |
+| 9.6 | Photograph a blank wall | *"Andy couldn't find any words in this photo. Try again closer, with more light."* and a green **Retake** — nothing saved | ⬜ |
+| 9.7 | From someone's page, Add a note → Photo | The name is theirs, fixed (not a field) | ⬜ |
+| 9.8 | Camera refused in Settings, then Take a photo | *"Andy needs the camera to take a photo. Turn it on in Settings, or choose a photo instead."* | ⬜ |
 
 ## 10. Edges — where new bugs usually are
 

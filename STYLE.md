@@ -226,7 +226,7 @@ about it use the same words.
 | People in the app as a whole | in Andy | everyone you keep, your contacts | "Everyone in Andy, every note and every photo will be deleted" |
 | What Andy does | remembers; keeps *notes* (never people) | collects, stores, tracks, saves data | "Remember this" |
 | A record of any kind (voice, typed, card) | note | entry, memo, log, capture, record | "Delete this note?" |
-| A note's own words | What you said / What you wrote / What the card said; "the wording" | transcript, raw text, original, input | "The details above still come from the old wording." |
+| A note's own words | What you said / What you wrote / What the card said / What the photo said; "the wording" | transcript, raw text, original, input | "The details above still come from the old wording." |
 | One item Andy picked out of a note | detail | fact, data, info, attribute, field | "Add a detail" |
 | The list of those items | What to remember (the section label) | Facts, Details, Info, About them | "What to remember" |
 | A person appearing in someone else's note | came up (in a note) | mentioned, mention, tagged, linked | "Anyone who only ever came up in those notes goes too." |

@@ -91,14 +91,17 @@ function mockSaveCapture(saveCapture: jest.Mock) {
 function mockActions({
   extract,
   readCard,
+  readPhoto,
 }: {
   extract?: jest.Mock;
   readCard?: jest.Mock;
+  readPhoto?: jest.Mock;
 }) {
   answerByName(
     useAction,
     given({
       [nameOf(api.extraction.fromBusinessCard)]: readCard,
+      [nameOf(api.extraction.fromPhoto)]: readPhoto,
       [nameOf(api.extraction.fromTranscript)]: extract,
     }),
     quietCall,
@@ -2789,7 +2792,7 @@ describe("capture screen review step", () => {
   });
 });
 
-describe("capture screen business card door", () => {
+describe("capture screen photo door", () => {
   // Every test in here renders /profile/contact-1/capture, so the route names
   // a profile and the screen expects to be told who it is. Left at the shared
   // default the query would read as permanently loading, and each test would
@@ -2809,51 +2812,111 @@ describe("capture screen business card door", () => {
     jest.restoreAllMocks();
   });
 
-  test("should reach the same review screen with the card's name and text, and save with source business_card", async () => {
-    const { draft, cardText } = makeCardDraft();
-    const readCard = jest.fn(async () => ({ draft, cardText }));
-    mockActions({ readCard });
-    const saveCapture = jest.fn(
-      async (_args: { transcript: string; draft: Draft; source: string }) => ({
-        profileId: "profile-1",
-        noteId: "note-1",
-        createdProfile: true,
-        createdMentionCount: 0,
-      }),
-    );
-    mockSaveCapture(saveCapture);
+  /** A photo taken with the camera, read into these words. */
+  function shoot(words: { about: string | null; text: string }, base64 = "fake-base64-jpeg-data") {
+    const readPhoto = jest.fn(async (_args: { imageBase64: string; mediaType: string }) => words);
     mockAlert("Take a photo");
-    (ImagePicker.requestCameraPermissionsAsync as jest.Mock).mockResolvedValueOnce({
-      granted: true,
-    });
-    (ImagePicker.launchCameraAsync as jest.Mock).mockResolvedValueOnce({
+    (ImagePicker.requestCameraPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
+    (ImagePicker.launchCameraAsync as jest.Mock).mockResolvedValue({
       canceled: false,
-      assets: [{ base64: "fake-base64-jpeg-data" }],
+      assets: [{ base64, uri: "file:///photo.jpg" }],
+    });
+    return readPhoto;
+  }
+
+  test("should show the words read off a photo, with whose page it is, to be checked before anything is read", async () => {
+    const extract = jest.fn(async () => makeDraft({ name: "Priya" }, []));
+    const readPhoto = shoot({ about: "Priya", text: "coffee at Tartine\nask Marcus?" });
+    mockActions({ readPhoto, extract });
+    scopeTo("Nina");
+
+    await renderRouter("src/app", { initialUrl: "/capture?door=photo" });
+    await waitFor(() => expect(screen.getByTestId("photo-words")).toBeTruthy());
+
+    expect(readPhoto.mock.calls[0]?.[0]).toEqual({ imageBase64: "fake-base64-jpeg-data", mediaType: "image/jpeg" });
+    expect(screen.getByText("What the photo says about")).toBeTruthy();
+    expect(screen.getByLabelText("What the photo says about").props.value).toBe("Priya");
+    // Exactly as written — the question mark included.
+    expect(screen.getByLabelText("What the photo says").props.value).toBe("coffee at Tartine\nask Marcus?");
+    expect(extract).not.toHaveBeenCalled();
+  });
+
+  test("should read the checked words as a photo note, about the name as corrected", async () => {
+    const extract = jest.fn(async (_args: { text: string; aboutName?: string }) => makeDraft({ name: "Priya Shah" }, []));
+    const readPhoto = shoot({ about: "Pria", text: "coffee at Tartine" });
+    mockActions({ readPhoto, extract });
+    const saveCapture = jest.fn(async (_args: { transcript: string; source: string }) => ({
+      profileId: "profile-1",
+      noteId: "note-1",
+      createdProfile: true,
+      createdMentionCount: 0,
+    }));
+    mockSaveCapture(saveCapture);
+    scopeTo("Nina");
+    await renderRouter("src/app", { initialUrl: "/capture?door=photo" });
+    await waitFor(() => expect(screen.getByTestId("photo-words")).toBeTruthy());
+
+    await act(async () => {
+      fireEvent.changeText(screen.getByLabelText("What the photo says about"), "Priya Shah");
+      fireEvent.changeText(screen.getByLabelText("What the photo says"), "coffee at Tartine, Tuesday");
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Let Andy read it" }));
     });
 
-    // The orbit's Photo door, which asks camera or library as it opens.
-    const result = renderRouter("src/app", { initialUrl: "/profile/contact-1/capture?door=photo" });
-    await result;
-    await act(async () => {});
+    await waitFor(() => expect(extract).toHaveBeenCalledTimes(1));
+    expect(extract.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({ text: "coffee at Tartine, Tuesday", aboutName: "Priya Shah" }),
+    );
     await waitFor(() => expect(screen.getByRole("button", { name: "Remember this" })).toBeTruthy());
-
-    // Lands on the identical review screen a voice note reaches — same
-    // fields, only the transcript field's label and content differ.
-    expect(screen.getByDisplayValue("Sarah Chen")).toBeTruthy();
-    expect(screen.getByText("What the card says")).toBeTruthy();
-    expect(screen.getByText(/This is what Andy will remember\./)).toBeTruthy();
-    expect(screen.queryByText(/heard/i)).toBeNull();
-    expect(screen.getByDisplayValue(cardText)).toBeTruthy();
+    expect(screen.getByText("What the photo says")).toBeTruthy();
 
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Remember this" }));
     });
-
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
-    const [call] = saveCapture.mock.calls[0];
-    expect(call.source).toBe("business_card");
-    expect(call.transcript).toBe(cardText);
-    expect(call.draft.primary.name).toBe("Sarah Chen");
+    expect(saveCapture.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({ source: "photo", transcript: "coffee at Tartine, Tuesday" }),
+    );
+  });
+
+  test("should keep the name fixed when the photo was taken from that person's page", async () => {
+    const readPhoto = shoot({ about: "Someone Else", text: "coffee" });
+    mockActions({ readPhoto });
+
+    await renderRouter("src/app", { initialUrl: "/profile/contact-1/capture?door=photo" });
+    await waitFor(() => expect(screen.getByTestId("photo-words")).toBeTruthy());
+
+    expect(screen.getByTestId("photo-words-about").props.children).toBe("Nina");
+    expect(screen.queryByLabelText("What the photo says about")).toBeNull();
+  });
+
+  test("should say so when a photo has no words, and offer to retake it", async () => {
+    const readPhoto = shoot({ about: null, text: "" });
+    mockActions({ readPhoto });
+    scopeTo("Nina");
+
+    await renderRouter("src/app", { initialUrl: "/capture?door=photo" });
+    await waitFor(() => expect(screen.getByTestId("photo-nothing")).toBeTruthy());
+
+    expect(screen.queryByRole("button", { name: "Let Andy read it" })).toBeNull();
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Retake" }));
+    });
+    expect(ImagePicker.launchCameraAsync).toHaveBeenCalledTimes(2);
+  });
+
+  test("should show the photo full size from its thumbnail", async () => {
+    mockActions({ readPhoto: shoot({ about: null, text: "coffee" }) });
+    scopeTo("Nina");
+    await renderRouter("src/app", { initialUrl: "/capture?door=photo" });
+    await waitFor(() => expect(screen.getByTestId("photo-words")).toBeTruthy());
+
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "See the photo full size" }));
+    });
+
+    expect(screen.getByTestId("photo-viewer")).toBeTruthy();
   });
 
   test("should not ask for the whole photo library to pick one card", async () => {
@@ -2879,42 +2942,136 @@ describe("capture screen business card door", () => {
   // Found on the simulator 2026-10-01: while a card was being read, the
   // screen behind it still said "Tap record and say what you want to
   // remember", an instruction to do something else entirely.
-  test("should say it is reading the card while the card is being read", async () => {
-    const { draft, cardText } = makeCardDraft();
-    let finish: (value: { draft: Draft; cardText: string }) => void = () => {};
-    const readCard = jest.fn(
-      () => new Promise<{ draft: Draft; cardText: string }>((resolve) => { finish = resolve; }),
-    );
-    mockActions({ readCard });
-    mockAlert("Take a photo");
-    (ImagePicker.requestCameraPermissionsAsync as jest.Mock).mockResolvedValueOnce({
-      granted: true,
-    });
-    (ImagePicker.launchCameraAsync as jest.Mock).mockResolvedValueOnce({
-      canceled: false,
-      assets: [{ base64: "fake-base64-jpeg-data" }],
-    });
-
-    // The orbit's Photo door, which asks camera or library as it opens.
-    const result = renderRouter("src/app", { initialUrl: "/profile/contact-1/capture?door=photo" });
+  test("should ask before leaving checked words behind", async () => {
+    mockActions({ readPhoto: shoot({ about: "Priya", text: "coffee at Tartine" }) });
+    scopeTo("Nina");
+    const result = renderRouter("src/app", { initialUrl: "/" });
     await result;
-    await act(async () => {});
-    await waitFor(() => expect(readCard).toHaveBeenCalledTimes(1));
+    await act(async () => {
+      router.push("/capture?door=photo");
+    });
+    await waitFor(() => expect(screen.getByTestId("photo-words")).toBeTruthy());
 
-    expect(screen.getByText("Reading the card…")).toBeTruthy();
+    await act(async () => {
+      router.back();
+    });
+
+    // This block answers dialogs through a spy (the camera question).
+    expect(spyOnConfirm()).toHaveBeenCalledWith("Discard this note?", "What you wrote will be cleared.", expect.any(Array));
+    expect(result.getPathname()).toBe("/capture");
+  });
+
+  test("should keep the photo and the name with the words on the phone, so Continue can bring them back", async () => {
+    mockActions({ readPhoto: shoot({ about: "Priya", text: "coffee at Tartine" }) });
+    scopeTo("Nina");
+    await renderRouter("src/app", { initialUrl: "/capture?door=photo" });
+    await waitFor(() => expect(screen.getByTestId("photo-words")).toBeTruthy());
+
+    const keptDraft = () => {
+      const raw = (jest.requireMock("expo-file-system") as { __files: Map<string, string> }).__files.get(
+        "file:///documents/capture-draft/draft.json",
+      );
+      return raw === undefined ? [] : (JSON.parse(raw) as { photo?: { uri: string; about: string } }[]);
+    };
+    await waitFor(() =>
+      expect(keptDraft()[0]?.photo).toEqual(expect.objectContaining({ uri: "file:///photo.jpg", about: "Priya" })),
+    );
+  });
+
+  test("should keep the photo and its words when a retake is backed out of", async () => {
+    const readPhoto = shoot({ about: "Priya", text: "coffee at Tartine" });
+    mockActions({ readPhoto });
+    scopeTo("Nina");
+    await renderRouter("src/app", { initialUrl: "/capture?door=photo" });
+    await waitFor(() => expect(screen.getByTestId("photo-words")).toBeTruthy());
+
+    (ImagePicker.launchCameraAsync as jest.Mock).mockResolvedValueOnce({ canceled: true, assets: null });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Retake" }));
+    });
+
+    expect(screen.getByLabelText("What the photo says").props.value).toBe("coffee at Tartine");
+    expect(screen.getByLabelText("What the photo says about").props.value).toBe("Priya");
+    expect(readPhoto).toHaveBeenCalledTimes(1);
+  });
+
+  test("should keep checked words on the phone when the connection goes before they are read", async () => {
+    mockActions({ readPhoto: shoot({ about: null, text: "coffee at Tartine" }) });
+    scopeTo("Nina");
+    const result = renderRouter("src/app", { initialUrl: "/" });
+    await result;
+    await act(async () => {
+      router.push("/capture?door=photo");
+    });
+    await waitFor(() => expect(screen.getByTestId("photo-words")).toBeTruthy());
+
+    (useConvexConnectionState as jest.Mock).mockReturnValue({
+      hasInflightRequests: false,
+      isWebSocketConnected: false,
+      timeOfOldestInflightRequest: null,
+      hasEverConnected: true,
+      connectionCount: 1,
+      connectionRetries: 0,
+      inflightMutations: 0,
+      inflightActions: 0,
+    });
+    try {
+      await act(async () => {
+        fireEvent.changeText(screen.getByLabelText("What the photo says"), "coffee at Tartine!");
+      });
+      await act(async () => {
+        fireEvent.press(screen.getByRole("button", { name: "Keep this note" }));
+      });
+
+      const outbox = JSON.parse(
+        (jest.requireMock("expo-file-system") as { __files: Map<string, string> }).__files.get(
+          "file:///documents/outbox/notes.json",
+        )!,
+      ) as { text: string }[];
+      expect(outbox.map((n) => n.text)).toEqual(["coffee at Tartine!"]);
+      expect(result.getPathname()).toBe("/");
+    } finally {
+      (useConvexConnectionState as jest.Mock).mockReturnValue({
+        hasInflightRequests: false,
+        isWebSocketConnected: true,
+        timeOfOldestInflightRequest: null,
+        hasEverConnected: true,
+        connectionCount: 1,
+        connectionRetries: 0,
+        inflightMutations: 0,
+        inflightActions: 0,
+      });
+      (jest.requireMock("expo-file-system") as { __files: Map<string, string> }).__files.delete(
+        "file:///documents/outbox/notes.json",
+      );
+    }
+  });
+
+  test("should say it is reading the photo while the photo is being read", async () => {
+    let finish: (value: { about: string | null; text: string }) => void = () => {};
+    const readPhoto = jest.fn(
+      () => new Promise<{ about: string | null; text: string }>((resolve) => { finish = resolve; }),
+    );
+    shoot({ about: null, text: "" });
+    mockActions({ readPhoto });
+
+    await renderRouter("src/app", { initialUrl: "/profile/contact-1/capture?door=photo" });
+    await waitFor(() => expect(readPhoto).toHaveBeenCalledTimes(1));
+
+    expect(screen.getByText("Reading the photo…")).toBeTruthy();
     expect(screen.queryByText(/Tap record/)).toBeNull();
 
     await act(async () => {
-      finish({ draft, cardText });
+      finish({ about: null, text: "coffee" });
     });
-    await waitFor(() => expect(screen.getByRole("button", { name: "Remember this" })).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId("photo-words")).toBeTruthy());
   });
 
   test("should show no error and save nothing when the business card picker is cancelled", async () => {
-    const readCard = jest.fn(async () => {
+    const readPhoto = jest.fn(async () => {
       throw new Error("should never be called for a cancelled pick");
     });
-    mockActions({ readCard });
+    mockActions({ readPhoto });
     const saveCapture = jest.fn(
       async (_args: {
         transcript: string;
@@ -2946,7 +3103,7 @@ describe("capture screen business card door", () => {
     // Backing out of the picker is a normal thing to do, not an error — no
     // message shown, nothing extracted, nothing saved, still on the idle
     // screen ready to try again.
-    expect(readCard).not.toHaveBeenCalled();
+    expect(readPhoto).not.toHaveBeenCalled();
     expect(saveCapture).not.toHaveBeenCalled();
     expect(screen.queryByRole("button", { name: "Remember this" })).toBeNull();
     expect(screen.getByRole("button", { name: "Record" })).toBeTruthy();

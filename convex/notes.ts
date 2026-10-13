@@ -57,6 +57,7 @@ export const saveCapture = mutation({
       v.literal("voice"),
       v.literal("manual"),
       v.literal("business_card"),
+      v.literal("photo"),
       v.literal("calendar_nudge"),
     ),
     /**

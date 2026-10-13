@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AccessibilityInfo,
   AppState,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -31,6 +32,7 @@ import { colors, fonts, radius, size, space, textOpacity, textSize } from "@/con
 import { userMessage } from "@/lib/user-message";
 import { useOutbox } from "@/lib/outbox";
 import { SymbolView } from "expo-symbols";
+import { Image } from "expo-image";
 import { useCaptureDrafts, type CaptureDraft } from "@/lib/capture-draft";
 import { useLiveOrCopy } from "@/lib/offline-copy";
 import { withNotesView } from "@convex/offlineViews";
@@ -472,7 +474,21 @@ export function CaptureScreen({
     saidOnRef.current = null;
     keptAtRef.current = undefined;
   }, []);
-  const readCard = useAction(api.extraction.fromBusinessCard);
+  const readPhoto = useAction(api.extraction.fromPhoto);
+  /**
+   * The picture being turned into a note (`capture-doors.md`, Final choice:
+   * the Photo screens): shown small above its words so a name can be checked
+   * against it, then thrown away — only the words are kept.
+   */
+  const [photo, setPhoto] = useState<{ uri: string; from: "camera" | "library" } | null>(
+    () => (resumed?.photo ? { uri: resumed.photo.uri, from: resumed.photo.from } : null),
+  );
+  /** Whose card or page it is, as read off it — the person can change it. */
+  const [photoAbout, setPhotoAbout] = useState(() => resumed?.photo?.about ?? "");
+  /** The photo had no words Andy could read. */
+  const [photoEmpty, setPhotoEmpty] = useState(false);
+  /** The photo full size, to compare a name against. */
+  const [viewingPhoto, setViewingPhoto] = useState(false);
   const saveCapture = useMutation(api.notes.saveCapture);
 
   const [phase, setPhase] = useState<Phase>(() =>
@@ -754,7 +770,7 @@ export function CaptureScreen({
    * identical either way — this only decides what the note body is called on
    * screen and what `notes.source` records.
    */
-  const [source, setSource] = useState<"voice" | "business_card" | "manual">(
+  const [source, setSource] = useState<"voice" | "business_card" | "photo" | "manual">(
     // A waiting note says how it was made; anything else starts as voice.
     () =>
       waiting !== undefined
@@ -887,6 +903,8 @@ export function CaptureScreen({
       // The editor's words even under review: "Discard and start over"
       // returns to them.
       ...(words.trim() === "" ? {} : { words }),
+      // A photo's check step comes back whole: the picture and the name.
+      ...(source === "photo" && photo !== null ? { photo: { ...photo, about: photoAbout } } : {}),
       ...(reviewing
         ? {
             review: {
@@ -922,6 +940,8 @@ export function CaptureScreen({
     keepDraft,
     dropDraft,
     draftId,
+    photo,
+    photoAbout,
   ]);
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (next) => {
@@ -956,7 +976,9 @@ export function CaptureScreen({
    */
   const writtenUnread =
     typing !== null &&
-    source === "manual" &&
+    // Written, or read off a photo and checked: either way words a person
+    // has worked on, so leaving asks.
+    (source === "manual" || source === "photo") &&
     typing.trim() !== "" &&
     !(draft !== null && (phase === "review" || phase === "saving" || phase === "extracting"));
   useEffect(
@@ -1005,7 +1027,9 @@ export function CaptureScreen({
         const result = await extract({
           text: spoken,
           today,
-          aboutName,
+          // From a person's page the route says who; from a photo, the name
+          // read off it (and checked) does.
+          aboutName: aboutName ?? (photoAbout.trim() === "" ? undefined : photoAbout.trim()),
         });
         setDraft(result);
         setExtracted(result);
@@ -1028,7 +1052,7 @@ export function CaptureScreen({
         setPhase(keepDraft ? "review" : "idle");
       }
     },
-    [extract, aboutName],
+    [extract, aboutName, photoAbout],
   );
 
   /**
@@ -1047,9 +1071,16 @@ export function CaptureScreen({
     void runExtraction(waiting.text);
   }, [waiting, offline, runExtraction]);
 
-  const scanCard = useCallback(
+  /**
+   * A picture — a card, a page of notes, a screenshot — read into words to be
+   * checked (`capture-doors.md`, Final choice: the Photo screens). Straight to
+   * reading after it is taken: a blurred one shows in the words, and Retake is
+   * right there.
+   */
+  const takePhoto = useCallback(
     async (from: "camera" | "library") => {
       setError(null);
+      setPhotoEmpty(false);
 
       // The camera is asked for at the moment of use, per feature, never on
       // launch. The library is not asked for at all: on iOS 14+ the picker
@@ -1061,14 +1092,14 @@ export function CaptureScreen({
         const permission = await ImagePicker.requestCameraPermissionsAsync();
         if (!permission.granted) {
           setError(
-            "Andy needs the camera to photograph a card. You can turn it on in Settings.",
+            "Andy needs the camera to take a photo. Turn it on in Settings, or choose a photo instead.",
           );
           return;
         }
       }
 
       // `allowsEditing` puts a crop step in front of the picker. It earns its
-      // place twice: cropping to the card is what makes the text large and
+      // place twice: cropping to the words is what makes them large and
       // straight enough to read well, and it drops the payload from a full
       // 12MP frame — whose base64 exceeds Convex's 1MB argument limit — to a
       // few hundred KB.
@@ -1086,42 +1117,88 @@ export function CaptureScreen({
         return;
       }
 
-      const imageBase64 = picked.assets?.[0]?.base64;
-      if (!imageBase64) {
+      const asset = picked.assets?.[0];
+      if (!asset?.base64) {
         setError("That photo didn't come through. Try again.");
         return;
       }
 
-      // Set before the read, not after it: the waiting screen says what it is
-      // reading, and it can only do that if it already knows it is a card.
-      // Recording and typing each set their own source, so a failed read
-      // leaves nothing stale behind.
-      setSource("business_card");
+      // Set before the read: the waiting screen says what it is reading.
+      setSource("photo");
+      setPhoto({ uri: asset.uri, from });
+      setPhotoAbout("");
+      setTyping(null);
       setPhase("extracting");
       try {
         // `base64` is documented as the image's JPEG data regardless of the
-        // file picked, so the media type is known rather than guessed from a
-        // `mimeType` the picker may not supply.
-        const result = await readCard({ imageBase64, mediaType: "image/jpeg" });
-        setDraft(result.draft);
-        setTranscript(result.cardText);
-        setReadTranscript(result.cardText);
-        setPhase("review");
+        // file picked, so the media type is known rather than guessed.
+        const words = await readPhoto({ imageBase64: asset.base64, mediaType: "image/jpeg" });
+        if (words.text === "") {
+          setPhotoEmpty(true);
+          setPhase("idle");
+          return;
+        }
+        setPhotoAbout(words.about ?? "");
+        // The words go to the check step, exactly as read; nothing is read
+        // into facts until the person says so.
+        setTyping(words.text);
+        setPhase("idle");
       } catch (e) {
-        setError(userMessage(e, "Andy couldn't read that card. Try again."));
+        setPhoto(null);
+        setError(userMessage(e, "Andy couldn't read that photo. Try again."));
         setPhase("idle");
       }
     },
-    [readCard],
+    [readPhoto],
   );
 
+  /**
+   * Take or choose another. This photo and its words are replaced only once a
+   * new one comes back — backing out of the camera leaves them as they were.
+   */
+  const retakePhoto = useCallback(() => {
+    void takePhoto(photo?.from ?? "camera");
+  }, [photo, takePhoto]);
+
+  /**
+   * Offline: keep the words on this phone to be read later
+   * (`src/lib/outbox.tsx`), then go back to where the note was started.
+   */
+  const keepOnThisPhone = useCallback(
+    (words: string, kind: "spoken" | "typed") => {
+      try {
+        outbox.keep({
+          today: localToday(),
+          text: words.trim(),
+          kind,
+          aboutProfileId: profileId,
+        });
+      } catch {
+        // The words are still on screen; leaving now would lose
+        // them. Say so and stay — usually a full phone.
+        setError(
+          "Andy couldn't keep this note on the phone. Copy it somewhere before leaving.",
+        );
+        return;
+      }
+      leavingOnPurposeRef.current = true;
+      // Back to wherever the note was started — home says it is
+      // waiting. Home when there is nothing to go back to (opened
+      // from a link).
+      if (router.canGoBack()) router.back();
+      else router.replace("/");
+    },
+    [outbox, profileId],
+  );
+
+  // Until Andy's own camera (Photo 5c): iOS's camera, or the album.
   const chooseCardSource = useCallback(() => {
-    confirm("Scan a business card", undefined, [
-      { text: "Take a photo", onPress: () => void scanCard("camera") },
-      { text: "Choose from library", onPress: () => void scanCard("library") },
+    confirm("Add a photo", "A card, a page of notes, or a screenshot.", [
+      { text: "Take a photo", onPress: () => void takePhoto("camera") },
+      { text: "Choose from library", onPress: () => void takePhoto("library") },
       { text: "Cancel", style: "cancel" },
     ]);
-  }, [confirm, scanCard]);
+  }, [confirm, takePhoto]);
 
   /**
    * Listening is over (Done, or the recogniser ended on its own): the words go
@@ -1270,7 +1347,7 @@ export function CaptureScreen({
     if (!appending) {
       finalRef.current = "";
       setFinalText("");
-      setHeardPieces([]);
+    setHeardPieces([]);
       setDraft(null);
       setTranscript("");
       setReadTranscript("");
@@ -1355,7 +1432,7 @@ export function CaptureScreen({
       pausingRef.current = false;
       finalRef.current = "";
       setFinalText("");
-      setHeardPieces([]);
+    setHeardPieces([]);
       setInterim("");
       setListeningSince(null);
       setHeardBefore(0);
@@ -1382,12 +1459,13 @@ export function CaptureScreen({
   const discard = useCallback(() => {
     finalRef.current = "";
     setFinalText("");
-      setHeardPieces([]);
+    setHeardPieces([]);
     setInterim("");
     setDraft(null);
     setTranscript("");
     setReadTranscript("");
-    setSource("voice");
+    // A photo's words go back to their check step, beside the photo.
+    setSource((current) => (current === "photo" ? "photo" : "voice"));
     setError(null);
     setPhase("idle");
   }, []);
@@ -2086,6 +2164,146 @@ export function CaptureScreen({
    * space, and the two things you can do with it sit at the bottom, the doing
    * one above the leaving one.
    */
+  // The words read off a photo, to be checked (capture-doors.md, Final
+  // choice: the Photo screens). Before the editor below, which would
+  // otherwise show them as plain writing.
+  if (source === "photo" && photo !== null && (typing !== null || photoEmpty)) {
+    const words = typing ?? "";
+    const retakeLabel = photo.from === "library" ? "Choose another" : "Retake";
+    const reading = phase === "extracting";
+    return (
+      <>
+        <Stack.Screen options={{ title: "New note" }} />
+        <ScrollView
+          style={styles.editorScroll}
+          contentContainerStyle={styles.editorContent}
+          {...FORM_SCROLL}
+          testID="photo-words"
+        >
+          <View style={styles.photoThumbRow}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="See the photo full size"
+              onPress={() => setViewingPhoto(true)}
+              testID="photo-words-thumb"
+            >
+              <Image source={{ uri: photo.uri }} style={styles.photoThumb} contentFit="cover" />
+            </Pressable>
+            <Text style={styles.quiet}>Tap to see it full size</Text>
+          </View>
+
+          {photoEmpty ? (
+            <Text style={styles.error} testID="photo-nothing">
+              Andy couldn&apos;t find any words in this photo. Try again closer, with more light.
+            </Text>
+          ) : (
+            <>
+              <Text style={styles.lead}>Fix any name or word, then let Andy read it.</Text>
+              <Text style={styles.fieldLabel}>What the photo says about</Text>
+              {aboutName !== undefined ? (
+                // From a person's page: the page already said who.
+                <Text style={styles.photoAboutFixed} testID="photo-words-about">
+                  {aboutName}
+                </Text>
+              ) : (
+                <TextInput
+                  value={photoAbout}
+                  onChangeText={setPhotoAbout}
+                  placeholder="who?"
+                  placeholderTextColor={colors.placeholder}
+                  // The label above it, so Voice Control can say it (WCAG 2.5.3).
+                  accessibilityLabel="What the photo says about"
+                  style={styles.photoAboutField}
+                  editable={!reading}
+                  testID="photo-words-about"
+                />
+              )}
+              <TextInput
+                value={words}
+                onChangeText={setTyping}
+                style={styles.typedNote}
+                multiline
+                scrollEnabled={false}
+                editable={!reading}
+                textAlignVertical="top"
+                accessibilityLabel="What the photo says"
+                testID="photo-words-field"
+              />
+            </>
+          )}
+
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+          <View style={styles.editorSpacer} />
+
+          {!photoEmpty && offline ? (
+            <>
+              {/* The words are text now: kept like a written note (R16). */}
+              <Text style={[styles.quiet, styles.offlineHint]}>
+                You&apos;re offline. Andy will keep this note on this phone and read it when you&apos;re back online.
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Keep this note"
+                onPress={() => keepOnThisPhone(words, "typed")}
+                disabled={words.trim() === ""}
+                style={[styles.primaryButton, words.trim() === "" && styles.disabled]}
+              >
+                <Text style={styles.primaryLabel}>Keep this note</Text>
+              </Pressable>
+            </>
+          ) : photoEmpty ? null : (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Let Andy read it"
+              onPress={() => void runExtraction(words)}
+              disabled={words.trim() === "" || reading}
+              style={[styles.primaryButton, (words.trim() === "" || reading) && styles.disabled]}
+              testID="photo-words-read-button"
+            >
+              <Text style={styles.primaryLabel}>{reading ? "Reading…" : "Let Andy read it"}</Text>
+            </Pressable>
+          )}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={retakeLabel}
+            onPress={retakePhoto}
+            disabled={reading}
+            style={photoEmpty ? styles.primaryButton : styles.secondaryButton}
+            testID="photo-words-retake"
+          >
+            <Text style={photoEmpty ? styles.primaryLabel : styles.secondaryLabel}>{retakeLabel}</Text>
+          </Pressable>
+        </ScrollView>
+
+        {/* The photo full size, to compare a name against. */}
+        <Modal
+          visible={viewingPhoto}
+          animationType="fade"
+          onRequestClose={() => setViewingPhoto(false)}
+          presentationStyle="fullScreen"
+        >
+          <View style={styles.photoViewer} testID="photo-viewer">
+            <Image source={{ uri: photo.uri }} style={styles.photoViewerImage} contentFit="contain" />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Close"
+              onPress={() => setViewingPhoto(false)}
+              style={styles.photoViewerClose}
+              testID="photo-viewer-close"
+            >
+              <SymbolView
+                name="xmark"
+                size={size.icon}
+                tintColor={colors.paper}
+                fallback={<Text style={styles.primaryLabel}>Close</Text>}
+              />
+            </Pressable>
+          </View>
+        </Modal>
+      </>
+    );
+  }
+
   if (typing !== null) {
     const empty = typing.trim() === "";
     // The same ceiling the server keeps (`MAX_TRANSCRIPT_CHARS`), said while
@@ -2198,29 +2416,7 @@ export function CaptureScreen({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Keep this note"
-              onPress={() => {
-                try {
-                  outbox.keep({
-                    today: localToday(),
-                    text: typing.trim(),
-                    kind: heard ? "spoken" : "typed",
-                    aboutProfileId: profileId,
-                  });
-                } catch {
-                  // The words are still on screen; leaving now would lose
-                  // them. Say so and stay — usually a full phone.
-                  setError(
-                    "Andy couldn't keep this note on the phone. Copy it somewhere before leaving.",
-                  );
-                  return;
-                }
-                leavingOnPurposeRef.current = true;
-                // Back to wherever the note was started — home says it is
-                // waiting. Home when there is nothing to go back to (opened
-                // from a link).
-                if (router.canGoBack()) router.back();
-                else router.replace("/");
-              }}
+              onPress={() => keepOnThisPhone(typing, heard ? "spoken" : "typed")}
               disabled={empty || overLimit}
               style={[styles.primaryButton, (empty || overLimit) && styles.disabled]}
             >
@@ -2352,6 +2548,8 @@ export function CaptureScreen({
                       // invitation to record sat behind the whole wait.
                       source === "business_card"
                       ? "Reading the card…"
+                      : source === "photo"
+                      ? "Reading the photo…"
                       : "Reading…"
                     : waitingGone
                       ? "That note isn't waiting on this phone any more — it may already be saved. Tap record to start a new one."
@@ -2548,6 +2746,36 @@ const styles = StyleSheet.create({
   reviewContent: { paddingBottom: 48, gap: 20 },
   lead: { color: colors.ink, fontSize: 15, opacity: 0.75, lineHeight: 22 },
 
+  photoThumbRow: { flexDirection: "row", alignItems: "center", gap: space.md },
+  photoThumb: {
+    width: size.round + size.touch,
+    height: size.round,
+    borderRadius: radius.control,
+    borderWidth: 1,
+    borderColor: colors.edge,
+  },
+  photoAboutField: {
+    color: colors.ink,
+    fontSize: textSize.xxl,
+    fontFamily: fonts.display,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.edge,
+    paddingVertical: space.sm,
+  },
+  photoAboutFixed: { color: colors.ink, fontSize: textSize.xxl, fontFamily: fonts.display },
+  // A photo is its own content, so the viewer is the dark of a photo app,
+  // drawn from `ink` rather than a new colour.
+  photoViewer: { flex: 1, backgroundColor: colors.ink, justifyContent: "center" },
+  photoViewerImage: { flex: 1 },
+  photoViewerClose: {
+    position: "absolute",
+    top: space.xxl + space.lg,
+    left: space.lg,
+    width: size.touch,
+    height: size.touch,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   // The recording's one card: its only edge is `edge`, at the card radius.
   voiceCard: {
     flex: 1,

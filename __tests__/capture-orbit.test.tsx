@@ -147,7 +147,7 @@ test("should ask for the picture through Photo", async () => {
   });
 
   await waitFor(() =>
-    expect(confirm).toHaveBeenCalledWith("Scan a business card", undefined, expect.any(Array)),
+    expect(confirm).toHaveBeenCalledWith("Add a photo", "A card, a page of notes, or a screenshot.", expect.any(Array)),
   );
 });
 
