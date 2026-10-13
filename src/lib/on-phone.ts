@@ -94,7 +94,7 @@ export const calendarSettingStore = jsonFileStore("calendar-setting", "setting.j
  */
 export const briefingPicksStore = jsonFileStore("briefing-picks", "picks.json");
 /**
- * The note on the capture screen, until it is saved or put away
+ * Notes on the capture screen (up to three), until each is saved or put away
  * (`capture-draft.ts`) — so iOS closing Andy in the background does not lose it.
  */
 export const captureDraftStore = jsonFileStore("capture-draft", "draft.json");

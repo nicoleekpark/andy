@@ -18,5 +18,5 @@ export default function ProfileCaptureRoute() {
     resume?: string;
   }>();
 
-  return <CaptureScreen profileId={id} outboxId={outbox} resume={resume === "1"} />;
+  return <CaptureScreen profileId={id} outboxId={outbox} resumeId={resume} />;
 }

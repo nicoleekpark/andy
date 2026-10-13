@@ -13,16 +13,23 @@ import { pressConfirmButton } from "../test-support/dialog";
 /**
  * The note on the capture screen survives iOS closing Andy (device QA #52):
  * kept on the phone as it changes, offered on home as Continue / Discard, and
- * put away only when the screen is left on purpose.
+ * put away only when the screen is left on purpose. Up to three at once.
  */
 
 const files = () =>
   (jest.requireMock("expo-file-system") as { __files: Map<string, string> }).__files;
 const DRAFT = "file:///documents/capture-draft/draft.json";
 
-const kept = (): CaptureDraft | null => {
+/** Everything kept on the phone. */
+const all = (): CaptureDraft[] => {
   const raw = files().get(DRAFT);
-  return raw === undefined ? null : (JSON.parse(raw) as CaptureDraft);
+  return raw === undefined ? [] : (JSON.parse(raw) as CaptureDraft[]);
+};
+/** The one kept draft, in tests that only ever write one. */
+const kept = (): CaptureDraft | null => {
+  const drafts = all();
+  if (drafts.length > 1) throw new Error(`expected at most one draft, found ${drafts.length}`);
+  return drafts[0] ?? null;
 };
 
 function draftOf(name: string, keyFacts: string[]): Draft {
@@ -39,19 +46,21 @@ function draftOf(name: string, keyFacts: string[]): Draft {
   };
 }
 
+function draft(over: Partial<CaptureDraft>): CaptureDraft {
+  return {
+    id: "d1",
+    ownerId: "user_default",
+    keptAt: 1,
+    today: "2026-10-12",
+    source: "manual",
+    ...over,
+  };
+}
+
 /** What iOS closing Andy leaves: the file, and nothing held in memory. */
-function seed(over: Partial<CaptureDraft>) {
+function seed(...drafts: Partial<CaptureDraft>[]) {
   forgetOnThisPhone();
-  files().set(
-    DRAFT,
-    JSON.stringify({
-      ownerId: "user_default",
-      keptAt: 1,
-      today: "2026-10-12",
-      source: "manual",
-      ...over,
-    }),
-  );
+  files().set(DRAFT, JSON.stringify(drafts.map(draft)));
 }
 
 beforeEach(() => {
@@ -152,10 +161,11 @@ test("should offer the half-written note on home, and continue it as it was", as
   await result;
   expect(screen.getByText("You were writing a note.")).toBeTruthy();
   await act(async () => {
-    fireEvent.press(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.press(screen.getByRole("button", { name: "Continue the note you were writing" }));
   });
 
   expect(result.getPathname()).toBe("/capture");
+  expect(result.getSearchParams()).toEqual({ resume: "d1" });
   expect(screen.getByLabelText("Type a note").props.value).toBe("Priya moved to Lisbon");
 });
 
@@ -166,7 +176,7 @@ test("should continue a note recorded on someone's page from that page", async (
   await result;
   expect(screen.getByText("You were writing about Priya.")).toBeTruthy();
   await act(async () => {
-    fireEvent.press(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.press(screen.getByRole("button", { name: "Continue the note about Priya" }));
   });
 
   expect(result.getPathname()).toBe("/profile/contact-1/capture");
@@ -187,7 +197,7 @@ test("should continue a note under review on the review screen, with its correct
     },
   });
 
-  await renderRouter("src/app", { initialUrl: "/capture?resume=1" });
+  await renderRouter("src/app", { initialUrl: "/capture?resume=d1" });
 
   expect(screen.getByRole("button", { name: "Remember this" })).toBeTruthy();
   expect(screen.getByDisplayValue("moved to Lisbon")).toBeTruthy();
@@ -200,7 +210,7 @@ test("should discard the half-written note from home only once asked", async () 
 
   await renderRouter("src/app", { initialUrl: "/" });
   await act(async () => {
-    fireEvent.press(screen.getByRole("button", { name: "Discard" }));
+    fireEvent.press(screen.getByRole("button", { name: "Discard the note you were writing" }));
   });
 
   expect(asked).toHaveBeenCalledWith("Discard this note?", expect.any(String), expect.any(Array));
@@ -244,13 +254,89 @@ test("should make Continue and Discard at least 44pt tall to touch", async () =>
   }
 });
 
-test("should not write over a note still waiting on home when a new one is started", async () => {
+test("should keep a new note beside one still waiting on home, without touching it", async () => {
   seed({ words: "Priya moved to Lisbon", aboutName: "Priya" });
 
   await typeANote("Sam got a dog");
+
+  await waitFor(() => expect(all()).toHaveLength(2));
+  expect(all().find((d) => d.id === "d1")?.words).toBe("Priya moved to Lisbon");
+  expect(all().find((d) => d.id !== "d1")?.words).toBe("Sam got a dog");
+});
+
+test("should offer each kept note on its own line, newest first, and continue the one chosen", async () => {
+  seed(
+    { id: "a", words: "Priya moved", aboutName: "Priya", keptAt: 1 },
+    { id: "b", words: "Sam got a dog", aboutName: "Sam", keptAt: 3 },
+    { id: "c", words: "Lunch", keptAt: 2 },
+  );
+
+  const result = renderRouter("src/app", { initialUrl: "/" });
+  await result;
+  expect(screen.getAllByTestId("draft-line").map((line) => line.props.children[0].props.children)).toEqual([
+    "You were writing about Sam.",
+    "You were writing a note.",
+    "You were writing about Priya.",
+  ]);
+  await act(async () => {
+    fireEvent.press(screen.getByRole("button", { name: "Continue the note about Priya" }));
+  });
+
+  expect(result.getSearchParams()).toEqual({ resume: "a" });
+  expect(screen.getByLabelText("Type a note").props.value).toBe("Priya moved");
+});
+
+test("should not keep a fourth note while three are waiting — and throw none of the three away", async () => {
+  seed(
+    { id: "a", words: "one", keptAt: 1 },
+    { id: "b", words: "two", keptAt: 2 },
+    { id: "c", words: "three", keptAt: 3 },
+  );
+
+  await typeANote("four");
   // Longer than the pause after typing.
   const typedAt = Date.now();
   await waitFor(() => expect(Date.now() - typedAt).toBeGreaterThan(600));
 
-  expect(kept()?.words).toBe("Priya moved to Lisbon");
+  expect(all().map((d) => d.words).sort()).toEqual(["one", "three", "two"]);
+});
+
+test("should put away only its own note when backed out of, never another one waiting", async () => {
+  seed({ words: "Priya moved to Lisbon" });
+  await typeANote("Sam got a dog");
+  await waitFor(() => expect(all()).toHaveLength(2));
+
+  await act(async () => {
+    router.back();
+  });
+
+  expect(all().map((d) => d.words)).toEqual(["Priya moved to Lisbon"]);
+});
+
+test("should keep updating the note it continued rather than add a second copy", async () => {
+  seed({ words: "Priya moved" });
+
+  await renderRouter("src/app", { initialUrl: "/capture?resume=d1" });
+  await act(async () => {
+    fireEvent.changeText(screen.getByLabelText("Type a note"), "Priya moved to Lisbon");
+  });
+
+  await waitFor(() => expect(kept()?.words).toBe("Priya moved to Lisbon"));
+  expect(kept()?.id).toBe("d1");
+});
+
+test("should still offer a note kept the way the first version wrote it, as one draft on its own", async () => {
+  forgetOnThisPhone();
+  files().set(
+    DRAFT,
+    JSON.stringify({ ownerId: "user_default", keptAt: 1, today: "2026-10-12", source: "manual", words: "Priya moved" }),
+  );
+
+  const result = renderRouter("src/app", { initialUrl: "/" });
+  await result;
+  await act(async () => {
+    fireEvent.press(screen.getByRole("button", { name: "Continue the note you were writing" }));
+  });
+
+  expect(screen.getByLabelText("Type a note").props.value).toBe("Priya moved");
 });

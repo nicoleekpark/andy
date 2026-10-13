@@ -12,7 +12,7 @@ import { CaptureScreen } from "@/components/capture-screen";
  */
 export default function CaptureRoute() {
   // `?outbox=<id>`: a note kept on this phone, opened from home to be read.
-  // `?resume=1`: the note left half-written when iOS closed Andy.
+  // `?resume=<id>`: a note left half-written when iOS closed Andy.
   const { outbox, resume } = useLocalSearchParams<{ outbox?: string; resume?: string }>();
-  return <CaptureScreen outboxId={outbox} resume={resume === "1"} />;
+  return <CaptureScreen outboxId={outbox} resumeId={resume} />;
 }

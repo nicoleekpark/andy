@@ -17,12 +17,20 @@ import { captureDraftStore, onForgetOnThisPhone } from "./on-phone";
  * Only a screen that never got to close leaves it behind, and home then offers
  * it: Continue or Discard.
  *
- * One draft at a time, tagged with the account it was written under; gone on
- * sign-out and deletion (`forgetOnThisPhone`). A note opened from the outbox is
- * not kept here — it is already kept there.
+ * Up to `MAX_DRAFTS` at a time (owner's decision 2026-10-13), each tagged
+ * with the account it was written under; gone on sign-out and deletion
+ * (`forgetOnThisPhone`). When all are taken, a further note is not kept — one
+ * already kept is never thrown away to make room, because that would lose it
+ * without a word. A note opened from the outbox is not kept here — it is
+ * already kept there.
  */
 
+/** How many half-written notes are kept at once. */
+export const MAX_DRAFTS = 3;
+
 export type CaptureDraft = {
+  /** Which capture screen wrote it — one per note being written. */
+  id: string;
   /** The Clerk user id it was written under. */
   ownerId: string;
   /** When it was last written, ms since epoch. */
@@ -54,6 +62,7 @@ function isDraft(value: unknown): value is CaptureDraft {
   return (
     typeof v === "object" &&
     v !== null &&
+    typeof v.id === "string" &&
     typeof v.ownerId === "string" &&
     typeof v.keptAt === "number" &&
     typeof v.today === "string" &&
@@ -67,84 +76,115 @@ function isDraft(value: unknown): value is CaptureDraft {
   );
 }
 
-function read(): CaptureDraft | null {
+function read(): CaptureDraft[] {
   try {
     const raw = captureDraftStore.read();
-    if (raw === null) return null;
+    if (raw === null) return [];
     const parsed: unknown = JSON.parse(raw);
-    return isDraft(parsed) ? parsed : null;
+    if (Array.isArray(parsed)) return parsed.filter(isDraft);
+    // One draft on its own, as #159 first wrote it: kept, under an id of its
+    // own, rather than lost on the first launch after an update.
+    if (typeof parsed === "object" && parsed !== null) {
+      const single = { id: "kept", ...(parsed as object) };
+      return isDraft(single) ? [single] : [];
+    }
+    return [];
   } catch {
-    // Unreadable is no draft: the worst case is a note to start again.
-    return null;
+    // Unreadable is no drafts: the worst case is a note to start again.
+    return [];
   }
 }
 
-let current: CaptureDraft | null | undefined;
+let current: CaptureDraft[] | undefined;
 const listeners = new Set<() => void>();
+/** The last answer per account, so a hook gets the same array until it changes. */
+let mineCache: { ownerId: string | null; all: CaptureDraft[]; mine: CaptureDraft[] } | null = null;
 
 function notify() {
   for (const listener of listeners) listener();
 }
 
-// A sign-out removes the file; the next account must not inherit what is
-// held here.
-onForgetOnThisPhone(() => {
-  current = undefined;
-  notify();
-});
-
-/** This account's draft, or `null`. Another account's reads as none. */
-export function captureDraftOf(ownerId: string | null | undefined): CaptureDraft | null {
-  if (current === undefined) current = read();
-  return current !== null && ownerId != null && current.ownerId === ownerId
-    ? current
-    : null;
-}
-
-/** Keep the draft, replacing whatever was kept before. */
-export function keepCaptureDraft(draft: CaptureDraft): void {
-  current = draft;
+function save(next: CaptureDraft[]) {
+  current = next;
   try {
-    captureDraftStore.write(JSON.stringify(draft));
+    if (next.length === 0) captureDraftStore.remove();
+    else captureDraftStore.write(JSON.stringify(next));
   } catch {
     // Held for this session; only a kill now would lose it, as before.
   }
   notify();
 }
 
-/** Put the draft away — saved, kept offline, left, or discarded. */
-export function dropCaptureDraft(): void {
-  if (current === null) return;
-  current = null;
-  try {
-    captureDraftStore.remove();
-  } catch {
-    // Owner-tagged, and offered again at worst.
-  }
+// A sign-out removes the file; the next account must not inherit what is
+// held here.
+onForgetOnThisPhone(() => {
+  current = undefined;
+  mineCache = null;
   notify();
+});
+
+/** This account's drafts, newest first. Another account's read as none. */
+export function captureDraftsOf(ownerId: string | null | undefined): CaptureDraft[] {
+  if (current === undefined) current = read();
+  const owner = ownerId ?? null;
+  if (mineCache !== null && mineCache.all === current && mineCache.ownerId === owner) {
+    return mineCache.mine;
+  }
+  const mine =
+    owner === null
+      ? []
+      : current
+          .filter((draft) => draft.ownerId === owner)
+          .sort((a, b) => b.keptAt - a.keptAt);
+  mineCache = { ownerId: owner, all: current, mine };
+  return mine;
 }
 
-/** The signed-in account's draft, kept current. */
-export function useCaptureDraft(): {
+/**
+ * Keep a draft, replacing the earlier copy with the same id. A new one is
+ * kept only while there is room: returns `false` when all `MAX_DRAFTS` are
+ * taken, and changes nothing.
+ */
+export function keepCaptureDraft(draft: CaptureDraft): boolean {
+  const all = current ?? read();
+  const others = all.filter((kept) => kept.id !== draft.id);
+  const isNew = others.length === all.length;
+  if (isNew && others.filter((kept) => kept.ownerId === draft.ownerId).length >= MAX_DRAFTS) {
+    return false;
+  }
+  save([...others, draft]);
+  return true;
+}
+
+/** Put one draft away — saved, kept offline, left, or discarded. */
+export function dropCaptureDraft(id: string): void {
+  const all = current ?? read();
+  const next = all.filter((kept) => kept.id !== id);
+  if (next.length !== all.length) save(next);
+}
+
+/** The signed-in account's drafts, kept current. */
+export function useCaptureDrafts(): {
   ownerId: string | null;
-  draft: CaptureDraft | null;
-  keep: (draft: Omit<CaptureDraft, "ownerId" | "keptAt">) => void;
-  drop: () => void;
+  drafts: CaptureDraft[];
+  /** `false` when it could not be kept: all `MAX_DRAFTS` are taken. */
+  keep: (draft: Omit<CaptureDraft, "ownerId" | "keptAt">) => boolean;
+  drop: (id: string) => void;
 } {
   const ownerId = useAuth().userId ?? null;
-  const draft = useSyncExternalStore(
+  const drafts = useSyncExternalStore(
     (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
-    () => captureDraftOf(ownerId),
+    () => captureDraftsOf(ownerId),
   );
   const keep = useCallback(
     (next: Omit<CaptureDraft, "ownerId" | "keptAt">) => {
-      if (ownerId === null) return;
-      keepCaptureDraft({ ...next, ownerId, keptAt: Date.now() });
+      if (ownerId === null) return false;
+      return keepCaptureDraft({ ...next, ownerId, keptAt: Date.now() });
     },
     [ownerId],
   );
-  return { ownerId, draft, keep, drop: dropCaptureDraft };
+  return { ownerId, drafts, keep, drop: dropCaptureDraft };
 }
