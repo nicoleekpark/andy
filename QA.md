@@ -124,7 +124,10 @@ Priya already kept, and one match joined silently.
 |---|---|---|
 | 7.1 | Profile → note's `Edit` → change a fact → save | Timeline shows the change; **one back press reaches home** |
 | 7.2 | `Add a fact` on a saved note | New line saves |
-| 7.3 | Tap the record block ("What you said" / "What you wrote" / "What the card said") | **No cursor, no keyboard.** It is the record of what was saved and cannot be edited — `updateNote` does not take it as an argument at all |
+| 7.3 | Tap the record block ("What you said" / "What you wrote" / "What the card said") **while reading** (no Edit) | **No cursor, no keyboard** — read only until you press **Edit** |
+| 7.3d | **Edit** → fix a typo in **What you said** ("Hot coffee" → "hot coffee") → **Save changes** | The note shows the fixed words with a quiet **Edited** beside *WHAT YOU SAID*. The facts above are unchanged (not re-read). Save without touching the words → **no** Edited mark (device QA #48) | ⬜ |
+| 7.3e | **Edit** → clear **What you said** entirely → **Save changes** | *"A note needs some words. To remove it, delete the note instead."* Nothing is saved | ⬜ |
+| 7.3f | Offline: **Edit** → fix a word → **Save changes**, then back online → **Sync** | The page shows the fixed words and **Edited** at once; Sync saves them for good. Change the same note's words on another device first → Sync asks *"Changed somewhere else"* | ⬜ |
 | 7.3a | **Long-press** the record | Select / Copy still appears. Locking the field must not take copying with it — this is the only place a voice note's words can be copied from |
 | 7.3b | Turn VoiceOver on and swipe to the record | It reads **the note's words**. If it says "Note text" and nothing else, an `accessibilityLabel` has come back and is replacing the content |
 | 7.3c | Blank out **every** fact on a note and save | Saves. The note keeps its record and stays findable — search falls back to it. It used to be refused as "emptying by stealth", which is no longer a thing that can happen |
@@ -142,7 +145,7 @@ live here rather than in §7 because that is the screen they happen on.
 | # | Do this | Expect |
 |---|---|---|
 | 7a.1 | On the review screen, edit the transcript → `Read it again` | Asks first **only if** something above was edited; then re-reads and rewrites the facts |
-| 7a.2 | Edit the transcript, **don't** press `Read it again`, press `Remember this` | **"You changed what you said"** — three choices. This is the last moment it can be asked: after saving, the record is read-only and the facts are what search reads, so the note would answer with wording its own record contradicts, for ever |
+| 7a.2 | Edit the transcript, **don't** press `Read it again`, press `Remember this` | **"You changed what you said"** — three choices. This is the last moment the facts can be rebuilt from the corrected words: after saving the words can still be fixed (7.3d), but the facts are not re-read, and they are what search reads |
 | 7a.3 | From 7a.2 choose `Keep my facts` | Saves. The record is the corrected words, the facts are the ones you reviewed |
 | 7a.4 | From 7a.2 choose `Re-read it` | Facts are rebuilt from the corrected words. **One dialog, not two** — `Read it again` has its own "you'll lose your edits" confirmation and it must not stack on top of this one |
 | 7a.5 | From 7a.2 choose `Cancel`, then press `Remember this` again | Asks again. Cancelling is not an answer |

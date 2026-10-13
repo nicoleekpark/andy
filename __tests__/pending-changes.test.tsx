@@ -76,6 +76,17 @@ const edit = (keyFacts: string[], base = ["Fosters two greyhounds"]): PendingCha
   madeAt: 1,
 });
 
+/** An edit that corrects the words too (device QA #48). */
+const wordsEdit = (text: string, keyFacts = ["Fosters two greyhounds"]): PendingChange => ({
+  id: "c1",
+  kind: "updateNote",
+  noteId: "n-1",
+  keyFacts,
+  text,
+  base: { keyFacts: ["Fosters two greyhounds"], text: "Nina fosters two greyhounds." },
+  madeAt: 5,
+});
+
 /** A Convex client answering the note query, recording mutations. */
 function server(noteNow: unknown) {
   const mutation = jest.fn(async () => null);
@@ -113,6 +124,16 @@ describe("waiting changes", () => {
     expect(
       applyPending(copy, [{ id: "d", kind: "removeNote", noteId: "n-1", base: { keyFacts: [] }, madeAt: 1 }]).notes,
     ).toEqual([]);
+  });
+
+  test("should show corrected words in the copy, marked as edited — and no mark when they did not change", () => {
+    const corrected = applyPending(copy, [wordsEdit("Nina fosters three greyhounds.")]).notes[0];
+    expect(corrected.text).toBe("Nina fosters three greyhounds.");
+    expect(corrected.textEditedAt).toBe(5);
+
+    const unchanged = applyPending(copy, [wordsEdit("Nina fosters two greyhounds.", ["New fact"])]).notes[0];
+    expect(unchanged.keyFacts).toEqual(["New fact"]);
+    expect(unchanged.textEditedAt).toBeUndefined();
   });
 
   test("should show a person's edit tidied the way the server stores it — not something that changes after Sync", () => {
@@ -194,7 +215,9 @@ describe("editing offline", () => {
         kind: "updateNote",
         noteId: "n-1",
         keyFacts: ["Fosters three greyhounds"],
-        base: { keyFacts: ["Fosters two greyhounds"] },
+        // The words go with every edit (device QA #48), compared too.
+        text: "Nina fosters two greyhounds.",
+        base: { keyFacts: ["Fosters two greyhounds"], text: "Nina fosters two greyhounds." },
       }),
     ]);
     // The person's page already shows the change.
@@ -239,6 +262,31 @@ describe("Sync", () => {
     expect(nameOf((mutation.mock.calls[0] as unknown[])[0])).toBe("notes:updateNote");
     expect((mutation.mock.calls[0] as unknown[])[1]).toEqual({ noteId: "n-1", keyFacts: ["Fosters three greyhounds"] });
     expect(files().has(PENDING)).toBe(false);
+  });
+
+  test("should send corrected words on Sync", async () => {
+    waiting([wordsEdit("Nina fosters three greyhounds.")]);
+    const { mutation } = server({ note: { ...note }, profileName: "Nina" });
+
+    await pressSync();
+
+    await waitFor(() => expect(mutation).toHaveBeenCalledTimes(1));
+    expect((mutation.mock.calls[0] as unknown[])[1]).toEqual({
+      noteId: "n-1",
+      keyFacts: ["Fosters two greyhounds"],
+      text: "Nina fosters three greyhounds.",
+    });
+  });
+
+  test("should ask, not overwrite, when the words were changed somewhere else since", async () => {
+    waiting([wordsEdit("Nina fosters three greyhounds.")]);
+    const { mutation } = server({ note: { ...note, text: "Corrected on the iPad." }, profileName: "Nina" });
+    const alert = spyOnConfirm().mockImplementation(() => {});
+
+    await pressSync();
+
+    expect(mutation).not.toHaveBeenCalled();
+    expect(alert).toHaveBeenCalledWith("Changed somewhere else", expect.any(String), expect.any(Array));
   });
 
   test("should ask, not overwrite, when the note was changed somewhere else since", async () => {
@@ -347,6 +395,40 @@ describe("Sync", () => {
           keyFacts: ["Fosters four greyhounds"],
           // Compared next time against what was just saved, not the old note.
           base: { keyFacts: ["Fosters three greyhounds"] },
+        }),
+      ]);
+    });
+  });
+
+  test("should compare an edit made while Sync was working against the words Sync just saved", async () => {
+    waiting([wordsEdit("Nina fosters three greyhounds.")]);
+    let release: () => void = () => {};
+    const mutation = jest.fn(
+      () =>
+        new Promise<null>((resolve) => {
+          release = () => resolve(null);
+        }),
+    );
+    const query = jest.fn(async () => ({ note: { ...note }, profileName: "Nina" }));
+    (useConvex as jest.Mock).mockReturnValue({ query, mutation, action: jest.fn() });
+
+    await renderRouter("src/app", { initialUrl: "/" });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Sync" }));
+    });
+    await waitFor(() => expect(mutation).toHaveBeenCalledTimes(1));
+
+    waiting([{ ...wordsEdit("Nina fosters four greyhounds."), id: "c9" }]);
+    await act(async () => {
+      release();
+    });
+
+    await waitFor(() => {
+      const left = JSON.parse(files().get(PENDING)!).changes as PendingChange[];
+      expect(left).toEqual([
+        expect.objectContaining({
+          id: "c9",
+          base: { keyFacts: ["Fosters two greyhounds"], text: "Nina fosters three greyhounds." },
         }),
       ]);
     });

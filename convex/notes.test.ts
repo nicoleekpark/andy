@@ -830,12 +830,98 @@ test("should save a corrected fact over the one extraction wrote, and leave the 
     "His mother has cancer",
     "His mother is having a hard time",
   ]);
-  // The record is untouched, and there is no argument through which it could
-  // have been touched. What was said stays what was said; the correction lives
-  // in the facts, which is what search and Ask Andy read.
+  // No `text` sent: the record is untouched, and not marked as corrected.
   expect(result?.note.text).toBe(
     "His mother has cancer and is having a hard time",
   );
+  expect(result?.note.textEditedAt).toBeUndefined();
+});
+
+test("should correct what was said and mark the note as edited, leaving the facts as confirmed", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+  const { noteId } = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "Had Hot coffee with Emma",
+    draft: buildDraft({ primaryName: "Emma", keyFacts: ["Likes hot coffee"] }),
+    source: "voice",
+  });
+
+  // Device QA #48: a typo in the record could not be fixed.
+  await asAlice.mutation(api.notes.updateNote, {
+    noteId,
+    keyFacts: ["Likes hot coffee"],
+    text: "  Had hot coffee with Emma ",
+  });
+
+  const result = await asAlice.query(api.notes.byId, { noteId });
+  expect(result?.note.text).toBe("Had hot coffee with Emma");
+  expect(result?.note.textEditedAt).toEqual(expect.any(Number));
+  expect(result?.note.keyFacts).toEqual(["Likes hot coffee"]);
+});
+
+test("should not mark a note as edited when its words come back unchanged", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+  const { noteId } = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "Had coffee with Emma",
+    draft: buildDraft({ primaryName: "Emma", keyFacts: ["Had coffee"] }),
+    source: "voice",
+  });
+
+  // The screen sends the words with every save; only the facts changed here.
+  await asAlice.mutation(api.notes.updateNote, {
+    noteId,
+    keyFacts: ["Had coffee", "Is moving"],
+    text: "Had coffee with Emma ",
+  });
+
+  const result = await asAlice.query(api.notes.byId, { noteId });
+  expect(result?.note.textEditedAt).toBeUndefined();
+});
+
+test("should refuse to empty a note's words, or make them longer than a note can be", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  const asAlice = t.withIdentity(ALICE);
+  const { noteId } = await asAlice.mutation(api.notes.saveCapture, {
+    transcript: "Had coffee with Emma",
+    draft: buildDraft({ primaryName: "Emma", keyFacts: [] }),
+    source: "voice",
+  });
+
+  await expect(
+    asAlice.mutation(api.notes.updateNote, { noteId, keyFacts: [], text: "   " }),
+  ).rejects.toThrow(/needs some words/);
+  await expect(
+    asAlice.mutation(api.notes.updateNote, {
+      noteId,
+      keyFacts: [],
+      text: "a".repeat(MAX_TRANSCRIPT_CHARS + 1),
+    }),
+  ).rejects.toThrow(/longer than Andy can take/);
+
+  const result = await asAlice.query(api.notes.byId, { noteId });
+  expect(result?.note.text).toBe("Had coffee with Emma");
+});
+
+test("should not let anyone correct the words of somebody else's note", async () => {
+  const t = convexTest(schema, modules);
+  await ensureUser(t, ALICE);
+  await ensureUser(t, BOB);
+  const { noteId } = await t.withIdentity(ALICE).mutation(api.notes.saveCapture, {
+    transcript: "Had coffee with Emma",
+    draft: buildDraft({ primaryName: "Emma", keyFacts: [] }),
+    source: "voice",
+  });
+
+  await expect(
+    t.withIdentity(BOB).mutation(api.notes.updateNote, { noteId, keyFacts: [], text: "Bob was here" }),
+  ).rejects.toThrow(/couldn't find that note/);
+
+  const result = await t.withIdentity(ALICE).query(api.notes.byId, { noteId });
+  expect(result?.note.text).toBe("Had coffee with Emma");
 });
 
 test("should drop a fact that was blanked out, and store no facts at all rather than an empty list", async () => {
@@ -921,37 +1007,6 @@ test("should leave a note with its record when every fact is blanked out, rather
 
   const result = await asAlice.query(api.notes.byId, { noteId });
   expect(result?.note.keyFacts).toBeUndefined();
-  expect(result?.note.text).toBe("Emma is a branding designer.");
-});
-
-test("should have no way at all to write a note's record, not merely refuse a bad one", async () => {
-  const t = convexTest(schema, modules);
-  await ensureUser(t, ALICE);
-  const asAlice = t.withIdentity(ALICE);
-
-  const { noteId } = await asAlice.mutation(api.notes.saveCapture, {
-    transcript: "Emma is a branding designer.",
-    draft: buildDraft({ primaryName: "Emma" }),
-    source: "voice",
-  });
-
-  // The length cap and the empty check that used to live here are gone with the
-  // argument they guarded. Removing the ability rather than policing it is the
-  // stronger version, and this asserts the removal: a caller that supplies
-  // `text` anyway is rejected by the validator, not quietly obeyed.
-  await expect(
-    asAlice.mutation(api.notes.updateNote, {
-      noteId,
-      keyFacts: ["Branding designer"],
-      // @ts-expect-error - `text` is deliberately not an argument any more
-      text: "a rewritten record",
-    }),
-    // Matched, not bare. A bare `rejects.toThrow()` would also pass if the
-    // mutation happened to fail for some unrelated reason, which is the kind of
-    // green that means nothing.
-  ).rejects.toThrow(/text/);
-
-  const result = await asAlice.query(api.notes.byId, { noteId });
   expect(result?.note.text).toBe("Emma is a branding designer.");
 });
 

@@ -2525,11 +2525,11 @@ describe("capture screen review step", () => {
   /**
    * The last moment the question can be asked.
    *
-   * After the save the record is read-only — `notes.updateNote` does not take
-   * it — so a note saved with a corrected transcript and facts built from the
-   * old wording keeps that disagreement for ever. And since search and Ask Andy
-   * read the facts, the note would answer with wording its own record
-   * contradicts.
+   * After the save the words can still be corrected (device QA #48), but the
+   * facts are never re-read from them — so a note saved with a corrected
+   * transcript and facts built from the old wording keeps that disagreement
+   * until someone fixes the facts by hand. And since search and Ask Andy read
+   * the facts, the note would answer with wording its own record contradicts.
    */
   async function reachReviewAndEditTranscript(
     handlers: ReturnType<typeof captureListeners>,

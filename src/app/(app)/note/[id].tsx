@@ -18,7 +18,7 @@ import { OfflineCopyLine } from "@/components/offline-copy-line";
 import { api } from "@convex/_generated/api";
 import { useJustAdded } from "@/lib/use-just-added";
 import { useRowKeys } from "@/lib/use-row-keys";
-import { colors, textOpacity } from "@/constants/theme";
+import { colors, space, textOpacity, textSize } from "@/constants/theme";
 import { formatDate } from "@/lib/dates";
 import { sourceLabel } from "@/lib/note-source";
 import { userMessage } from "@/lib/user-message";
@@ -90,7 +90,7 @@ export default function NoteScreen() {
    * ever a fallback: once there are edits, they win, and until then the screen
    * shows whatever is currently stored.
    */
-  const [edits, setEdits] = useState<{ keyFacts: string[] } | null>(null);
+  const [edits, setEdits] = useState<Working | null>(null);
   const { markAdded, focusProps } = useJustAdded<number>();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -98,11 +98,14 @@ export default function NoteScreen() {
   const saved =
     result === undefined || result === null
       ? null
-      : { keyFacts: result.note.keyFacts ?? [] };
+      : { keyFacts: result.note.keyFacts ?? [], text: result.note.text };
   const working = edits ?? saved;
   /** What the note says before this edit — what Sync compares against. */
-  const baseFacts = useMemo(
-    () => (result === undefined || result === null ? [] : (result.note.keyFacts ?? [])),
+  const base = useMemo(
+    () =>
+      result === undefined || result === null
+        ? { keyFacts: [], text: "" }
+        : { keyFacts: result.note.keyFacts ?? [], text: result.note.text },
     [result],
   );
   // Lines are only ever added at the end here (clearing one removes it on
@@ -115,7 +118,7 @@ export default function NoteScreen() {
    * a patch that only knew about that field would leave the others undefined
    * and quietly blank them on save.
    */
-  function edit(patch: Partial<{ keyFacts: string[] }>) {
+  function edit(patch: Partial<Working>) {
     if (working === null) {
       return;
     }
@@ -129,18 +132,30 @@ export default function NoteScreen() {
     if (working === null) {
       return;
     }
+    // Said here as well as by the server, because offline the server is not
+    // asked until Sync — and a change it will refuse should not wait for it.
+    const text = working.text.trim();
+    if (text === "") {
+      setError("A note needs some words. To remove it, delete the note instead.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
+      // The words go with every save, changed or not: the server marks the
+      // note edited only when they differ, and two changes kept offline for
+      // one note merge into the later one — which must still carry the words
+      // the earlier one corrected.
       if (keepOnPhone) {
         pending.add({
           kind: "updateNote",
           noteId: id,
           keyFacts: working.keyFacts,
-          base: { keyFacts: baseFacts },
+          text,
+          base,
         });
       } else {
-        await updateNote({ noteId: id, ...working });
+        await updateNote({ noteId: id, keyFacts: working.keyFacts, text });
       }
 
       // Opened to read and switched to editing here: the note is what the
@@ -172,7 +187,7 @@ export default function NoteScreen() {
       );
       setSaving(false);
     }
-  }, [id, working, updateNote, profileId, editParam, keepOnPhone, pending, baseFacts]);
+  }, [id, working, updateNote, profileId, editParam, keepOnPhone, pending, base]);
 
   /**
    * Deleting, behind a confirmation, because it cannot be undone.
@@ -200,7 +215,7 @@ export default function NoteScreen() {
                   pending.add({
                     kind: "removeNote",
                     noteId: id,
-                    base: { keyFacts: baseFacts },
+                    base: { keyFacts: base.keyFacts },
                   });
                   router.replace(`/profile/${profileId}`);
                   return;
@@ -219,7 +234,7 @@ export default function NoteScreen() {
         },
       ],
     );
-  }, [confirm, id, removeNote, keepOnPhone, pending, baseFacts, profileId]);
+  }, [confirm, id, removeNote, keepOnPhone, pending, base, profileId]);
 
   if (result === undefined || result === null) {
     return (
@@ -265,7 +280,7 @@ export default function NoteScreen() {
         <OfflineCopyLine takenAt={takenAt} />
         <Text style={styles.lead}>
           {formatDate(result.note.createdAt)}
-          {editing ? " · fix any fact Andy got wrong." : ""}
+          {editing ? " · fix anything Andy got wrong." : ""}
         </Text>
 
         {!editing ? (
@@ -341,50 +356,50 @@ export default function NoteScreen() {
         ) : null}
 
         <View style={styles.field}>
-          <Text style={styles.fieldLabel}>
-            {sourceLabel(result.note.source)}
-          </Text>
-          {/*
-            Read, not edited. A record you can rewrite is not a record — and the
-            facts above are what search and Ask Andy actually read, so a
-            correction made down here would look like it worked and change
-            nothing. `updateNote` does not take this field at all, so this is
-            the screen agreeing with the rule rather than being the rule.
-
-            Deliberately not a disabled `TextInput`: that still reads as a
-            control, and VoiceOver announces it as a dimmed text field somebody
-            ought to be able to type in.
-          */}
-          {/*
-            No `accessibilityLabel`. On a `Text` a label *replaces* the spoken
-            content rather than naming it, so "Note text" is all VoiceOver would
-            read — the note's own record becomes the one thing on this screen a
-            screen-reader user cannot hear. The `TextInput` this replaced
-            announced both label and value, so adding the label back was a
-            regression hiding inside a rewrite. `profile/[id]/index.tsx` renders
-            the same transcript as a bare `Text` and reads correctly.
-
-            `selectable` because this was the app's only select-and-copy path
-            for a voice note: the timeline renders it as plain text too, so
-            locking the field took copying with it. It costs one prop and does
-            not make the text look editable.
-          */}
-          <Text style={styles.record} testID="note-record" selectable>
-            {result.note.text}
-          </Text>
-          {/*
-            Source-neutral on purpose. "what was said" sat directly under a label
-            that reads "What you wrote" on a typed note and "What the card said"
-            on a business card, so it contradicted its own heading two times in
-            three. And it said what the block *is* without saying you cannot
-            edit it, which leaves someone who taps it and gets no keyboard still
-            wondering — `STYLE.md` asks for what happened and what to do.
-          */}
-          {editing ? (
-            <Text style={styles.hint}>
-              Kept as it was saved. Corrections go in what you remember, above.
+          <View style={styles.labelRow}>
+            <Text style={styles.fieldLabel}>
+              {sourceLabel(result.note.source)}
             </Text>
-          ) : null}
+            {/*
+              Device QA #48 (owner's decision 2026-10-12): the words can be
+              corrected — a misheard "Hot coffee" no longer stays wrong for
+              good — and a corrected note says so, so a record that was changed
+              is still an honest one. Shown while reading and while editing.
+            */}
+            {result.note.textEditedAt !== undefined ? (
+              <Text style={styles.editedMark} testID="note-edited-mark">
+                Edited
+              </Text>
+            ) : null}
+          </View>
+          {editing ? (
+            <>
+              <TextInput
+                value={working?.text ?? ""}
+                onChangeText={(value) => edit({ text: value })}
+                style={styles.input}
+                multiline
+                accessibilityLabel={sourceLabel(result.note.source)}
+                testID="note-record-input"
+              />
+              <Text style={styles.hint}>
+                Fix a word that came out wrong. The facts above stay as they
+                are, and the note will say it was edited.
+              </Text>
+            </>
+          ) : (
+            /*
+              No `accessibilityLabel`. On a `Text` a label *replaces* the spoken
+              content rather than naming it, so the note's own words would be
+              the one thing a screen-reader user cannot hear.
+
+              `selectable` because this is the app's select-and-copy path for
+              a voice note; it does not make the text look editable.
+            */
+            <Text style={styles.record} testID="note-record" selectable>
+              {result.note.text}
+            </Text>
+          )}
         </View>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -422,6 +437,9 @@ export default function NoteScreen() {
     </>
   );
 }
+
+/** What the edit screen changes: the facts, and the words they came from. */
+type Working = { keyFacts: string[]; text: string };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.paper },
@@ -464,6 +482,14 @@ const styles = StyleSheet.create({
     paddingLeft: 10,
   },
   hint: { color: colors.ink, fontSize: 12, opacity: textOpacity.quiet, flex: 1 },
+  labelRow: { flexDirection: "row", alignItems: "baseline", gap: space.sm },
+  // The same quiet weight as the label beside it: a fact about the note, not
+  // a warning. Sentence case, unlike the label, so it reads as a word.
+  editedMark: {
+    color: colors.ink,
+    fontSize: textSize.xs,
+    opacity: textOpacity.quiet,
+  },
   factActions: {
     flexDirection: "row",
     alignItems: "center",

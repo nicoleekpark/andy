@@ -102,6 +102,10 @@ export default defineSchema({
     // Explicit, so a note can be backdated to when the interaction actually
     // happened rather than when it was captured. Distinct from `_creationTime`.
     createdAt: v.number(),
+    // When `text` was last corrected by hand (device QA #48, owner's decision
+    // 2026-10-12: a typo in what was said can be fixed, and the note says it
+    // was). Absent on a note whose words are as they were saved. Additive.
+    textEditedAt: v.optional(v.number()),
   })
     .index("by_user", ["userId"])
     .index("by_user_and_profile_and_createdAt", [
