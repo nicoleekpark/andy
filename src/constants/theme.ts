@@ -125,6 +125,8 @@ export const radius = {
  */
 export const size = {
   avatar: 40,
+  /** A system symbol in the nav bar (the Settings gear) — iOS's own bar-button size. */
+  icon: 22,
 } as const;
 
 /**

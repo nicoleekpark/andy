@@ -782,6 +782,7 @@ drawn natively, so jest never sees its title — this is the only check.
 | 27.2 | Open a profile, Search, Settings | Their titles are **unchanged** (system face). Only home's title is Lora | ⬜ |
 | 27.3 | Open, in turn: a person from home, **Record** (and its review), **Ask Andy**, a note from a person, **Settings**, a person from Ask's results | Every one has the **same `nav-bar-back`: the ‹ chevron alone**, no word beside it (not "Andy", not "Check this over"). It is easy to find on the paper background. Tapping it goes back one screen (copy-build-4 #27/#37) | ⬜ |
 | 27.4 | Same screens with **VoiceOver** | `nav-bar-back` reads **"Back, button"** — never just "button" | ⬜ |
+| 27.5 | Look at the top right of home | A **gear** (iOS's own), not the word "Settings", in ink, not cramped. Tapping it — anywhere in a comfortable thumb-sized square around it — opens Settings. With VoiceOver: "Settings, button" (device QA #3) | ⬜ |
 
 ## 28. Home list: photos and initials
 
