@@ -1,0 +1,237 @@
+<title>Photo Note Screens</title>
+<style>
+  :root {
+    /* --- app tokens, named as src/constants/theme.ts --- */
+    --color-ink: #2A2622;
+    --color-paper: #E8E6DE;
+    --color-moss: #5C6B4F;
+    --color-line: #B8B3A8;
+    --color-alert: #9F4C3B;
+    --color-placeholder: #63605A;
+    --color-edge: #857E6D;
+    --color-scrim: rgba(42, 38, 34, 0.42);
+    --space-xs: 4px; --space-sm: 8px; --space-md: 12px; --space-lg: 16px;
+    --space-xl: 24px; --space-xxl: 32px;
+    --text-xs: 12px; --text-sm: 13px; --text-md: 14px; --text-base: 15px;
+    --text-lg: 16px; --text-xl: 17px;
+    --radius-control: 10px; --radius-card: 16px; --radius-pill: 999px;
+    --opacity-secondary: 0.8; --opacity-quiet: 0.7;
+    --font-display: "Lora", Georgia, "Times New Roman", serif;
+    /* --- doc chrome only (reading comfort, never the phone) --- */
+    --doc-bg: #d8d4c8; --doc-ink: #2A2622; --doc-quiet: #6f6a62;
+    --doc-rule: #cfcac0; --doc-card: #f6f4ee;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --doc-bg: #1E1C19; --doc-ink: #ECE8E0; --doc-quiet: #A39D93; --doc-rule: #3A3631; --doc-card: #26231F; color-scheme: dark; }
+  }
+  :root[data-theme="dark"] { --doc-bg: #1E1C19; --doc-ink: #ECE8E0; --doc-quiet: #A39D93; --doc-rule: #3A3631; --doc-card: #26231F; color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { background: var(--doc-bg); color: var(--doc-ink); font-family: -apple-system, system-ui, sans-serif; margin: 0; padding: 24px 16px; }
+  h1 { font-size: 18px; margin: 0 auto 4px; max-width: 860px; }
+  .doc-note { max-width: 860px; margin: 0 auto 16px; font-size: 13px; opacity: 0.85; line-height: 1.5; }
+
+  .rig { max-width: 860px; margin: 0 auto 20px; display: flex; flex-wrap: wrap; gap: 10px; }
+  .rig fieldset { border: 1px dashed var(--doc-rule); border-radius: 8px; padding: 8px 10px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .rig legend { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.6; }
+  .rig button { font-size: 12px; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--doc-rule); background: var(--doc-card); color: var(--doc-ink); cursor: pointer; }
+  .rig button.active { background: var(--color-moss); color: var(--color-paper); border-color: var(--color-moss); }
+
+  .stage { max-width: 860px; margin: 0 auto; display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .frame { width: 390px; max-width: 100%; border-radius: 44px; background: #111; padding: 14px; box-shadow: 0 20px 50px rgba(0,0,0,0.35); flex-shrink: 0; }
+  .screen { background: var(--color-paper); color: var(--color-ink); border-radius: 32px; overflow: hidden; height: 760px; position: relative; display: flex; flex-direction: column; }
+  .ios-status-bar { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-size: 14px; font-weight: 600; flex-shrink: 0; }
+  .nav-bar { padding: 2px 20px 12px; border-bottom: 1px solid var(--color-line); display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; flex-shrink: 0; }
+  .nav-bar-back { font-size: 26px; width: 44px; height: 44px; display: flex; align-items: center; cursor: pointer; background: none; border: none; color: var(--color-ink); padding: 0; }
+  .nav-bar-title { font-size: var(--text-lg); font-weight: 600; text-align: center; }
+
+  /* --- camera: the one dark screen; the viewfinder is the photo, not a theme --- */
+  .camera { background: #000; color: #fff; }
+  .cam-top { height: 88px; display: flex; align-items: flex-end; padding: 0 20px 8px; flex-shrink: 0; }
+  .cam-close { width: 44px; height: 44px; border-radius: 50%; border: none; background: rgba(255,255,255,0.16); color: #fff; font-size: 20px; cursor: pointer; }
+  .viewfinder { flex: 1; position: relative; background: radial-gradient(ellipse at 50% 45%, #6b6458 0%, #3a352e 55%, #1f1c18 100%); overflow: hidden; }
+  .sample-card { position: absolute; left: 50%; top: 42%; width: 230px; height: 136px; transform: translate(-50%, -50%) rotate(-4deg); background: #f4f1e8; border-radius: 6px; box-shadow: 0 8px 22px rgba(0,0,0,.45); padding: 16px 18px; color: #222; font-family: Georgia, serif; }
+  .sample-card .n { font-size: 17px; }
+  .sample-card .t { font-size: 11px; margin-top: 4px; opacity: .7; }
+  .sample-card .e { font-size: 11px; margin-top: 26px; font-family: ui-monospace, monospace; }
+  .cam-hint { position: absolute; left: 0; right: 0; bottom: 20px; text-align: center; font-size: var(--text-base); color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.6); }
+  .cam-bottom { height: 150px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 28px 20px; flex-shrink: 0; }
+  .album { width: 52px; height: 52px; border-radius: 10px; border: 2px solid rgba(255,255,255,.85); background: linear-gradient(135deg, #a8977e, #5d5245); cursor: pointer; justify-self: start; }
+  .shutter { width: 76px; height: 76px; border-radius: 50%; border: 4px solid #fff; background: none; padding: 4px; cursor: pointer; }
+  .shutter span { display: block; width: 100%; height: 100%; border-radius: 50%; background: #fff; }
+  .album-label { font-size: 11px; color: rgba(255,255,255,.85); margin-top: 4px; text-align: center; }
+
+  .denied { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-lg); padding: 0 var(--space-xl); text-align: center; }
+  .denied p { margin: 0; color: #f0c9bf; font-size: var(--text-md); line-height: 1.45; }
+
+  .ios-alert { position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%); width: 270px; background: rgba(242,242,247,.96); color: #000; border-radius: 14px; text-align: center; overflow: hidden; }
+  .ios-alert .m { padding: 18px 16px; font-size: 13px; line-height: 1.35; }
+  .ios-alert .m b { display: block; font-size: 16px; margin-bottom: 6px; }
+  .ios-alert .b { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid #c6c6c8; }
+  .ios-alert .b span { padding: 11px; color: #007aff; font-size: 16px; }
+  .ios-alert .b span + span { border-left: 1px solid #c6c6c8; font-weight: 600; }
+
+  /* --- paper screens --- */
+  .body { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: var(--space-lg) var(--space-xl); gap: var(--space-md); overflow: auto; }
+  .about { font-size: var(--text-md); opacity: var(--opacity-quiet); }
+  .about b { font-weight: 600; }
+  .thumb-row { display: flex; align-items: center; gap: var(--space-md); }
+  .thumb { width: 92px; height: 60px; border-radius: var(--radius-control); border: 1px solid var(--color-edge); background: #f4f1e8; position: relative; overflow: hidden; cursor: pointer; padding: 0; }
+  .thumb::before { content: ""; position: absolute; inset: 8px 10px; background: linear-gradient(#333 0 2px, transparent 2px 9px, #777 9px 10px, transparent 10px 24px, #555 24px 25px, transparent 25px); opacity: .7; }
+  .thumb-hint { font-size: var(--text-sm); opacity: var(--opacity-quiet); }
+  .label { font-size: var(--text-xs); letter-spacing: 0.06em; text-transform: uppercase; opacity: var(--opacity-quiet); }
+  .lead { font-size: var(--text-md); opacity: var(--opacity-quiet); line-height: 1.45; margin: 0; }
+  .about-name { font-family: var(--font-display); font-size: 22px; border-bottom: 1px solid var(--color-edge); padding: 2px 0 6px; margin-top: -4px; }
+  .about-name.fixed { border-bottom: none; }
+  .about-name .ph { color: var(--color-placeholder); }
+  .field { flex: 1; min-height: 120px; font-family: var(--font-display); font-size: var(--text-xl); line-height: 1.5; border-bottom: 1px solid var(--color-edge); padding-bottom: var(--space-sm); white-space: pre-line; }
+  .reading { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-lg); }
+  .reading .big { width: 220px; height: 136px; border-radius: var(--radius-control); border: 1px solid var(--color-edge); background: #f4f1e8; position: relative; overflow: hidden; }
+  .reading .big::before { content: ""; position: absolute; inset: 18px 20px; background: linear-gradient(#333 0 3px, transparent 3px 16px, #777 16px 17px, transparent 17px 52px, #555 52px 53px, transparent 53px); opacity: .7; }
+  .reading p { margin: 0; font-size: var(--text-base); opacity: var(--opacity-secondary); }
+  .error { font-size: var(--text-md); color: var(--color-alert); line-height: 1.45; }
+  .primary { width: 100%; min-height: 52px; border-radius: var(--radius-pill); border: none; background: var(--color-moss); color: var(--color-paper); font-size: var(--text-xl); font-weight: 600; cursor: pointer; flex-shrink: 0; }
+  .primary[disabled] { opacity: 0.5; cursor: default; }
+  .secondary { min-height: 44px; border: none; background: none; color: var(--color-ink); opacity: var(--opacity-secondary); font-size: var(--text-base); cursor: pointer; flex-shrink: 0; }
+
+  .viewer { position: absolute; inset: 0; background: #000; display: flex; flex-direction: column; }
+  .viewer .big { margin: auto; width: 340px; height: 210px; background: #f4f1e8; border-radius: 6px; padding: 22px 24px; color: #222; font-family: Georgia, serif; }
+  .viewer .big .n { font-size: 24px; } .viewer .big .t { font-size: 14px; opacity: .7; margin-top: 4px; } .viewer .big .e { font-family: ui-monospace, monospace; font-size: 14px; margin-top: 48px; }
+
+  .side-notes { flex: 1; min-width: 280px; font-size: 13px; line-height: 1.55; color: var(--doc-ink); }
+  .side-notes h2 { font-size: 14px; margin: 18px 0 6px; }
+  .side-notes h2:first-child { margin-top: 0; }
+  .side-notes code { font-size: 12px; }
+</style>
+
+<h1>Photo — the third door of the orbit</h1>
+<p class="doc-note">Design prototype, not production code. Opened from <code>capture-orbit</code> → Photo (2 o'clock), or from someone's page. Owner's answers of 2026-10-13: the camera opens at once with the album beside the shutter; the shutter goes straight to reading; the words step shows a small photo to compare against; one photo per note. Pick a step below. The shutter, album, thumbnail and Retake are live too.</p>
+
+<div class="rig">
+  <fieldset><legend>step</legend>
+    <button data-k="step" data-v="camera" class="active">Camera</button>
+    <button data-k="step" data-v="first">First time (iOS asks)</button>
+    <button data-k="step" data-v="denied">Camera off</button>
+    <button data-k="step" data-v="reading">Reading…</button>
+    <button data-k="step" data-v="words">Check the words</button>
+    <button data-k="step" data-v="nothing">No words found</button>
+  </fieldset>
+  <fieldset><legend>photo</legend>
+    <button data-k="kind" data-v="card" class="active">Business card</button>
+    <button data-k="kind" data-v="notes">Handwritten page</button>
+    <button data-k="kind" data-v="unnamed">Page, no name on it</button>
+  </fieldset>
+  <fieldset><legend>from</legend>
+    <button data-k="ctx" data-v="home" class="active">Home</button>
+    <button data-k="ctx" data-v="priya">Priya's page</button>
+  </fieldset>
+  <fieldset><legend>source</legend>
+    <button data-k="src" data-v="camera" class="active">Taken</button>
+    <button data-k="src" data-v="album">From album</button>
+  </fieldset>
+</div>
+
+<div class="stage">
+  <div class="frame"><div class="screen" id="screen"></div></div>
+  <div class="side-notes">
+    <h2>1 · Camera, at once</h2>
+    <p>Andy's own camera (expo-camera), full screen: ✕ top-left, a hint, the shutter in the middle and the album bottom-left, where the iPhone Camera keeps it. The camera is the one dark screen in Andy, because a viewfinder on paper would fight the picture.</p>
+    <p>The hint is the scope in plain words: <i>"A card, a page of notes, or a screenshot."</i></p>
+    <h2>First time and camera off</h2>
+    <p>iOS asks for the camera once, over this screen, at the moment of use. If you say no, the viewfinder is replaced by a line and <b>Choose a photo instead</b>, so the album still works without the camera. The album uses iOS's photo picker and never asks for Photos access (#155).</p>
+    <h2>2 · Reading</h2>
+    <p>The shutter goes straight to <i>"Reading the photo…"</i> with the photo shown, with no Use / Retake step. Offline never gets here: the Photo circle already says "Needs a connection".</p>
+    <h2>3 · Check the words</h2>
+    <p>A small photo on top: tap to see it full size and compare a name. Under it, <b>WHAT THE PHOTO SAYS ABOUT</b>, then <b>who</b>: a name field the same call that reads the photo fills in ("Priya", or the card's "Sarah Chen"), and the words without that name line (owner, 2026-10-13). Both are editable, with one line: <i>"Fix any name or word, then let Andy read it."</i></p>
+    <p>No name on the page: the field shows <i>who?</i> and the words stay whole. Opened from Priya's page: "Priya" is fixed, not a field, because the page already said who. Cards follow the same check as voice (R10), with no exception.</p>
+    <p>The saved note's words start after the name. Nothing is lost, because the note is filed under that person.</p>
+    <p><b>Let Andy read it</b> → the usual review → Remember this. <b>Retake</b> (from the album: <b>Choose another</b>) throws this photo away and goes back.</p>
+    <h2>No words</h2>
+    <p>Nothing readable: <i>"Andy couldn't find any words in this photo. Try again closer, with more light."</i> and Retake. Nothing is saved.</p>
+    <h2>What is kept</h2>
+    <p>The <b>words</b>, not the photo. The photo is used to read and then thrown away (the phone's copy goes with the screen, and with sign-out). Keeping photos would be a new promise to make and to pay for; not in V1.</p>
+    <h2>New names</h2>
+    <p><code>photo-camera</code> (<code>-close</code>, <code>-hint</code>, <code>-shutter</code>, <code>-album</code>), <code>photo-camera-off</code>, <code>photo-reading</code>, <code>photo-words</code> (<code>-thumb</code>, <code>-about</code>, <code>-field</code>, <code>-read-button</code>, <code>-retake</code>), <code>photo-viewer</code>, <code>photo-nothing</code>.</p>
+  </div>
+</div>
+
+<script>
+  const state = { step: 'camera', kind: 'card', ctx: 'home', src: 'camera', viewer: false };
+  // Who it is about, found by the same call that reads the photo, and the
+  // words without that name line. `null` = no name found.
+  const WORDS = {
+    card: { about: 'Sarah Chen', text: 'Developer Relations\nNotion\nsarah@notion.so' },
+    notes: { about: 'Priya', text: 'coffee at Tartine\nmoving to Lisbon in March\nnew studio office, needs a brand person\nask Marcus?' },
+    unnamed: { about: null, text: 'coffee at Tartine\nmoving to Lisbon in March\nnew studio office, needs a brand person\nask Marcus?' },
+  };
+  const close = '<button class="cam-close" aria-label="Close" onclick="set(\'step\',\'camera\')">✕</button>';
+
+  function cameraScreen(kind) {
+    const card = '<div class="sample-card"><div class="n">Sarah Chen</div><div class="t">Developer Relations · Notion</div><div class="e">sarah@notion.so</div></div>';
+    let mid;
+    if (kind === 'denied') {
+      mid = '<div class="denied"><p>Andy needs the camera to take a photo. Turn it on in Settings, or choose a photo instead.</p>'
+        + '<button class="primary" style="width:auto;padding:0 24px" onclick="pick()">Choose a photo instead</button></div>';
+    } else {
+      mid = '<div class="viewfinder">' + card + '<div class="cam-hint">A card, a page of notes, or a screenshot.</div>'
+        + (kind === 'first' ? '<div class="ios-alert" role="alertdialog"><div class="m"><b>“Andy” Would Like to Access the Camera</b>Andy uses the camera to read a business card or a page of notes you photograph.</div><div class="b"><span>Don’t Allow</span><span>Allow</span></div></div>' : '')
+        + '</div>';
+    }
+    return '<div class="ios-status-bar" style="color:#fff"><span>9:41</span><span>●●●</span></div>'
+      + '<div class="cam-top">' + close + '</div>' + mid
+      + '<div class="cam-bottom">'
+      + '<div><button class="album" aria-label="Choose a photo" onclick="pick()"></button><div class="album-label">Album</div></div>'
+      + (kind === 'denied' ? '<span></span>' : '<button class="shutter" aria-label="Take photo" onclick="shoot()"><span></span></button>')
+      + '<span></span></div>';
+  }
+
+  function paper(inner) {
+    return '<div class="ios-status-bar"><span>9:41</span><span>●●●</span></div>'
+      + '<div class="nav-bar"><button class="nav-bar-back" aria-label="Back" onclick="set(\'step\',\'camera\')">‹</button><span class="nav-bar-title">New note</span><span></span></div>'
+      + '<div class="body">' + (state.ctx === 'priya' ? '<div class="about">About <b>Priya</b></div>' : '') + inner + '</div>';
+  }
+
+  function render() {
+    const s = document.getElementById('screen');
+    s.classList.toggle('camera', ['camera', 'first', 'denied'].includes(state.step));
+    const retake = state.src === 'album' ? 'Choose another' : 'Retake';
+    let html;
+    if (state.step === 'camera' || state.step === 'first' || state.step === 'denied') {
+      html = cameraScreen(state.step);
+    } else if (state.step === 'reading') {
+      html = paper('<div class="reading"><div class="big" aria-hidden="true"></div><p>Reading the photo…</p></div>'
+        + '<button class="primary" disabled>Let Andy read it</button>');
+    } else if (state.step === 'words') {
+      html = paper('<div class="thumb-row"><button class="thumb" aria-label="See the photo full size" onclick="view()"></button><span class="thumb-hint">Tap to see it full size</span></div>'
+        + '<p class="lead">Fix any name or word, then let Andy read it.</p>'
+        + (() => {
+            const w = WORDS[state.kind];
+            const fixed = state.ctx === 'priya';
+            const about = fixed ? 'Priya' : w.about;
+            const nameHtml = fixed
+              ? '<div class="about-name fixed">Priya</div>'
+              : '<div class="about-name" role="textbox" aria-label="About who">' + (about ? about : '<span class="ph">who?</span>') + '</div>';
+            return '<div class="label">What the photo says about</div>' + nameHtml
+              + '<div class="field" role="textbox" aria-multiline="true" aria-label="What the photo says' + (about ? ' about ' + about : '') + '">' + w.text + '</div>';
+          })()
+        + '<button class="primary">Let Andy read it</button>'
+        + '<button class="secondary" onclick="set(\'step\',\'camera\')">' + retake + '</button>');
+    } else {
+      html = paper('<div class="reading"><div class="big" aria-hidden="true" style="filter:blur(3px)"></div></div>'
+        + '<div class="error">Andy couldn\'t find any words in this photo. Try again closer, with more light.</div>'
+        + '<button class="primary" onclick="set(\'step\',\'camera\')">' + retake + '</button>');
+    }
+    if (state.viewer) {
+      html += '<div class="viewer"><div class="ios-status-bar" style="color:#fff"><span>9:41</span></div><div style="padding:0 20px"><button class="cam-close" aria-label="Close" onclick="unview()">✕</button></div>'
+        + '<div class="big"><div class="n">Sarah Chen</div><div class="t">Developer Relations · Notion</div><div class="e">sarah@notion.so</div></div></div>';
+    }
+    s.innerHTML = html;
+    document.querySelectorAll('.rig button').forEach(b => b.classList.toggle('active', state[b.dataset.k] === b.dataset.v));
+  }
+  function set(k, v) { state[k] = v; state.viewer = false; render(); }
+  function shoot() { state.src = 'camera'; state.step = 'reading'; render(); setTimeout(() => { if (state.step === 'reading') { state.step = 'words'; render(); } }, 1400); }
+  function pick() { state.src = 'album'; state.step = 'reading'; render(); setTimeout(() => { if (state.step === 'reading') { state.step = 'words'; render(); } }, 1400); }
+  function view() { state.viewer = true; render(); }
+  function unview() { state.viewer = false; render(); }
+  document.querySelectorAll('.rig button').forEach(b => b.addEventListener('click', () => set(b.dataset.k, b.dataset.v)));
+  render();
+</script>

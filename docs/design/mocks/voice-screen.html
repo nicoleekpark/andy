@@ -1,49 +1,7 @@
-<!--
-  DESIGN PROTOTYPE — an HTML approximation of Andy's native `record` screen
-  (the Voice door, reached from `capture-orbit` — docs/design/decisions/
-  capture-doors.md, "Owner's orbit flow"), redrawn to the owner's reference
-  (a single large rounded card; live transcript in place of a waveform; a
-  timer centred under it, above the controls; a bottom row of three
-  controls, each with a small text label beneath it). Not production code.
 
-  Revision 2026-10-13 (this pass): the transcript now starts at the TOP of
-  its area and grows downward, auto-scrolling once it overflows, rather than
-  sitting pinned to the bottom. The word "Recording" and its red dot are
-  gone — the listening state is now carried by the running timer alone, the
-  centre control's red pause glyph, and a one-time VoiceOver announcement
-  when listening starts. The three controls are remapped: LEFT is always a
-  quiet trash icon (Start over), CENTRE is the red pause/resume toggle (no
-  longer the finishing action), RIGHT is a filled moss checkmark (Done) —
-  the only filled-moss control on this screen, on the right for thumb reach,
-  as far from the trash as the row allows. See the dated subsection in
-  record-flow.md for the full reasoning; the "What changed here" notes below
-  are updated in place rather than kept as a separate history.
 
-  Written for docs/design/decisions/record-flow.md, section "Voice screen —
-  owner's redesign" (appended alongside this file). Supersedes this
-  project's own record-flow-a.html for the voice door's shape only — typing
-  and the about-field pattern it established are unchanged and reused here.
 
-  Tokens are declared as CSS variables, named the same as
-  src/constants/theme.ts, so this mock and the app cannot quietly drift
-  apart. Lora / IBM Plex Mono are not loaded here, so serif/monospace fall
-  back to a close system face. The grey tooling above the phone frame is
-  mock-only — it does not exist on the real screen. Inside the frame, the
-  rig below really drives the screen (tap the buttons), and a few controls
-  on the screen itself are live too (the mic, trash, pause/resume and Done
-  buttons, the dialog), so the shape of the transitions can be felt, not
-  just read. The
-  surrounding document page (outside the phone) follows the reader's
-  light/dark preference for comfortable reading; the phone screen itself
-  never does — V1 is light mode only (STYLE.md), and everything inside
-  `.frame` stays `paper`/`ink` regardless of the reading-mode toggle.
--->
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>record — Voice screen, owner's redesign</title>
+<title>Voice Note Screen</title>
 <style>
   :root {
     /* --- app tokens, named as src/constants/theme.ts --- */
@@ -117,6 +75,8 @@
   .main-area { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   .prompt-wrap { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 var(--space-md); }
   .record-prompt { font-size: var(--text-base); opacity: var(--opacity-quiet); line-height: 1.5; }
+  .ready-stack { display: flex; flex-direction: column; align-items: center; gap: var(--space-md); }
+  .write-instead { background: var(--color-moss); color: var(--color-paper); border: none; border-radius: 999px; font-size: var(--text-base); font-weight: 600; padding: 12px 24px; min-height: 44px; cursor: pointer; }
   .error-banner { color: var(--color-alert); font-size: var(--text-md); line-height: 1.45; text-align: center; }
 
   /* top-anchored: the first line sits at the top of the area and the block
@@ -210,8 +170,8 @@
   .dialog-action { background: var(--color-moss); color: var(--color-paper); border: none; border-radius: var(--radius-pill); padding: 16px; width: 100%; font-size: 16px; font-weight: 600; margin-bottom: 8px; cursor: pointer; }
   .dialog-cancel { background: none; border: none; color: var(--color-ink); opacity: var(--opacity-quiet); font-size: var(--text-base); width: 100%; padding: 10px; cursor: pointer; }
 </style>
-</head>
-<body>
+
+
 
 <div class="top-bar">
   <h1>record — Voice screen, owner's redesign</h1>
@@ -571,12 +531,16 @@
       : "Tap record. Say who it's about and what you want to remember.";
     let errorHtml = '';
     if (denied) {
-      errorHtml = '<div class="error-banner">Andy needs the microphone and speech recognition to take a voice note. Turn them on in Settings, or type it instead.</div>';
+      errorHtml = '<div class="error-banner">Andy needs the microphone and speech recognition to take a voice note. Turn them on in Settings, or write it instead.</div>';
     } else if (nodevice) {
-      errorHtml = '<div class="error-banner">Speech needs a connection for this language — type it instead.</div>';
+      errorHtml = '<div class="error-banner">Speech needs a connection for this language — write it instead.</div>';
     }
     return '<div class="main-area">'
-      + '<div class="prompt-wrap">' + (errorHtml || '<p class="record-prompt">' + prompt + '</p>') + '</div>'
+      + '<div class="prompt-wrap"><div class="ready-stack">' + (errorHtml || '<p class="record-prompt">' + prompt + '</p>')
+      // Owner's choice B (2026-10-13): with voice unavailable, the way to
+      // still leave a note is on this screen, not behind the back chevron.
+      + (errorHtml ? '<button class="write-instead" aria-label="Write instead">Write instead</button>' : '')
+      + '</div></div>'
       + '</div>'
       + '<div class="status-wrap"></div>'
       + '<div class="controls-row">'
@@ -677,5 +641,3 @@
   syncRig();
   render();
 </script>
-</body>
-</html>
