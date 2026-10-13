@@ -20,9 +20,13 @@ The subject is _personal memory-keeping_ — closer to marginalia in a well-love
 | `edge` | `#857E6D` | the edge of a field when it is the only sign of where to type — 3.2:1 (WCAG 1.4.11), 1pt wide. `line` stays for dividers, which are decoration |
 
 `src/constants/theme.ts` is the only place these hex values appear; screens
-import `colors`. `alert` has exactly one non-error use — destructive controls:
+import `colors`. `alert` has two non-error uses. Destructive controls:
 deleting a note or a person on their edit screens, and deleting the whole
-account in Settings. Each has earned the same weight as an error.
+account in Settings. Each has earned the same weight as an error. And the live
+recording indicator (decided 2026-10-12, `record-flow.md`): while a voice note is
+being listened to, the centre Pause control's ring and glyph are `alert` — the
+universal "this is recording" signal. Never the only sign: the running timer and
+the glyph's shape say it too, and paused, the control goes back to `edge`/`ink`.
 
 **Accessibility (decided 2026-10-08): every pairing must meet WCAG 2.2 AA.**
 Text 4.5:1 (3:1 at 18pt, or 14pt bold), the edges of controls and meaningful

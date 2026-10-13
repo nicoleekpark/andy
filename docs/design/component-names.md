@@ -171,21 +171,28 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | S5b | `record--listening` | 기록 — 듣는 중 |
 | S5c | `record--transcript` | 기록 — 들은 내용 확인 (Read it 전) |
 | S5d | `record--scoped` | 기록 — 프로필에서 시작 (노트가 그 프로필로 감) |
+| S5f | `record--paused` | 기록 — 멈춤 (Paused, ▶ Resume). 들은 말은 그대로 |
 | S5e | `write` | Write — orbit의 Write 문 (또는 Type it instead). 키보드가 바로 올라오고 본문만, 버튼은 Let Andy read it 하나 (예전 `record--typing`) |
 
 | Name | 설명 |
 |---|---|
 | `record-prompt` | 무엇을 하면 되는지 한 줄 |
-| `mic-button` | Record — 누르면 듣기 시작 (상태 mic-button--listening = Stop) |
-| `scan-card-button` | 명함 스캔 |
-| `type-instead-button` | 말 대신 타이핑 (→ `write`) |
+| `record-card` | 기록 화면 전체를 감싸는 큰 카드 (`edge` 테두리, `radius.card`) — 위에 받아쓴 글, 아래 시간, 맨 아래 버튼들 |
+| `mic-button` | 시작 전에만 있는 가운데 초록 마이크 (VoiceOver "Record"). 누르면 듣기 시작. orbit의 Voice로 오면 보통 이 단계 없이 바로 듣기 |
+| `record-timer` | 들은 시간 m:ss (Plex Mono). 듣는 동안 흐르고, 멈추면 멈춤 |
+| `paused-label` | 멈췄을 때 시간 위의 작은 "Paused" |
+| `pause-button` | 가운데 76pt 원 — 듣는 중엔 빨간(`alert`) ⏸ "Pause", 멈췄을 땐 ▶ "Resume" (글은 남고 이어서 받아씀) |
+| `done-button` | 오른쪽 초록 채운 ✓ "Done" — 다 말함. 받아쓴 글을 고칠 수 있는 화면으로 |
+| `write-instead-button` | 음성을 쓸 수 없을 때(마이크 거부, 오프라인+모델 없음) 안내 아래 초록 **Write instead** → Write 화면 |
+| ~~`scan-card-button`~~ | 없어짐 — orbit의 Photo 문으로 (2026-10-13) |
+| ~~`type-instead-button`~~ | 없어짐 — orbit의 Write 문, 또는 `write-instead-button` (2026-10-13) |
 | `write-about` | `write` — 사람 페이지에서 열었을 때 맨 위 조용한 "About Priya" |
 | `write-body` | `write` 본문 — "Write or paste what you want to remember — one person's notes at a time." (사람 페이지: "Write what you want to remember about Priya."). 붙여넣기는 iOS 길게 누르기 |
 | `write-count` | `write` — 12,000자 중 마지막 1,000자부터 "11,240 / 12,000". 넘으면 빨간색 + 안내문, Read 꺼짐 |
 | `write-discard-alert` | `write`에서 글이 있을 때 뒤로 가면 — "Discard this note?" / "What you wrote will be cleared." (Discard / Cancel) |
 | `transcript-live` | 실시간 받아쓰기 |
-| `mic-button--listening` | Stop — 듣기 끝 |
-| `start-over-button` | 처음부터 다시 |
+| `start-over-button` | 왼쪽 휴지통 "Start over" — 듣는 동안 항상 보임. 들은 말이 없으면 바로 처음으로, 있으면 "Start over?" (`start-over-alert`) |
+| `start-over-alert` | 들은 말이 있을 때 Start over — "Start over?" / "What you said so far will be cleared." (Start over / **Keep recording**) |
 | `transcript-lead` | "Is this what you said? Fix any name or word, then let Andy read it." |
 | `note-source-label` | WHAT YOU SAID — 원문 섹션 제목 (노트 화면과 같은 이름) |
 | `note-source-field` | 원문 — 여기선 고칠 수 있음 |

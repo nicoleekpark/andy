@@ -16,7 +16,7 @@ import type { Draft } from "@convex/extractionPrompt";
 import { answerByName, given, nameOf, quietCall } from "../test-support/convex-mocks";
 import { ConvexError } from "convex/values";
 import { scrollViewAround, scrollsAboveKeyboard } from "../test-support/keyboard";
-import { pressConfirmButton, spyOnConfirm } from "../test-support/dialog";
+import { answerDialog, pressConfirmButton, spyOnConfirm } from "../test-support/dialog";
 
 /** The Write body, by the words on screen (its label is its placeholder). */
 const WRITE_BODY = /^Write (or paste )?what you want to remember/;
@@ -588,119 +588,159 @@ describe("capture screen review step", () => {
     expect(screen.queryByLabelText("What you said")).toBeNull();
   });
 
-  test("should offer only what works while recording, and Start over only once something was heard", async () => {
-    // Found live 2026-09-30: mid-recording, the card and typing doors were
-    // disabled but drawn like live buttons, and Start over with nothing heard
-    // yet had nothing to throw away. Each read as a button that does nothing.
+  test("should show Start over, Pause and Done while recording, and only Record before", async () => {
+    // record-flow.md, revision 2026-10-13: the three controls; the card and
+    // typing doors are the orbit's now, not links on this screen.
     const { ExpoSpeechRecognitionModule } = jest.requireMock("expo-speech-recognition");
-    // Held open, so the screen sits in "starting" long enough to look at.
-    (ExpoSpeechRecognitionModule.requestPermissionsAsync as jest.Mock).mockReturnValue(
-      new Promise(() => {}),
-    );
+    (ExpoSpeechRecognitionModule.requestPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
     const handlers = captureListeners();
     await renderRouter("src/app", { initialUrl: "/profile/contact-1/capture" });
-    const doors = () => [
-      screen.queryByRole("button", { name: "Scan a business card" }),
-      screen.queryByRole("button", { name: "Type it instead" }),
-    ];
 
-    // Before recording: every door.
-    expect(doors().every((door) => door !== null)).toBe(true);
+    expect(screen.getByRole("button", { name: "Record" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Scan a business card" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Type it instead" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Pause" })).toBeNull();
 
-    // Starting: the doors go at once, not after the recogniser answers.
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Start recording" }));
+      fireEvent.press(screen.getByRole("button", { name: "Record" }));
     });
-    expect(doors()).toEqual([null, null]);
-
-    // Listening, nothing heard yet: Stop, and nothing else.
     await act(async () => {
       handlers.start?.();
     });
-    expect(screen.getByRole("button", { name: "Stop recording" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Start over" })).toBeNull();
-    expect(doors()).toEqual([null, null]);
 
-    // Words heard: now there is something to start over from.
-    await act(async () => {
-      handlers.result?.({ results: [{ transcript: "Met Nina" }], isFinal: false });
-    });
+    // Start over is there from the first instant, not only once words come.
     expect(screen.getByRole("button", { name: "Start over" })).toBeTruthy();
-    expect(doors()).toEqual([null, null]);
+    expect(screen.getByRole("button", { name: "Pause" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Done" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Record" })).toBeNull();
+    // No word "Recording": the time carries it.
+    expect(screen.getByTestId("record-timer").props.children).toBe("0:00");
+    expect(screen.queryByText("Recording")).toBeNull();
   });
 
-  test("should throw the recording away and listen again on Start over, reading none of it", async () => {
-    // Asked for 2026-09-29: redoing a note used to mean Stop → wait for
-    // extraction → "Discard and start over", a Claude call paid for words the
-    // person had already decided to throw away.
+  test("should go back to the start on Start over with nothing heard, asking nothing", async () => {
     const { ExpoSpeechRecognitionModule } = jest.requireMock("expo-speech-recognition");
-    (ExpoSpeechRecognitionModule.requestPermissionsAsync as jest.Mock).mockResolvedValue({
-      granted: true,
+    const handlers = captureListeners();
+    await renderRouter("src/app", { initialUrl: "/profile/contact-1/capture" });
+    await act(async () => {
+      handlers.start?.();
     });
+
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Start over" }));
+    });
+
+    expect(screen.queryByTestId("confirm-dialog")).toBeNull();
+    expect(ExpoSpeechRecognitionModule.abort).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Record" })).toBeTruthy();
+  });
+
+  test("should ask before throwing heard words away on Start over, then clear them and read none", async () => {
+    const { ExpoSpeechRecognitionModule } = jest.requireMock("expo-speech-recognition");
     const extract = jest.fn(async () => makeDraft());
     mockActions({ extract });
     const handlers = captureListeners();
     await renderRouter("src/app", { initialUrl: "/profile/contact-1/capture" });
-
-    // Only while listening: there is nothing to start over before a recording.
-    expect(screen.queryByRole("button", { name: "Start over" })).toBeNull();
-
     await act(async () => {
       handlers.start?.();
     });
     await act(async () => {
       handlers.result?.({ results: [{ transcript: "Met Nina umm no wait" }], isFinal: true });
     });
-    expect(screen.getByText("Met Nina umm no wait")).toBeTruthy();
 
-    // Twice, in one go: two taps can land before the button unmounts.
-    const startOverButton = screen.getByRole("button", { name: "Start over" });
     await act(async () => {
-      fireEvent.press(startOverButton);
-      fireEvent.press(startOverButton);
+      fireEvent.press(screen.getByRole("button", { name: "Start over" }));
     });
+    const dialog = screen.getByTestId("confirm-dialog");
+    expect(within(dialog).getByText("Start over?")).toBeTruthy();
+    expect(within(dialog).getByText("What you said so far will be cleared.")).toBeTruthy();
+    expect(within(dialog).getByRole("button", { name: "Keep recording" })).toBeTruthy();
+    await act(async () => {
+      await answerDialog("Start over");
+    });
+
     expect(ExpoSpeechRecognitionModule.abort).toHaveBeenCalledTimes(1);
     expect(screen.queryByText("Met Nina umm no wait")).toBeNull();
-
-    // The abandoned session may fail on its way out. Whatever it reports is
-    // about a recording nobody wants any more, so it is not shown.
+    // The abandoned session reports on its way out; none of it is shown or read.
     await act(async () => {
       handlers.error?.({ error: "audio-capture", message: "dying session" });
-    });
-    expect(screen.queryByText(/dying session/)).toBeNull();
-
-    // The abandoned session concludes. Its `end` starts the next recording
-    // rather than an extraction of what was thrown away.
-    await act(async () => {
       handlers.end?.();
     });
-    await waitFor(() => expect(ExpoSpeechRecognitionModule.start).toHaveBeenCalledTimes(1));
+    expect(screen.queryByText(/dying session/)).toBeNull();
     expect(extract).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Record" })).toBeTruthy();
+  });
 
-    // The new session begins, and the old one's `aborted` arrives late. It
-    // belongs to the recording that was thrown away, not this one.
+  test("should keep the words on Pause and add to them on Resume", async () => {
+    const { ExpoSpeechRecognitionModule } = jest.requireMock("expo-speech-recognition");
+    (ExpoSpeechRecognitionModule.requestPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
+    const handlers = captureListeners();
+    await renderRouter("src/app", { initialUrl: "/profile/contact-1/capture" });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Record" }));
+    });
     await act(async () => {
       handlers.start?.();
     });
     await act(async () => {
-      handlers.error?.({ error: "aborted", message: "aborted" });
+      handlers.result?.({ results: [{ transcript: "Met Nina" }], isFinal: true });
     });
-    expect(screen.getByRole("button", { name: "Stop recording" })).toBeTruthy();
 
-    // And the second take is the one that gets read.
     await act(async () => {
-      handlers.result?.({ results: [{ transcript: "Met Nina for lunch" }], isFinal: true });
+      fireEvent.press(screen.getByRole("button", { name: "Pause" }));
+    });
+    expect(ExpoSpeechRecognitionModule.stop).toHaveBeenCalledTimes(1);
+    // The paused session's end is a pause, not the end of the note.
+    await act(async () => {
+      handlers.end?.();
+    });
+    expect(screen.getByTestId("paused-label")).toBeTruthy();
+    expect(screen.queryByLabelText("What you said")).toBeNull();
+    expect(screen.getByText("Met Nina")).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Resume" }));
+    });
+    await waitFor(() => expect(ExpoSpeechRecognitionModule.start).toHaveBeenCalledTimes(2));
+    await act(async () => {
+      handlers.start?.();
+    });
+    await act(async () => {
+      handlers.result?.({ results: [{ transcript: "for lunch" }], isFinal: true });
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Done" }));
     });
     await act(async () => {
       handlers.end?.();
     });
-    expect(screen.getByDisplayValue("Met Nina for lunch")).toBeTruthy();
+
+    expect(screen.getByLabelText("What you said").props.value).toBe("Met Nina for lunch");
+  });
+
+  test("should hand the words on at once on Done while paused", async () => {
+    const { ExpoSpeechRecognitionModule } = jest.requireMock("expo-speech-recognition");
+    (ExpoSpeechRecognitionModule.requestPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
+    const handlers = captureListeners();
+    await renderRouter("src/app", { initialUrl: "/profile/contact-1/capture" });
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Let Andy read it" }));
+      handlers.start?.();
     });
-    await waitFor(() => expect(extract).toHaveBeenCalledTimes(1));
-    expect(JSON.stringify(extract.mock.calls[0])).toContain("Met Nina for lunch");
-    expect(JSON.stringify(extract.mock.calls[0])).not.toContain("umm no wait");
+    await act(async () => {
+      handlers.result?.({ results: [{ transcript: "Met Nina" }], isFinal: true });
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Pause" }));
+    });
+    await act(async () => {
+      handlers.end?.();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Done" }));
+    });
+
+    expect(screen.getByLabelText("What you said").props.value).toBe("Met Nina");
   });
 
   test("should keep each row's own field when an earlier fact, tag or mention is removed", async () => {
@@ -1619,12 +1659,9 @@ describe("capture screen review step", () => {
     scopeTo("Emma");
     captureListeners();
 
-    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    // The orbit's Write door.
+    const result = renderRouter("src/app", { initialUrl: "/capture?door=write" });
     await result;
-
-    await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Type it instead" }));
-    });
     await act(async () => {
       fireEvent.changeText(
         screen.getByLabelText(WRITE_BODY),
@@ -1657,11 +1694,9 @@ describe("capture screen review step", () => {
     scopeTo("Emma");
     captureListeners();
 
-    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    // The orbit's Write door.
+    const result = renderRouter("src/app", { initialUrl: "/capture?door=write" });
     await result;
-    await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Type it instead" }));
-    });
 
     // With the recording controls still on show, nothing said which mode the
     // screen was in or that the line growing under them was the note.
@@ -1682,12 +1717,9 @@ describe("capture screen review step", () => {
     scopeTo("Emma");
     captureListeners();
 
-    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    // The orbit's Write door.
+    const result = renderRouter("src/app", { initialUrl: "/capture?door=write" });
     await result;
-
-    await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Type it instead" }));
-    });
 
     expect(screen.getByLabelText("Let Andy read it")).toBeDisabled();
     expect(extract).not.toHaveBeenCalled();
@@ -2426,7 +2458,7 @@ describe("capture screen review step", () => {
     // Recording first and hoping the name lands before the user stops talking
     // fails precisely when the network is slow, and fails silently — the note
     // would be extracted as though it had come from home.
-    expect(screen.getByLabelText("Start recording")).toBeDisabled();
+    expect(screen.getByLabelText("Record")).toBeDisabled();
     expect(screen.getByText("Finding out who this is about…")).toBeTruthy();
   });
 
@@ -2442,7 +2474,7 @@ describe("capture screen review step", () => {
     expect(
       screen.getByText("Andy doesn't have anyone by that link."),
     ).toBeTruthy();
-    expect(screen.getByLabelText("Start recording")).toBeDisabled();
+    expect(screen.getByLabelText("Record")).toBeDisabled();
   });
 
   test("should save a corrected mention quote, so a mistranscription cannot reach two profiles unchallenged", async () => {
@@ -2799,12 +2831,10 @@ describe("capture screen business card door", () => {
       assets: [{ base64: "fake-base64-jpeg-data" }],
     });
 
-    const result = renderRouter("src/app", { initialUrl: "/profile/contact-1/capture" });
+    // The orbit's Photo door, which asks camera or library as it opens.
+    const result = renderRouter("src/app", { initialUrl: "/profile/contact-1/capture?door=photo" });
     await result;
-
-    await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Scan a business card" }));
-    });
+    await act(async () => {});
     await waitFor(() => expect(screen.getByRole("button", { name: "Remember this" })).toBeTruthy());
 
     // Lands on the identical review screen a voice note reaches — same
@@ -2832,11 +2862,10 @@ describe("capture screen business card door", () => {
     const launch = ImagePicker.launchImageLibraryAsync as jest.Mock;
     launch.mockResolvedValueOnce({ canceled: true, assets: null });
 
-    const result = renderRouter("src/app", { initialUrl: "/profile/contact-1/capture" });
+    // The orbit's Photo door, which asks camera or library as it opens.
+    const result = renderRouter("src/app", { initialUrl: "/profile/contact-1/capture?door=photo" });
     await result;
-    await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Scan a business card" }));
-    });
+    await act(async () => {});
 
     await waitFor(() => expect(launch).toHaveBeenCalledTimes(1));
     // The iOS picker runs outside the app and returns only the chosen photo.
@@ -2866,12 +2895,10 @@ describe("capture screen business card door", () => {
       assets: [{ base64: "fake-base64-jpeg-data" }],
     });
 
-    const result = renderRouter("src/app", { initialUrl: "/profile/contact-1/capture" });
+    // The orbit's Photo door, which asks camera or library as it opens.
+    const result = renderRouter("src/app", { initialUrl: "/profile/contact-1/capture?door=photo" });
     await result;
-
-    await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Scan a business card" }));
-    });
+    await act(async () => {});
     await waitFor(() => expect(readCard).toHaveBeenCalledTimes(1));
 
     expect(screen.getByText("Reading the card…")).toBeTruthy();
@@ -2911,12 +2938,10 @@ describe("capture screen business card door", () => {
       assets: null,
     });
 
-    const result = renderRouter("src/app", { initialUrl: "/profile/contact-1/capture" });
+    // The orbit's Photo door, which asks camera or library as it opens.
+    const result = renderRouter("src/app", { initialUrl: "/profile/contact-1/capture?door=photo" });
     await result;
-
-    await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Scan a business card" }));
-    });
+    await act(async () => {});
 
     // Backing out of the picker is a normal thing to do, not an error — no
     // message shown, nothing extracted, nothing saved, still on the idle
@@ -2924,9 +2949,7 @@ describe("capture screen business card door", () => {
     expect(readCard).not.toHaveBeenCalled();
     expect(saveCapture).not.toHaveBeenCalled();
     expect(screen.queryByRole("button", { name: "Remember this" })).toBeNull();
-    expect(
-      screen.getByRole("button", { name: "Start recording" }),
-    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Record" })).toBeTruthy();
     expect(screen.queryByText(/didn't come through/)).toBeNull();
     expect(screen.queryByText(/couldn't read that card/)).toBeNull();
     expect(screen.queryByText(/needs the camera/)).toBeNull();
@@ -2962,11 +2985,9 @@ describe("capture screen offline", () => {
   }
 
   async function typeNote(text: string) {
-    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    // The orbit's Write door.
+    const result = renderRouter("src/app", { initialUrl: "/capture?door=write" });
     await result;
-    await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Type it instead" }));
-    });
     await act(async () => {
       fireEvent.changeText(screen.getByLabelText(WRITE_BODY), text);
     });
@@ -3196,11 +3217,34 @@ describe("capture screen offline", () => {
 
     await renderRouter("src/app", { initialUrl: "/capture" });
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Start recording" }));
+      fireEvent.press(screen.getByRole("button", { name: "Record" }));
     });
 
-    expect(screen.getByText("Speech needs a connection for this language — type it instead.")).toBeTruthy();
+    expect(screen.getByText("Speech needs a connection for this language — write it instead.")).toBeTruthy();
     expect(ExpoSpeechRecognitionModule.start).not.toHaveBeenCalled();
+    // Decision B: the way to still leave the note is a button right here.
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Write instead" }));
+    });
+    expect(screen.getByLabelText(WRITE_BODY)).toBeTruthy();
+  });
+
+  test("should say the microphone is off, and offer Write instead, when it was refused", async () => {
+    connected(true);
+    (ExpoSpeechRecognitionModule.requestPermissionsAsync as jest.Mock).mockResolvedValue({ granted: false });
+
+    await renderRouter("src/app", { initialUrl: "/capture" });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Record" }));
+    });
+
+    expect(
+      screen.getByText(
+        "Andy needs the microphone and speech recognition to take a voice note. Turn them on in Settings, or write it instead.",
+      ),
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Write instead" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Record" })).toBeNull();
   });
 
   test("should record offline when the phone can turn speech into words itself", async () => {
@@ -3210,7 +3254,7 @@ describe("capture screen offline", () => {
     try {
       await renderRouter("src/app", { initialUrl: "/capture" });
       await act(async () => {
-        fireEvent.press(screen.getByRole("button", { name: "Start recording" }));
+        fireEvent.press(screen.getByRole("button", { name: "Record" }));
       });
 
       expect(ExpoSpeechRecognitionModule.start).toHaveBeenCalledWith(
@@ -3247,4 +3291,38 @@ test("should leave words just heard without asking — only written words do", a
 
   expect(screen.queryByTestId("confirm-dialog")).toBeNull();
   expect(result.getPathname()).toBe("/");
+});
+
+test("should not let Start over be pressed while a start is still on its way", async () => {
+  scopeTo("Emma");
+  const { ExpoSpeechRecognitionModule } = jest.requireMock("expo-speech-recognition");
+  // Held open: the screen stays in "starting".
+  (ExpoSpeechRecognitionModule.requestPermissionsAsync as jest.Mock).mockReturnValue(new Promise(() => {}));
+  captureListeners();
+  await renderRouter("src/app", { initialUrl: "/profile/contact-1/capture" });
+
+  await act(async () => {
+    fireEvent.press(screen.getByRole("button", { name: "Record" }));
+  });
+
+  expect(screen.getByRole("button", { name: "Start over" })).toBeDisabled();
+});
+
+test("should draw the newest words darkest and older ones lighter", async () => {
+  scopeTo("Emma");
+  const handlers = captureListeners();
+  await renderRouter("src/app", { initialUrl: "/profile/contact-1/capture" });
+  await act(async () => {
+    handlers.start?.();
+  });
+  for (const transcript of ["Met Emma.", "She paints.", "Moving to Lisbon."]) {
+    await act(async () => {
+      handlers.result?.({ results: [{ transcript }], isFinal: true });
+    });
+  }
+
+  const opacity = (text: RegExp) => StyleSheet.flatten(screen.getByText(text).props.style)?.opacity;
+  expect(opacity(/Moving to Lisbon\./)).toBeUndefined();
+  expect(opacity(/She paints\./)).toBe(0.8);
+  expect(opacity(/Met Emma\./)).toBe(0.7);
 });

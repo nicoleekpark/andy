@@ -1096,6 +1096,13 @@ implementing PR, in addition to the redesign above's list):
   `record-timer` while paused. Visual recipe borrowed from `field-label`,
   not the same class.
 
+**As built (2026-10-13, the implementing PR) — three deliberate differences:**
+
+- The centre control is **72pt** (`size.round`, the token home's + already uses), not 76pt — no new token for 4pt.
+- The live ring does **not pulse**, in any mode: `alert` on the ring and glyph, the running timer and the pause/play shape already carry "listening" without motion, so there is no Reduce Motion branch to get wrong.
+- **No `transcript-caret`.** The not-yet-settled words at the end of the transcript are drawn dimmed (`textOpacity.quiet`), which already says "more is coming". The settled words fade with age as specified (newest full `ink`, the one before `secondary`, older `quiet`).
+- **After Done, no "About who?" field.** The check step stays as it was (lead, What you said, Let Andy read it, Record again), matching the Write screen's decision that the subject is found by extraction. Raised with the owner in the PR.
+
 **Open questions this revision adds, for `product-strategist`:**
 
 - Confirm or adjust "Paused" staying as a small word near the timer — the
