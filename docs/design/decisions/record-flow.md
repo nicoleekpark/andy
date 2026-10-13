@@ -856,9 +856,13 @@ Settings, or type it instead." That sentence assumed the old inline
 orbit flow — Write is now a separate `capture-orbit` door, reached only by
 going back. Shown as-is in the mock (it is still the decided string), but
 flagged here because the way forward it names is no longer on screen.
-**[call] for `product-strategist`:** reword to point at the back chevron
-("…or go back and write it instead"), or confirm the chevron alone is
-enough and the line needs no change.
+**Decided (owner, 2026-10-13): B — a button, not just words.** Whenever voice
+cannot be used on this screen (mic or speech recognition denied, or offline
+with no on-device model for the language), `record--ready` shows a filled
+**Write instead** button (`write-instead-button`) under the line, which opens
+the Write door directly. Both lines end "…write it instead." so they name the
+button beneath them. Someone who said no to the microphone must still see, in
+one step, how to leave the note.
 
 #### Names, new or changed (for `docs/design/component-names.md` in the
 implementing PR)
@@ -927,8 +931,8 @@ defined.
 
 - The exact status-line punctuation ("Recording · m:ss") — proposed, not
   decided.
-- The mic-denied line's "...or type it instead" — needs a word that
-  matches the orbit flow, or confirmation the chevron is enough.
+- ~~The mic-denied line's "...or type it instead"~~ — decided 2026-10-13:
+  "…or write it instead." plus a `write-instead-button` (see above).
 - Whether `record--scoped`'s existing behaviour (prefilled, declared
   `about-field` from a person's page) still reaches this screen the same
   way under the orbit flow, or only through the still-unsettled "Write"

@@ -793,7 +793,7 @@ No new tokens proposed — every surface reuses `moss`, `ink`, `paper`,
 `edge`, `line`, `placeholder`, `scrim`, and the one named `alert` exception
 (the recording indicator).
 
-## Final choice (in progress)
+## Final choice
 
 Owner, 2026-10-13.
 
@@ -801,4 +801,29 @@ Owner, 2026-10-13.
 - **Scope S-a, notes and cards.** Photos of handwritten notes, screenshots and business cards all go through `record--picture`, and the album is available. This is a V1 scope change: PROJECT_SCOPE.md and PROJECT_SCOPE.ko.md (Must Have and Entry-Input Channels) and the privacy policy need amending in the PR that builds it.
 - **Offline.** The Photo circle shows "Needs a connection"; tapping it explains, and no camera opens.
 - **Voice screen.** Being redesigned: one card, transcript, timer under it, three controls (Start over / Done talking / Pause). See record-flow.md, "Voice screen — owner's redesign".
-- **Still to settle.** The Write screen and the Photo screens.
+- **Write screen** (decided 2026-10-13; mock `docs/design/mocks/write-screen.html`). Replaces `record--typing`.
+  - The keyboard is up and the cursor in the body the moment it opens.
+  - **Paste is iOS's own long-press → Paste. No Paste button of Andy's** — this overrides the R7 call above ("the visible Paste control is shown"); the owner found the button's place and size wrong, and the placeholder already says "Write *or paste*". If the §10 TestFlight check (find paste in 30 s, unaided) fails, revisit.
+  - Opened from someone's page: a quiet "About Priya" line under the title, and the placeholder "Write what you want to remember about Priya."
+  - One button, **Let Andy read it** (offline: **Keep this note**). "Stop typing" is gone; back is the chevron. Back with nothing written leaves at once; with words it asks "Discard this note?" — "What you wrote will be cleared." (Discard / Cancel).
+  - Over 12,000 characters (the voice limit): a count shows in the last 1,000, and past the limit the server's line ("That note is longer than Andy can take in one go. Try splitting it into two.") shows and Read is disabled. Never cut silently.
+- **Photo screens** (decided 2026-10-13; mock `docs/design/mocks/photo-screen.html`). Replaces the R9 call above ("one Photo item, two-step" sheet).
+  - **Camera at once.** Tapping Photo opens Andy's own camera (expo-camera), full screen and dark: ✕ top-left, the hint "A card, a page of notes, or a screenshot.", the shutter in the middle, the album bottom-left where the iPhone Camera keeps it. The album is iOS's photo picker and asks for no Photos access (#155).
+  - **Camera permission** is asked once, over this screen, at the moment of use. Denied: "Andy needs the camera to take a photo. Turn it on in Settings, or choose a photo instead." with a **Choose a photo instead** button.
+  - **The shutter goes straight to reading** — "Reading the photo…" with the photo shown, no Use / Retake step.
+  - **Check the words.** A small photo on top (tap → full size, to compare a name), then **WHAT THE PHOTO SAYS ABOUT**, then a name field filled by the same call that reads the photo ("Priya", a card's "Sarah Chen"), then the words without that name line — both editable, under "Fix any name or word, then let Andy read it." No name found: the field shows "who?" and the words stay whole. Opened from someone's page: their name, fixed. Which of two Priyas is still asked on `review`, after Let Andy read it, as for voice.
+  - **Words are kept exactly as written**, punctuation included ("ask Marcus?"); only the person changes them. Buttons: **Let Andy read it** and **Retake** (from the album: **Choose another**).
+  - **No words found:** "Andy couldn't find any words in this photo. Try again closer, with more light." and Retake; nothing saved.
+  - **One photo per note.** **The photo itself is not kept** — only the words; it is read and thrown away (with the screen, and with sign-out).
+- **Orbit details** (decided 2026-10-13), on top of "Owner's orbit flow" above:
+  - Tapping the dimmed area outside the orbit closes it, the same as ✕.
+  - A light haptic tap when it opens (none when the system's haptics are off).
+  - **A person's page gets the same + and orbit**, every door scoped to that person ("About Priya"). One rule across the app.
+  - Offline Photo: "Reading a photo needs a connection. Take it with your Camera now and choose it here later, or write it instead." with a **Write instead** button — the same pattern as the voice screen's decision B. Supersedes the shorter draft in the orbit section.
+  - Backing out of a door returns to `home` (or the page) with the orbit closed.
+- **Superseded by the decisions above**, so the implementing PR follows these, not the older text in this document:
+  - Write from home has **no** "About who?" field and the cursor is in the body (the orbit section said the cursor starts in `about-field`); the subject is found by extraction, as before.
+  - Write has **no** `ClipboardPasteButton` (R7 and the orbit section §4).
+  - Photo has **no** Retake / Use photo step after the shutter, and no static corner frame is required (orbit section §5); its hint is "A card, a page of notes, or a screenshot."
+  - The words step is `photo-words` with the name split out, replacing `record--picture`'s "What the picture said".
+- **Scope work in the implementing PR:** S-a (notes and cards from photos) amends PROJECT_SCOPE.md and PROJECT_SCOPE.ko.md (Must Have, Entry-Input Channels) and the privacy policy; follow-up tones need their own PROJECT_SCOPE lines.
