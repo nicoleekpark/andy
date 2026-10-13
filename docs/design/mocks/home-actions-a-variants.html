@@ -1,0 +1,681 @@
+<!--
+  DESIGN PROTOTYPE — an HTML approximation of native `home` for Andy, built to
+  compare three variants of a single already-chosen option
+  (docs/design/decisions/home-actions.md, device QA build 4 #6/#4/#3). Not
+  production code — a design prototype for the owner to pick from, not a
+  screen to ship.
+
+  Follow-up to docs/design/mocks/home-actions-a.html. The owner chose Option
+  A's model — `home-search-field` filters `profile-list` in place (model a),
+  a labelled "Ask Andy: ..." row under the results for questions — but said:
+
+    "Record on the right side of the search bar looks like Record is the
+    search button" (proximity — a control attached to a field's trailing
+    edge reads as its submit, independent of colour).
+
+  This file holds three redesigns of Option A's *bottom-chrome shape only*.
+  Nothing else about Option A reopens: still model (a), still `edge`-ringed
+  paper field (not native glass, per the original brief's [call] 6), still
+  the same copy (C1 "Find a name or a word", C4 `Ask Andy: "{query}"`, C6 the
+  offline sentence), still the same R1–R13 business rules.
+
+    A1 — two rows: a full-width `record-button` on its own row, directly
+         above a full-width `home-search-field` at the very bottom (the iOS
+         26 search position).
+    A2 — one row: `record-button` at the LEFT end, a clear gap, then the
+         field flexing to fill the rest.
+    A3 — one row, Option A's original left-to-right order, but with a
+         visible divider, a bigger gap, and a different shape (rectangle,
+         not pill) so Record can't read as the field's "go" button.
+
+  Tokens are declared as CSS variables, named the same as
+  src/constants/theme.ts, so this mock and the app cannot quietly drift
+  apart. Lora / IBM Plex Mono are not loaded here, so serif/monospace fall
+  back to a close system face. SF Symbols (gearshape, a magnifying glass)
+  are approximated with small CSS-drawn shapes — the real screen draws them
+  with expo-symbols, already a dependency. The rig above the phone frame is
+  mock-only tooling, not part of the design.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>home-actions — Option A, three bottom-chrome variants</title>
+<style>
+  :root {
+    /* --- app tokens, named as src/constants/theme.ts --- */
+    --color-ink: #2A2622;
+    --color-paper: #E8E6DE;
+    --color-moss: #5C6B4F;
+    --color-brass: #B8935A;
+    --color-line: #B8B3A8;
+    --color-alert: #9F4C3B;
+    --color-placeholder: #63605A;
+    --color-edge: #857E6D;
+    --color-scrim: rgba(42, 38, 34, 0.42);
+    --space-xs: 4px; --space-sm: 8px; --space-md: 12px; --space-lg: 16px;
+    --space-xl: 24px; --space-xxl: 32px; --space-xxxl: 48px;
+    --text-xs: 12px; --text-sm: 13px; --text-md: 14px; --text-base: 15px;
+    --text-lg: 16px; --text-xl: 17px; --text-xxl: 18px;
+    --radius-control: 10px; --radius-card: 16px; --radius-pill: 999px;
+    --opacity-secondary: 0.8; --opacity-quiet: 0.7;
+    --size-avatar: 40px;
+    --font-display: Georgia, "Times New Roman", serif;   /* ~ Lora */
+    --font-utility: "Courier New", monospace;              /* ~ IBM Plex Mono */
+    /* --- doc chrome only (reading comfort, never the phone) --- */
+    --doc-bg: #d8d4c8; --doc-ink: #2A2622; --doc-quiet: #6f6a62;
+    --doc-rule: #cfcac0; --doc-card: #f6f4ee;
+  }
+  [data-doc-theme="dark"] {
+    --doc-bg: #1E1C19; --doc-ink: #ECE8E0; --doc-quiet: #A39D93;
+    --doc-rule: #3A3631; --doc-card: #26231F;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--doc-bg); color: var(--doc-ink); font-family: -apple-system, system-ui, sans-serif; margin: 0; padding: 24px; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .doc-note { max-width: 1040px; margin: 0 auto 16px; font-size: 13px; opacity: 0.8; line-height: 1.5; }
+  .top-bar { max-width: 1040px; margin: 0 auto 8px; display: flex; justify-content: space-between; align-items: baseline; }
+  .theme-toggle { font-size: 12px; background: none; border: 1px solid var(--doc-rule); border-radius: 6px; padding: 4px 8px; cursor: pointer; color: var(--doc-ink); }
+
+  .rig { max-width: 1040px; margin: 0 auto 20px; display: flex; flex-wrap: wrap; gap: 10px; }
+  .rig fieldset { border: 1px dashed var(--doc-rule); border-radius: 8px; padding: 8px 10px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .rig legend { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.6; }
+  .rig button { font-size: 12px; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--doc-rule); background: var(--doc-card); color: var(--doc-ink); cursor: pointer; }
+  .rig button.active { background: var(--color-moss); color: var(--color-paper); border-color: var(--color-moss); }
+  .rig fieldset.variant-rig { border-color: var(--color-moss); }
+  .rig fieldset.variant-rig button.active { background: var(--color-ink); border-color: var(--color-ink); }
+
+  .stage { max-width: 1040px; margin: 0 auto; display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .frame { width: 390px; border-radius: 44px; background: #111; padding: 14px; box-shadow: 0 20px 50px rgba(0,0,0,0.35); flex-shrink: 0; }
+  .screen { background: var(--color-paper); color: var(--color-ink); border-radius: 32px; overflow: hidden; height: 844px; position: relative; display: flex; flex-direction: column; }
+  .ios-status-bar { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-size: 14px; font-weight: 600; flex-shrink: 0; }
+
+  /* nav bar */
+  .nav-bar { padding: 2px 12px 14px; border-bottom: 1px solid var(--color-line); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .nav-bar-back { width: 44px; height: 44px; visibility: hidden; }
+  .nav-bar-title { font-family: var(--font-display); font-size: 20px; font-weight: 600; }
+  .nav-bar-action-right { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .gearshape { width: 20px; height: 20px; border: 2px solid var(--color-ink); border-radius: 50%; }
+
+  .content { flex: 1; overflow-y: auto; position: relative; display: flex; flex-direction: column; }
+  .offline-copy-line { font-size: var(--text-xs); opacity: var(--opacity-quiet); text-align: center; padding: var(--space-sm) var(--space-lg) 0; }
+
+  /* briefing card, simplified */
+  .briefing-card { margin: var(--space-lg); border-radius: var(--radius-card); background: var(--doc-card); border-left: 4px solid var(--color-brass); padding: var(--space-lg); flex-shrink: 0; }
+  .briefing-card-title { font-weight: 600; font-size: var(--text-lg); margin: 0 0 4px; }
+  .briefing-card-body { font-size: var(--text-base); opacity: var(--opacity-secondary); margin: 0; }
+
+  /* list */
+  .list-wrap { position: relative; flex: 1; }
+  .profile-list { list-style: none; margin: 0; padding: 0 var(--space-lg); }
+  .home-letter-heading { font-size: var(--text-sm); font-weight: 700; opacity: var(--opacity-quiet); text-transform: uppercase; letter-spacing: 0.06em; padding: var(--space-md) 0 var(--space-xs); }
+  .profile-row { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) 0; min-height: 44px; border-bottom: 1px solid var(--color-line); }
+  .profile-row-avatar { width: var(--size-avatar); height: var(--size-avatar); border-radius: 50%; background: var(--color-moss); color: var(--color-paper); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: var(--text-base); flex-shrink: 0; }
+  .profile-row-main { flex: 1; min-width: 0; }
+  .profile-row-name { font-family: var(--font-display); font-size: var(--text-lg); line-height: 1.3; }
+  .profile-row-detail { font-size: var(--text-sm); opacity: var(--opacity-secondary); line-height: 1.3; }
+  .profile-row-meta { font-family: var(--font-utility); font-size: var(--text-xs); opacity: var(--opacity-quiet); margin-top: 2px; }
+  .profile-row-match { font-size: var(--text-xs); opacity: var(--opacity-quiet); font-style: italic; margin-top: 2px; }
+
+  .home-index { position: absolute; top: 4px; bottom: var(--space-sm); right: 2px; width: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; }
+  .home-index span { font-family: var(--font-utility); font-size: 9px; color: var(--color-moss); line-height: 1.05; }
+
+  .home-ask-row { margin: var(--space-sm) var(--space-lg) 0; padding: var(--space-md); border: 1px solid var(--color-edge); border-radius: var(--radius-control); font-size: var(--text-base); }
+  .home-ask-row.is-button { cursor: pointer; color: var(--color-moss); font-weight: 600; }
+  .home-ask-row.is-offline { color: var(--color-ink); opacity: var(--opacity-secondary); border-style: dashed; cursor: default; }
+
+  .empty-state { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 var(--space-xxl); font-size: var(--text-base); opacity: var(--opacity-secondary); line-height: 1.5; }
+
+  /* --- bottom bar: shared base, variant-specific arrangement --- */
+  .bottom-bar-wrap { flex-shrink: 0; position: relative; z-index: 2; }
+  .home-bottom-bar { align-items: center; padding: var(--space-sm) var(--space-lg); padding-bottom: calc(var(--space-sm) + 20px); border-top: 1px solid var(--color-line); background: var(--color-paper); }
+  .bar-a1, .bar-a2, .bar-a3 { display: none; }
+  .screen[data-variant="a1"] .bar-a1 { display: flex; }
+  .screen[data-variant="a2"] .bar-a2 { display: flex; }
+  .screen[data-variant="a3"] .bar-a3 { display: flex; }
+
+  .home-search-field-wrap { flex: 1; display: flex; align-items: center; gap: var(--space-sm); border: 1px solid var(--color-edge); border-radius: var(--radius-pill); padding: 0 var(--space-md); height: 44px; min-width: 0; }
+  .search-glass { width: 13px; height: 13px; border: 2px solid var(--color-placeholder); border-radius: 50%; position: relative; flex-shrink: 0; }
+  .search-glass::after { content: ''; position: absolute; width: 6px; height: 2px; background: var(--color-placeholder); bottom: -3px; right: -4px; transform: rotate(45deg); border-radius: 1px; }
+  .home-search-field { border: none; background: none; outline: none; font-size: var(--text-base); color: var(--color-ink); flex: 1; min-width: 0; font-family: inherit; }
+  .home-search-field::placeholder { color: var(--color-placeholder); }
+  .clear-search-button { width: 22px; height: 22px; border-radius: 50%; background: var(--color-placeholder); color: var(--color-paper); font-size: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+  .cancel-search-button { background: none; border: none; color: var(--color-moss); font-size: var(--text-base); font-weight: 600; padding: 0 var(--space-xs); min-height: 44px; cursor: pointer; flex-shrink: 0; }
+  .record-button { background: var(--color-moss); color: var(--color-paper); border: none; border-radius: var(--radius-pill); height: 44px; padding: 0 var(--space-lg); font-size: var(--text-lg); font-weight: 600; display: flex; align-items: center; justify-content: center; gap: var(--space-xs); flex-shrink: 0; cursor: pointer; white-space: nowrap; }
+  .mic-dot { width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--color-paper); flex-shrink: 0; }
+
+  /* A1 — two full-width rows, Record above the field */
+  .home-bottom-bar--a1 { flex-direction: column; align-items: stretch; gap: var(--space-sm); }
+  .home-bottom-bar-row--record { display: flex; }
+  .home-bottom-bar-row--record.hidden-el { display: none; }
+  .home-bottom-bar-row--record .record-button { width: 100%; }
+  .home-bottom-bar-row--search { display: flex; align-items: center; gap: var(--space-sm); }
+
+  /* A2 — one row, Record fixed at the left, clear gap, field flexes right */
+  .home-bottom-bar--a2 { flex-direction: row; gap: var(--space-lg); }
+
+  /* A3 — one row, field left / Record right (Option A's order), divider + gap + a different Record shape */
+  .home-bottom-bar--a3 { flex-direction: row; gap: var(--space-md); }
+  .record-button--a3 { border-radius: var(--radius-control); }
+  .home-bottom-bar-divider { width: 1px; align-self: stretch; background: var(--color-line); flex-shrink: 0; }
+
+  .keyboard-overlay { position: absolute; left: 0; right: 0; bottom: 0; height: 291px; background: #d6d2c8; border-top: 1px solid var(--color-line); z-index: 1; display: none; }
+  .keyboard-overlay.shown { display: block; }
+  .keyboard-overlay-label { text-align: center; font-size: 11px; color: var(--color-placeholder); padding-top: 8px; }
+
+  .side-notes { flex: 1; min-width: 300px; font-size: 13px; line-height: 1.55; color: var(--doc-ink); }
+  .side-notes h2 { font-size: 14px; margin: 18px 0 6px; }
+  .side-notes h2:first-child { margin-top: 0; }
+  .side-notes h3 { font-size: 13px; margin: 14px 0 4px; }
+  .vo { font-family: var(--font-utility); font-size: 11.5px; background: var(--doc-card); border: 1px dashed var(--doc-rule); border-radius: 6px; padding: 5px 7px; display: block; margin-top: 4px; color: var(--doc-ink); }
+  .verdict { background: var(--doc-card); border-left: 3px solid var(--color-moss); border-radius: 6px; padding: 8px 10px; margin-top: 6px; }
+  .compare-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 6px; }
+  .compare-table th, .compare-table td { border: 1px solid var(--doc-rule); padding: 5px 6px; text-align: left; vertical-align: top; }
+  .compare-table th { background: var(--doc-card); font-weight: 600; }
+
+  /* large dynamic type demo — shared sizing */
+  .screen[data-type-scale="large"] .nav-bar-title { font-size: 26px; }
+  .screen[data-type-scale="large"] .profile-row-name { font-size: 20px; }
+  .screen[data-type-scale="large"] .profile-row-detail,
+  .screen[data-type-scale="large"] .profile-row-meta { font-size: 15px; }
+  .screen[data-type-scale="large"] .home-search-field,
+  .screen[data-type-scale="large"] .record-button,
+  .screen[data-type-scale="large"] .cancel-search-button,
+  .screen[data-type-scale="large"] .home-ask-row { font-size: 19px; }
+  .screen[data-type-scale="large"] .record-button { padding: 0 var(--space-md); white-space: normal; text-align: center; height: auto; min-height: 44px; }
+  .screen[data-type-scale="large"] .home-index span { font-size: 11px; }
+
+  /* large type: A1's rows just grow — no reflow needed, already full width */
+  .screen[data-type-scale="large"] .home-bottom-bar-row--search { flex-wrap: wrap; }
+
+  /* large type: A2 and A3 wrap their one row to two, in each one's own DOM order */
+  .screen[data-type-scale="large"] .home-bottom-bar--a2,
+  .screen[data-type-scale="large"] .home-bottom-bar--a3 { flex-wrap: wrap; }
+  .screen[data-type-scale="large"] .home-bottom-bar--a2 .record-button,
+  .screen[data-type-scale="large"] .home-bottom-bar--a2 .cancel-search-button,
+  .screen[data-type-scale="large"] .home-bottom-bar--a2 .home-search-field-wrap,
+  .screen[data-type-scale="large"] .home-bottom-bar--a3 .home-search-field-wrap,
+  .screen[data-type-scale="large"] .home-bottom-bar--a3 .cancel-search-button,
+  .screen[data-type-scale="large"] .home-bottom-bar--a3 .record-button { flex-basis: 100%; justify-content: center; }
+  .screen[data-type-scale="large"] .home-bottom-bar--a3 .home-bottom-bar-divider { display: none; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <h1>home-actions — Option A, three bottom-chrome variants (the "Record looks like Search's submit" fix)</h1>
+  <button class="theme-toggle" onclick="toggleDocTheme()">Toggle reading mode</button>
+</div>
+<p class="doc-note">
+  Design prototype, not production code. Follow-up to
+  <code>docs/design/mocks/home-actions-a.html</code> — the owner's note that
+  Record, sitting at the trailing edge of the field, reads as the field's own
+  submit button (proximity). All three variants below keep Option A's model
+  (a): typing filters <code>profile-list</code> in place for free, the same
+  name/word match as <code>ask</code> (R4) — nothing here ever calls Claude or
+  OpenAI (R3) — and a plain-text <code>Ask Andy: "{query}"</code> row for the
+  paid step. Only the bottom chrome's shape changes between A1/A2/A3. The rig
+  below drives the phone frame; it is not part of the design.
+</p>
+
+<div class="rig">
+  <fieldset class="variant-rig">
+    <legend>variant</legend>
+    <button data-variant="a1" class="active">A1 — stacked</button>
+    <button data-variant="a2">A2 — Record left</button>
+    <button data-variant="a3">A3 — separated</button>
+  </fieldset>
+  <fieldset>
+    <legend>people</legend>
+    <button data-people="20" class="active">20 people</button>
+    <button data-people="0">No one yet</button>
+  </fieldset>
+  <fieldset>
+    <legend>connection</legend>
+    <button data-conn="online" class="active">Online</button>
+    <button data-conn="offline">Offline</button>
+  </fieldset>
+  <fieldset>
+    <legend>search</legend>
+    <button data-query="rest" class="active">Resting</button>
+    <button data-query="focus-empty">Focused, empty</button>
+    <button data-query="pri">Typed "Pri"</button>
+    <button data-query="greyhound">Typed "greyhound"</button>
+  </fieldset>
+  <fieldset>
+    <legend>keyboard</legend>
+    <button data-kb="down" class="active">Down</button>
+    <button data-kb="up">Up</button>
+  </fieldset>
+  <fieldset>
+    <legend>dynamic type</legend>
+    <button data-type="normal" class="active">Normal</button>
+    <button data-type="large">Largest accessibility size</button>
+  </fieldset>
+</div>
+
+<div class="stage">
+  <div class="frame">
+    <div class="screen" id="screen" data-variant="a1">
+      <div class="ios-status-bar"><span>9:41</span><span>⚫︎⚫︎⚫︎ 🔋</span></div>
+      <div class="nav-bar">
+        <div class="nav-bar-back"></div>
+        <span class="nav-bar-title">andy</span>
+        <div class="nav-bar-action-right" aria-label="Settings" role="button" title="Settings — opens settings">
+          <div class="gearshape"></div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="offline-copy-line" id="offline-line" style="display:none">Offline — showing what Andy had at 3:40 PM.</div>
+
+        <div class="briefing-card" id="briefing">
+          <p class="briefing-card-title">Nothing coming up</p>
+          <p class="briefing-card-body">Connect your calendar and Andy will brief you before you walk in.</p>
+        </div>
+
+        <div class="list-wrap" id="list-wrap">
+          <ol class="profile-list" id="profile-list"></ol>
+          <div class="home-index" id="home-index"></div>
+        </div>
+
+        <div class="home-ask-row" id="ask-row" style="display:none"></div>
+
+        <div class="empty-state" id="empty-state" style="display:none">No one yet — tap record to remember your first person.</div>
+      </div>
+
+      <div class="bottom-bar-wrap" id="bottom-bar-wrap">
+        <!-- A1: two rows, Record above the field -->
+        <div class="home-bottom-bar home-bottom-bar--a1 bar-a1">
+          <div class="home-bottom-bar-row--record" id="a1-record-row">
+            <button class="record-button record-btn"><span class="mic-dot"></span>Record</button>
+          </div>
+          <div class="home-bottom-bar-row--search">
+            <div class="home-search-field-wrap">
+              <div class="search-glass"></div>
+              <input class="home-search-field search-input" placeholder="Find a name or a word" readonly>
+              <div class="clear-search-button clear-btn" style="display:none">✕</div>
+            </div>
+            <button class="cancel-search-button cancel-btn" style="display:none">Cancel</button>
+          </div>
+        </div>
+
+        <!-- A2: one row, Record fixed left, clear gap, field flexes right -->
+        <div class="home-bottom-bar home-bottom-bar--a2 bar-a2">
+          <button class="record-button record-btn"><span class="mic-dot"></span>Record</button>
+          <button class="cancel-search-button cancel-btn" style="display:none">Cancel</button>
+          <div class="home-search-field-wrap">
+            <div class="search-glass"></div>
+            <input class="home-search-field search-input" placeholder="Find a name or a word" readonly>
+            <div class="clear-search-button clear-btn" style="display:none">✕</div>
+          </div>
+        </div>
+
+        <!-- A3: one row, field left / Record right (Option A's order), divider + gap + rectangle Record -->
+        <div class="home-bottom-bar home-bottom-bar--a3 bar-a3">
+          <div class="home-search-field-wrap">
+            <div class="search-glass"></div>
+            <input class="home-search-field search-input" placeholder="Find a name or a word" readonly>
+            <div class="clear-search-button clear-btn" style="display:none">✕</div>
+          </div>
+          <div class="home-bottom-bar-divider" aria-hidden="true"></div>
+          <button class="cancel-search-button cancel-btn" style="display:none">Cancel</button>
+          <button class="record-button record-btn record-button--a3"><span class="mic-dot"></span>Record</button>
+        </div>
+      </div>
+
+      <div class="keyboard-overlay" id="kb-overlay"><p class="keyboard-overlay-label">(iOS keyboard)</p></div>
+    </div>
+  </div>
+
+  <div class="side-notes">
+    <h2>The problem this follow-up answers</h2>
+    <p>In <code>home-actions-a.html</code>, <code>record-button</code> sat
+    immediately to the right of <code>home-search-field</code>, inside the
+    same row, the same height, the same corner radius family as the field's
+    own trailing edge. The owner's read: that position is where a search
+    bar's "go" or "submit" control conventionally sits (iOS's own keyboard
+    return key, most search UIs), so Record's proximity there borrows that
+    meaning even though Record does something unrelated. All three variants
+    below are candidate fixes to that one relationship — nothing else about
+    Option A (model, copy, R1–R13) is reopened.</p>
+
+    <h2>A1 — stacked, Record above the field</h2>
+    <p><code>record-button</code> takes its own full-width row; directly
+    below it, <code>home-search-field</code> takes the very bottom row — the
+    iOS 26 search position (brief §5). Typing hides the Record row entirely
+    (crossfades out) and leaves the search row with
+    <code>cancel-search-button</code>.</p>
+    <span class="vo"><strong>44pt:</strong> both rows are 44pt tall on their
+    own, full width — the largest tap area of the three. <strong>VoiceOver
+    order:</strong> visually Record is read before the field (top row before
+    bottom row); the brief's §9 order ("list → search → Record") is the
+    opposite, so shipping this needs an explicit accessibility order (not the
+    default geometric one) to keep §9's rule — a small, real implementation
+    cost, not a blocker. <strong>Dynamic Type:</strong> most resilient of the
+    three — both rows are already full width, so the largest accessibility
+    size only grows row height, never triggers a reflow.</span>
+    <span class="vo"><strong>Thumb reach:</strong> Record spans the whole
+    width, so it's reachable from a relaxed grip regardless of which hand
+    holds the phone — the one variant that doesn't pick a side.</span>
+    <div class="verdict"><strong>Verdict:</strong> this is the strongest fix —
+    Record and the field are no longer in the same row at all, so the
+    submit-button reading disappears completely, at any Dynamic Type size or
+    screen width. The cost is real: it's the tallest bottom chrome of the
+    three (R7's "no letter sits under the field or Record, check with 27
+    letters" needs the most headroom back from <code>home-index</code> here),
+    and it brings back a two-stacked-controls rhythm close to today's screen —
+    though unlike the rejected model (b) shape, the field here still filters
+    live, so it is not a reopening of that history, only a visual echo of it.
+    Also carries the one VoiceOver-order cost named above.</div>
+
+    <h2>A2 — Record at the left, clear gap, field right</h2>
+    <p><code>record-button</code> sits fixed at the row's leading edge;
+    <code>var(--space-lg)</code> (16pt, double Option A's original 8pt gap)
+    separates it from <code>home-search-field</code>, which flexes to fill
+    the rest of the row. Typing swaps Record for
+    <code>cancel-search-button</code> in the same leading slot.</p>
+    <span class="vo"><strong>44pt:</strong> both controls stay 44pt;
+    the gap itself is non-interactive, so it costs nothing for touch
+    targets. <strong>VoiceOver order:</strong> visually Record reads before
+    the field here too (left before right, in a left-to-right layout) —
+    the same §9 order issue as A1, and for the same reason: whichever control
+    sits visually first conflicts with "search, then Record," so A2 needs the
+    same explicit order override. <strong>Dynamic Type:</strong> wraps to two
+    rows at the largest size (Record above, field below, in that DOM order)
+    — structurally converging on A1's shape under stress, but only at the
+    largest sizes, not by default.</span>
+    <span class="vo"><strong>Thumb reach:</strong> moving Record to the left
+    edge is the one change here with a real, uncredited cost. Steven Hoober's
+    thumb-zone mapping (cited in the brief, §5) puts the bottom-right corner
+    in the natural/easy zone for a right-handed one-handed grip and the
+    bottom-left corner in the stretch zone — the opposite is true left-handed.
+    With no handedness setting (the brief's call 8, already answered: Apple's
+    default, no setting), A2 trades the side that was easy for most people
+    (right, under Option A and A3) for the side that's easy for fewer people.
+    R1 says Record must be the most reachable control at rest; A2 is the only
+    variant that puts that rule in tension with itself.</span>
+    <div class="verdict"><strong>Verdict:</strong> solves the proximity
+    reading directly (a search field's "go" control is conventionally
+    trailing, never leading, so Record on the left can't borrow that
+    meaning), and keeps Option A's one-row chrome height — no new cost to
+    <code>home-index</code> headroom. But it introduces a reach cost nothing
+    asked for: Record moves out of the zone the brief's own cited research
+    (Hoober) calls easiest for the majority grip, to satisfy a positioning
+    worry that A3 can also solve without moving Record at all. Recommend only
+    if the owner judges the proximity problem severe enough to accept that
+    trade, or wants to revisit handedness later (brief's call 8 flags this as
+    a V1.1 idea, not a V1 setting).</div>
+
+    <h2>A3 — Option A's order, now visibly separated</h2>
+    <p>Same left-to-right order as the original mock —
+    <code>home-search-field</code> then <code>record-button</code> — but with
+    a visible <code>home-bottom-bar-divider</code> (1pt, <code>colors.line</code>,
+    decorative), a wider gap, and Record redrawn as a rounded rectangle
+    (<code>radius.control</code>) instead of a pill, so its shape no longer
+    echoes the field's own rounded ends. Typing swaps Record for
+    <code>cancel-search-button</code> in the same trailing slot, same as the
+    original mock.</p>
+    <span class="vo"><strong>44pt:</strong> unchanged from Option A — field
+    44pt tall, Record 44pt tall, divider is decorative and non-interactive
+    (no target-size implication). <strong>VoiceOver order:</strong> the only
+    variant where the visual order already matches §9 "search, then Record"
+    with no override needed — field is first in both the DOM and on screen,
+    Record second in both. <strong>Dynamic Type:</strong> wraps to two rows at
+    the largest size (field above, Record below, its own DOM order); the
+    divider hides when wrapped since a vertical rule between two stacked rows
+    stops meaning anything.</span>
+    <span class="vo"><strong>Thumb reach:</strong> unchanged from Option A —
+    Record stays at the trailing (right) edge, the easy zone for the
+    right-handed majority grip the brief's Hoober citation describes; the
+    left-handed stretch is the same one Option A already accepted and the
+    brief's call 8 already declined to design around for V1.</span>
+    <div class="verdict"><strong>Verdict:</strong> the smallest change from
+    the already-chosen Option A — same order, same chrome height, same
+    reach profile, same VoiceOver order compliance "for free." The fix is
+    real (shape + divider + gap break the "attached to the field's trailing
+    edge" read that caused the proximity misreading) but it's a graded fix,
+    not an absolute one: at a glance, or at normal reading distance, a gap
+    and a shape change are a smaller signal than A1's full separation into
+    two different rows. Worth user-testing (S4 in the brief: "did you know
+    whether Andy would answer or just find names?") before treating this as
+    fully resolved, where A1 would not need that test to be confident.</div>
+
+    <h2>Recommendation</h2>
+    <p><strong>A3</strong>, with A1 named as the fallback if the owner wants
+    the proximity question closed with certainty rather than reduced. A3
+    keeps everything Option A already won — lowest chrome height (most
+    <code>home-index</code> headroom for R7's hardest check), the
+    right-handed-majority reach the brief's own research cites, and a
+    VoiceOver order that satisfies §9 without an accessibility-order
+    override — and answers the owner's specific complaint with a shape and
+    spacing change alone, the smallest edit that could still work. A1 is the
+    strongest fix in absolute terms (two different rows cannot be misread as
+    one control, at any type size or distance) and is the right call if the
+    owner would rather spend the height cost than leave any ambiguity; it
+    does cost real <code>home-index</code> headroom and needs the
+    accessibility-order override to keep §9. A2 is not recommended: it
+    trades a positioning worry for a reach cost that nothing in the brief
+    asked for, when A3 reaches the same fix without moving Record at all.
+    <strong>This is a design hypothesis, not tested behaviour</strong> — the
+    brief's own S4 success criterion ("did you know whether Andy would
+    answer or just find names?") is the test that would actually confirm any
+    of these three closes the misreading; a TestFlight pass with A3 shipped
+    is how to find out before investing in A1's extra height if it turns out
+    not to be needed.</p>
+
+    <h3>Side-by-side</h3>
+    <table class="compare-table">
+      <tr><th></th><th>A1 — stacked</th><th>A2 — Record left</th><th>A3 — separated</th></tr>
+      <tr><td>Fixes the "Record = submit" read</td><td>Fully (different rows)</td><td>Yes (breaks the trailing-edge convention)</td><td>Partially (shape + gap, same row)</td></tr>
+      <tr><td>Bottom chrome height</td><td>Tallest — two rows</td><td>Same as Option A — one row</td><td>Same as Option A — one row</td></tr>
+      <tr><td><code>home-index</code> headroom (R7)</td><td>Least</td><td>Most</td><td>Most</td></tr>
+      <tr><td>Right-handed one-handed reach</td><td>Neutral (full width)</td><td>Worse than Option A</td><td>Same as Option A (easy zone)</td></tr>
+      <tr><td>Left-handed one-handed reach</td><td>Neutral (full width)</td><td>Better than Option A</td><td>Same as Option A (stretch zone)</td></tr>
+      <tr><td>VoiceOver order matches §9 by default</td><td>No — needs an override</td><td>No — needs an override</td><td>Yes — field, then Record, same as DOM</td></tr>
+      <tr><td>New names, if shipped</td><td><code>home-bottom-bar-record-row</code>, <code>home-bottom-bar-search-row</code> (new)</td><td>none beyond Option A's</td><td><code>home-bottom-bar-divider</code> (new)</td></tr>
+      <tr><td>New tokens</td><td>none</td><td>none</td><td>none</td></tr>
+    </table>
+
+    <h2>Accessibility, shared across all three</h2>
+    <ul style="padding-left:18px; margin:6px 0;">
+      <li><code>home-search-field</code>'s only edge is <code>colors.edge</code>
+      on <code>paper</code>, 3.2:1 (WCAG 1.4.11) — reused, unchanged by any
+      variant.</li>
+      <li><code>record-button</code>'s <code>moss</code> fill with
+      <code>paper</code> label text is an existing pairing (also
+      <code>confirm-dialog-action</code>, <code>calendar-connect-button</code>)
+      already covered by <code>__tests__/contrast.test.ts</code> — not a new
+      pairing in any variant.</li>
+      <li>Meaning never depends on colour alone: Record is always the word
+      "Record" plus a filled background (R1 forbids an icon-only control);
+      in every variant the field is additionally distinguished by its
+      outline-only edge versus Record's solid fill, and A1/A3 add a second,
+      non-colour cue each (a full row break; a shape change) on top of that.</li>
+      <li>Reduce Motion: entering/leaving search mode crossfades the bar's
+      contents rather than sliding, in all three. A1's row collapse is the
+      one with the largest layout shift (a whole row leaves) — implementation
+      should crossfade opacity without animating the row's height, to avoid a
+      reflow that Reduce Motion would otherwise still show as movement.</li>
+      <li>Toggle "largest accessibility size" above: A1 only grows row
+      height; A2 and A3 both wrap their single row to two, each landing on
+      Record above field / field above Record respectively (each variant's
+      own DOM order, not re-sorted) — worth checking against the real
+      <code>home-index</code> component on device either way, per R7.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+  const PEOPLE = [
+    {name:"Amara Osei", meta:"friend · 3 notes · 2026-09-20", detail:"Training for a half marathon in spring."},
+    {name:"Ben Whitfield", meta:"colleague · 6 notes · 2026-10-01", detail:"Leading the Denver office move."},
+    {name:"Carla Jiménez", meta:"client · 2 notes · 2026-08-30", detail:"Wants the proposal by Friday."},
+    {name:"Derek Nakamura", meta:"friend · 5 notes · 2026-09-02", detail:"Just adopted a second greyhound, Mochi."},
+    {name:"Emily Santos", meta:"friend · 4 notes · 2026-10-05", detail:"Starting a pottery class on Tuesdays."},
+    {name:"Felix Grant", meta:"networking · 1 note · 2026-07-14", detail:"Met at the design meetup, works in fintech."},
+    {name:"Grace Oyelaran", meta:"foster · 8 notes · 2026-10-09", detail:"Fosters two greyhounds, looking for a third."},
+    {name:"Hassan Idris", meta:"client · 3 notes · 2026-09-28", detail:"Prefers calls over email."},
+    {name:"Isla Thompson", meta:"friend · 2 notes · 2026-06-19", detail:"Just moved to Lisbon."},
+    {name:"Jordan Lee", meta:"friend · 7 notes · 2026-10-11", detail:"Starting a new job at the shelter in March."},
+    {name:"Kavya Rao", meta:"colleague · 4 notes · 2026-09-15", detail:"Switching teams to the research group."},
+    {name:"Liam O'Connor", meta:"networking · 2 notes · 2026-08-02", detail:"Dog lover, works in logistics."},
+    {name:"Marcus Webb", meta:"friend · 9 notes · 2026-10-07", detail:"Training for his first marathon."},
+    {name:"Nina Petrov", meta:"client · 1 note · 2026-07-30", detail:"New to the city, asked for restaurant picks."},
+    {name:"Omar Farouk", meta:"friend · 3 notes · 2026-09-10", detail:"Opening a bakery downtown."},
+    {name:"Priya Kapoor", meta:"friend · 4 notes · 2026-10-02", detail:"She's fostering a second dog."},
+    {name:"Priya Shah", meta:"colleague · 7 notes · 2026-10-05", detail:"Starting a new job at the shelter in March."},
+    {name:"Quentin Ash", meta:"networking · 1 note · 2026-05-22", detail:"Met at the conference, works in logistics."},
+    {name:"Rosa Delgado", meta:"client · 5 notes · 2026-09-24", detail:"Renewing the contract in November."},
+    {name:"Sam Okafor", meta:"friend · 2 notes · 2026-08-18", detail:"Just got a rescue cat named Biscuit."}
+  ];
+  const INDEX_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ#".split("");
+
+  const state = { variant: "a1", people: "20", conn: "online", query: "rest", kb: "down", type: "normal" };
+
+  function initials(name) {
+    const parts = name.split(" ");
+    return (parts[0][0] + (parts[parts.length - 1][0] || "")).toUpperCase();
+  }
+
+  function setState(patch) {
+    Object.assign(state, patch);
+    syncButtons();
+    render();
+  }
+  function syncButtons() {
+    const map = { variant: 'variant', people: 'people', conn: 'conn', query: 'query', kb: 'kb', type: 'type' };
+    for (const key in map) {
+      document.querySelectorAll('[data-' + map[key] + ']').forEach(b => b.classList.toggle('active', b.dataset[map[key]] === state[key]));
+    }
+  }
+
+  function matches(person, q) {
+    if (!q) return false;
+    const hay = (person.name + " " + person.detail).toLowerCase();
+    return hay.includes(q.toLowerCase());
+  }
+
+  function render() {
+    const screenEl = document.getElementById('screen');
+    screenEl.setAttribute('data-type-scale', state.type);
+    screenEl.setAttribute('data-variant', state.variant);
+
+    const searching = state.query !== 'rest';
+    const hasQuery = state.query === 'pri' || state.query === 'greyhound';
+    const q = state.query === 'pri' ? 'Pri' : state.query === 'greyhound' ? 'greyhound' : '';
+    const noPeople = state.people === '0';
+
+    // offline line
+    document.getElementById('offline-line').style.display = (state.conn === 'offline' && !searching) ? 'block' : 'none';
+
+    // briefing + list + empty
+    document.getElementById('briefing').style.display = (!searching && !noPeople) ? 'block' : 'none';
+    document.getElementById('list-wrap').style.display = (!noPeople) ? 'block' : 'none';
+    document.getElementById('empty-state').style.display = noPeople ? 'flex' : 'none';
+
+    const listEl = document.getElementById('profile-list');
+    const indexEl = document.getElementById('home-index');
+    listEl.innerHTML = '';
+    indexEl.innerHTML = '';
+
+    if (!noPeople) {
+      if (!searching) {
+        let lastLetter = '';
+        PEOPLE.forEach(p => {
+          const letter = p.name[0].toUpperCase();
+          if (letter !== lastLetter) {
+            const h = document.createElement('li');
+            h.className = 'home-letter-heading';
+            h.textContent = letter;
+            listEl.appendChild(h);
+            lastLetter = letter;
+          }
+          listEl.appendChild(rowEl(p, false));
+        });
+        INDEX_LETTERS.forEach(l => {
+          const s = document.createElement('span');
+          s.textContent = l;
+          indexEl.appendChild(s);
+        });
+      } else if (hasQuery) {
+        const found = PEOPLE.filter(p => matches(p, q));
+        found.forEach(p => listEl.appendChild(rowEl(p, true, q)));
+        if (found.length === 0) {
+          const li = document.createElement('li');
+          li.style.padding = '16px 0';
+          li.style.opacity = '0.7';
+          li.textContent = 'No one matches "' + q + '".';
+          listEl.appendChild(li);
+        }
+      }
+    }
+
+    // ask row
+    const askRow = document.getElementById('ask-row');
+    if (!searching || noPeople) {
+      askRow.style.display = 'none';
+    } else {
+      askRow.style.display = 'block';
+      askRow.classList.remove('is-button', 'is-offline');
+      if (state.conn === 'offline') {
+        askRow.classList.add('is-offline');
+        askRow.textContent = 'Asking needs a connection. Names and words still work.';
+      } else if (hasQuery) {
+        askRow.classList.add('is-button');
+        askRow.textContent = 'Ask Andy: "' + q + '"';
+      } else {
+        askRow.classList.add('is-button');
+        askRow.textContent = 'Ask Andy in your own words';
+      }
+    }
+
+    // search fields (all three variants kept in sync, only one visible)
+    document.querySelectorAll('.search-input').forEach(input => {
+      input.value = hasQuery ? q : '';
+      input.placeholder = 'Find a name or a word';
+    });
+    document.querySelectorAll('.clear-btn').forEach(b => b.style.display = hasQuery ? 'flex' : 'none');
+    document.querySelectorAll('.cancel-btn').forEach(b => b.style.display = searching ? 'inline-block' : 'none');
+    document.querySelectorAll('.record-btn').forEach(b => b.style.display = searching ? 'none' : 'flex');
+    document.getElementById('a1-record-row').classList.toggle('hidden-el', searching);
+    document.getElementById('bottom-bar-wrap').style.display = noPeople ? 'none' : 'block';
+
+    // keyboard
+    document.getElementById('kb-overlay').classList.toggle('shown', state.kb === 'up');
+  }
+
+  function rowEl(p, showMatch, q) {
+    const li = document.createElement('li');
+    li.className = 'profile-row';
+    li.innerHTML =
+      '<div class="profile-row-avatar">' + initials(p.name) + '</div>' +
+      '<div class="profile-row-main">' +
+        '<div class="profile-row-name">' + p.name + '</div>' +
+        '<div class="profile-row-detail">' + p.detail + '</div>' +
+        '<div class="profile-row-meta">' + p.meta + '</div>' +
+        (showMatch && q && p.detail.toLowerCase().includes(q.toLowerCase()) && !p.name.toLowerCase().includes(q.toLowerCase())
+          ? '<div class="profile-row-match">matched by word in what you kept about them</div>' : '') +
+      '</div>';
+    return li;
+  }
+
+  document.querySelectorAll('[data-variant]').forEach(b => b.onclick = () => setState({ variant: b.dataset.variant }));
+  document.querySelectorAll('[data-people]').forEach(b => b.onclick = () => setState({ people: b.dataset.people }));
+  document.querySelectorAll('[data-conn]').forEach(b => b.onclick = () => setState({ conn: b.dataset.conn }));
+  document.querySelectorAll('[data-query]').forEach(b => b.onclick = () => setState({ query: b.dataset.query }));
+  document.querySelectorAll('[data-kb]').forEach(b => b.onclick = () => setState({ kb: b.dataset.kb }));
+  document.querySelectorAll('[data-type]').forEach(b => b.onclick = () => setState({ type: b.dataset.type }));
+  document.querySelectorAll('.cancel-btn').forEach(b => b.onclick = () => setState({ query: 'rest', kb: 'down' }));
+  document.querySelectorAll('.clear-btn').forEach(b => b.onclick = () => setState({ query: 'focus-empty' }));
+
+  function toggleDocTheme() {
+    const root = document.documentElement;
+    root.setAttribute('data-doc-theme', root.getAttribute('data-doc-theme') === 'dark' ? 'light' : 'dark');
+  }
+
+  render();
+</script>
+</body>
+</html>
