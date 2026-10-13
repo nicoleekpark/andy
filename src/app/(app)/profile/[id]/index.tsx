@@ -1,4 +1,5 @@
 import { Stack, router, useLocalSearchParams } from "expo-router";
+import { useCaptureOrbit } from "@/components/capture-orbit";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -42,6 +43,7 @@ export default function ProfileScreen() {
   // useLocalSearchParams, not useGlobalSearchParams: this only re-renders while
   // the screen is focused, instead of on every global URL change.
   const { id } = useLocalSearchParams<{ id: string }>();
+  const newNote = useCaptureOrbit(`/profile/${id}/capture`);
   // Offline, the same page built from the phone's copy — without the photo,
   // which is not kept yet.
   const { data: result, takenAt } = useLiveOrCopy(
@@ -647,14 +649,20 @@ export default function ProfileScreen() {
               )
             ) : null}
 
+            {/*
+              The same orbit as home's + (capture-doors.md, Final choice): Voice,
+              Write, Photo — every door about this person.
+            */}
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Add a note"
-              onPress={() => router.push(`/profile/${id}/capture`)}
+              onPress={newNote.open}
               style={styles.addNote}
+              testID="capture-orbit-trigger"
             >
               <Text style={styles.addNoteLabel}>Add a note</Text>
             </Pressable>
+            {newNote.orbit}
           </View>
         ) : null}
       </View>

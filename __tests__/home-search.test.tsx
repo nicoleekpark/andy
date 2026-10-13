@@ -8,7 +8,7 @@ import { answerByName, nameOf } from "../test-support/convex-mocks";
 /**
  * Home's bottom bar (`home-actions.md`, Final choice: S1, V-NOTCHED): a field
  * that filters home in place, free and offline, a labelled row that hands the
- * words to Ask, and the round Record.
+ * words to Ask, and the round + that opens the doors.
  */
 
 const files = () =>
@@ -71,11 +71,11 @@ async function type(text: string) {
   });
 }
 
-test("should show Record and the search field at rest, and no Ask row", async () => {
+test("should show + and the search field at rest, and no Ask row", async () => {
   server();
   await renderRouter("src/app", { initialUrl: "/" });
 
-  expect(screen.getByRole("button", { name: "Record" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "New note" })).toBeTruthy();
   expect(screen.getByLabelText("Find a name or a word")).toBeTruthy();
   expect(screen.queryByTestId("home-ask-row")).toBeNull();
 });
@@ -141,19 +141,19 @@ test("should offer Ask in your own words while the field is empty and in use", a
   expect(screen.getByLabelText("Ask Andy").props.value).toBe("");
 });
 
-test("should step Record aside while searching, and bring it back on Cancel", async () => {
+test("should step + aside while searching, and bring it back on Cancel", async () => {
   server();
   await renderRouter("src/app", { initialUrl: "/" });
 
   await type("pri");
-  expect(screen.queryByRole("button", { name: "Record" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "New note" })).toBeNull();
 
   await act(async () => {
     fireEvent.press(screen.getByRole("button", { name: "Cancel" }));
     fireEvent(screen.getByTestId("home-search-field"), "blur");
   });
 
-  expect(screen.getByRole("button", { name: "Record" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "New note" })).toBeTruthy();
   expect(screen.getByTestId("home-search-field").props.value).toBe("");
 });
 
@@ -197,7 +197,7 @@ test("should show no search field while no one is kept yet", async () => {
   await renderRouter("src/app", { initialUrl: "/" });
 
   expect(screen.queryByTestId("home-search-field")).toBeNull();
-  expect(screen.getByRole("button", { name: "Record" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "New note" })).toBeTruthy();
 });
 
 test("should empty the field with Clear, and keep it in use", async () => {
@@ -213,16 +213,16 @@ test("should empty the field with Clear, and keep it in use", async () => {
   expect(screen.getByRole("button", { name: "Ask Andy in your own words" })).toBeTruthy();
 });
 
-test("should be read list, then field, then Record — though Record is drawn on top", async () => {
+test("should be read list, then field, then + — though + is drawn on top", async () => {
   server();
   await renderRouter("src/app", { initialUrl: "/" });
 
   const order = screen
-    .getAllByLabelText(/^(Find a name or a word|Record)$/)
+    .getAllByLabelText(/^(Find a name or a word|New note)$/)
     .map((element) => element.props.accessibilityLabel);
 
-  // Tree order is what VoiceOver follows (home-actions.md: list → field → Record).
-  expect(order).toEqual(["Find a name or a word", "Record"]);
+  // Tree order is what VoiceOver follows (home-actions.md: list → field → +).
+  expect(order).toEqual(["Find a name or a word", "New note"]);
 });
 
 test("should hide the lines above the list while a query is present, and bring them back", async () => {
@@ -244,14 +244,12 @@ test("should hide the lines above the list while a query is present, and bring t
   files().delete("file:///documents/outbox/notes.json");
 });
 
-test("should let Record grow with the text size rather than cap its word", async () => {
+test("should keep + a circle that a fallback word can widen, never a fixed width", async () => {
   server();
   await renderRouter("src/app", { initialUrl: "/" });
 
-  const record = screen.getByTestId("record-button");
-  const style = StyleSheet.flatten(record.props.style);
-  // A circle at rest (min 72), a stadium when the word needs more room.
+  const style = StyleSheet.flatten(screen.getByTestId("capture-orbit-trigger").props.style);
   expect(style.width).toBeUndefined();
   expect(style.minWidth).toBe(72);
-  expect(screen.getByText("Record").props.maxFontSizeMultiplier).toBeUndefined();
 });
+

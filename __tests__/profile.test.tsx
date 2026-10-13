@@ -353,8 +353,12 @@ describe("profile screen", () => {
     const result = renderRouter("src/app", { initialUrl: "/profile/contact-1" });
     await result;
 
+    // Through the orbit, as home's + (capture-doors.md): any door is scoped.
     await act(async () => {
       fireEvent.press(screen.getByRole("button", { name: "Add a note" }));
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Voice" }));
     });
 
     expect(result.getSegments()).toEqual(["(app)", "profile", "[id]", "capture"]);

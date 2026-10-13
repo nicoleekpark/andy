@@ -148,8 +148,15 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `pending-line` | 오프라인에서 바꾼 것(노트 수정·삭제)이 아직 저장 안 됐을 때 — "1 change made offline, not saved yet." |
 | `pending-line-sync` | 온라인일 때 `pending-line` 옆 초록 **Sync** — 누르면 모두 저장 (Syncing…) |
 | `sync-conflict-alert` | Sync 중 그 노트가 다른 기기에서 바뀌었을 때 묻는 창 — Keep theirs / Keep mine (둘 다 moss, Cancel 없음). `confirm-dialog`로 그림 (QA #51) |
-| `home-bottom-bar` | 홈 맨 아래 종이색 바 (위에 가는 선) — `home-search-field`가 들어 있고, `record-button`이 바 위쪽 선에 걸쳐 있음 (V-NOTCHED, home-actions.md) |
-| `record-button` | 72pt 둥근 초록 **Record** — `home-bottom-bar` 위쪽 선에 반쯤 걸침 (가장 큰 글자 크기에선 옆으로 늘어난 알약 모양). 검색칸을 쓰는 동안엔 비킴. VoiceOver 순서: 목록 → 검색칸 → Record |
+| `home-bottom-bar` | 홈 맨 아래 종이색 바 (위에 가는 선) — `home-search-field`가 들어 있고, `capture-orbit-trigger`(+)가 바 위쪽 선에 걸쳐 있음 (V-NOTCHED, home-actions.md) |
+| `capture-orbit` | + (또는 사람 페이지의 Add a note)를 누르면 화면이 어두워지고 펼쳐지는 세 문 — `capture-orbit-item--voice`(12시) / `--write`(10시) / `--photo`(2시): 초록 원 + 아래 종이색 칩의 단어. 가운데는 ✕ (`capture-orbit-close`). 어두운 곳(`capture-orbit-scrim`)을 눌러도 닫힘. 오프라인이면 Photo 칩에 "Needs a connection", 누르면 `photo-offline-notice` (Write instead / Cancel). 가장 큰 글자 크기에선 세로 목록. 열릴 때 가벼운 진동 |
+| `capture-orbit-item--voice` | orbit 12시 — 초록 원(마이크) + 칩 "Voice". 누르면 음성 화면이 바로 듣기 시작 |
+| `capture-orbit-item--write` | orbit 10시 — 초록 원(연필) + 칩 "Write". 누르면 타이핑 화면 |
+| `capture-orbit-item--photo` | orbit 2시 — 초록 원(카메라) + 칩 "Photo" (오프라인: 칩 아래 "Needs a connection") |
+| `capture-orbit-close` | orbit 가운데 ✕ — + 자리에 그려짐. 닫기 (VoiceOver 마지막) |
+| `capture-orbit-scrim` | orbit 뒤 어두운 화면 — 누르면 닫힘. VoiceOver엔 숨김 |
+| `photo-offline-notice` | 오프라인에서 Photo를 누르면 — "Reading a photo needs a connection." / "Take it with your Camera now and choose it here later, or write it instead." + **Write instead** / Cancel (`confirm-dialog`) |
+| `capture-orbit-trigger` | 72pt 둥근 초록 **+** (VoiceOver "New note") — `home-bottom-bar` 위쪽 선에 반쯤 걸침. 누르면 `capture-orbit`. 검색칸을 쓰는 동안엔 비킴. VoiceOver 순서: 목록 → 검색칸 → + (예전 `record-button`) |
 | `home-search-field` | "Find a name or a word" — 홈 목록을 그 자리에서 거름 (무료·오프라인, Ask와 같은 이름 검색). 사람이 없으면 안 보임 |
 | `home-search-clear` | 검색칸 안 오른쪽 ⓧ — 글자를 지움 (키보드는 그대로). 44pt 영역 |
 | `home-search-cancel` | 검색칸 옆 초록 **Cancel** — 지우고 키보드 내림, Record가 돌아옴 |

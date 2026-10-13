@@ -69,7 +69,7 @@ describe("auth gate", () => {
     await result;
 
     expect(screen.queryByText("Sign in with Apple arrives in the next slice.")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Record" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "New note" })).toBeNull();
   });
 
   test("should render app content and not end up on /sign-in when signed in", async () => {
@@ -85,7 +85,7 @@ describe("auth gate", () => {
     // The home screen's record button, not its copy: this test is about the
     // gate letting a signed-in caller through, and pinning wording would make
     // it fail every time home is rewritten — as it just was.
-    expect(screen.getByRole("button", { name: "Record" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "New note" })).toBeTruthy();
     expect(result.getPathname()).not.toBe("/sign-in");
   });
 
@@ -153,7 +153,7 @@ describe("auth gate", () => {
     // The home screen's record button, not its copy: this test is about the
     // gate letting a signed-in caller through, and pinning wording would make
     // it fail every time home is rewritten — as it just was.
-    expect(screen.getByRole("button", { name: "Record" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "New note" })).toBeTruthy();
   });
 
   test("should wait on the connecting screen, not send to sign-in, when signed in but the server has not accepted the session — offline at launch", async () => {
@@ -165,7 +165,7 @@ describe("auth gate", () => {
 
     expect(result.getPathname()).not.toBe("/sign-in");
     expect(screen.queryByRole("button", { name: "Continue with Apple" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Record" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "New note" })).toBeNull();
   });
 
   test("should wait, not render sign-in, while Clerk itself is still loading", async () => {
@@ -176,7 +176,7 @@ describe("auth gate", () => {
     await result;
 
     expect(result.getPathname()).not.toBe("/sign-in");
-    expect(screen.queryByRole("button", { name: "Record" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "New note" })).toBeNull();
   });
 
   test("should offer sign-out once the connecting screen gives up, so a session the server never accepts is not a dead end", async () => {
@@ -259,7 +259,7 @@ describe("auth gate", () => {
     try {
       await renderRouter("src/app", { initialUrl: "/" });
 
-      expect(screen.getByRole("button", { name: "Record" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "New note" })).toBeTruthy();
     } finally {
       connection({ isWebSocketConnected: true, hasEverConnected: true, connectionRetries: 0 });
     }
@@ -272,7 +272,7 @@ describe("auth gate", () => {
     try {
       await renderRouter("src/app", { initialUrl: "/" });
 
-      expect(screen.queryByRole("button", { name: "Record" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "New note" })).toBeNull();
     } finally {
       connection({ isWebSocketConnected: true, hasEverConnected: true, connectionRetries: 0 });
     }
@@ -296,20 +296,20 @@ describe("auth gate", () => {
     );
     try {
       await renderRouter("src/app", { initialUrl: "/" });
-      expect(screen.getByRole("button", { name: "Record" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "New note" })).toBeTruthy();
 
       // The socket opens a moment before the server has said yes.
       await act(async () => {
         state = { isWebSocketConnected: true, hasEverConnected: true, connectionRetries: 1 };
         listeners.forEach((listener) => listener());
       });
-      expect(screen.getByRole("button", { name: "Record" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "New note" })).toBeTruthy();
 
       // It never does: after the grace period, back to waiting (with Sign out).
       await act(async () => {
         jest.advanceTimersByTime(20_000);
       });
-      expect(screen.queryByRole("button", { name: "Record" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "New note" })).toBeNull();
     } finally {
       jest.useRealTimers();
       connection({ isWebSocketConnected: true, hasEverConnected: true, connectionRetries: 0 });

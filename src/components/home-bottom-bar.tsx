@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useEffect, useRef, useState } from "react";
-import { Keyboard, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { type GestureResponderEvent, Keyboard, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, radius, size, space, textOpacity, textSize } from "@/constants/theme";
 
@@ -9,12 +9,12 @@ import { colors, radius, size, space, textOpacity, textSize } from "@/constants/
  * Home's bottom bar (`home-actions.md`, Final choice: S1, V-NOTCHED).
  *
  * An opaque paper bar with a hairline at the very bottom of home, holding the
- * search field; the round Record sits across the bar's top edge like a
- * shutter. The field filters home's list in place — free, instant and
+ * search field; the round + (new note) sits across the bar's top edge like a
+ * shutter, and opens the orbit of doors. The field filters home's list in place — free, instant and
  * offline — and never asks Claude on its own (R3): asking is a separate,
  * labelled row, "Ask Andy: “…”", that hands what was typed to Ask (R9).
  *
- * While the field is in use Record steps aside (R8), and Cancel or clearing
+ * While the field is in use + steps aside (R8), and Cancel or clearing
  * the field brings it back. The query lives in the screen's memory only, never
  * on disk (R10).
  */
@@ -23,14 +23,15 @@ export function HomeBottomBar({
   onQuery,
   online,
   showField,
-  onRecord,
+  onNewNote,
 }: {
   query: string;
   onQuery: (text: string) => void;
   online: boolean;
   /** No one kept yet: nothing to find, so only Record (R11). */
   showField: boolean;
-  onRecord: () => void;
+  /** Opens the orbit of doors (`capture-orbit.tsx`), from this button. */
+  onNewNote: (event: GestureResponderEvent) => void;
 }) {
   const [focused, setFocused] = useState(false);
   const keyboard = useKeyboardHeight();
@@ -135,14 +136,21 @@ export function HomeBottomBar({
         )
       ) : null}
       {inUse ? null : (
+        // "+" alone; VoiceOver says "New note" (capture-doors.md, T2). It
+        // opens the orbit: Voice, Write, Photo.
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Record"
-          onPress={onRecord}
+          accessibilityLabel="New note"
+          onPress={onNewNote}
           style={styles.record}
-          testID="record-button"
+          testID="capture-orbit-trigger"
         >
-          <Text style={styles.recordLabel}>Record</Text>
+          <SymbolView
+            name="plus"
+            size={size.icon}
+            tintColor={colors.paper}
+            fallback={<Text style={styles.recordLabel}>New note</Text>}
+          />
         </Pressable>
       )}
     </View>
@@ -184,9 +192,9 @@ const styles = StyleSheet.create({
     gap: space.sm,
     flexDirection: "column-reverse",
   },
-  // Half above the hairline, half below: the shutter read. A circle at rest;
-  // at the largest text sizes the word widens it into a short stadium rather
-  // than being capped (home-actions.md, S1 round).
+  // Half above the hairline, half below: the shutter read. A circle; with
+  // only a symbol in it there is no word to outgrow it (the fallback word,
+  // on a build without symbols, still widens it rather than being cut).
   record: {
     minWidth: size.round,
     minHeight: size.round,
