@@ -281,13 +281,14 @@ confirm/edit → save
    Any of those pickers can answer "someone new" instead.
 ```
 
-**Home has an Ask Andy button rather than a search bar** — changed on day 5,
-when recall was built, and worth recording because it reads as a downgrade and
-is not one. Every question costs a paid embedding call, so there is no
-search-as-you-type to be had here at any price. A field on the home screen that
-looked live and only acted on submit would promise something the architecture
-cannot do, and the honest version of that promise is a button that opens a
-screen built for asking one question at a time.
+**Home has a search field that filters in place; asking is a separate, labelled
+step** (owner, 2026-10-12, `docs/design/decisions/home-actions.md`). On day 5 home
+got an Ask Andy button instead of a search bar, because every question then cost
+a paid embedding call and a field that looked live could not be. Free name and
+word search (`people.search`, offline from the phone's copy) changed that: typing
+in home's field now narrows the list at once, for nothing, with no connection.
+Only the row labelled "Ask Andy: “…”" spends a call, and it hands the words to Ask
+rather than asking on its own.
 
 The three outcomes are named on screen because two of them used to be silent
 and each failed in the opposite direction: a misheard name invented a person
@@ -321,8 +322,8 @@ said "last-notes digest" and described a worse app.
 **Screens (minimum for V1, Expo Router)**
 
 ```
-/ (home)               → everyone you keep, A→Z then 가→힣 (was most-recent-first until 2026-09-29), "Ask Andy" button, record button
-                         (a button, not a live search bar — see below)
+/ (home)               → everyone you keep, A→Z then 가→힣 (was most-recent-first until 2026-09-29), round record button,
+                         and a bottom search field that filters the list in place (see below)
 /profile/[id]          → timeline, tags, metrics (if animal), photo, follow-up email button
 /profile/[id]/capture  → voice/typed capture, pre-scoped to this profile
 /profile/[id]/edit     → name, aliases, kind, relationship, first met, tags; delete

@@ -127,6 +127,10 @@ export const size = {
   avatar: 40,
   /** A system symbol in the nav bar (the Settings gear) — iOS's own bar-button size. */
   icon: 22,
+  /** The smallest a control may be to touch (WCAG 2.5.8, STYLE.md) — also the height of a one-line field. */
+  touch: 44,
+  /** The round Record on home's bottom bar (`record-button--round`), straddling the bar's top edge. */
+  round: 72,
 } as const;
 
 /**

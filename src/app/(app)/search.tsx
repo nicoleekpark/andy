@@ -1,5 +1,5 @@
-import { Stack, router } from "expo-router";
-import { useEffect, useState } from "react";
+import { Stack, router, useLocalSearchParams } from "expo-router";
+import { useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -9,7 +9,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useAction, useQuery } from "convex/react";
+import { useAction } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "@convex/_generated/api";
 import { colors, fonts, space, textOpacity } from "@/constants/theme";
@@ -17,8 +17,9 @@ import { formatDate } from "@/lib/dates";
 import { userMessage } from "@/lib/user-message";
 import { othersWorthShowing } from "@/lib/ask-results";
 import { TimedOut, withTimeout } from "@/lib/with-timeout";
-import { searchView } from "@convex/offlineViews";
-import { NOTHING_KEPT_OFFLINE, useLiveOrCopy, useNothingKeptOffline, useOnline } from "@/lib/offline-copy";
+import { NOTHING_KEPT_OFFLINE, useNothingKeptOffline, useOnline } from "@/lib/offline-copy";
+import { useNameSearch } from "@/lib/use-name-search";
+import { NameResults } from "@/components/name-results";
 import { OfflineCopyLine } from "@/components/offline-copy-line";
 
 /**
@@ -49,14 +50,6 @@ import { OfflineCopyLine } from "@/components/offline-copy-line";
  * card and names search results specifically as a screen that stays plain.
  */
 
-/**
- * How long a pause counts as "stopped typing".
- *
- * `useQuery` resubscribes on every argument change, so without this "judy" is
- * four subscriptions. Short enough that the list feels live, long enough that
- * a word is one query rather than one per letter.
- */
-const TYPING_SETTLES_MS = 180;
 
 type Results = FunctionReturnType<typeof api.search.recall>["results"];
 
@@ -70,31 +63,19 @@ const ASK_TIMEOUT_MS = 30_000;
 export default function SearchScreen() {
   const recall = useAction(api.search.recall);
 
-  const [question, setQuestion] = useState("");
-  const [settled, setSettled] = useState("");
+  // `?q=`: what was typed into home's search field, handed over so nothing
+  // is typed twice (`home-actions.md` R9). Never asked on arrival — asking
+  // costs a call, and only a tap or the return key spends it.
+  const { q } = useLocalSearchParams<{ q?: string }>();
+  const [question, setQuestion] = useState(q ?? "");
   const [results, setResults] = useState<Results | null>(null);
   const [answer, setAnswer] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const timer = setTimeout(() => setSettled(question), TYPING_SETTLES_MS);
-    return () => clearTimeout(timer);
-  }, [question]);
-
-  // `"skip"` rather than an empty query: no subscription at all while the box
-  // is empty, instead of one that asks the backend to confirm nothing matches
-  // nothing.
-  //
-  // Offline, the same search runs over the phone's copy (`offline-copy.tsx`):
-  // finding someone by name needs no server.
-  const { data: byName, takenAt } = useLiveOrCopy(
-    useQuery(api.people.search, settled.trim() === "" ? "skip" : { query: settled.trim() }),
-    (copy) =>
-      settled.trim() === ""
-        ? undefined
-        : searchView(settled.trim(), copy.profiles, copy.notes, copy.links),
-  );
+  // Typing a name finds people at once and for free, offline too
+  // (`use-name-search.ts`, shared with home's search field).
+  const { results: byName, takenAt } = useNameSearch(question);
   // Asking in your own words is a Claude call; offline there is nothing to
   // answer it with, and sending it now would wait with no answer.
   const online = useOnline();
@@ -210,80 +191,7 @@ export default function SearchScreen() {
           Above the asked-for answer, always. These cost nothing and are
           already right; the answer below costs a call and arrives later.
         */}
-        {byName !== undefined && byName.people.length > 0 ? (
-          <View testID="people-results">
-            <Text style={styles.sectionLabel}>People</Text>
-            {byName.people.map((person) => (
-              <Pressable
-                key={person.profileId}
-                accessibilityRole="button"
-                accessibilityLabel={`Open ${person.name}`}
-                onPress={() => router.push(`/profile/${person.profileId}`)}
-                style={styles.personRow}
-              >
-                <Text style={styles.personName}>{person.name}</Text>
-                <Text style={styles.personMeta}>
-                  {/*
-                    The name that matched, when it is not the one they are
-                    filed under. A row reading "Marcus" after typing "Marc"
-                    explains itself; one that does not makes you wonder why he
-                    is in the list.
-                  */}
-                  {person.matchedName !== person.name
-                    ? `${person.matchedName} · `
-                    : ""}
-                  {person.relationshipContext !== undefined
-                    ? `${person.relationshipContext} · `
-                    : ""}
-                  {/*
-                    A person with no notes of their own is a different thing
-                    from a person with none *yet*, and the row has to say
-                    which. Andy invents somebody the moment a note says their
-                    name, so this is also where a mistake shows — "Park's
-                    housewarming" heard as a person called "Parks" looked
-                    exactly like a real person until this line existed.
-                  */}
-                  {person.noteCount > 0
-                    ? person.noteCount === 1
-                      ? "1 note"
-                      : `${person.noteCount} notes`
-                    : person.mentionCount > 0
-                      ? person.mentionCount === 1
-                        ? "only mentioned, in 1 note"
-                        : `only mentioned, in ${person.mentionCount} notes`
-                      : "nothing remembered yet"}
-                </Text>
-                {person.matchedIn !== undefined ? (
-                  // Found by a word, not a name: the line it is in, so the row
-                  // says why this person is here.
-                  <Text testID={`profile-result-match-${person.profileId}`} style={styles.personMeta}>
-                    &ldquo;{person.matchedIn}&rdquo;
-                  </Text>
-                ) : null}
-              </Pressable>
-            ))}
-          </View>
-        ) : null}
-
-        {byName !== undefined && byName.mentions.length > 0 ? (
-          <View testID="mention-results">
-            <Text style={styles.sectionLabel}>Came up in</Text>
-            {byName.mentions.map((mention) => (
-              <Pressable
-                key={`${mention.noteId}-${mention.name}`}
-                accessibilityRole="button"
-                accessibilityLabel={`Open the note about ${mention.aboutName}`}
-                onPress={() => router.push(`/note/${mention.noteId}`)}
-                style={styles.personRow}
-              >
-                <Text style={styles.personName}>{mention.aboutName}</Text>
-                <Text style={styles.personMeta}>
-                  &ldquo;{mention.quote}&rdquo;
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        ) : null}
+        <NameResults results={byName} />
 
         {/*
           Not while offline: the hint above already says the answer cannot
@@ -474,31 +382,8 @@ function ResultCard({ result }: { result: Results[number] }) {
 
 const styles = StyleSheet.create({
   offlineHint: { color: colors.ink, fontSize: 14, opacity: textOpacity.quiet, lineHeight: 21, marginBottom: space.md },
-  sectionLabel: {
-    color: colors.ink,
-    fontFamily: fonts.display,
-    fontSize: 12,
-    opacity: textOpacity.quiet,
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-    marginTop: 18,
-    marginBottom: 4,
-    marginHorizontal: 24,
-  },
   othersToggle: { paddingVertical: 12 },
   othersLabel: { color: colors.moss, fontSize: 14 },
-  personRow: {
-    paddingVertical: 10,
-    paddingHorizontal: 24,
-    gap: 2,
-  },
-  personName: { color: colors.moss, fontSize: 16 },
-  personMeta: {
-    color: colors.ink,
-    fontFamily: fonts.utility,
-    fontSize: 12,
-    opacity: textOpacity.quiet,
-  },
   container: { flex: 1, backgroundColor: colors.paper, padding: 24, gap: 16 },
 
   askRow: { flexDirection: "row", gap: 10, alignItems: "center" },
