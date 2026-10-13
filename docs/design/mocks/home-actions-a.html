@@ -1,0 +1,490 @@
+<!--
+  DESIGN PROTOTYPE — an HTML approximation of native `home` for Andy, built to
+  compare three options for the home-actions brief
+  (docs/design/decisions/home-actions.md, device QA build 4 #6/#4/#3). This is
+  Option A — "One bottom bar, Notes-style": `home-search-field` (model a,
+  filters in place) and `record-button` share a single bottom row, the
+  arrangement iOS 26 Notes/Mail/Messages/Contacts already use. Not production
+  code — a design prototype for comparing options, not a screen to ship.
+
+  Tokens are declared as CSS variables, named the same as
+  src/constants/theme.ts, so this mock and the app cannot quietly drift
+  apart. Lora / IBM Plex Mono are not loaded here, so serif/monospace fall
+  back to a close system face. SF Symbols (gearshape, chevron.left, a
+  magnifying glass) are approximated with small CSS-drawn shapes — the real
+  screen draws them with expo-symbols, already a dependency (brief §1).
+  The rig above the phone frame is mock-only tooling, not part of the design.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>home-actions — Option A: one bottom bar, Notes-style</title>
+<style>
+  :root {
+    /* --- app tokens, named as src/constants/theme.ts --- */
+    --color-ink: #2A2622;
+    --color-paper: #E8E6DE;
+    --color-moss: #5C6B4F;
+    --color-brass: #B8935A;
+    --color-line: #B8B3A8;
+    --color-alert: #9F4C3B;
+    --color-placeholder: #63605A;
+    --color-edge: #857E6D;
+    --color-scrim: rgba(42, 38, 34, 0.42);
+    --space-xs: 4px; --space-sm: 8px; --space-md: 12px; --space-lg: 16px;
+    --space-xl: 24px; --space-xxl: 32px; --space-xxxl: 48px;
+    --text-xs: 12px; --text-sm: 13px; --text-md: 14px; --text-base: 15px;
+    --text-lg: 16px; --text-xl: 17px; --text-xxl: 18px;
+    --radius-control: 10px; --radius-card: 16px; --radius-pill: 999px;
+    --opacity-secondary: 0.8; --opacity-quiet: 0.7;
+    --size-avatar: 40px;
+    --font-display: Georgia, "Times New Roman", serif;   /* ~ Lora */
+    --font-utility: "Courier New", monospace;              /* ~ IBM Plex Mono */
+    /* --- doc chrome only (reading comfort, never the phone) --- */
+    --doc-bg: #d8d4c8; --doc-ink: #2A2622; --doc-quiet: #6f6a62;
+    --doc-rule: #cfcac0; --doc-card: #f6f4ee;
+  }
+  [data-doc-theme="dark"] {
+    --doc-bg: #1E1C19; --doc-ink: #ECE8E0; --doc-quiet: #A39D93;
+    --doc-rule: #3A3631; --doc-card: #26231F;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--doc-bg); color: var(--doc-ink); font-family: -apple-system, system-ui, sans-serif; margin: 0; padding: 24px; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .doc-note { max-width: 980px; margin: 0 auto 16px; font-size: 13px; opacity: 0.8; line-height: 1.5; }
+  .top-bar { max-width: 980px; margin: 0 auto 8px; display: flex; justify-content: space-between; align-items: baseline; }
+  .theme-toggle { font-size: 12px; background: none; border: 1px solid var(--doc-rule); border-radius: 6px; padding: 4px 8px; cursor: pointer; color: var(--doc-ink); }
+
+  .rig { max-width: 980px; margin: 0 auto 20px; display: flex; flex-wrap: wrap; gap: 10px; }
+  .rig fieldset { border: 1px dashed var(--doc-rule); border-radius: 8px; padding: 8px 10px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .rig legend { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.6; }
+  .rig button { font-size: 12px; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--doc-rule); background: var(--doc-card); color: var(--doc-ink); cursor: pointer; }
+  .rig button.active { background: var(--color-moss); color: var(--color-paper); border-color: var(--color-moss); }
+
+  .stage { max-width: 980px; margin: 0 auto; display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .frame { width: 390px; border-radius: 44px; background: #111; padding: 14px; box-shadow: 0 20px 50px rgba(0,0,0,0.35); flex-shrink: 0; }
+  .screen { background: var(--color-paper); color: var(--color-ink); border-radius: 32px; overflow: hidden; height: 844px; position: relative; display: flex; flex-direction: column; }
+  .ios-status-bar { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-size: 14px; font-weight: 600; flex-shrink: 0; }
+
+  /* nav bar */
+  .nav-bar { padding: 2px 12px 14px; border-bottom: 1px solid var(--color-line); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; position: relative; }
+  .nav-bar-back { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; position: relative; }
+  .nav-bar-back.hidden-el { visibility: hidden; }
+  .nav-bar-back-glass { position: absolute; width: 34px; height: 34px; border-radius: 999px; background: rgba(255,255,255,0.30); backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.4); }
+  .nav-bar-back-chevron { position: relative; font-size: 22px; color: var(--color-ink); }
+  .nav-bar-title { font-family: var(--font-display); font-size: 20px; font-weight: 600; }
+  .nav-bar-action-right { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .gearshape { width: 20px; height: 20px; border: 2px solid var(--color-ink); border-radius: 50%; position: relative; }
+  .gearshape::before { content: ''; position: absolute; inset: -5px; border: 2px dashed var(--color-ink); border-radius: 50%; opacity: .001; } /* kept minimal; real icon is expo-symbols "gearshape" */
+  .nav-bar-glass-note { position: absolute; top: 100%; left: 12px; right: 12px; font-size: 11px; line-height: 1.4; color: var(--color-alert); background: var(--doc-card); border: 1px dashed var(--color-alert); border-radius: 6px; padding: 6px 8px; margin-top: 4px; z-index: 5; }
+
+  .content { flex: 1; overflow-y: auto; position: relative; display: flex; flex-direction: column; }
+  .offline-copy-line { font-size: var(--text-xs); opacity: var(--opacity-quiet); text-align: center; padding: var(--space-sm) var(--space-lg) 0; }
+
+  /* briefing card, simplified */
+  .briefing-card { margin: var(--space-lg); border-radius: var(--radius-card); background: var(--doc-card); border-left: 4px solid var(--color-brass); padding: var(--space-lg); flex-shrink: 0; }
+  .briefing-card-title { font-weight: 600; font-size: var(--text-lg); margin: 0 0 4px; }
+  .briefing-card-body { font-size: var(--text-base); opacity: var(--opacity-secondary); margin: 0; }
+
+  /* list */
+  .list-wrap { position: relative; flex: 1; }
+  .profile-list { list-style: none; margin: 0; padding: 0 var(--space-lg); }
+  .home-letter-heading { font-size: var(--text-sm); font-weight: 700; opacity: var(--opacity-quiet); text-transform: uppercase; letter-spacing: 0.06em; padding: var(--space-md) 0 var(--space-xs); }
+  .profile-row { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) 0; min-height: 44px; border-bottom: 1px solid var(--color-line); }
+  .profile-row-avatar { width: var(--size-avatar); height: var(--size-avatar); border-radius: 50%; background: var(--color-moss); color: var(--color-paper); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: var(--text-base); flex-shrink: 0; }
+  .profile-row-main { flex: 1; min-width: 0; }
+  .profile-row-name { font-family: var(--font-display); font-size: var(--text-lg); line-height: 1.3; }
+  .profile-row-detail { font-size: var(--text-sm); opacity: var(--opacity-secondary); line-height: 1.3; }
+  .profile-row-meta { font-family: var(--font-utility); font-size: var(--text-xs); opacity: var(--opacity-quiet); margin-top: 2px; }
+  .profile-row-match { font-size: var(--text-xs); opacity: var(--opacity-quiet); font-style: italic; margin-top: 2px; }
+
+  .home-index { position: absolute; top: 4px; bottom: var(--space-sm); right: 2px; width: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; }
+  .home-index span { font-family: var(--font-utility); font-size: 9px; color: var(--color-moss); line-height: 1.05; }
+
+  .home-ask-row { margin: var(--space-sm) var(--space-lg) 0; padding: var(--space-md); border: 1px solid var(--color-edge); border-radius: var(--radius-control); font-size: var(--text-base); }
+  .home-ask-row.is-button { cursor: pointer; color: var(--color-moss); font-weight: 600; }
+  .home-ask-row.is-offline { color: var(--color-ink); opacity: var(--opacity-secondary); border-style: dashed; cursor: default; }
+
+  .empty-state { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 var(--space-xxl); font-size: var(--text-base); opacity: var(--opacity-secondary); line-height: 1.5; }
+
+  /* bottom bar — Option A, single row */
+  .home-bottom-bar { flex-shrink: 0; display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm) var(--space-lg); padding-bottom: calc(var(--space-sm) + 20px); border-top: 1px solid var(--color-line); background: var(--color-paper); position: relative; z-index: 2; }
+  .home-search-field-wrap { flex: 1; display: flex; align-items: center; gap: var(--space-sm); border: 1px solid var(--color-edge); border-radius: var(--radius-pill); padding: 0 var(--space-md); height: 44px; min-width: 0; }
+  .search-glass { width: 13px; height: 13px; border: 2px solid var(--color-placeholder); border-radius: 50%; position: relative; flex-shrink: 0; }
+  .search-glass::after { content: ''; position: absolute; width: 6px; height: 2px; background: var(--color-placeholder); bottom: -3px; right: -4px; transform: rotate(45deg); border-radius: 1px; }
+  .home-search-field { border: none; background: none; outline: none; font-size: var(--text-base); color: var(--color-ink); flex: 1; min-width: 0; font-family: inherit; }
+  .home-search-field::placeholder { color: var(--color-placeholder); }
+  .clear-search-button { width: 22px; height: 22px; border-radius: 50%; background: var(--color-placeholder); color: var(--color-paper); font-size: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+  .cancel-search-button { background: none; border: none; color: var(--color-moss); font-size: var(--text-base); font-weight: 600; padding: 0 var(--space-xs); min-height: 44px; cursor: pointer; flex-shrink: 0; }
+  .record-button { background: var(--color-moss); color: var(--color-paper); border: none; border-radius: var(--radius-pill); height: 44px; padding: 0 var(--space-lg); font-size: var(--text-lg); font-weight: 600; display: flex; align-items: center; gap: var(--space-xs); flex-shrink: 0; cursor: pointer; white-space: nowrap; }
+  .mic-dot { width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--color-paper); flex-shrink: 0; }
+
+  .keyboard-overlay { position: absolute; left: 0; right: 0; bottom: 0; height: 291px; background: #d6d2c8; border-top: 1px solid var(--color-line); z-index: 1; display: none; }
+  .keyboard-overlay.shown { display: block; }
+  .keyboard-overlay-label { text-align: center; font-size: 11px; color: var(--color-placeholder); padding-top: 8px; }
+
+  .side-notes { flex: 1; min-width: 280px; font-size: 13px; line-height: 1.55; color: var(--doc-ink); }
+  .side-notes h2 { font-size: 14px; margin: 18px 0 6px; }
+  .side-notes h2:first-child { margin-top: 0; }
+  .vo { font-family: var(--font-utility); font-size: 11.5px; background: var(--doc-card); border: 1px dashed var(--doc-rule); border-radius: 6px; padding: 5px 7px; display: block; margin-top: 4px; color: var(--doc-ink); }
+
+  /* large dynamic type demo */
+  .screen[data-type-scale="large"] .nav-bar-title { font-size: 26px; }
+  .screen[data-type-scale="large"] .profile-row-name { font-size: 20px; }
+  .screen[data-type-scale="large"] .profile-row-detail,
+  .screen[data-type-scale="large"] .profile-row-meta { font-size: 15px; }
+  .screen[data-type-scale="large"] .home-search-field,
+  .screen[data-type-scale="large"] .record-button,
+  .screen[data-type-scale="large"] .home-ask-row { font-size: 19px; }
+  .screen[data-type-scale="large"] .record-button { padding: 0 var(--space-md); white-space: normal; text-align: center; height: auto; min-height: 44px; }
+  .screen[data-type-scale="large"] .home-bottom-bar { flex-wrap: wrap; }
+  .screen[data-type-scale="large"] .home-search-field-wrap { flex-basis: 100%; }
+  .screen[data-type-scale="large"] .record-button { flex-basis: 100%; justify-content: center; }
+  .screen[data-type-scale="large"] .home-index span { font-size: 11px; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <h1>home-actions — Option A: one bottom bar, Notes-style (model a, filter in place)</h1>
+  <button class="theme-toggle" onclick="toggleDocTheme()">Toggle reading mode</button>
+</div>
+<p class="doc-note">
+  Design prototype, not production code. <code>home-search-field</code> and
+  <code>record-button</code> share one <code>home-bottom-bar</code>, the arrangement
+  iOS 26 Notes/Mail/Messages/Contacts already use at the bottom of their own lists
+  (brief §5). Typing filters <code>profile-list</code> in place for free, using the
+  same name/word match as <code>ask</code> (R4) — nothing here ever calls Claude or
+  OpenAI (R3). The rig below drives the phone frame; it is not part of the design.
+</p>
+
+<div class="rig">
+  <fieldset>
+    <legend>people</legend>
+    <button data-people="20" class="active">20 people</button>
+    <button data-people="0">No one yet</button>
+  </fieldset>
+  <fieldset>
+    <legend>connection</legend>
+    <button data-conn="online" class="active">Online</button>
+    <button data-conn="offline">Offline</button>
+  </fieldset>
+  <fieldset>
+    <legend>search</legend>
+    <button data-query="rest" class="active">Resting</button>
+    <button data-query="focus-empty">Focused, empty</button>
+    <button data-query="pri">Typed "Pri"</button>
+    <button data-query="greyhound">Typed "greyhound"</button>
+  </fieldset>
+  <fieldset>
+    <legend>keyboard</legend>
+    <button data-kb="down" class="active">Down</button>
+    <button data-kb="up">Up</button>
+  </fieldset>
+  <fieldset>
+    <legend>dynamic type</legend>
+    <button data-type="normal" class="active">Normal</button>
+    <button data-type="large">Largest accessibility size</button>
+  </fieldset>
+  <fieldset>
+    <legend>nav-bar-back (#4)</legend>
+    <button data-screen="home" class="active">home (root, no back)</button>
+    <button data-screen="pushed">pushed screen, e.g. profile</button>
+  </fieldset>
+</div>
+
+<div class="stage">
+  <div class="frame">
+    <div class="screen" id="screen">
+      <div class="ios-status-bar"><span>9:41</span><span>⚫︎⚫︎⚫︎ 🔋</span></div>
+      <div class="nav-bar">
+        <div class="nav-bar-back" id="back-slot">
+          <div class="nav-bar-back-glass" id="back-glass"></div>
+          <span class="nav-bar-back-chevron">‹</span>
+        </div>
+        <span class="nav-bar-title" id="title">andy</span>
+        <div class="nav-bar-action-right" aria-label="Settings" role="button" title="Settings — opens settings">
+          <div class="gearshape"></div>
+        </div>
+      </div>
+      <div class="nav-bar-glass-note" id="glass-note" style="display:none">
+        <strong>nav-bar-back--glass:</strong> the Liquid Glass circle behind ‹ is
+        drawn by iOS 26 itself. <code>hidesSharedBackground</code> (RNS 4.26.2)
+        only applies to custom left/right items, never the system back button —
+        confirmed against Apple's own forum report. Not removable without giving
+        up the native long-press back menu (R13). The bubble stays.
+      </div>
+
+      <div class="content" id="content">
+        <div class="offline-copy-line" id="offline-line" style="display:none">Offline — showing what Andy had at 3:40 PM.</div>
+
+        <div class="briefing-card" id="briefing">
+          <p class="briefing-card-title">Nothing coming up</p>
+          <p class="briefing-card-body">Connect your calendar and Andy will brief you before you walk in.</p>
+        </div>
+
+        <div class="list-wrap" id="list-wrap">
+          <ol class="profile-list" id="profile-list"></ol>
+          <div class="home-index" id="home-index"></div>
+        </div>
+
+        <div class="home-ask-row" id="ask-row" style="display:none"></div>
+
+        <div class="empty-state" id="empty-state" style="display:none">No one yet — tap record to remember your first person.</div>
+      </div>
+
+      <div class="home-bottom-bar" id="bottom-bar">
+        <div class="home-search-field-wrap" id="field-wrap">
+          <div class="search-glass"></div>
+          <input class="home-search-field" id="search-input" placeholder="Find a name or a word" readonly>
+          <div class="clear-search-button" id="clear-btn" style="display:none">✕</div>
+        </div>
+        <button class="cancel-search-button" id="cancel-btn" style="display:none">Cancel</button>
+        <button class="record-button" id="record-btn"><span class="mic-dot"></span>Record</button>
+      </div>
+
+      <div class="keyboard-overlay" id="kb-overlay"><p class="keyboard-overlay-label">(iOS keyboard)</p></div>
+    </div>
+  </div>
+
+  <div class="side-notes">
+    <h2>What this option is</h2>
+    <p>One <code>home-bottom-bar</code>, one row: <code>home-search-field</code>
+    (quiet, <code>edge</code>-ringed pill, placeholder "Find a name or a word" —
+    C1) flexes to fill the space, <code>record-button</code> stays a fixed-width
+    <code>moss</code> pill on the right carrying its own word, never just an icon
+    (R1). Jakob's law: this is the exact chrome shape of iOS 26 Notes, Mail,
+    Messages and Contacts (brief §5) — nothing to learn.</p>
+
+    <h2>Typing (R3/R4/R6)</h2>
+    <p>Focusing the field (even empty) enters search mode: <code>briefing-card</code>,
+    <code>home-index</code> and <code>home-letter-heading</code> hide (R6),
+    <code>record-button</code> steps aside and a <code>cancel-search-button</code>
+    appears (R8 — "Record may step aside… Cancel or an empty field brings it
+    back"). Typing "Pri" filters to both Priya Kapoor and Priya Shah — one
+    matching rule, nothing merged (R4). "greyhound" matches by a word inside
+    Grace Oyelaran's and Derek Nakamura's own details, not just names.
+    <code>home-ask-row</code> sits under the results, labelled with the live
+    query (C4) — a plain-text row, not styled like the field, so "Ask Andy"
+    and "find a name" never look like the same control (brief §4).</p>
+    <span class="vo">VoiceOver order: nav bar (title, Settings) → list content →
+    home-search-field → home-ask-row → record-button, matching iOS bottom chrome
+    (brief §9).</span>
+
+    <h2>Offline (R5)</h2>
+    <p>The field and filtering keep working — nothing about name/word search
+    needs a connection. <code>home-ask-row</code> switches to C6, in words, not a
+    dead control: "Asking needs a connection. Names and words still work."</p>
+
+    <h2>#4 — the back bubble</h2>
+    <p>Toggle "pushed screen" above. <code>nav-bar-back</code> already lost its
+    text label in copy-build-4 (chevron alone). The <strong>glass circle</strong>
+    behind that chevron is a separate, newer iOS 26 default and — checked against
+    <code>node_modules/react-native-screens</code> 4.26.2's own types —
+    <strong>not removable</strong>: <code>hidesSharedBackground</code> is typed to
+    "right"/"left" subviews only, never the back item, which matches the Apple
+    forum report the brief cites. A custom left item could in principle drop the
+    glass, but iOS 26 gives every bar item its own glass by default regardless —
+    and it would forfeit the native long-press back menu R13 requires, which is
+    generated from the system back item and cannot be reattached to a custom one
+    without hand-building it. Recommendation: accept the bubble (option iii) —
+    the only way around it is a fully custom-drawn header, a separate, larger
+    decision this brief doesn't need to make.</p>
+
+    <h2>Accessibility</h2>
+    <ul style="padding-left:18px; margin:6px 0;">
+      <li><code>home-search-field</code>'s only edge is <code>colors.edge</code> on
+      <code>paper</code>, 3.2:1 (WCAG 1.4.11) — reused, not new.</li>
+      <li><code>record-button</code>, <code>cancel-search-button</code>,
+      <code>clear-search-button</code> are each 44×44pt minimum; the field itself
+      is 44pt tall.</li>
+      <li>Toggle "largest accessibility size": the bar wraps to two rows rather
+      than truncating "Record" — R7's "labels wrap and never truncate" rule.</li>
+      <li><code>home-index</code> ends above the bar with room to spare at normal
+      type; at the largest size the bar grows ~24pt taller, which is the
+      measurement to re-check on device with the real <code>home-index</code>
+      component (not simulated precisely here) against 27 letters (R7).</li>
+      <li>Reduce Motion: entering/leaving search mode crossfades the bar's
+      contents rather than sliding, per STYLE's reduced-motion rule.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+  const PEOPLE = [
+    {name:"Amara Osei", meta:"friend · 3 notes · 2026-09-20", detail:"Training for a half marathon in spring."},
+    {name:"Ben Whitfield", meta:"colleague · 6 notes · 2026-10-01", detail:"Leading the Denver office move."},
+    {name:"Carla Jiménez", meta:"client · 2 notes · 2026-08-30", detail:"Wants the proposal by Friday."},
+    {name:"Derek Nakamura", meta:"friend · 5 notes · 2026-09-02", detail:"Just adopted a second greyhound, Mochi."},
+    {name:"Emily Santos", meta:"friend · 4 notes · 2026-10-05", detail:"Starting a pottery class on Tuesdays."},
+    {name:"Felix Grant", meta:"networking · 1 note · 2026-07-14", detail:"Met at the design meetup, works in fintech."},
+    {name:"Grace Oyelaran", meta:"foster · 8 notes · 2026-10-09", detail:"Fosters two greyhounds, looking for a third."},
+    {name:"Hassan Idris", meta:"client · 3 notes · 2026-09-28", detail:"Prefers calls over email."},
+    {name:"Isla Thompson", meta:"friend · 2 notes · 2026-06-19", detail:"Just moved to Lisbon."},
+    {name:"Jordan Lee", meta:"friend · 7 notes · 2026-10-11", detail:"Starting a new job at the shelter in March."},
+    {name:"Kavya Rao", meta:"colleague · 4 notes · 2026-09-15", detail:"Switching teams to the research group."},
+    {name:"Liam O'Connor", meta:"networking · 2 notes · 2026-08-02", detail:"Dog lover, works in logistics."},
+    {name:"Marcus Webb", meta:"friend · 9 notes · 2026-10-07", detail:"Training for his first marathon."},
+    {name:"Nina Petrov", meta:"client · 1 note · 2026-07-30", detail:"New to the city, asked for restaurant picks."},
+    {name:"Omar Farouk", meta:"friend · 3 notes · 2026-09-10", detail:"Opening a bakery downtown."},
+    {name:"Priya Kapoor", meta:"friend · 4 notes · 2026-10-02", detail:"She's fostering a second dog."},
+    {name:"Priya Shah", meta:"colleague · 7 notes · 2026-10-05", detail:"Starting a new job at the shelter in March."},
+    {name:"Quentin Ash", meta:"networking · 1 note · 2026-05-22", detail:"Met at the conference, works in logistics."},
+    {name:"Rosa Delgado", meta:"client · 5 notes · 2026-09-24", detail:"Renewing the contract in November."},
+    {name:"Sam Okafor", meta:"friend · 2 notes · 2026-08-18", detail:"Just got a rescue cat named Biscuit."}
+  ];
+  const INDEX_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ#".split("");
+
+  const state = { people: "20", conn: "online", query: "rest", kb: "down", type: "normal", screen: "home" };
+
+  function initials(name) {
+    const parts = name.split(" ");
+    return (parts[0][0] + (parts[parts.length - 1][0] || "")).toUpperCase();
+  }
+
+  function setState(patch) {
+    Object.assign(state, patch);
+    syncButtons();
+    render();
+  }
+  function syncButtons() {
+    const map = { people: 'people', conn: 'conn', query: 'query', kb: 'kb', type: 'type', screen: 'screen' };
+    for (const key in map) {
+      document.querySelectorAll('[data-' + map[key] + ']').forEach(b => b.classList.toggle('active', b.dataset[map[key]] === state[key]));
+    }
+  }
+
+  function matches(person, q) {
+    if (!q) return false;
+    const hay = (person.name + " " + person.detail).toLowerCase();
+    return hay.includes(q.toLowerCase());
+  }
+
+  function render() {
+    const screenEl = document.getElementById('screen');
+    screenEl.setAttribute('data-type-scale', state.type);
+
+    const searching = state.query !== 'rest';
+    const hasQuery = state.query === 'pri' || state.query === 'greyhound';
+    const q = state.query === 'pri' ? 'Pri' : state.query === 'greyhound' ? 'greyhound' : '';
+    const noPeople = state.people === '0';
+
+    // nav bar back / glass
+    const pushed = state.screen === 'pushed';
+    document.getElementById('back-slot').classList.toggle('hidden-el', !pushed);
+    document.getElementById('glass-note').style.display = pushed ? 'block' : 'none';
+    document.getElementById('title').textContent = pushed ? 'Jordan Lee' : 'andy';
+
+    // offline line
+    document.getElementById('offline-line').style.display = (state.conn === 'offline' && !searching) ? 'block' : 'none';
+
+    // briefing + list + empty
+    document.getElementById('briefing').style.display = (!searching && !noPeople) ? 'block' : 'none';
+    document.getElementById('list-wrap').style.display = (!noPeople) ? 'block' : 'none';
+    document.getElementById('empty-state').style.display = noPeople ? 'flex' : 'none';
+
+    const listEl = document.getElementById('profile-list');
+    const indexEl = document.getElementById('home-index');
+    listEl.innerHTML = '';
+    indexEl.innerHTML = '';
+
+    if (!noPeople) {
+      if (!searching) {
+        let lastLetter = '';
+        PEOPLE.forEach(p => {
+          const letter = p.name[0].toUpperCase();
+          if (letter !== lastLetter) {
+            const h = document.createElement('li');
+            h.className = 'home-letter-heading';
+            h.textContent = letter;
+            listEl.appendChild(h);
+            lastLetter = letter;
+          }
+          listEl.appendChild(rowEl(p, false));
+        });
+        INDEX_LETTERS.forEach(l => {
+          const s = document.createElement('span');
+          s.textContent = l;
+          indexEl.appendChild(s);
+        });
+      } else if (hasQuery) {
+        const found = PEOPLE.filter(p => matches(p, q));
+        found.forEach(p => listEl.appendChild(rowEl(p, true, q)));
+        if (found.length === 0) {
+          const li = document.createElement('li');
+          li.style.padding = '16px 0';
+          li.style.opacity = '0.7';
+          li.textContent = 'No one matches "' + q + '".';
+          listEl.appendChild(li);
+        }
+      }
+    }
+
+    // ask row
+    const askRow = document.getElementById('ask-row');
+    if (!searching || noPeople) {
+      askRow.style.display = 'none';
+    } else {
+      askRow.style.display = 'block';
+      askRow.classList.remove('is-button', 'is-offline');
+      if (state.conn === 'offline') {
+        askRow.classList.add('is-offline');
+        askRow.textContent = 'Asking needs a connection. Names and words still work.';
+      } else if (hasQuery) {
+        askRow.classList.add('is-button');
+        askRow.textContent = 'Ask Andy: "' + q + '"';
+      } else {
+        askRow.classList.add('is-button');
+        askRow.textContent = 'Ask Andy in your own words';
+      }
+    }
+
+    // search field / bottom bar
+    const input = document.getElementById('search-input');
+    input.value = hasQuery ? q : '';
+    input.placeholder = 'Find a name or a word';
+    document.getElementById('clear-btn').style.display = hasQuery ? 'flex' : 'none';
+    document.getElementById('cancel-btn').style.display = searching ? 'inline-block' : 'none';
+    document.getElementById('record-btn').style.display = searching ? 'none' : 'flex';
+    document.getElementById('field-wrap').style.flex = searching ? '1' : '1';
+    document.getElementById('bottom-bar').style.display = noPeople ? 'none' : 'flex';
+
+    // keyboard
+    document.getElementById('kb-overlay').classList.toggle('shown', state.kb === 'up');
+  }
+
+  function rowEl(p, showMatch, q) {
+    const li = document.createElement('li');
+    li.className = 'profile-row';
+    li.innerHTML =
+      '<div class="profile-row-avatar">' + initials(p.name) + '</div>' +
+      '<div class="profile-row-main">' +
+        '<div class="profile-row-name">' + p.name + '</div>' +
+        '<div class="profile-row-detail">' + p.detail + '</div>' +
+        '<div class="profile-row-meta">' + p.meta + '</div>' +
+        (showMatch && q && p.detail.toLowerCase().includes(q.toLowerCase()) && !p.name.toLowerCase().includes(q.toLowerCase())
+          ? '<div class="profile-row-match">matched by word in what you kept about them</div>' : '') +
+      '</div>';
+    return li;
+  }
+
+  document.querySelectorAll('[data-people]').forEach(b => b.onclick = () => setState({ people: b.dataset.people }));
+  document.querySelectorAll('[data-conn]').forEach(b => b.onclick = () => setState({ conn: b.dataset.conn }));
+  document.querySelectorAll('[data-query]').forEach(b => b.onclick = () => setState({ query: b.dataset.query }));
+  document.querySelectorAll('[data-kb]').forEach(b => b.onclick = () => setState({ kb: b.dataset.kb }));
+  document.querySelectorAll('[data-type]').forEach(b => b.onclick = () => setState({ type: b.dataset.type }));
+  document.querySelectorAll('[data-screen]').forEach(b => b.onclick = () => setState({ screen: b.dataset.screen }));
+  document.getElementById('cancel-btn').onclick = () => setState({ query: 'rest', kb: 'down' });
+  document.getElementById('clear-btn').onclick = () => setState({ query: 'focus-empty' });
+
+  function toggleDocTheme() {
+    const root = document.documentElement;
+    root.setAttribute('data-doc-theme', root.getAttribute('data-doc-theme') === 'dark' ? 'light' : 'dark');
+  }
+
+  render();
+</script>
+</body>
+</html>

@@ -1,0 +1,791 @@
+<!--
+  DESIGN PROTOTYPE — an HTML approximation of native `home` and `record`
+  screens for Andy, built to compare the three capture-doors models
+  (docs/design/decisions/capture-doors.md). Not production code — a design
+  prototype for the owner to pick from, not a screen to ship.
+
+  ONE interactive file, three models, one state rig:
+
+    M1  Chooser over a scrim.    Record's label becomes "New note"; tapping
+        it dims home and opens capture-menu — Record / Write / Photo, equal
+        weight. Voice = 2 taps (New note, then the Record item, which starts
+        listening at once).
+    M2  Voice first, doors beside.   Record keeps its word and starts
+        listening on one tap. A small, separate, honestly-labelled control
+        beside it ("Write or add a photo") opens the same menu shape, holding
+        only Write and Photo.
+    M3  Voice first, doors after.    Record keeps its word and opens `record`
+        already listening (one tap, after the first grant). Write and Photo
+        sit on the record screen itself as a quiet secondary row, visible
+        while listening; choosing one stops and discards the just-started,
+        empty recording first.
+
+  Shared by all three, not a model difference (see capture-doors.md
+  "Answered once"): one Photo item/control leading to a two-step sheet (Take
+  a photo / Choose a photo); a card's photo goes through the same words-check
+  step as any other picture; the Write door shows a visible system-style
+  Paste control beside its empty body; Photo while offline shows a notice
+  before any camera or picker opens, never after.
+
+  Tokens are declared as CSS variables, named the same as
+  src/constants/theme.ts, so this mock and the app cannot quietly drift
+  apart. Lora / IBM Plex Mono are not loaded here, so serif/monospace fall
+  back to a close system face. SF Symbols are approximated with small
+  CSS-drawn shapes — the real screen draws them with expo-symbols. The rig
+  above the phone frame, the "system" permission sheet, and the VoiceOver
+  order badges are mock-only tooling, not part of the design. The home list
+  is a few rows only, to keep the focus on the bottom chrome and the doors,
+  which is what this brief decides — home's own list layout is already
+  shipped and unchanged by anything here.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>capture-doors — M1 / M2 / M3</title>
+<style>
+  :root {
+    /* --- app tokens, named as src/constants/theme.ts (confirmed values) --- */
+    --color-ink: #2A2622;
+    --color-paper: #E8E6DE;
+    --color-moss: #5C6B4F;
+    --color-brass: #B8935A;
+    --color-line: #B8B3A8;
+    --color-alert: #9F4C3B;
+    --color-placeholder: #63605A;
+    --color-edge: #857E6D;
+    --color-scrim: rgba(42, 38, 34, 0.42);
+    --space-xs: 4px; --space-sm: 8px; --space-md: 12px; --space-lg: 16px;
+    --space-xl: 24px; --space-xxl: 32px; --space-xxxl: 48px;
+    --text-xs: 12px; --text-sm: 13px; --text-md: 14px; --text-base: 15px;
+    --text-lg: 16px; --text-xl: 17px; --text-xxl: 18px;
+    --radius-control: 10px; --radius-card: 16px; --radius-pill: 999px;
+    --opacity-secondary: 0.8; --opacity-quiet: 0.7;
+    --size-avatar: 40px;
+    --font-display: Georgia, "Times New Roman", serif;   /* ~ Lora */
+    --font-utility: "Courier New", monospace;              /* ~ IBM Plex Mono */
+
+    /* --- doc chrome only (reading comfort, never the phone) --- */
+    --doc-bg: #d8d4c8; --doc-ink: #2A2622; --doc-quiet: #6f6a62;
+    --doc-rule: #cfcac0; --doc-card: #f6f4ee;
+  }
+  [data-doc-theme="dark"] {
+    --doc-bg: #1E1C19; --doc-ink: #ECE8E0; --doc-quiet: #A39D93;
+    --doc-rule: #3A3631; --doc-card: #26231F;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--doc-bg); color: var(--doc-ink); font-family: -apple-system, system-ui, sans-serif; margin: 0; padding: 24px; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .doc-note { max-width: 1120px; margin: 0 auto 16px; font-size: 13px; opacity: 0.82; line-height: 1.55; }
+  .top-bar { max-width: 1120px; margin: 0 auto 8px; display: flex; justify-content: space-between; align-items: baseline; }
+  .theme-toggle { font-size: 12px; background: none; border: 1px solid var(--doc-rule); border-radius: 6px; padding: 4px 8px; cursor: pointer; color: var(--doc-ink); }
+
+  .rig { max-width: 1120px; margin: 0 auto 20px; display: flex; flex-wrap: wrap; gap: 10px; }
+  .rig fieldset { border: 1px dashed var(--doc-rule); border-radius: 8px; padding: 8px 10px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .rig legend { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.6; }
+  .rig button { font-size: 12px; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--doc-rule); background: var(--doc-card); color: var(--doc-ink); cursor: pointer; }
+  .rig button.active { background: var(--color-moss); color: var(--color-paper); border-color: var(--color-moss); }
+  .rig button:disabled { opacity: 0.3; cursor: not-allowed; }
+  .rig fieldset.model-rig { border-color: var(--color-moss); }
+  .rig fieldset.model-rig button.active { background: var(--color-ink); border-color: var(--color-ink); }
+  .rig-note { max-width: 1120px; margin: -8px auto 16px; font-size: 12px; opacity: 0.75; font-style: italic; }
+
+  .stage { max-width: 1120px; margin: 0 auto; display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .frame { width: 390px; border-radius: 44px; background: #111; padding: 14px; box-shadow: 0 20px 50px rgba(0,0,0,0.35); flex-shrink: 0; position: sticky; top: 24px; }
+  .screen { background: var(--color-paper); color: var(--color-ink); border-radius: 32px; overflow: hidden; height: 844px; position: relative; display: flex; flex-direction: column; }
+  .ios-status-bar { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-size: 14px; font-weight: 600; flex-shrink: 0; }
+
+  /* nav bars */
+  .nav-bar { padding: 2px 16px 14px; border-bottom: 1px solid var(--color-line); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .nav-bar-title { font-family: var(--font-display); font-size: 20px; font-weight: 600; }
+  .nav-bar-title--record { font-family: inherit; font-size: var(--text-lg); font-weight: 600; }
+  .nav-bar-back { font-size: 24px; width: 44px; height: 44px; display: flex; align-items: center; }
+  .nav-bar-action-right { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
+  .nav-bar-spacer { width: 44px; height: 44px; }
+  .gearshape { width: 20px; height: 20px; border: 2px solid var(--color-ink); border-radius: 50%; }
+
+  .pane { display: none; flex: 1; flex-direction: column; position: relative; overflow: hidden; }
+  .pane.active { display: flex; }
+
+  /* -------- home pane -------- */
+  .home-content { flex: 1; overflow-y: auto; }
+  .briefing-card { margin: var(--space-lg); border-radius: var(--radius-card); background: var(--doc-card); border-left: 4px solid var(--color-brass); padding: var(--space-lg); }
+  .briefing-card-title { font-weight: 600; font-size: var(--text-lg); margin: 0 0 4px; }
+  .briefing-card-body { font-size: var(--text-base); opacity: var(--opacity-secondary); margin: 0; }
+  .profile-list { list-style: none; margin: 0; padding: 0 var(--space-lg); }
+  .profile-row { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) 0; min-height: 44px; border-bottom: 1px solid var(--color-line); }
+  .profile-row-avatar { width: var(--size-avatar); height: var(--size-avatar); border-radius: 50%; background: var(--color-moss); color: var(--color-paper); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: var(--text-base); flex-shrink: 0; }
+  .profile-row-main { flex: 1; min-width: 0; }
+  .profile-row-name { font-family: var(--font-display); font-size: var(--text-lg); line-height: 1.3; }
+  .profile-row-detail { font-size: var(--text-sm); opacity: var(--opacity-secondary); line-height: 1.3; }
+
+  .home-bottom-bar--notched { position: relative; background: var(--color-paper); border-top: 1px solid var(--color-line); flex-shrink: 0; padding: var(--space-xs) var(--space-lg) calc(var(--space-sm) + 20px); display: flex; flex-direction: column; align-items: center; gap: var(--space-sm); }
+  .bar-row { display: flex; align-items: center; justify-content: center; gap: var(--space-sm); width: 100%; margin-top: 36px; }
+  .home-search-field-wrap { flex: 1; display: flex; align-items: center; gap: var(--space-sm); border-radius: var(--radius-pill); height: 44px; padding: 0 var(--space-md); border: 1px solid var(--color-edge); background: var(--color-paper); min-width: 0; }
+  .search-glass { width: 13px; height: 13px; border: 2px solid var(--color-placeholder); border-radius: 50%; position: relative; flex-shrink: 0; }
+  .search-glass::after { content: ''; position: absolute; width: 6px; height: 2px; background: var(--color-placeholder); bottom: -3px; right: -4px; transform: rotate(45deg); border-radius: 1px; }
+  .home-search-field { border: none; background: none; outline: none; font-size: var(--text-base); color: var(--color-placeholder); flex: 1; min-width: 0; font-family: inherit; }
+
+  .record-button--round { position: absolute; left: 50%; top: 0; transform: translate(-50%, -50%); z-index: 3; width: 72px; height: 72px; border-radius: var(--radius-pill); border: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--color-paper); background: var(--color-moss); box-shadow: 0 4px 14px rgba(42,38,34,0.22); }
+  .record-button--round .mic-dot-lg { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--color-paper); }
+  .record-button--round .record-label { font-size: var(--text-xs); font-weight: 700; letter-spacing: 0.01em; line-height: 1; text-align: center; padding: 0 4px; }
+
+  .capture-more-button { background: var(--color-paper); border: 1px solid var(--color-edge); border-radius: var(--radius-pill); color: var(--color-ink); font-size: var(--text-sm); font-weight: 600; padding: 0 var(--space-md); height: 44px; display: flex; align-items: center; gap: 6px; cursor: pointer; flex-shrink: 0; white-space: nowrap; }
+  .capture-more-button .mini-icons { display: flex; gap: 2px; }
+  .capture-more-button .mini-pencil { width: 10px; height: 10px; border-bottom: 2px solid var(--color-ink); border-right: 2px solid var(--color-ink); transform: rotate(-45deg); }
+  .capture-more-button .mini-camera { width: 11px; height: 8px; border: 2px solid var(--color-ink); border-radius: 2px; }
+
+  /* -------- capture-menu (M1 / M2) -------- */
+  .capture-menu-overlay { position: absolute; inset: 0; background: var(--color-scrim); display: none; align-items: flex-end; justify-content: center; padding: 0 var(--space-lg) calc(var(--space-xxl) + 44px); z-index: 10; }
+  .capture-menu-overlay.shown { display: flex; }
+  .capture-menu { background: var(--color-paper); border-radius: var(--radius-card); width: 100%; padding: var(--space-sm); position: relative; }
+  .capture-menu-close { position: absolute; top: var(--space-sm); right: var(--space-sm); width: 36px; height: 36px; border-radius: 50%; background: var(--doc-card); display: flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer; z-index: 2; }
+  .capture-menu-item { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-md) var(--space-md) var(--space-md) var(--space-sm); min-height: 44px; cursor: pointer; border-radius: var(--radius-control); position: relative; }
+  .capture-menu-item.vo-focus { outline: 2px solid var(--color-moss); outline-offset: -2px; }
+  .capture-menu-item + .capture-menu-item { border-top: 1px solid var(--color-line); }
+  .capture-menu-icon { width: 40px; height: 40px; border-radius: 50%; background: var(--color-moss); color: var(--color-paper); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .capture-menu-icon .mic-dot-lg { width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--color-paper); }
+  .capture-menu-icon .pencil-glyph { width: 14px; height: 14px; border-bottom: 2px solid var(--color-paper); border-right: 2px solid var(--color-paper); transform: rotate(-45deg); }
+  .capture-menu-icon .camera-glyph { width: 16px; height: 11px; border: 2px solid var(--color-paper); border-radius: 2px; }
+  .capture-menu-item-main { display: flex; flex-direction: column; }
+  .capture-menu-item-word { font-size: var(--text-lg); font-weight: 600; }
+  .capture-menu-item-meta { font-size: var(--text-sm); opacity: var(--opacity-quiet); }
+  .vo-badge { position: absolute; left: -8px; top: -8px; width: 20px; height: 20px; border-radius: 50%; background: var(--color-alert); color: var(--color-paper); font-size: 11px; font-family: var(--font-utility); display: none; align-items: center; justify-content: center; z-index: 3; }
+  [data-vo="on"] .vo-badge { display: flex; }
+
+  /* -------- record-flow panes (ready / listening / typing / picture) -------- */
+  .rf-pane { flex: 1; display: flex; flex-direction: column; padding: var(--space-xl); gap: var(--space-lg); overflow-y: auto; }
+  .prompt-area { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 8px; }
+  .record-prompt { font-size: var(--text-base); opacity: var(--opacity-quiet); line-height: 1.5; }
+  .error-banner { color: var(--color-alert); font-size: var(--text-md); line-height: 1.4; text-align: center; }
+  .secondary-row { display: flex; justify-content: center; gap: 24px; flex-wrap: wrap; }
+  .secondary-link { background: none; border: none; color: var(--color-ink); opacity: var(--opacity-secondary); font-size: var(--text-base); padding: 12px 6px; min-height: 44px; cursor: pointer; }
+
+  .recording-indicator { background: var(--color-alert); color: var(--color-paper); border-radius: var(--radius-pill); padding: var(--space-md) var(--space-lg); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: var(--text-base); font-weight: 600; }
+  .recording-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--color-paper); }
+  @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+  .recording-indicator .recording-dot { animation: pulse-dot 1.8s ease-in-out infinite; }
+  .screen.no-motion .recording-indicator .recording-dot { animation: none; opacity: 1; }
+  .recording-time { font-family: var(--font-utility); }
+  .transcript-live { font-size: 18px; line-height: 1.5; text-align: left; align-self: stretch; }
+  .transcript-live .interim { opacity: var(--opacity-quiet); }
+  .done-pause-row { display: flex; align-items: center; gap: var(--space-md); }
+  .done-button { flex: 1; background: var(--color-moss); color: var(--color-paper); border-radius: var(--radius-pill); border: none; padding: 18px; font-size: 17px; font-weight: 600; min-height: 44px; cursor: pointer; }
+  .pause-button { background: none; border: 1px solid var(--color-edge); color: var(--color-ink); border-radius: var(--radius-pill); padding: 10px 16px; font-size: var(--text-sm); font-weight: 600; min-height: 44px; cursor: pointer; }
+  .mic-button { background: var(--color-moss); color: var(--color-paper); border-radius: var(--radius-pill); border: none; padding: 20px; width: 100%; font-size: 17px; font-weight: 600; min-height: 44px; cursor: pointer; }
+
+  .field { display: flex; flex-direction: column; gap: 8px; }
+  .field-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px; opacity: var(--opacity-quiet); }
+  .field-input { border: none; border-bottom: 1px solid var(--color-edge); background: none; font-size: 16px; color: var(--color-ink); padding: 8px 0; width: 100%; font-family: inherit; }
+  .field-input::placeholder { color: var(--color-placeholder); }
+  .body-field-wrap { position: relative; flex: 1; display: flex; flex-direction: column; }
+  .body-input { border: none; border-bottom: 1px solid var(--color-edge); background: none; font-size: 18px; line-height: 1.5; color: var(--color-ink); padding: 8px 68px 8px 0; width: 100%; font-family: inherit; min-height: 150px; resize: none; }
+  .body-input::placeholder { color: var(--color-placeholder); }
+  .body-input[readonly] { color: var(--color-ink); }
+  .lead { font-size: var(--text-base); opacity: 0.75; line-height: 1.5; }
+  .ios-paste-button { position: absolute; top: 8px; right: 0; background: var(--color-moss); color: var(--color-paper); border-radius: var(--radius-control); font-size: 13px; font-weight: 600; padding: 6px 10px; display: flex; align-items: center; gap: 4px; min-height: 32px; }
+  .ios-paste-button .paste-glyph { width: 10px; height: 10px; border: 2px solid var(--color-paper); border-radius: 2px; }
+
+  .offline-hint, .about-hint { font-size: var(--text-sm); opacity: var(--opacity-quiet); line-height: 1.4; }
+  .error-line { color: var(--color-alert); font-size: var(--text-md); line-height: 1.4; }
+  .read-button { background: var(--color-moss); color: var(--color-paper); border-radius: var(--radius-pill); border: none; padding: 18px; font-size: 17px; font-weight: 600; min-height: 44px; cursor: pointer; width: 100%; }
+
+  /* -------- sheets / dialogs (photo-source-dialog, photo-offline-notice) -------- */
+  .dialog-overlay { position: absolute; inset: 0; background: var(--color-scrim); display: none; align-items: center; justify-content: center; padding: 32px; z-index: 10; }
+  .dialog-overlay.shown { display: flex; }
+  .dialog-card { background: var(--color-paper); border-radius: var(--radius-card); padding: 24px; width: 100%; }
+  .dialog-title { font-size: 18px; font-weight: 600; margin: 0 0 8px; }
+  .dialog-body { font-size: var(--text-base); opacity: var(--opacity-secondary); margin: 0 0 16px; line-height: 1.4; }
+  .dialog-action { background: var(--color-moss); color: var(--color-paper); border: none; border-radius: var(--radius-pill); padding: 16px; width: 100%; font-size: 16px; font-weight: 600; margin-bottom: 8px; cursor: pointer; min-height: 44px; }
+  .dialog-cancel { background: none; border: none; color: var(--color-ink); opacity: var(--opacity-quiet); font-size: var(--text-base); width: 100%; padding: 10px; cursor: pointer; min-height: 44px; }
+
+  .ios-permission-sheet { position: absolute; left: 0; right: 0; bottom: 0; background: #d6d2c8; border-top: 1px solid var(--color-line); border-radius: 14px 14px 0 0; padding: var(--space-lg); display: none; z-index: 20; }
+  .ios-permission-sheet.shown { display: block; }
+  .ios-permission-sheet-title { font-weight: 700; font-size: var(--text-base); margin: 0 0 4px; }
+  .ios-permission-sheet-body { font-size: var(--text-sm); opacity: 0.85; margin: 0 0 var(--space-md); }
+  .ios-permission-sheet-actions { display: flex; gap: var(--space-sm); }
+  .ios-permission-sheet-actions button { flex: 1; padding: 10px; border-radius: var(--radius-control); border: none; font-size: var(--text-sm); font-weight: 600; min-height: 40px; }
+  .ios-allow { background: #2b6cde; color: #fff; }
+  .ios-dont { background: #c9c5b9; color: var(--color-ink); }
+
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+
+  .side-notes { flex: 1; min-width: 360px; font-size: 13px; line-height: 1.55; color: var(--doc-ink); }
+  .side-notes h2 { font-size: 14px; margin: 18px 0 6px; }
+  .side-notes h2:first-child { margin-top: 0; }
+  .side-notes h3 { font-size: 13px; margin: 12px 0 4px; }
+  .vo { font-family: var(--font-utility); font-size: 11.5px; background: var(--doc-card); border: 1px dashed var(--doc-rule); border-radius: 6px; padding: 5px 7px; display: block; margin-top: 4px; color: var(--doc-ink); }
+  .verdict { background: var(--doc-card); border-left: 3px solid var(--color-moss); border-radius: 6px; padding: 8px 10px; margin-top: 6px; }
+  .risk { background: var(--doc-card); border-left: 3px solid var(--color-alert); border-radius: 6px; padding: 8px 10px; margin-top: 6px; }
+  .compare-table { width: 100%; border-collapse: collapse; font-size: 11.5px; margin-top: 6px; }
+  .compare-table th, .compare-table td { border: 1px solid var(--doc-rule); padding: 5px 6px; text-align: left; vertical-align: top; }
+  .compare-table th { background: var(--doc-card); font-weight: 600; }
+
+  /* large dynamic type demo */
+  .screen[data-type-scale="large"] .nav-bar-title,
+  .screen[data-type-scale="large"] .nav-bar-title--record { font-size: 24px; }
+  .screen[data-type-scale="large"] .profile-row-name { font-size: 20px; }
+  .screen[data-type-scale="large"] .profile-row-detail { font-size: 15px; }
+  .screen[data-type-scale="large"] .home-search-field,
+  .screen[data-type-scale="large"] .record-prompt,
+  .screen[data-type-scale="large"] .lead,
+  .screen[data-type-scale="large"] .capture-menu-item-word,
+  .screen[data-type-scale="large"] .field-input,
+  .screen[data-type-scale="large"] .body-input,
+  .screen[data-type-scale="large"] .secondary-link { font-size: 19px; }
+  .screen[data-type-scale="large"] .record-button--round { width: auto; height: 56px; padding: 0 var(--space-lg); border-radius: var(--radius-pill); }
+  .screen[data-type-scale="large"] .record-button--round .record-label { font-size: 17px; }
+  .screen[data-type-scale="large"] .bar-row { flex-wrap: wrap; }
+  .screen[data-type-scale="large"] .capture-more-button { font-size: 16px; flex-basis: 100%; justify-content: center; margin-top: 4px; }
+  .screen[data-type-scale="large"] .secondary-row { flex-direction: column; align-items: stretch; gap: 2px; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <h1>capture-doors — M1 / M2 / M3, one mock</h1>
+  <button class="theme-toggle" onclick="toggleDocTheme()">Toggle reading mode</button>
+</div>
+<p class="doc-note">
+  Design prototype, not production code — an HTML approximation of native
+  <code>home</code> and <code>record</code> screens. Switch the <strong>model</strong>
+  first; the <strong>screen</strong> rig below it then shows that model's version
+  of the same state (some screen states only apply to one or two models — the
+  rig disables what doesn't apply and says why). Connection, mic permission,
+  Reduce Motion, Dynamic Type and a VoiceOver-order overlay are independent of
+  model and screen, and compose with either.
+</p>
+
+<div class="rig">
+  <fieldset class="model-rig">
+    <legend>model</legend>
+    <button data-model="m1" class="active">M1 — chooser</button>
+    <button data-model="m2">M2 — doors beside</button>
+    <button data-model="m3">M3 — doors after</button>
+  </fieldset>
+</div>
+<div class="rig">
+  <fieldset>
+    <legend>screen</legend>
+    <button data-screen="home" class="active">Home, at rest</button>
+    <button data-screen="menu">Menu open</button>
+    <button data-screen="ready">record--ready (first use)</button>
+    <button data-screen="listening">Listening</button>
+    <button data-screen="typing">Write — empty</button>
+    <button data-screen="typing-pasted">Write — pasted</button>
+    <button data-screen="typing-overlimit">Write — over the limit</button>
+    <button data-screen="photo-sheet">Photo — take / choose</button>
+    <button data-screen="photo-offline">Photo — offline notice</button>
+    <button data-screen="camera-prompt">First camera tap (system prompt)</button>
+    <button data-screen="camera-denied">Camera denied</button>
+    <button data-screen="picture-reading">Picture — reading</button>
+    <button data-screen="picture-words">record--picture (misread name)</button>
+    <button data-screen="picture-nowords">record--picture (no words found)</button>
+  </fieldset>
+</div>
+<p class="rig-note" id="rig-note"></p>
+<div class="rig">
+  <fieldset>
+    <legend>connection</legend>
+    <button data-conn="online" class="active">Online</button>
+    <button data-conn="offline">Offline</button>
+  </fieldset>
+  <fieldset>
+    <legend>mic permission</legend>
+    <button data-perm="granted" class="active">Granted</button>
+    <button data-perm="notasked">Not yet asked</button>
+    <button data-perm="denied">Denied</button>
+  </fieldset>
+  <fieldset>
+    <legend>voiceover order</legend>
+    <button data-vo="off" class="active">Hidden</button>
+    <button data-vo="on">Show order badges</button>
+  </fieldset>
+  <fieldset>
+    <legend>reduce motion</legend>
+    <button data-motion="normal" class="active">Normal</button>
+    <button data-motion="reduced">Reduce Motion</button>
+  </fieldset>
+  <fieldset>
+    <legend>dynamic type</legend>
+    <button data-type="normal" class="active">Normal</button>
+    <button data-type="large">Largest accessibility size</button>
+  </fieldset>
+</div>
+
+<div class="stage">
+  <div class="frame">
+    <div class="screen" id="screen">
+      <div class="ios-status-bar"><span>9:41</span><span>⚫︎⚫︎⚫︎ 🔋</span></div>
+
+      <!-- shared nav bar, content changes by pane -->
+      <div class="nav-bar" id="nav-bar">
+        <div class="nav-bar-spacer" id="nav-left"></div>
+        <span class="nav-bar-title" id="nav-title">andy</span>
+        <div class="nav-bar-action-right" id="nav-right" aria-label="Settings" role="button"><div class="gearshape"></div></div>
+      </div>
+
+      <!-- ============ HOME ============ -->
+      <div class="pane" id="pane-home">
+        <div class="home-content">
+          <div class="briefing-card">
+            <p class="briefing-card-title">Nothing coming up</p>
+            <p class="briefing-card-body">Connect your calendar and Andy will brief you before you walk in.</p>
+          </div>
+          <ul class="profile-list">
+            <li class="profile-row"><div class="profile-row-avatar">PK</div><div class="profile-row-main"><div class="profile-row-name">Priya Kapoor</div><div class="profile-row-detail">She's fostering a second dog.</div></div></li>
+            <li class="profile-row"><div class="profile-row-avatar">JL</div><div class="profile-row-main"><div class="profile-row-name">Jordan Lee</div><div class="profile-row-detail">Starting a new job at the shelter in March.</div></div></li>
+            <li class="profile-row"><div class="profile-row-avatar">DN</div><div class="profile-row-main"><div class="profile-row-name">Derek Nakamura</div><div class="profile-row-detail">Just adopted a second greyhound, Mochi.</div></div></li>
+          </ul>
+        </div>
+
+        <div class="home-bottom-bar--notched">
+          <button class="record-button--round" id="record-btn" title="Record">
+            <span class="mic-dot-lg"></span><span class="record-label" id="record-label">Record</span>
+          </button>
+          <div class="bar-row">
+            <div class="home-search-field-wrap">
+              <div class="search-glass"></div>
+              <input class="home-search-field" placeholder="Find a name or a word" readonly>
+            </div>
+            <button class="capture-more-button" id="more-btn" style="display:none">
+              <span class="mini-icons"><span class="mini-pencil"></span><span class="mini-camera"></span></span>
+              Write or add a photo
+            </button>
+          </div>
+        </div>
+
+        <!-- capture-menu, M1 (3 items) / M2 (2 items) -->
+        <div class="capture-menu-overlay" id="menu-overlay">
+          <div class="capture-menu" id="menu-card">
+            <div class="capture-menu-close" id="menu-close" role="button" aria-label="Close">✕</div>
+            <div id="menu-items"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ RECORD-READY (first use / denied) ============ -->
+      <div class="pane" id="pane-ready">
+        <div class="rf-pane">
+          <div class="prompt-area">
+            <p class="record-prompt" id="ready-prompt">Tap record. Say who it's about and what you want to remember.</p>
+          </div>
+          <div class="error-banner" id="ready-error" style="display:none"></div>
+          <button class="mic-button" id="ready-mic-btn">Record</button>
+          <div class="secondary-row" id="ready-secondary-row" style="display:none">
+            <button class="secondary-link">Write it instead</button>
+            <button class="secondary-link">Photo instead</button>
+          </div>
+        </div>
+        <div class="ios-permission-sheet" id="mic-permission-sheet">
+          <p class="ios-permission-sheet-title">"andy" Would Like to Access the Microphone</p>
+          <p class="ios-permission-sheet-body">Andy uses the microphone to record a voice note you choose to make.</p>
+          <div class="ios-permission-sheet-actions">
+            <button class="ios-dont" onclick="setState({perm:'denied'})">Don't Allow</button>
+            <button class="ios-allow" onclick="setState({perm:'granted', screen:'listening'})">Allow</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ LISTENING ============ -->
+      <div class="pane" id="pane-listening">
+        <div class="rf-pane">
+          <div class="recording-indicator">
+            <span class="recording-dot"></span>
+            <span>Recording</span>
+            <span class="recording-time">0:07</span>
+          </div>
+          <div class="transcript-live">Had coffee with <span class="interim">Priya just now</span></div>
+          <div class="done-pause-row">
+            <button class="done-button">Done</button>
+            <button class="pause-button">Pause</button>
+          </div>
+          <div class="secondary-row" id="listening-secondary-row" style="display:none">
+            <button class="secondary-link" onclick="setState({screen:'typing'})">Write it instead</button>
+            <button class="secondary-link" onclick="setState({screen:'photo-sheet'})">Photo instead</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ WRITE (record--typing) ============ -->
+      <div class="pane" id="pane-typing">
+        <div class="rf-pane">
+          <div class="field">
+            <label class="field-label">About who?</label>
+            <input class="field-input" placeholder="Their name (optional)">
+          </div>
+          <div class="field body-field-wrap" style="flex:1">
+            <label class="field-label">What do you want to remember?</label>
+            <textarea class="body-input" id="write-body" placeholder="Write or paste what you want to remember — one person's notes at a time."></textarea>
+            <div class="ios-paste-button" id="paste-btn"><span class="paste-glyph"></span>Paste</div>
+          </div>
+          <div class="offline-hint" id="write-offline-hint" style="display:none">You're offline. Andy will keep this note on this phone and read it when you're back online.</div>
+          <div class="error-line" id="write-error" style="display:none">That's a lot for one note. Andy keeps one person's notes to themselves — try splitting it into two.</div>
+          <button class="read-button" id="write-primary-btn">Let Andy read it</button>
+          <button class="secondary-link" style="align-self:center">Cancel</button>
+        </div>
+      </div>
+
+      <!-- ============ PHOTO SOURCE SHEET ============ -->
+      <div class="dialog-overlay" id="photo-sheet-overlay">
+        <div class="dialog-card">
+          <p class="dialog-title">Add a photo</p>
+          <p class="dialog-body">A card, a page of notes, or a screenshot.</p>
+          <button class="dialog-action" onclick="setState({screen:'camera-prompt'})">Take a photo</button>
+          <button class="dialog-action" style="margin-bottom:8px" onclick="setState({screen:'picture-reading'})">Choose a photo</button>
+          <button class="dialog-cancel" onclick="setState({screen:'home'})">Cancel</button>
+        </div>
+      </div>
+
+      <!-- ============ PHOTO OFFLINE NOTICE ============ -->
+      <div class="dialog-overlay" id="photo-offline-overlay">
+        <div class="dialog-card">
+          <p class="dialog-body" style="margin-bottom:20px">Reading a photo needs a connection. Take it with your Camera now and choose it here later, or write it instead.</p>
+          <button class="dialog-action" onclick="setState({screen:'typing'})">Write it instead</button>
+          <button class="dialog-cancel" onclick="setState({screen:'home'})">Cancel</button>
+        </div>
+      </div>
+
+      <!-- ============ SYSTEM CAMERA PERMISSION ============ -->
+      <div class="pane" id="pane-camera-prompt">
+        <div class="rf-pane">
+          <div class="prompt-area"><p class="record-prompt">Opening the camera…</p></div>
+        </div>
+        <div class="ios-permission-sheet shown">
+          <p class="ios-permission-sheet-title">"andy" Would Like to Access the Camera</p>
+          <p class="ios-permission-sheet-body">Andy uses the camera to photograph a card or a note you choose to add.</p>
+          <div class="ios-permission-sheet-actions">
+            <button class="ios-dont" onclick="setState({screen:'camera-denied'})">Don't Allow</button>
+            <button class="ios-allow" onclick="setState({screen:'picture-reading'})">Allow</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ CAMERA DENIED ============ -->
+      <div class="pane" id="pane-camera-denied">
+        <div class="rf-pane">
+          <div class="prompt-area"></div>
+          <div class="error-banner">Andy needs the camera to take a photo of a card or a note. You can turn it on in Settings.</div>
+          <button class="secondary-link" style="align-self:center" onclick="setState({screen:'typing'})">Write it instead</button>
+        </div>
+      </div>
+
+      <!-- ============ PICTURE READING ============ -->
+      <div class="pane" id="pane-picture-reading">
+        <div class="rf-pane">
+          <div class="prompt-area"><p class="record-prompt" id="reading-label">Reading the picture…</p></div>
+        </div>
+      </div>
+
+      <!-- ============ RECORD--PICTURE (words step) ============ -->
+      <div class="pane" id="pane-picture-words">
+        <div class="rf-pane">
+          <p class="lead" id="picture-lead">Is this what the picture says? Fix any name or word, then let Andy read it.</p>
+          <div class="field">
+            <label class="field-label">About who?</label>
+            <input class="field-input" placeholder="Their name (optional)">
+          </div>
+          <div class="field" style="flex:1">
+            <label class="field-label" id="picture-source-label">What the picture said</label>
+            <textarea class="body-input" id="picture-body"></textarea>
+          </div>
+          <div class="error-line" id="picture-nowords-line" style="display:none">Andy couldn't find any writing in that picture. Try one where the words are in focus.</div>
+          <button class="read-button" id="picture-primary-btn">Let Andy read it</button>
+          <button class="secondary-link" style="align-self:center">Record again</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="side-notes">
+    <h2>What this mock answers</h2>
+    <p>Model and screen compose independently: pick a model with the top rig,
+    then step through the same set of states underneath it. Any state that
+    doesn't apply to the current model is disabled in the screen rig, with a
+    one-line reason above the phone.</p>
+
+    <h2>M1 — Chooser over a scrim</h2>
+    <p>Record's label becomes <strong>"New note"</strong> (it can no longer say
+    "Record" once it opens a menu — one action, one name). Tapping it dims
+    <code>home</code> and opens <code>capture-menu</code> with three equal-weight
+    rows. Tapping the <strong>Record</strong> row closes the menu and starts
+    listening immediately — the only way voice stays at two taps rather than
+    three.</p>
+    <span class="vo">VoiceOver on open: focus moves straight to the Record row
+    (not Close) — "Record. Opens voice recording." · Write: "Write. Opens a
+    blank note." · Photo: "Photo. A card, a page of notes, a screenshot. Opens
+    photo options." · Close reachable by swipe or the two-finger-Z escape.</span>
+
+    <h2>M2 — Voice first, doors beside</h2>
+    <p>Record is untouched — same word, same shape, same position — and
+    starts listening on one tap. A small, quiet, separately-labelled
+    <code>capture-more-button</code> ("Write or add a photo") sits beside it
+    and opens the same menu shape, holding only Write and Photo. Because
+    Record keeps its single job, nobody who only means to write ever risks
+    meeting the microphone first.</p>
+    <span class="vo">VoiceOver on open: focus moves to Write (the first row in
+    this two-row menu), then Photo, then Close by escape.
+    <code>capture-more-button</code> itself: "Write or add a photo, button."</span>
+
+    <h2>M3 — Voice first, doors after</h2>
+    <p>Record is untouched on <code>home</code>. On a <strong>first-ever</strong>
+    tap (try "mic permission: not yet asked"), it opens <code>record--ready</code>
+    with Write-it-instead and Photo-instead already visible, and only asks for
+    the microphone — never auto-starting before that's answered. Once granted,
+    every later tap goes straight to <code>record--listening</code>. Tapping
+    either secondary link while listening stops and discards the just-started,
+    empty recording first (try "listening" with this model, then tap "Write
+    it instead").</p>
+    <div class="risk"><strong>Named cost, not hidden:</strong> after the first
+    grant, a returning user who only wants to write still taps Record first —
+    a live microphone briefly engages before they notice and tap away. Toggle
+    "mic permission: granted" + screen "listening" to feel this for yourself.</div>
+
+    <h2>Shared across all three (not a model difference)</h2>
+    <ul style="padding-left:18px; margin:6px 0;">
+      <li><strong>Photo, one item, two steps.</strong> Every model's Photo
+      door opens the same <code>photo-source-dialog</code> — Take a photo /
+      Choose a photo — reusing today's <code>scan-card-button</code>
+      mechanism.</li>
+      <li><strong>Every photo goes through its words first.</strong> A card's
+      OCR misreads a name the way speech mishears one, so a card now lands on
+      <code>record--picture</code> too, not a direct save — one law for every
+      picture (try "record--picture (misread name)").</li>
+      <li><strong>Paste is visible.</strong> The empty Write body shows a
+      system-style <code>ClipboardPasteButton</code> beside the placeholder —
+      additive to the normal long-press edit menu, not a replacement for it.</li>
+      <li><strong>Photo offline says so first.</strong> Toggle "connection:
+      offline" then tap into the Photo door (M1/M2: via the menu; M3: via
+      "Photo instead") — a notice appears before any camera or picker, never
+      a picker that opens and then fails.</li>
+    </ul>
+
+    <h2>Tap counts, from <code>home</code> at rest</h2>
+    <table class="compare-table">
+      <tr><th>Door</th><th>M1</th><th>M2</th><th>M3</th></tr>
+      <tr><td>Voice</td><td>2</td><td><strong>1</strong></td><td><strong>1</strong> (after first grant)</td></tr>
+      <tr><td>Write</td><td>2</td><td>2</td><td>2, with a brief live mic first</td></tr>
+      <tr><td>Photo (camera)</td><td>3</td><td>3</td><td>3, same live-mic cost</td></tr>
+      <tr><td>Photo (library)</td><td>3</td><td>3</td><td>3, same cost</td></tr>
+      <tr><td>Paste</td><td colspan="3">reach Write (above) + the system paste gesture or button — not a separate door (R6)</td></tr>
+    </table>
+
+    <h2>Recommendation</h2>
+    <p><strong>M2.</strong> It is the only option that reaches one-tap voice
+    without M3's recurring live-mic cost on Write, and the only one that
+    leaves both <code>home-actions.md</code> and <code>record-flow.md</code>
+    — finished hours before this brief — completely untouched. M1 is the
+    right call if the owner weighs "every door equally visible" above the
+    one-tap speed-up and accepts renaming "Record"; it is the owner's own
+    first idea, built here in full rather than argued out of. M3 is not
+    recommended: its first-use fix genuinely works, but the cost it
+    reintroduces on every later Write is real and recurring, not an edge
+    case — see the full write-up in <code>capture-doors.md</code>.</p>
+
+    <h2>Accessibility, shared across all three</h2>
+    <ul style="padding-left:18px; margin:6px 0;">
+      <li><strong>Targets:</strong> every menu row, the close control, the
+      secondary links and <code>capture-more-button</code> are at least
+      44×44pt, independent of label length.</li>
+      <li><strong>No icon-only commands:</strong> every menu row shows its
+      word; the icon is decoration beside it, never the only cue.</li>
+      <li><strong>Reduce Motion</strong> (toggle above): the menu crossfades
+      only — no fan-out, no spring. The recording dot's pulse freezes.</li>
+      <li><strong>Dynamic Type</strong> (toggle above): menu rows wrap, never
+      truncate; <code>capture-more-button</code> (M2) drops to its own row
+      under Record; M3's two secondary links stack vertically.</li>
+      <li><strong>Contrast:</strong> no new pairings — <code>scrim</code>,
+      <code>edge</code>, <code>placeholder</code>, <code>moss</code>/<code>paper</code>
+      and the one named <code>alert</code> exception (the recording
+      indicator) only.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+  const state = { model: 'm1', screen: 'home', conn: 'online', perm: 'granted', vo: 'off', motion: 'normal', type: 'normal' };
+
+  const SCREEN_APPLIES = {
+    home: () => true,
+    menu: m => m !== 'm3',
+    ready: m => m === 'm3',
+    listening: () => true,
+    typing: () => true,
+    'typing-pasted': () => true,
+    'typing-overlimit': () => true,
+    'photo-sheet': () => true,
+    'photo-offline': () => true,
+    'camera-prompt': () => true,
+    'camera-denied': () => true,
+    'picture-reading': () => true,
+    'picture-words': () => true,
+    'picture-nowords': () => true,
+  };
+  const SCREEN_NOTE = {
+    menu: { m3: "M3 has no scrim menu at all — Write and Photo live on the record screen itself. Showing 'listening' instead." },
+    ready: { m1: "M1's menu item for Record starts listening directly; there's no intermediate record--ready to show.", m2: "M2's Record button starts listening directly on tap; there's no intermediate record--ready to show." },
+  };
+
+  function setState(patch) {
+    Object.assign(state, patch);
+    syncButtons();
+    render();
+  }
+  function syncButtons() {
+    const map = { model: 'model', screen: 'screen', conn: 'conn', perm: 'perm', vo: 'vo', motion: 'motion', type: 'type' };
+    for (const key in map) {
+      document.querySelectorAll('[data-' + map[key] + ']').forEach(b => b.classList.toggle('active', b.dataset[map[key]] === state[key]));
+    }
+  }
+
+  function menuItemsHtml(model) {
+    const voice = '<div class="capture-menu-item" id="item-voice" onclick="pickMenuItem(\'voice\')">'
+      + '<div class="vo-badge">1</div>'
+      + '<div class="capture-menu-icon"><span class="mic-dot-lg"></span></div>'
+      + '<div class="capture-menu-item-main"><span class="capture-menu-item-word">Record</span></div></div>';
+    const write = '<div class="capture-menu-item" id="item-write" onclick="pickMenuItem(\'write\')">'
+      + '<div class="vo-badge" id="write-badge">1</div>'
+      + '<div class="capture-menu-icon"><span class="pencil-glyph"></span></div>'
+      + '<div class="capture-menu-item-main"><span class="capture-menu-item-word">Write</span></div></div>';
+    const photo = '<div class="capture-menu-item" id="item-photo" onclick="pickMenuItem(\'photo\')">'
+      + '<div class="vo-badge" id="photo-badge">2</div>'
+      + '<div class="capture-menu-icon"><span class="camera-glyph"></span></div>'
+      + '<div class="capture-menu-item-main"><span class="capture-menu-item-word">Photo</span><span class="capture-menu-item-meta">a card, a page of notes, a screenshot</span></div></div>';
+    if (model === 'm1') { document.getElementById('menu-items') && null; return voice + write + photo; }
+    return write + photo; // m2
+  }
+
+  function pickMenuItem(which) {
+    if (which === 'voice') { setState({ screen: 'listening' }); return; }
+    if (which === 'write') { setState({ screen: 'typing' }); return; }
+    if (which === 'photo') { setState({ screen: state.conn === 'offline' ? 'photo-offline' : 'photo-sheet' }); return; }
+  }
+
+  function render() {
+    const screenEl = document.getElementById('screen');
+    screenEl.setAttribute('data-type-scale', state.type);
+    screenEl.setAttribute('data-vo', state.vo);
+    screenEl.classList.toggle('no-motion', state.motion === 'reduced');
+
+    // resolve applicability
+    let screen = state.screen;
+    const applies = SCREEN_APPLIES[screen] ? SCREEN_APPLIES[screen](state.model) : true;
+    const note = SCREEN_NOTE[screen] && SCREEN_NOTE[screen][state.model];
+    document.getElementById('rig-note').textContent = note || '';
+    document.querySelectorAll('[data-screen]').forEach(b => {
+      const ok = SCREEN_APPLIES[b.dataset.screen] ? SCREEN_APPLIES[b.dataset.screen](state.model) : true;
+      b.disabled = !ok;
+    });
+    if (!applies) {
+      screen = screen === 'menu' ? 'listening' : (screen === 'ready' ? 'home' : screen);
+    }
+
+    // home button label + secondary control
+    document.getElementById('record-label').textContent = state.model === 'm1' ? 'New note' : 'Record';
+    document.getElementById('more-btn').style.display = state.model === 'm2' ? 'flex' : 'none';
+    document.getElementById('record-btn').onclick = () => {
+      if (state.model === 'm1') { setState({ screen: 'menu' }); return; }
+      if (state.model === 'm2') { setState({ screen: 'listening' }); return; }
+      // m3
+      if (state.perm === 'notasked') { setState({ screen: 'ready' }); }
+      else if (state.perm === 'denied') { setState({ screen: 'ready' }); }
+      else { setState({ screen: 'listening' }); }
+    };
+    document.getElementById('more-btn').onclick = () => setState({ screen: 'menu' });
+
+    // panes
+    const paneIds = ['home', 'ready', 'listening', 'typing', 'camera-prompt', 'camera-denied', 'picture-reading', 'picture-words'];
+    const paneFor = {
+      home: 'home', menu: 'home', ready: 'ready', listening: 'listening',
+      typing: 'typing', 'typing-pasted': 'typing', 'typing-overlimit': 'typing',
+      'photo-sheet': 'home', 'photo-offline': 'home',
+      'camera-prompt': 'camera-prompt', 'camera-denied': 'camera-denied',
+      'picture-reading': 'picture-reading',
+      'picture-words': 'picture-words', 'picture-nowords': 'picture-words',
+    };
+    document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+    document.getElementById('pane-' + paneFor[screen]).classList.add('active');
+
+    // nav bar
+    const onHome = paneFor[screen] === 'home';
+    document.getElementById('nav-title').classList.toggle('nav-bar-title--record', !onHome);
+    document.getElementById('nav-title').textContent = onHome ? 'andy' : 'New note';
+    document.getElementById('nav-left').innerHTML = onHome ? '' : '<span class="nav-bar-back">‹</span>';
+    document.getElementById('nav-right').style.visibility = onHome ? 'visible' : 'hidden';
+
+    // menu overlay
+    const menuOpen = screen === 'menu';
+    document.getElementById('menu-overlay').classList.toggle('shown', menuOpen);
+    if (menuOpen) {
+      document.getElementById('menu-items').innerHTML = menuItemsHtml(state.model);
+      if (state.model === 'm1') {
+        document.getElementById('write-badge') && (document.getElementById('write-badge').textContent = '2');
+        document.getElementById('photo-badge') && (document.getElementById('photo-badge').textContent = '3');
+      }
+      document.getElementById('menu-close').onclick = () => setState({ screen: 'home' });
+    }
+
+    // ready pane (M3 first-use / denied)
+    const permSheetUp = screen === 'ready' && state.perm === 'notasked';
+    document.getElementById('mic-permission-sheet').classList.toggle('shown', permSheetUp);
+    document.getElementById('ready-secondary-row').style.display = state.model === 'm3' ? 'flex' : 'none';
+    document.getElementById('ready-mic-btn').textContent = permSheetUp ? 'Starting…' : 'Record';
+    document.getElementById('ready-mic-btn').onclick = () => setState({ screen: 'listening' });
+    document.getElementById('ready-error').style.display = state.perm === 'denied' ? 'block' : 'none';
+    document.getElementById('ready-error').textContent = "Andy needs the microphone and speech recognition to take a voice note. Turn them on in Settings, or write it instead.";
+    document.getElementById('ready-prompt').style.display = state.perm === 'denied' ? 'none' : 'block';
+    document.querySelectorAll('#pane-ready .secondary-link')[0].onclick = () => setState({ screen: 'typing' });
+    document.querySelectorAll('#pane-ready .secondary-link')[1].onclick = () => setState({ screen: state.conn === 'offline' ? 'photo-offline' : 'photo-sheet' });
+
+    // listening pane
+    document.getElementById('listening-secondary-row').style.display = state.model === 'm3' ? 'flex' : 'none';
+
+    // typing pane
+    const writeBody = document.getElementById('write-body');
+    writeBody.value = screen === 'typing-pasted'
+      ? "Priya mentioned she's fostering a second dog now, a senior pit mix named Theo. Starting a new job at the shelter in March — she's excited but a little nervous about the commute."
+      : '';
+    document.getElementById('paste-btn').style.display = screen === 'typing-pasted' ? 'none' : 'flex';
+    document.getElementById('write-offline-hint').style.display = state.conn === 'offline' ? 'block' : 'none';
+    document.getElementById('write-error').style.display = screen === 'typing-overlimit' ? 'block' : 'none';
+    document.getElementById('write-primary-btn').textContent = state.conn === 'offline' ? 'Keep this note' : 'Let Andy read it';
+    document.getElementById('write-primary-btn').disabled = screen === 'typing-overlimit';
+    document.getElementById('write-primary-btn').style.opacity = screen === 'typing-overlimit' ? '0.5' : '1';
+
+    // picture reading label
+    document.getElementById('reading-label').textContent = 'Reading the picture…';
+
+    // picture words / nowords
+    const noWords = screen === 'picture-nowords';
+    document.getElementById('picture-nowords-line').style.display = noWords ? 'block' : 'none';
+    document.getElementById('picture-body').style.display = noWords ? 'none' : 'block';
+    document.getElementById('picture-lead').style.display = noWords ? 'none' : 'block';
+    document.getElementById('picture-source-label').textContent = noWords ? '' : 'What the picture said';
+    document.getElementById('picture-body').value = noWords ? '' : "Had coffee w/ Moki — fostering a 2nd dog, new job @ shelter starting March.";
+    document.getElementById('picture-primary-btn').textContent = state.conn === 'offline' ? 'Keep this note' : 'Let Andy read it';
+    document.getElementById('picture-primary-btn').style.display = noWords ? 'none' : 'block';
+
+    // sheets
+    document.getElementById('photo-sheet-overlay').classList.toggle('shown', screen === 'photo-sheet');
+    document.getElementById('photo-offline-overlay').classList.toggle('shown', screen === 'photo-offline');
+  }
+
+  document.querySelectorAll('[data-model]').forEach(b => b.onclick = () => setState({ model: b.dataset.model, screen: 'home' }));
+  document.querySelectorAll('[data-screen]').forEach(b => b.onclick = () => { if (!b.disabled) setState({ screen: b.dataset.screen }); });
+  document.querySelectorAll('[data-conn]').forEach(b => b.onclick = () => setState({ conn: b.dataset.conn }));
+  document.querySelectorAll('[data-perm]').forEach(b => b.onclick = () => setState({ perm: b.dataset.perm }));
+  document.querySelectorAll('[data-vo]').forEach(b => b.onclick = () => setState({ vo: b.dataset.vo }));
+  document.querySelectorAll('[data-motion]').forEach(b => b.onclick = () => setState({ motion: b.dataset.motion }));
+  document.querySelectorAll('[data-type]').forEach(b => b.onclick = () => setState({ type: b.dataset.type }));
+
+  function toggleDocTheme() {
+    const root = document.documentElement;
+    root.setAttribute('data-doc-theme', root.getAttribute('data-doc-theme') === 'dark' ? 'light' : 'dark');
+  }
+
+  syncButtons();
+  render();
+</script>
+</body>
+</html>

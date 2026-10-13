@@ -1,0 +1,487 @@
+<!--
+  DESIGN PROTOTYPE — an HTML approximation of native `record` screens for
+  Andy, built to compare three options for the record-flow brief
+  (docs/design/decisions/record-flow.md, device QA #15/#16/#17/#21). This is
+  Option A — "Calm hierarchy, quiet field": the existing pill-button layout,
+  rebalanced so `mic-button` is the one dominant control and the two other
+  doors become plain text; `about-field` (new) appears on BOTH voice and
+  typing (brief R9, option a), rendered as an ordinary field exactly like
+  `review`'s Name/Tags fields, and a picked person becomes a visible,
+  editable field holding their name (R7, the "prefilled field" variant) with
+  a small Change link beneath it. Not production code.
+
+  Tokens are declared as CSS variables, named the same as
+  src/constants/theme.ts, so this mock and the app cannot quietly drift
+  apart. Lora / IBM Plex Mono are not loaded here, so serif/monospace
+  fall back to a close system face. The grey tooling above the phone frame
+  is mock-only — it does not exist on the real screen. Inside the frame,
+  the door, context, connection, about-field and busy/error states are
+  really interactive (tap the rig buttons), so the shape of the
+  transitions can be felt, not just read. The surrounding document page
+  (outside the phone) follows the reader's light/dark preference for
+  comfortable reading; the phone screen itself never does — V1 is light
+  mode only (STYLE.md), and every screen inside `.frame` stays `paper`/`ink`
+  regardless of the reading-mode toggle.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>record-flow — Option A: calm hierarchy, quiet field</title>
+<style>
+  :root {
+    /* --- app tokens, named as src/constants/theme.ts --- */
+    --color-ink: #2A2622;
+    --color-paper: #E8E6DE;
+    --color-moss: #5C6B4F;
+    --color-line: #B8B3A8;
+    --color-alert: #9F4C3B;
+    --color-placeholder: #63605A;
+    --color-edge: #857E6D;
+    --color-scrim: rgba(42, 38, 34, 0.42);
+    --space-xs: 4px; --space-sm: 8px; --space-md: 12px; --space-lg: 16px;
+    --space-xl: 24px; --space-xxl: 32px; --space-xxxl: 48px;
+    --text-xs: 12px; --text-sm: 13px; --text-md: 14px; --text-base: 15px;
+    --text-lg: 16px; --text-xl: 17px; --text-xxl: 18px;
+    --radius-control: 10px; --radius-card: 16px; --radius-pill: 999px;
+    --opacity-secondary: 0.8; --opacity-quiet: 0.7;
+    --font-display: Georgia, "Times New Roman", serif;   /* ~ Lora */
+    --font-utility: "Courier New", monospace;              /* ~ IBM Plex Mono */
+    /* --- doc chrome only (reading comfort, never the phone) --- */
+    --doc-bg: #d8d4c8; --doc-ink: #2A2622; --doc-quiet: #6f6a62;
+    --doc-rule: #cfcac0; --doc-card: #f6f4ee;
+  }
+  [data-doc-theme="dark"] {
+    --doc-bg: #1E1C19; --doc-ink: #ECE8E0; --doc-quiet: #A39D93;
+    --doc-rule: #3A3631; --doc-card: #26231F;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--doc-bg);
+    color: var(--doc-ink);
+    font-family: -apple-system, system-ui, sans-serif;
+    margin: 0;
+    padding: 24px;
+  }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .doc-note { max-width: 820px; margin: 0 auto 16px; font-size: 13px; opacity: 0.8; line-height: 1.5; }
+  .top-bar { max-width: 820px; margin: 0 auto 8px; display: flex; justify-content: space-between; align-items: baseline; }
+  .theme-toggle { font-size: 12px; background: none; border: 1px solid var(--doc-rule); border-radius: 6px; padding: 4px 8px; cursor: pointer; color: var(--doc-ink); }
+
+  .rig { max-width: 820px; margin: 0 auto 20px; display: flex; flex-wrap: wrap; gap: 10px; }
+  .rig fieldset { border: 1px dashed var(--doc-rule); border-radius: 8px; padding: 8px 10px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .rig legend { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.6; }
+  .rig button { font-size: 12px; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--doc-rule); background: var(--doc-card); color: var(--doc-ink); cursor: pointer; }
+  .rig button.active { background: var(--color-moss); color: var(--color-paper); border-color: var(--color-moss); }
+  .rig button:disabled { opacity: 0.35; cursor: default; }
+
+  .stage { max-width: 820px; margin: 0 auto; display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .frame { width: 390px; border-radius: 44px; background: #111; padding: 14px; box-shadow: 0 20px 50px rgba(0,0,0,0.35); flex-shrink: 0; }
+  .screen { background: var(--color-paper); color: var(--color-ink); border-radius: 32px; overflow: hidden; min-height: 844px; position: relative; display: flex; flex-direction: column; }
+  .ios-status-bar { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-size: 14px; font-weight: 600; flex-shrink: 0; }
+  .nav-bar { padding: 2px 20px 14px; border-bottom: 1px solid var(--color-line); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .nav-bar-back { font-size: 24px; width: 44px; height: 44px; display: flex; align-items: center; }
+  .nav-bar-title { font-size: var(--text-lg); font-weight: 600; }
+  .nav-bar-spacer { width: 44px; }
+
+  .side-notes { flex: 1; min-width: 280px; font-size: 13px; line-height: 1.55; color: var(--doc-ink); }
+  .side-notes h2 { font-size: 14px; margin: 18px 0 6px; }
+  .side-notes h2:first-child { margin-top: 0; }
+  .vo { font-family: var(--font-utility); font-size: 11.5px; background: var(--doc-card); border: 1px dashed var(--doc-rule); border-radius: 6px; padding: 5px 7px; display: block; margin-top: 4px; color: var(--doc-ink); }
+
+  .pane { display: none; flex: 1; flex-direction: column; padding: 24px; gap: 16px; overflow-y: auto; }
+  .pane.active { display: flex; }
+
+  /* ready / listening */
+  .prompt-area { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 8px; }
+  .record-prompt { font-size: var(--text-base); opacity: var(--opacity-quiet); line-height: 1.5; }
+  .transcript-live { font-size: 18px; line-height: 1.5; text-align: left; align-self: stretch; }
+  .transcript-live .interim { opacity: var(--opacity-quiet); }
+  .error-banner { color: var(--color-alert); font-size: var(--text-md); line-height: 1.4; }
+  .mic-button { background: var(--color-moss); color: var(--color-paper); border-radius: var(--radius-pill); border: none; padding: 20px; width: 100%; font-size: 17px; font-weight: 600; min-height: 44px; cursor: pointer; }
+  .mic-button:disabled { opacity: 0.5; cursor: default; }
+  .secondary-row { display: flex; justify-content: center; gap: 28px; }
+  .secondary-link { background: none; border: none; color: var(--color-ink); opacity: var(--opacity-secondary); font-size: var(--text-base); padding: 12px 4px; min-height: 44px; cursor: pointer; }
+  .start-over { background: none; border: none; color: var(--color-ink); opacity: var(--opacity-secondary); font-size: var(--text-base); text-align: center; min-height: 44px; cursor: pointer; }
+
+  /* fields, shared by typing + transcript, same shape as review's Field */
+  .field { display: flex; flex-direction: column; gap: 8px; }
+  .field-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px; opacity: var(--opacity-quiet); }
+  .field-input { border: none; border-bottom: 1px solid var(--color-edge); background: none; font-size: 16px; color: var(--color-ink); padding: 8px 0; width: 100%; font-family: inherit; }
+  .field-input::placeholder { color: var(--color-placeholder); }
+  .body-input { border: none; border-bottom: 1px solid var(--color-edge); background: none; font-size: 18px; line-height: 1.5; color: var(--color-ink); padding: 8px 0; width: 100%; font-family: inherit; min-height: 120px; resize: none; }
+  .body-input::placeholder { color: var(--color-placeholder); }
+  .lead { font-size: var(--text-base); opacity: 0.75; line-height: 1.5; }
+
+  .about-hint { font-size: var(--text-sm); opacity: var(--opacity-quiet); line-height: 1.4; }
+  .suggestion-list { display: flex; flex-direction: column; gap: 1px; margin-top: 2px; }
+  .suggestion-row { display: block; width: 100%; text-align: left; background: none; border: 1px solid var(--color-edge); border-radius: var(--radius-control); padding: 10px 12px; min-height: 44px; cursor: pointer; color: var(--color-ink); margin-bottom: 6px; }
+  .suggestion-row .name { font-size: var(--text-lg); display: block; }
+  .suggestion-row .meta { font-family: var(--font-utility); font-size: var(--text-xs); opacity: var(--opacity-quiet); display: block; margin-top: 2px; }
+  .declared-line { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .change-link { background: none; border: none; color: var(--color-moss); font-size: var(--text-sm); padding: 10px 0; min-height: 44px; cursor: pointer; }
+
+  .offline-hint { font-size: var(--text-md); opacity: var(--opacity-quiet); line-height: 1.4; }
+  .error-line { color: var(--color-alert); font-size: var(--text-md); line-height: 1.4; }
+  .read-button { background: var(--color-moss); color: var(--color-paper); border-radius: var(--radius-pill); border: none; padding: 18px; font-size: 17px; font-weight: 600; min-height: 44px; cursor: pointer; }
+  .read-button:disabled { opacity: 0.5; cursor: default; }
+
+  .card-reading { flex: 1; display: flex; align-items: center; justify-content: center; }
+
+  .dialog-overlay { position: absolute; inset: 0; background: var(--color-scrim); display: none; align-items: center; justify-content: center; padding: 32px; }
+  .dialog-overlay.shown { display: flex; }
+  .dialog-card { background: var(--color-paper); border-radius: var(--radius-card); padding: 24px; width: 100%; }
+  .dialog-title { font-size: 18px; font-weight: 600; margin: 0 0 8px; }
+  .dialog-body { font-size: var(--text-base); opacity: var(--opacity-secondary); margin: 0 0 16px; line-height: 1.4; }
+  .dialog-action { background: var(--color-moss); color: var(--color-paper); border: none; border-radius: var(--radius-pill); padding: 16px; width: 100%; font-size: 16px; font-weight: 600; margin-bottom: 8px; cursor: pointer; }
+  .dialog-cancel { background: none; border: none; color: var(--color-ink); opacity: var(--opacity-quiet); font-size: var(--text-base); width: 100%; padding: 10px; cursor: pointer; }
+
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <h1>record-flow — Option A: calm hierarchy, quiet field</h1>
+  <button class="theme-toggle" onclick="toggleDocTheme()">Toggle reading mode</button>
+</div>
+<p class="doc-note">
+  Design prototype, not production code. The rig below drives a real phone-sized
+  mock; it is not part of the design. <code>about-field</code> appears on both the
+  voice and the typing door (brief R9, option a), drawn as a plain field exactly
+  like every other field on this screen — nothing marks it as new or important,
+  which is the point: it is there to catch a misheard or unspoken name, not to be
+  looked at when nothing is wrong.
+</p>
+
+<div class="rig">
+  <fieldset>
+    <legend>door</legend>
+    <button data-door="ready" class="active">Ready</button>
+    <button data-door="listening">Listening</button>
+    <button data-door="typing">Typing</button>
+    <button data-door="transcript">Transcript</button>
+    <button data-door="card">Reading a card</button>
+  </fieldset>
+  <fieldset>
+    <legend>from</legend>
+    <button data-ctx="home" class="active">Home</button>
+    <button data-ctx="scoped">Jordan Lee's page</button>
+  </fieldset>
+  <fieldset>
+    <legend>connection</legend>
+    <button data-conn="online" class="active">Online</button>
+    <button data-conn="offline">Offline</button>
+  </fieldset>
+  <fieldset>
+    <legend>ready error</legend>
+    <button data-rerr="none" class="active">None</button>
+    <button data-rerr="denied">Mic &amp; speech denied</button>
+    <button data-rerr="nodevice">No on-device speech (offline)</button>
+  </fieldset>
+  <fieldset>
+    <legend>about who?</legend>
+    <button data-about="empty" class="active">Empty</button>
+    <button data-about="new">Typed "Priya" — new person</button>
+    <button data-about="many">Typed "Priya" — 2 matches</button>
+    <button data-about="picked">Picked: Priya Kapoor</button>
+  </fieldset>
+  <fieldset>
+    <legend>busy / error</legend>
+    <button data-busy="idle" class="active">Idle</button>
+    <button data-busy="reading">Reading…</button>
+    <button data-busy="failed">Read failed</button>
+    <button data-busy="gone">Picked person no longer exists</button>
+  </fieldset>
+  <fieldset>
+    <legend>leaving</legend>
+    <button data-dialog="hidden" class="active">Hidden</button>
+    <button data-dialog="shown">Preview "Discard this note?"</button>
+  </fieldset>
+</div>
+
+<div class="stage">
+  <div class="frame">
+    <div class="screen">
+      <div class="ios-status-bar"><span>9:41</span><span>⚫︎⚫︎⚫︎ 🔋</span></div>
+      <div class="nav-bar">
+        <span class="nav-bar-back">‹</span>
+        <span class="nav-bar-title">New note</span>
+        <span class="nav-bar-spacer"></span>
+      </div>
+
+      <!-- READY / LISTENING (one screen, two phases, as in the real app) -->
+      <div class="pane active" id="pane-ready">
+        <div class="prompt-area" id="ready-prompt-area">
+          <p class="record-prompt" id="ready-prompt">Tap record and say what you want to remember.</p>
+        </div>
+        <div id="ready-error" class="error-banner" style="display:none"></div>
+        <button class="mic-button" id="mic-btn" onclick="tapMic()">Record</button>
+        <button class="start-over" id="start-over-btn" style="display:none" onclick="void(0)">Start over</button>
+        <div class="secondary-row" id="ready-secondary-row">
+          <button class="secondary-link" onclick="setState({door:'card'})">Scan a business card</button>
+          <button class="secondary-link" onclick="setState({door:'typing', about: state.ctx==='scoped' ? 'picked' : state.about})">Type it instead</button>
+        </div>
+      </div>
+
+      <!-- TYPING -->
+      <div class="pane" id="pane-typing">
+        <div id="typing-heard-lead" style="display:none">
+          <p class="lead">Is this what you said? Fix any name or word, then let Andy read it.</p>
+        </div>
+
+        <div class="field">
+          <label class="field-label">About who?</label>
+          <div id="about-field-typing"></div>
+        </div>
+
+        <div class="field" style="flex:1">
+          <label class="field-label" id="body-label-typing">What do you want to remember?</label>
+          <textarea class="body-input" id="body-input" placeholder="Anything they told you — a few sentences or a quick list."></textarea>
+        </div>
+
+        <div id="typing-offline-hint" class="offline-hint" style="display:none">You're offline. Andy will keep this note on this phone and read it when you're back online.</div>
+        <div id="typing-error" class="error-line" style="display:none"></div>
+
+        <button class="read-button" id="typing-primary-btn" onclick="void(0)">Let Andy read it</button>
+        <button class="secondary-link" style="align-self:center" onclick="previewLeave('typed')">Cancel</button>
+      </div>
+
+      <!-- TRANSCRIPT -->
+      <div class="pane" id="pane-transcript">
+        <p class="lead">Is this what you said? Fix any name or word, then let Andy read it.</p>
+
+        <div class="field">
+          <label class="field-label">About who?</label>
+          <div id="about-field-transcript"></div>
+        </div>
+
+        <div class="field" style="flex:1">
+          <label class="field-label">What you said</label>
+          <textarea class="body-input" readonly>Had coffee with Priya just now — she's fostering a second dog and starting a new job at the shelter in March.</textarea>
+        </div>
+
+        <div id="transcript-offline-hint" class="offline-hint" style="display:none">You're offline. Andy will keep this note on this phone and read it when you're back online.</div>
+        <div id="transcript-error" class="error-line" style="display:none"></div>
+
+        <button class="read-button" id="transcript-primary-btn" onclick="void(0)">Let Andy read it</button>
+        <button class="secondary-link" style="align-self:center" onclick="previewLeave('heard')">Record again</button>
+      </div>
+
+      <!-- CARD -->
+      <div class="pane" id="pane-card">
+        <div class="card-reading"><p class="record-prompt">Reading the card…</p></div>
+      </div>
+
+      <div class="dialog-overlay" id="dialog-overlay">
+        <div class="dialog-card">
+          <p class="dialog-title">Discard this note?</p>
+          <p class="dialog-body" id="dialog-body">What you wrote won't be kept.</p>
+          <button class="dialog-action">Discard</button>
+          <button class="dialog-cancel" onclick="setState({dialog:'hidden'})">Keep editing</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="side-notes">
+    <h2>What this option is</h2>
+    <p>Only one thing changes on <code>record--ready</code>: <code>mic-button</code> keeps its
+    full-width pill but is the only filled control on screen; <code>scan-card-button</code>
+    and <code>type-instead-button</code> drop to plain text, side by side, below it.
+    Today's three stacked pills of near-equal weight become one pill and a quiet
+    row — the Von Restorff effect: the one thing drawn differently is the one
+    thing read as "the main thing to do".</p>
+
+    <h2>about-field</h2>
+    <p><code>about-field</code> is an ordinary field: same label style, same
+    underline, same placeholder colour as every other field in <code>review</code> —
+    recognition over recall, because the person has already learned this shape
+    there. It sits above the body on both doors (brief R9, option a), so a
+    misheard name can be fixed before anything is read, on voice as well as
+    typing.</p>
+    <span class="vo">VoiceOver: "About who? Optional." · suggestion row: "Priya Kapoor, friend · 4 notes · last 2026-10-02. Picks this person."</span>
+
+    <h2>Declared (R7)</h2>
+    <p>From Jordan Lee's page, the field itself holds "Jordan Lee" — still a real,
+    editable field, not a locked label — with a small <code>Change</code> link
+    beneath it. Editing the text directly un-declares it, exactly as R3 asks;
+    tapping Change re-opens the suggestion list without having to clear the text
+    by hand first.</p>
+
+    <h2>Accessibility</h2>
+    <ul style="padding-left:18px; margin:6px 0;">
+      <li><code>about-field</code>'s placeholder uses <code>colors.placeholder</code> on
+      <code>paper</code>, 5.0:1 — an existing pairing, nothing new.</li>
+      <li>Suggestion rows: <code>colors.edge</code> border, 3.2:1 (WCAG 1.4.11); each row
+      is a minimum of 44pt tall even when its label is one short name.</li>
+      <li>VoiceOver order: field label → field value → suggestion count ("2 people
+      found") → each suggestion row, in that order; the count is announced without
+      moving focus off the field, per brief §8.</li>
+      <li>Listening is said in words ("Stop" replaces "Record"; live words appear) —
+      no colour change on the mic button, unlike today's build, which turns it
+      <code>alert</code> red while listening. See the note at the foot of this
+      document.</li>
+    </ul>
+  </div>
+</div>
+
+<p class="doc-note" style="margin-top:24px; max-width:820px;">
+  <strong>A design-system note, not part of this option:</strong> the shipped
+  <code>record--listening</code> currently colours <code>mic-button</code> with
+  <code>colors.alert</code> while recording (<code>capture-screen.tsx</code>,
+  the <code>recording</code> style). STYLE.md reserves <code>alert</code> for
+  errors and the three earned deletions, and this brief's own layout guidance
+  (§6) says listening must be unmistakable <em>without</em> colour. This mock
+  (and the other two) show <code>mic-button--listening</code> in the same
+  <code>moss</code> as always, carrying the change in its label and the live
+  words alone — worth fixing in the same PR as whichever option ships.
+</p>
+
+<script>
+  const state = { door: 'ready', ctx: 'home', conn: 'online', rerr: 'none', about: 'empty', busy: 'idle', dialog: 'hidden' };
+
+  function setState(patch) {
+    Object.assign(state, patch);
+    syncButtons();
+    render();
+  }
+
+  function syncButtons() {
+    const map = { door: 'door', ctx: 'ctx', conn: 'conn', rerr: 'rerr', about: 'about', busy: 'busy', dialog: 'dialog' };
+    for (const key in map) {
+      document.querySelectorAll('[data-' + map[key] + ']').forEach(b => {
+        b.classList.toggle('active', b.dataset[map[key]] === state[key]);
+      });
+    }
+  }
+
+  function tapMic() {
+    if (state.rerr === 'denied') return; // typing door stays the escape
+    if (state.conn === 'offline' && state.rerr === 'nodevice') return;
+    setState({ door: 'listening' });
+  }
+
+  function previewLeave(kind) {
+    document.getElementById('dialog-body').textContent =
+      kind === 'typed' ? "What you wrote won't be kept." : "What Andy heard won't be kept.";
+    setState({ dialog: 'shown' });
+  }
+
+  function aboutFieldHtml(id) {
+    if (state.about === 'empty') {
+      return '<input class="field-input" placeholder="Their name (optional)" value="">';
+    }
+    if (state.about === 'new') {
+      return '<input class="field-input" value="Priya">'
+        + '<div class="about-hint" style="display:none"></div>';
+    }
+    if (state.about === 'many') {
+      return '<input class="field-input" value="Priya">'
+        + '<div class="about-hint">You\'ve written about 2 people called Priya. Pick one, or Andy will ask after reading.</div>'
+        + '<div class="suggestion-list">'
+        + '<button class="suggestion-row" onclick="setState({about:\'picked\'})"><span class="name">Priya Kapoor</span><span class="meta">friend · 4 notes · last 2026-10-02</span></button>'
+        + '<button class="suggestion-row" onclick="setState({about:\'picked\'})"><span class="name">Priya Shah</span><span class="meta">colleague · 7 notes · last 2026-10-05</span></button>'
+        + '</div>';
+    }
+    // picked / declared
+    const name = state.ctx === 'scoped' ? 'Jordan Lee' : 'Priya Kapoor';
+    return '<div class="declared-line">'
+      + '<input class="field-input" style="flex:1" value="' + name + '">'
+      + '</div>'
+      + '<button class="change-link" onclick="setState({about:\'empty\'})">Change</button>';
+  }
+
+  function render() {
+    document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+    const paneId = { ready: 'pane-ready', listening: 'pane-ready', typing: 'pane-typing', transcript: 'pane-transcript', card: 'pane-card' }[state.door];
+    document.getElementById(paneId).classList.add('active');
+
+    // ready / listening
+    const listening = state.door === 'listening';
+    document.getElementById('mic-btn').textContent = listening ? 'Stop' : 'Record';
+    document.getElementById('mic-btn').disabled = state.rerr === 'denied';
+    document.getElementById('ready-secondary-row').style.display = listening ? 'none' : 'flex';
+    document.getElementById('start-over-btn').style.display = listening ? 'block' : 'none';
+    document.getElementById('mic-btn').onclick = listening ? () => setState({ door: 'typing', about: 'new' }) : tapMic;
+
+    if (listening) {
+      document.getElementById('ready-prompt-area').innerHTML =
+        '<div class="transcript-live">Had coffee with <span class="interim">Priya just now</span></div>';
+      document.getElementById('ready-error').style.display = 'none';
+    } else {
+      const promptArea = document.getElementById('ready-prompt-area');
+      promptArea.innerHTML = '<p class="record-prompt" id="ready-prompt"></p>';
+      document.getElementById('ready-prompt').textContent = state.ctx === 'scoped'
+        ? "Tap record. This note goes to Jordan Lee, whoever else comes up."
+        : "Tap record. Say who it's about and what you want to remember.";
+      const errEl = document.getElementById('ready-error');
+      if (state.rerr === 'denied') {
+        errEl.style.display = 'block';
+        errEl.textContent = "Andy needs the microphone and speech recognition to take a voice note. Turn them on in Settings, or type it instead.";
+      } else if (state.conn === 'offline' && state.rerr === 'nodevice') {
+        errEl.style.display = 'block';
+        errEl.textContent = "Speech needs a connection for this language — type it instead.";
+      } else {
+        errEl.style.display = 'none';
+      }
+    }
+
+    // typing
+    document.getElementById('typing-heard-lead').style.display = state.door === 'typing' && state.rerr === 'listening-source' ? 'block' : 'none';
+    document.getElementById('about-field-typing').innerHTML = aboutFieldHtml('typing');
+    document.getElementById('body-label-typing').textContent = (state.about === 'picked')
+      ? ('What do you want to remember about ' + (state.ctx === 'scoped' ? 'Jordan Lee' : 'Priya Kapoor') + '?')
+      : 'What do you want to remember?';
+    document.getElementById('body-input').placeholder = (state.about === 'picked')
+      ? ('Anything ' + (state.ctx === 'scoped' ? 'Jordan Lee' : 'Priya Kapoor') + ' told you — a few sentences or a quick list.')
+      : 'Anything they told you — a few sentences or a quick list.';
+    document.getElementById('typing-offline-hint').style.display = state.conn === 'offline' ? 'block' : 'none';
+    const typingBtn = document.getElementById('typing-primary-btn');
+    const transcriptBtn = document.getElementById('transcript-primary-btn');
+    [ ['typing-error', typingBtn], ['transcript-error', transcriptBtn] ].forEach(([errId, btn]) => {
+      const errEl = document.getElementById(errId);
+      errEl.style.display = 'none';
+      btn.disabled = false;
+      if (state.conn === 'offline') {
+        btn.textContent = 'Keep this note';
+      } else if (state.busy === 'reading') {
+        btn.textContent = 'Reading…'; btn.disabled = true;
+      } else if (state.busy === 'failed') {
+        btn.textContent = 'Let Andy read it';
+        errEl.style.display = 'block'; errEl.textContent = "Andy couldn't make sense of that one. Try again.";
+      } else if (state.busy === 'gone') {
+        btn.textContent = 'Let Andy read it';
+        errEl.style.display = 'block';
+        errEl.textContent = (state.ctx === 'scoped' ? 'Jordan Lee' : 'Priya Kapoor') + " isn't in Andy any more. Pick someone else, or leave About who? empty.";
+      } else {
+        btn.textContent = 'Let Andy read it';
+      }
+    });
+
+    // transcript
+    document.getElementById('about-field-transcript').innerHTML = aboutFieldHtml('transcript');
+    document.getElementById('transcript-offline-hint').style.display = state.conn === 'offline' ? 'block' : 'none';
+
+    // dialog
+    document.getElementById('dialog-overlay').classList.toggle('shown', state.dialog === 'shown');
+  }
+
+  document.querySelectorAll('[data-door]').forEach(b => b.onclick = () => setState({ door: b.dataset.door }));
+  document.querySelectorAll('[data-ctx]').forEach(b => b.onclick = () => setState({ ctx: b.dataset.ctx }));
+  document.querySelectorAll('[data-conn]').forEach(b => b.onclick = () => setState({ conn: b.dataset.conn }));
+  document.querySelectorAll('[data-rerr]').forEach(b => b.onclick = () => setState({ rerr: b.dataset.rerr }));
+  document.querySelectorAll('[data-about]').forEach(b => b.onclick = () => setState({ about: b.dataset.about }));
+  document.querySelectorAll('[data-busy]').forEach(b => b.onclick = () => setState({ busy: b.dataset.busy }));
+  document.querySelectorAll('[data-dialog]').forEach(b => b.onclick = () => setState({ dialog: b.dataset.dialog }));
+
+  function toggleDocTheme() {
+    const root = document.documentElement;
+    root.setAttribute('data-doc-theme', root.getAttribute('data-doc-theme') === 'dark' ? 'light' : 'dark');
+  }
+
+  render();
+</script>
+</body>
+</html>

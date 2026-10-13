@@ -1,0 +1,887 @@
+<!--
+  DESIGN PROTOTYPE — an HTML approximation of native `home` for Andy. Not
+  production code — a design prototype for the owner to pick from, not a
+  screen to ship.
+
+  Follow-up to docs/design/mocks/home-actions-stacked.html. The owner chose
+  the stacked idea's **S1 arrangement** — record-button centred above a
+  full-width home-search-field, the field at the very bottom — redrawn with a
+  ROUND record-button (not the oval S1 explored before), and asked to see the
+  most beautiful, efficient and effective ways to *draw* that same
+  arrangement: four variants, same geometry, different material.
+
+    V-GLASS    Translucent / Liquid Glass (the owner's first idea). Round
+               Record + full-width field both float over profile-list via
+               expo-glass-effect's GlassView, the list running edge to edge
+               underneath. Approximated here with CSS backdrop-filter, the
+               closest web analogue to a native UIVisualEffectView/GlassView.
+    V-FADE     Paper panel, no blur: the list dissolves into solid paper
+               through a soft gradient mask (no transparency, no blur) as it
+               nears the bottom. Round Record sits on the opaque panel below.
+    V-NOTCHED  Solid paper bar, 1px top hairline, round Record overlapping
+               the bar's own top edge — a camera-shutter/notch read, fully
+               opaque, no new accessibility risk.
+    V-FLOATING Round Record and the field float free of any panel, each on
+               plain opaque paper with a soft shadow only — no glass, no
+               bar. Doubles as V-GLASS's Reduce Transparency fallback.
+
+  All four keep what the owner already approved upstream: model (a) —
+  home-search-field filters profile-list in place, free and offline — a
+  plain-text "Ask Andy: '{query}'" row for the paid step, and record-button
+  as the one worded, primary control (R1/R2 in home-actions.md). Only the
+  bottom chrome's *material* changes across the four; the geometry (Record
+  centred above the field, field at the very bottom) is fixed and shared.
+
+  Tokens are declared as CSS variables, named the same as
+  src/constants/theme.ts, so this mock and the app cannot quietly drift
+  apart. A second block below it holds the tokens this file is *proposing*
+  (glass tints, a shadow) — clearly marked, not yet in theme.ts or STYLE.md.
+  Lora / IBM Plex Mono are not loaded here, so serif/monospace fall back to a
+  close system face. SF Symbols are approximated with small CSS-drawn shapes
+  — the real screen draws them with expo-symbols. The rig above the phone
+  frame is mock-only tooling, not part of the design. Pixel figures in the
+  side notes are computed from this mock's own CSS, labelled as
+  approximations to confirm on device — the same caveat this project's other
+  mocks already carry for home-index at the largest Dynamic Type size.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>home-actions — S1, round Record — material options</title>
+<style>
+  :root {
+    /* --- app tokens, named as src/constants/theme.ts (confirmed values) --- */
+    --color-ink: #2A2622;
+    --color-paper: #E8E6DE;
+    --color-moss: #5C6B4F;
+    --color-brass: #B8935A;
+    --color-line: #B8B3A8;
+    --color-alert: #9F4C3B;
+    --color-placeholder: #63605A;
+    --color-edge: #857E6D;
+    --color-scrim: rgba(42, 38, 34, 0.42);
+    --space-xs: 4px; --space-sm: 8px; --space-md: 12px; --space-lg: 16px;
+    --space-xl: 24px; --space-xxl: 32px; --space-xxxl: 48px;
+    --text-xs: 12px; --text-sm: 13px; --text-md: 14px; --text-base: 15px;
+    --text-lg: 16px; --text-xl: 17px; --text-xxl: 18px;
+    --radius-control: 10px; --radius-card: 16px; --radius-pill: 999px;
+    --opacity-secondary: 0.8; --opacity-quiet: 0.7;
+    --size-avatar: 40px;
+    --font-display: Georgia, "Times New Roman", serif;   /* ~ Lora */
+    --font-utility: "Courier New", monospace;              /* ~ IBM Plex Mono */
+
+    /* --- PROPOSED tokens, not in theme.ts/STYLE.md yet — see side notes --- */
+    --color-glass-tint: rgba(232, 230, 222, 0.85);   /* paper @ .85 — colors.glassTint */
+    --color-glass-tint-moss: rgba(92, 107, 79, 0.84); /* moss @ .84 — colors.glassTintMoss */
+    --color-glass-tint-alert: rgba(159, 76, 59, 0.90); /* alert @ .90 — recording override, see notes */
+    --shadow-float: 0 4px 14px rgba(42, 38, 34, 0.22); /* shadow.float */
+
+    /* --- doc chrome only (reading comfort, never the phone) --- */
+    --doc-bg: #d8d4c8; --doc-ink: #2A2622; --doc-quiet: #6f6a62;
+    --doc-rule: #cfcac0; --doc-card: #f6f4ee;
+  }
+  [data-doc-theme="dark"] {
+    --doc-bg: #1E1C19; --doc-ink: #ECE8E0; --doc-quiet: #A39D93;
+    --doc-rule: #3A3631; --doc-card: #26231F;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--doc-bg); color: var(--doc-ink); font-family: -apple-system, system-ui, sans-serif; margin: 0; padding: 24px; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .doc-note { max-width: 1100px; margin: 0 auto 16px; font-size: 13px; opacity: 0.8; line-height: 1.5; }
+  .top-bar { max-width: 1100px; margin: 0 auto 8px; display: flex; justify-content: space-between; align-items: baseline; }
+  .theme-toggle { font-size: 12px; background: none; border: 1px solid var(--doc-rule); border-radius: 6px; padding: 4px 8px; cursor: pointer; color: var(--doc-ink); }
+
+  .rig { max-width: 1100px; margin: 0 auto 20px; display: flex; flex-wrap: wrap; gap: 10px; }
+  .rig fieldset { border: 1px dashed var(--doc-rule); border-radius: 8px; padding: 8px 10px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .rig legend { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.6; }
+  .rig button { font-size: 12px; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--doc-rule); background: var(--doc-card); color: var(--doc-ink); cursor: pointer; }
+  .rig button.active { background: var(--color-moss); color: var(--color-paper); border-color: var(--color-moss); }
+  .rig fieldset.variant-rig { border-color: var(--color-moss); }
+  .rig fieldset.variant-rig button.active { background: var(--color-ink); border-color: var(--color-ink); }
+
+  .stage { max-width: 1100px; margin: 0 auto; display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .frame { width: 390px; border-radius: 44px; background: #111; padding: 14px; box-shadow: 0 20px 50px rgba(0,0,0,0.35); flex-shrink: 0; position: sticky; top: 24px; }
+  .screen { background: var(--color-paper); color: var(--color-ink); border-radius: 32px; overflow: hidden; height: 844px; position: relative; display: flex; flex-direction: column; }
+  .ios-status-bar { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-size: 14px; font-weight: 600; flex-shrink: 0; }
+
+  /* nav bar */
+  .nav-bar { padding: 2px 12px 14px; border-bottom: 1px solid var(--color-line); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .nav-bar-title { font-family: var(--font-display); font-size: 20px; font-weight: 600; }
+  .nav-bar-action-right { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .gearshape { width: 20px; height: 20px; border: 2px solid var(--color-ink); border-radius: 50%; }
+
+  .content { flex: 1; overflow-y: auto; position: relative; display: flex; flex-direction: column; }
+  .offline-copy-line { font-size: var(--text-xs); opacity: var(--opacity-quiet); text-align: center; padding: var(--space-sm) var(--space-lg) 0; }
+
+  /* briefing card, simplified */
+  .briefing-card { margin: var(--space-lg); border-radius: var(--radius-card); background: var(--doc-card); border-left: 4px solid var(--color-brass); padding: var(--space-lg); flex-shrink: 0; }
+  .briefing-card-title { font-weight: 600; font-size: var(--text-lg); margin: 0 0 4px; }
+  .briefing-card-body { font-size: var(--text-base); opacity: var(--opacity-secondary); margin: 0; }
+
+  /* list */
+  .list-wrap { position: relative; flex: 1; }
+  .profile-list { list-style: none; margin: 0; padding: 0 var(--space-lg); }
+  .home-letter-heading { font-size: var(--text-sm); font-weight: 700; opacity: var(--opacity-quiet); text-transform: uppercase; letter-spacing: 0.06em; padding: var(--space-md) 0 var(--space-xs); }
+  .profile-row { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) 0; min-height: 44px; border-bottom: 1px solid var(--color-line); }
+  .profile-row-avatar { width: var(--size-avatar); height: var(--size-avatar); border-radius: 50%; background: var(--color-moss); color: var(--color-paper); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: var(--text-base); flex-shrink: 0; }
+  .profile-row-avatar--photo { background: radial-gradient(circle at 32% 28%, #4a4440 0%, #1c1a18 60%, #0c0b0a 100%); color: transparent; }
+  .profile-row-main { flex: 1; min-width: 0; }
+  .profile-row-name { font-family: var(--font-display); font-size: var(--text-lg); line-height: 1.3; }
+  .profile-row-detail { font-size: var(--text-sm); opacity: var(--opacity-secondary); line-height: 1.3; }
+  .profile-row-meta { font-family: var(--font-utility); font-size: var(--text-xs); opacity: var(--opacity-quiet); margin-top: 2px; }
+  .profile-row-match { font-size: var(--text-xs); opacity: var(--opacity-quiet); font-style: italic; margin-top: 2px; }
+
+  .home-index { position: absolute; top: 4px; bottom: var(--space-sm); right: 2px; width: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; }
+  .home-index span { font-family: var(--font-utility); font-size: 9px; color: var(--color-moss); line-height: 1.05; }
+
+  .home-ask-row { margin: var(--space-sm) var(--space-lg) 0; padding: var(--space-md); border: 1px solid var(--color-edge); border-radius: var(--radius-control); font-size: var(--text-base); }
+  .home-ask-row.is-button { cursor: pointer; color: var(--color-moss); font-weight: 600; }
+  .home-ask-row.is-offline { color: var(--color-ink); opacity: var(--opacity-secondary); border-style: dashed; cursor: default; }
+
+  .empty-state { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 var(--space-xxl); font-size: var(--text-base); opacity: var(--opacity-secondary); line-height: 1.5; }
+
+  /* --- soft fade mask for V-FADE: sits inside .content, over whatever list content is near the bottom --- */
+  .home-list-fade { display: none; position: absolute; left: 0; right: 0; bottom: 0; height: 32px; background: linear-gradient(to bottom, rgba(232,230,222,0) 0%, var(--color-paper) 85%); pointer-events: none; z-index: 1; }
+  .screen[data-variant="fade"] .home-list-fade { display: block; }
+
+  /* --- shared round Record button --- */
+  .record-button--round {
+    width: 72px; height: 72px; border-radius: var(--radius-pill);
+    border: none; cursor: pointer; flex-shrink: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    color: var(--color-paper); background: var(--color-moss);
+  }
+  .record-button--round .mic-dot-lg { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--color-paper); }
+  .record-button--round .record-label { font-size: var(--text-xs); font-weight: 700; letter-spacing: 0.01em; line-height: 1; }
+  .record-button--round .record-time { font-family: var(--font-utility); font-size: 11px; line-height: 1; }
+  .record-button--round.is-recording { background: var(--color-alert) !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+  @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+  .record-button--round.is-recording .mic-dot-lg { animation: pulse-dot 1.8s ease-in-out infinite; }
+  .screen.no-motion .record-button--round.is-recording .mic-dot-lg { animation: none; opacity: 1; }
+  .hidden-el { display: none !important; }
+
+  /* --- shared field --- */
+  .home-search-field-wrap--chrome { display: flex; align-items: center; gap: var(--space-sm); border-radius: var(--radius-pill); height: 44px; padding: 0 var(--space-md); min-width: 0; }
+  .search-glass { width: 13px; height: 13px; border: 2px solid var(--color-placeholder); border-radius: 50%; position: relative; flex-shrink: 0; }
+  .search-glass::after { content: ''; position: absolute; width: 6px; height: 2px; background: var(--color-placeholder); bottom: -3px; right: -4px; transform: rotate(45deg); border-radius: 1px; }
+  .home-search-field { border: none; background: none; outline: none; font-size: var(--text-base); color: var(--color-ink); flex: 1; min-width: 0; font-family: inherit; }
+  .home-search-field::placeholder { color: var(--color-placeholder); }
+  .clear-search-button { width: 22px; height: 22px; border-radius: 50%; background: var(--color-placeholder); color: var(--color-paper); font-size: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+  .cancel-search-button { background: none; border: none; color: var(--color-moss); font-size: var(--text-base); font-weight: 600; padding: 0 var(--space-xs); min-height: 44px; cursor: pointer; flex-shrink: 0; }
+
+  /* ================= V-GLASS: two floating islands, GlassView-style ================= */
+  .record-island, .field-island { display: none; position: absolute; z-index: 3; }
+  .screen[data-variant="glass"] .record-island--glass,
+  .screen[data-variant="glass"] .field-island--glass { display: flex; }
+  .record-island--glass { left: 50%; transform: translateX(-50%); bottom: 72px; }
+  .field-island--glass { left: var(--space-lg); right: var(--space-lg); bottom: 20px; z-index: 2; }
+  .record-island--glass .record-button--round {
+    background: var(--color-glass-tint-moss);
+    -webkit-backdrop-filter: blur(20px) saturate(1.5);
+    backdrop-filter: blur(20px) saturate(1.5);
+    border: 1px solid var(--color-edge);
+    box-shadow: var(--shadow-float);
+  }
+  .field-island--glass .home-search-field-wrap--chrome {
+    width: 100%; background: var(--color-glass-tint);
+    -webkit-backdrop-filter: blur(20px) saturate(1.5);
+    backdrop-filter: blur(20px) saturate(1.5);
+    border: 1px solid var(--color-edge);
+    box-shadow: var(--shadow-float);
+  }
+  /* Reduce Transparency: the system forces an opaque fallback — same shapes, no blur */
+  .screen[data-variant="glass"][data-rt="reduced"] .record-island--glass .record-button--round {
+    background: var(--color-moss); -webkit-backdrop-filter: none; backdrop-filter: none;
+  }
+  .screen[data-variant="glass"][data-rt="reduced"] .field-island--glass .home-search-field-wrap--chrome {
+    background: var(--color-paper); -webkit-backdrop-filter: none; backdrop-filter: none;
+  }
+  .screen[data-variant="glass"] .content { padding-bottom: 152px; }
+
+  /* ================= V-FADE: opaque panel, gradient dissolve above it, no blur ================= */
+  .home-bottom-bar--fade { display: none; }
+  .screen[data-variant="fade"] .home-bottom-bar--fade {
+    display: flex; flex-direction: column; align-items: center; gap: var(--space-sm);
+    background: var(--color-paper); flex-shrink: 0;
+    padding: var(--space-sm) var(--space-lg) calc(var(--space-sm) + 20px);
+  }
+  .home-bottom-bar--fade .home-search-field-wrap--chrome { width: 100%; background: var(--color-paper); border: 1px solid var(--color-edge); }
+
+  /* ================= V-NOTCHED: solid bar, round Record straddling the hairline ================= */
+  .home-bottom-bar--notched { display: none; }
+  .screen[data-variant="notched"] .home-bottom-bar--notched {
+    display: block; position: relative; background: var(--color-paper);
+    border-top: 1px solid var(--color-line); flex-shrink: 0;
+    padding: var(--space-xs) var(--space-lg) calc(var(--space-sm) + 20px);
+  }
+  .screen[data-variant="notched"] .content { padding-bottom: 36px; }
+  .home-bottom-bar--notched .home-search-field-wrap--chrome { width: 100%; background: var(--color-paper); border: 1px solid var(--color-edge); margin-top: 36px; }
+  .home-bottom-bar--notched .record-button--round {
+    position: absolute; left: 50%; top: 0; transform: translate(-50%, -50%);
+    box-shadow: var(--shadow-float); z-index: 3;
+  }
+
+  /* ================= V-FLOATING: two free islands, opaque, shadow only ================= */
+  .screen[data-variant="floating"] .record-island--floating,
+  .screen[data-variant="floating"] .field-island--floating { display: flex; }
+  .record-island--floating { left: 50%; transform: translateX(-50%); bottom: 72px; }
+  .field-island--floating { left: var(--space-lg); right: var(--space-lg); bottom: 20px; z-index: 2; }
+  .record-island--floating .record-button--round { box-shadow: var(--shadow-float); }
+  .field-island--floating .home-search-field-wrap--chrome { width: 100%; background: var(--color-paper); border: 1px solid var(--color-edge); box-shadow: var(--shadow-float); }
+  .screen[data-variant="floating"] .content { padding-bottom: 152px; }
+
+  .keyboard-overlay { position: absolute; left: 0; right: 0; bottom: 0; height: 291px; background: #d6d2c8; border-top: 1px solid var(--color-line); z-index: 1; display: none; }
+  .keyboard-overlay.shown { display: block; }
+  .keyboard-overlay-label { text-align: center; font-size: 11px; color: var(--color-placeholder); padding-top: 8px; }
+
+  .side-notes { flex: 1; min-width: 360px; font-size: 13px; line-height: 1.55; color: var(--doc-ink); }
+  .side-notes h2 { font-size: 14px; margin: 18px 0 6px; }
+  .side-notes h2:first-child { margin-top: 0; }
+  .side-notes h3 { font-size: 13px; margin: 14px 0 4px; }
+  .vo { font-family: var(--font-utility); font-size: 11.5px; background: var(--doc-card); border: 1px dashed var(--doc-rule); border-radius: 6px; padding: 5px 7px; display: block; margin-top: 4px; color: var(--doc-ink); }
+  .verdict { background: var(--doc-card); border-left: 3px solid var(--color-moss); border-radius: 6px; padding: 8px 10px; margin-top: 6px; }
+  .risk { background: var(--doc-card); border-left: 3px solid var(--color-alert); border-radius: 6px; padding: 8px 10px; margin-top: 6px; }
+  .compare-table { width: 100%; border-collapse: collapse; font-size: 11.5px; margin-top: 6px; }
+  .compare-table th, .compare-table td { border: 1px solid var(--doc-rule); padding: 5px 6px; text-align: left; vertical-align: top; }
+  .compare-table th { background: var(--doc-card); font-weight: 600; }
+
+  /* large dynamic type demo — shared sizing */
+  .screen[data-type-scale="large"] .nav-bar-title { font-size: 26px; }
+  .screen[data-type-scale="large"] .profile-row-name { font-size: 20px; }
+  .screen[data-type-scale="large"] .profile-row-detail,
+  .screen[data-type-scale="large"] .profile-row-meta { font-size: 15px; }
+  .screen[data-type-scale="large"] .home-search-field,
+  .screen[data-type-scale="large"] .cancel-search-button,
+  .screen[data-type-scale="large"] .home-ask-row { font-size: 19px; }
+  .screen[data-type-scale="large"] .record-button--round {
+    width: auto; height: 56px; padding: 0 var(--space-lg); flex-direction: row; gap: 6px;
+  }
+  .screen[data-type-scale="large"] .record-button--round .record-label { font-size: 19px; }
+  .screen[data-type-scale="large"] .home-index span { font-size: 11px; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <h1>home-actions — S1, round Record — material options</h1>
+  <button class="theme-toggle" onclick="toggleDocTheme()">Toggle reading mode</button>
+</div>
+<p class="doc-note">
+  Design prototype, not production code. The owner chose the stacked family's
+  <strong>S1 arrangement</strong> — <code>record-button</code> centred above a
+  full-width <code>home-search-field</code>, the field at the very bottom —
+  with a <strong>round</strong> Record, and asked to see the most beautiful,
+  efficient and effective ways to draw that same geometry. The four variants
+  below change only the <em>material</em> of the bottom chrome (glass vs.
+  paper, panel vs. float) — the geometry, model, copy and every R1–R13 rule
+  from <code>home-actions.md</code> are unchanged. Use the rig to switch
+  material, connection, search state, keyboard, content behind the chrome,
+  Reduce Transparency, the hypothetical recording preview, Reduce Motion and
+  Dynamic Type.
+</p>
+
+<div class="rig">
+  <fieldset class="variant-rig">
+    <legend>material</legend>
+    <button data-variant="glass" class="active">Glass</button>
+    <button data-variant="fade">Paper fade</button>
+    <button data-variant="notched">Notched bar</button>
+    <button data-variant="floating">Floating, shadow</button>
+  </fieldset>
+  <fieldset>
+    <legend>people</legend>
+    <button data-people="20" class="active">20 people</button>
+    <button data-people="0">No one yet</button>
+  </fieldset>
+  <fieldset>
+    <legend>connection</legend>
+    <button data-conn="online" class="active">Online</button>
+    <button data-conn="offline">Offline</button>
+  </fieldset>
+  <fieldset>
+    <legend>search</legend>
+    <button data-query="rest" class="active">Resting</button>
+    <button data-query="focus-empty">Focused, empty</button>
+    <button data-query="pri">Typed "Pri"</button>
+  </fieldset>
+  <fieldset>
+    <legend>keyboard</legend>
+    <button data-kb="down" class="active">Down</button>
+    <button data-kb="up">Up</button>
+  </fieldset>
+  <fieldset>
+    <legend>content behind chrome</legend>
+    <button data-content="top" class="active">Top of list</button>
+    <button data-content="bottom">Bottom — dark photos (worst case)</button>
+  </fieldset>
+  <fieldset>
+    <legend>reduce transparency</legend>
+    <button data-rt="normal" class="active">Normal</button>
+    <button data-rt="reduced">Reduced (glass only)</button>
+  </fieldset>
+  <fieldset>
+    <legend>recording preview (hypothetical)</legend>
+    <button data-recording="resting" class="active">Resting</button>
+    <button data-recording="recording">"Recording" state</button>
+  </fieldset>
+  <fieldset>
+    <legend>reduce motion</legend>
+    <button data-motion="normal" class="active">Normal</button>
+    <button data-motion="reduced">Reduce Motion</button>
+  </fieldset>
+  <fieldset>
+    <legend>dynamic type</legend>
+    <button data-type="normal" class="active">Normal</button>
+    <button data-type="large">Largest accessibility size</button>
+  </fieldset>
+</div>
+
+<div class="stage">
+  <div class="frame">
+    <div class="screen" id="screen" data-variant="glass">
+      <div class="ios-status-bar"><span>9:41</span><span>⚫︎⚫︎⚫︎ 🔋</span></div>
+      <div class="nav-bar">
+        <div style="width:44px;height:44px;"></div>
+        <span class="nav-bar-title">andy</span>
+        <div class="nav-bar-action-right" aria-label="Settings" role="button" title="Settings — opens settings">
+          <div class="gearshape"></div>
+        </div>
+      </div>
+
+      <div class="content" id="content">
+        <div class="offline-copy-line" id="offline-line" style="display:none">Offline — showing what Andy had at 3:40 PM.</div>
+
+        <div class="briefing-card" id="briefing">
+          <p class="briefing-card-title">Nothing coming up</p>
+          <p class="briefing-card-body">Connect your calendar and Andy will brief you before you walk in.</p>
+        </div>
+
+        <div class="list-wrap" id="list-wrap">
+          <ol class="profile-list" id="profile-list"></ol>
+          <div class="home-index" id="home-index"></div>
+        </div>
+
+        <div class="home-ask-row" id="ask-row" style="display:none"></div>
+        <div class="empty-state" id="empty-state" style="display:none">No one yet — tap record to remember your first person.</div>
+
+        <div class="home-list-fade" aria-hidden="true"></div>
+      </div>
+
+      <!-- V-GLASS: two floating glass islands -->
+      <div class="record-island record-island--glass">
+        <button class="record-button--round record-btn" title="Record — starts recording a new voice note">
+          <span class="mic-dot-lg"></span><span class="record-label">Record</span>
+        </button>
+      </div>
+      <div class="field-island field-island--glass">
+        <div class="home-search-field-wrap--chrome">
+          <div class="search-glass"></div>
+          <input class="home-search-field search-input" placeholder="Find a name or a word" readonly>
+          <div class="clear-search-button clear-btn" style="display:none" title="Clear">✕</div>
+        </div>
+        <button class="cancel-search-button cancel-btn" style="display:none">Cancel</button>
+      </div>
+
+      <!-- V-FADE: opaque panel, no blur -->
+      <div class="home-bottom-bar--fade">
+        <button class="record-button--round record-btn" title="Record — starts recording a new voice note">
+          <span class="mic-dot-lg"></span><span class="record-label">Record</span>
+        </button>
+        <div style="display:flex; align-items:center; gap: var(--space-sm); width:100%;">
+          <div class="home-search-field-wrap--chrome">
+            <div class="search-glass"></div>
+            <input class="home-search-field search-input" placeholder="Find a name or a word" readonly>
+            <div class="clear-search-button clear-btn" style="display:none" title="Clear">✕</div>
+          </div>
+          <button class="cancel-search-button cancel-btn" style="display:none">Cancel</button>
+        </div>
+      </div>
+
+      <!-- V-NOTCHED: solid bar, Record straddles the top hairline -->
+      <div class="home-bottom-bar--notched">
+        <button class="record-button--round record-btn" title="Record — starts recording a new voice note">
+          <span class="mic-dot-lg"></span><span class="record-label">Record</span>
+        </button>
+        <div style="display:flex; align-items:center; gap: var(--space-sm); width:100%;">
+          <div class="home-search-field-wrap--chrome">
+            <div class="search-glass"></div>
+            <input class="home-search-field search-input" placeholder="Find a name or a word" readonly>
+            <div class="clear-search-button clear-btn" style="display:none" title="Clear">✕</div>
+          </div>
+          <button class="cancel-search-button cancel-btn" style="display:none">Cancel</button>
+        </div>
+      </div>
+
+      <!-- V-FLOATING: two free islands, opaque -->
+      <div class="record-island record-island--floating">
+        <button class="record-button--round record-btn" title="Record — starts recording a new voice note">
+          <span class="mic-dot-lg"></span><span class="record-label">Record</span>
+        </button>
+      </div>
+      <div class="field-island field-island--floating">
+        <div class="home-search-field-wrap--chrome">
+          <div class="search-glass"></div>
+          <input class="home-search-field search-input" placeholder="Find a name or a word" readonly>
+          <div class="clear-search-button clear-btn" style="display:none" title="Clear">✕</div>
+        </div>
+        <button class="cancel-search-button cancel-btn" style="display:none">Cancel</button>
+      </div>
+
+      <div class="keyboard-overlay" id="kb-overlay"><p class="keyboard-overlay-label">(iOS keyboard)</p></div>
+    </div>
+  </div>
+
+  <div class="side-notes">
+    <h2>What this follow-up answers</h2>
+    <p>The owner picked the stacked family's <strong>S1</strong> geometry
+    (Record centred above the field, field pinned to the very bottom) with a
+    round Record, over S2–S4's spacing/order/scroll changes. This file does
+    not revisit that geometry — it answers a different question: <em>drawn
+    how?</em> All four options below share the exact same layout math (Record
+    72pt diameter, centred; field 44pt, full width, at the very bottom) and
+    differ only in material: translucent vs. opaque, panel vs. free-floating.</p>
+
+    <h2>V-GLASS — Liquid Glass, the owner's first idea</h2>
+    <p>Round Record and the field are two independent <code>GlassView</code>
+    surfaces (<code>expo-glass-effect</code>, already a dependency —
+    <code>glassEffectStyle: 'regular'</code>, <code>tintColor</code>,
+    <code>isInteractive</code>), floating free over <code>profile-list</code>,
+    which runs to the screen's true bottom edge underneath them — the iMessage
+    search-bar / Instagram tab-bar family the owner named. Approximated here
+    with CSS <code>backdrop-filter: blur()</code>, the closest web analogue to
+    a native glass surface.</p>
+    <span class="vo"><strong>Principle:</strong> Jakob's law — this is the
+    platform's own current default for bottom chrome (home-actions.md §5),
+    so nothing here needs to be learned. <strong>Tint:</strong> Record is
+    tinted with a proposed <code>colors.glassTintMoss</code> (moss @ ~0.84)
+    rather than a neutral tint, so it keeps signalling "the primary one"
+    (R2) even as translucent material — the field uses a neutral
+    <code>colors.glassTint</code> (paper @ ~0.85). <strong>Edge:</strong> a
+    thin <code>colors.edge</code> ring stays on both glass surfaces even
+    though Apple's own glass rarely draws one — a deliberate accessibility
+    choice, not a purity compromise: a blurred boundary alone cannot be
+    guaranteed 3:1 against arbitrary content, and WCAG 1.4.11 is a hard rule
+    here, not a trade. <strong>Worst case</strong> (toggle "content behind
+    chrome" → bottom): scroll the list to its last four rows, redrawn with
+    dark, photo-style avatars directly behind both glass surfaces — the
+    actual stress case for "Record" and the placeholder staying legible.
+    <strong>Reduce Transparency</strong> (toggle above): both surfaces drop
+    the blur and render as flat <code>moss</code>/<code>paper</code> —
+    identical to V-FLOATING below, which is <em>literally</em> this
+    variant's fallback, not a separate thing to design twice.
+    <strong>List inset:</strong> nothing reserves flex space for floating
+    islands, so <code>.content</code> needs <code>padding-bottom: 152px</code>
+    (Record 72 + gap 8 + field 44 + safe-area 20 + an 8pt buffer) so the last
+    row and <code>home-index</code> clear the glass rather than sit behind
+    it — approximate, confirm against the shipped components on device, R7's
+    usual caveat. <strong>Keyboard up:</strong> Record hides (R8), the field
+    island keeps its fixed <code>bottom</code> offset and simply renders in
+    front of the keyboard graphic by stacking order, the same technique this
+    project's other home-actions mocks already use.</span>
+    <div class="risk"><strong>Contrast cannot be settled in a static mock.</strong>
+    A live <code>GlassView</code> blurs and samples whatever is actually
+    behind it; the tint opacities above (.84/.85) are a starting point, not
+    a proven number. Before this could ship, the engineering check is: with
+    the darkest realistic row (a full-bleed photo avatar) directly behind
+    each surface, does placeholder text and the word "Record" still measure
+    4.5:1 on-device? If tuning the tint high enough to guarantee that makes
+    the glass read as "basically paper," that is this variant telling us it
+    doesn't have room to be very transparent on this content — worth knowing
+    before investing in it, not a reason to skip the check.</div>
+    <div class="risk"><strong>STYLE.md tension, named rather than resolved
+    here.</strong> STYLE.md's one deliberate visual risk is the Briefing
+    card's brass stripe — "everything else quiet and disciplined" — and
+    <code>home-actions.md</code> already flagged a glass field as "the first
+    glass in a paper-only system," needing its own STYLE.md line before it
+    ships. That line doesn't exist yet. This is the owner's call to spend or
+    not, not a reason this option is excluded here.</div>
+    <div class="verdict"><strong>Verdict:</strong> the most visually ambitious
+    and the one the owner asked for by name — worth prototyping for real,
+    but the only one of the four carrying genuine, unresolved accessibility
+    and visual-discipline risk that this document can name but not close.</div>
+
+    <h2>V-FADE — Paper panel, the list dissolves (no blur)</h2>
+    <p>A fully opaque paper panel holds Record and the field, same as the
+    original A1/S1 shape — but the last 32px of scrollable content, just
+    above the panel, fades to solid paper through a plain CSS gradient mask
+    (a <code>LinearGradient</code> mask in the real build, no blur
+    anywhere). The panel itself is flat, undecorated paper.</p>
+    <span class="vo"><strong>Principle:</strong> this is closest to STYLE's
+    own "marginalia" grounding — content doesn't get clipped, it dissolves
+    into the page the way handwriting trails off toward a margin.
+    <strong>Contrast:</strong> zero new risk — every surface is fully
+    opaque <code>paper</code> or <code>moss</code>, both already-tested
+    pairings. <strong>Chrome height:</strong> an in-flow flex sibling, no
+    floating-inset math: pad-top 8 + Record 72 + gap 8 + field 44 +
+    pad-bottom (8 + 20 safe area) = <strong>160pt</strong> reserved, computed
+    from this mock's CSS. <strong>List inset:</strong> none needed beyond the
+    existing flex layout — the panel reserves its own space, exactly like
+    the previously-shipped A1 family, so <code>home-index</code>'s existing
+    offsets keep working unchanged. <strong>Keyboard up:</strong> same
+    mechanism as A1 — Record's area hides, the field stays in the (now
+    shorter) panel.</span>
+    <div class="verdict"><strong>Verdict:</strong> the lowest-risk, most
+    on-brand of the four — no new accessibility question, no tokens beyond a
+    shadow-free gradient mask, and a visual idea (dissolving rather than
+    clipping) that extends STYLE's own grounding rather than importing a
+    platform trend. Costs the most reserved chrome height of the three
+    opaque options (160pt vs. notched's 77pt reserved).</div>
+
+    <h2>V-NOTCHED — Solid bar, Record on the hairline (shutter)</h2>
+    <p>A plain opaque paper bar with a 1px <code>colors.line</code> top
+    hairline holds the field; round Record is positioned so its top half
+    pokes above that hairline — the camera-shutter / elevated-notch read the
+    brief named, fully opaque throughout.</p>
+    <span class="vo"><strong>Principle:</strong> Von Restorff by actual
+    elevation rather than colour or shape alone — Record is the one thing in
+    this screen that visibly breaks the horizon line. <strong>Chrome
+    height:</strong> the bar's own reserved flex height is just
+    border(1) + pad-top(4) + field(44) + pad-bottom(8+20) =
+    <strong>77pt</strong> — the smallest reserved footprint of all four,
+    because Record's overlap is drawn on top of content rather than inside
+    the bar's own box. <strong>Overlap risk, named plainly:</strong> that
+    36pt of overlap is drawn on top of whatever is rendered just above the
+    bar — the same risk <code>home-actions.md</code>'s Option C named for
+    <code>record-fab</code>. Handled here with a 36pt
+    <code>content</code> padding-bottom buffer so the overlap only ever
+    falls on dead paper space, never a real row or <code>home-index</code>'s
+    tail — approximate, confirm on device. <strong>Contrast:</strong> zero
+    new risk, same as V-FADE. <strong>Shadow:</strong> a soft lift
+    (proposed <code>shadow.float</code>) under Record only, so it reads as
+    sitting slightly above the bar rather than embedded in it.</span>
+    <div class="verdict"><strong>Verdict:</strong> the best chrome-height
+    result of the three opaque options and the most distinctive silhouette
+    of the four overall at zero new contrast risk — the trade is a fixed
+    36pt overlap buffer to verify on device, a smaller, better-understood
+    version of the same risk V-GLASS and V-FLOATING both carry at a larger
+    scale.</div>
+
+    <h2>V-FLOATING — Free-floating, shadow only, no glass</h2>
+    <p>The same two floating islands as V-GLASS, but opaque — plain
+    <code>moss</code> circle, plain <code>paper</code> pill, each lifted with
+    a soft shadow (<code>shadow.float</code>) instead of a panel or blur.
+    This is V-GLASS's own Reduce Transparency fallback, drawn here as its own
+    option so it can be judged on its own merits too.</p>
+    <span class="vo"><strong>Principle:</strong> Day One's floating
+    create-button family (home-actions.md §5), minus any blur — the
+    "floating" read without the glass risk. <strong>Contrast:</strong> zero
+    new risk, same opaque pairings as V-FADE/V-NOTCHED.
+    <strong>List inset:</strong> identical math to V-GLASS — 152pt content
+    padding-bottom, same device-verification caveat.
+    <strong>Edge:</strong> the field keeps its <code>edge</code> ring even
+    with a shadow added — a shadow alone isn't a reliable 3:1 boundary, so it
+    is additive here, not a replacement.</span>
+    <div class="verdict"><strong>Verdict:</strong> all of V-GLASS's floating
+    composition and none of its contrast risk, at the cost of V-GLASS's own
+    visual distinctiveness — the safe twin, and worth keeping specified
+    regardless of which other option ships, since it is the Reduce
+    Transparency answer either way.</div>
+
+    <h2>Side-by-side</h2>
+    <table class="compare-table">
+      <tr><th></th><th>V-GLASS</th><th>V-FADE</th><th>V-NOTCHED</th><th>V-FLOATING</th></tr>
+      <tr><td>Material</td><td>Translucent, blurred</td><td>Opaque, gradient mask</td><td>Opaque, hairline + overlap</td><td>Opaque, shadow only</td></tr>
+      <tr><td>Chrome reserved / visual footprint</td><td>0 reserved / ~144pt visual</td><td><strong>160pt reserved</strong></td><td><strong>77pt reserved</strong> / ~113pt visual</td><td>0 reserved / ~144pt visual</td></tr>
+      <tr><td>List inset needed</td><td>152pt content padding (device-verify)</td><td>none — in-flow</td><td>36pt buffer (device-verify)</td><td>152pt content padding (device-verify)</td></tr>
+      <tr><td>Contrast risk</td><td><strong>Open — needs on-device tint tuning</strong></td><td>None — opaque</td><td>None — opaque</td><td>None — opaque</td></tr>
+      <tr><td>Reduce Transparency fallback</td><td>Becomes V-FLOATING</td><td>n/a (already opaque)</td><td>n/a</td><td>Is itself the fallback</td></tr>
+      <tr><td>New tokens</td><td><code>glassTint</code>, <code>glassTintMoss</code></td><td>none</td><td><code>shadow.float</code> (optional)</td><td><code>shadow.float</code></td></tr>
+      <tr><td>STYLE.md impact</td><td>New line: a second deliberate departure from flat colour</td><td>none</td><td>minor — first shadow token</td><td>minor — first shadow token</td></tr>
+      <tr><td>VoiceOver order vs §9</td><td colspan="4">All four still need the explicit "list → field → Record" override — Record is drawn above the field in every variant, same cost the earlier "S1 oval" exploration already named.</td></tr>
+    </table>
+
+    <h2>Recommendation</h2>
+    <p><strong>Ranked: V-NOTCHED, then V-FADE, then V-FLOATING, then
+    V-GLASS.</strong> V-NOTCHED gives the smallest reserved chrome and the
+    most distinctive, on-brand silhouette (a shape cue doing the work glass
+    would otherwise do) at zero accessibility risk and only a small,
+    well-understood overlap buffer to verify — it is the strongest
+    beauty-to-risk ratio of the four. V-FADE is the safest and most
+    "Andy" of the four (the dissolve reads as marginalia, not a platform
+    import) if the owner would rather not have any overlap to verify at all,
+    at the cost of the tallest reserved chrome. V-FLOATING is worth keeping
+    specified regardless of the final pick, since it is V-GLASS's own
+    Reduce Transparency answer. <strong>V-GLASS is the most visually
+    striking and the one the owner reached for first</strong> — it is shown
+    here in full, and is not ruled out — but it is the only one of the four
+    whose central claim (legible text over a system blur over the darkest
+    row this app will ever show) cannot be proven in a mock, only on a
+    device, and it is the one STYLE.md flagged in advance as needing its own
+    line before it spends the app's second deliberate visual risk. If the
+    owner wants to pursue it, the next step is a real <code>GlassView</code>
+    build against the actual worst-case row on a device, not a further
+    round of mocks.</p>
+
+    <h2>Proposed tokens</h2>
+    <ul style="padding-left:18px; margin:6px 0;">
+      <li><code>colors.glassTint</code> — <code>paper</code> (#E8E6DE) at
+      ~0.85 opacity, the neutral glass tint (V-GLASS's field). Starting
+      value only; the real alpha needs on-device tuning against the
+      darkest realistic row before it's fixed.</li>
+      <li><code>colors.glassTintMoss</code> — <code>moss</code> (#5C6B4F) at
+      ~0.84 opacity, so a translucent Record still signals "primary" (R2).
+      Same on-device caveat.</li>
+      <li><code>shadow.float</code> — a single soft elevation shadow (offset
+      0/4, blur 14, <code>ink</code> @ ~0.22) for any control that floats
+      free of a panel (V-NOTCHED's lift, V-FLOATING's islands).
+      <code>theme.ts</code> has no shadow/elevation concept today — this
+      would be the first, and needs its own STYLE.md line regardless of
+      which material option ships, since V-NOTCHED and V-FLOATING both use
+      it.</li>
+    </ul>
+    <p>STYLE.md change either glass token would need: a paragraph under
+    "Color Tokens" naming them as a second, narrowly-scoped departure from
+    flat opaque colour — after the Briefing card's brass stripe — confined to
+    this one chrome, with the same "don't spread this treatment elsewhere"
+    discipline brass already models.</p>
+
+    <h2>Names, if a variant ships</h2>
+    <ul style="padding-left:18px; margin:6px 0;">
+      <li><code>record-button--round</code> — the round shape of the
+      existing <code>record-button</code> (role unchanged: still navigates
+      to <code>record</code>, still says "Record").</li>
+      <li><code>home-bottom-bar--glass</code> / <code>--fade</code> /
+      <code>--notched</code> / <code>--floating</code> — material states of
+      the existing <code>home-bottom-bar</code> region (role, not look —
+      naming rule 6 — even where V-GLASS/V-FLOATING render it as two
+      separate floating pieces rather than one visual bar).</li>
+      <li><code>home-list-fade</code> (new, V-FADE) — the decorative
+      gradient mask.</li>
+      <li><code>home-search-field--glass</code> (new, V-GLASS) — the
+      glass-material state of <code>home-search-field</code>.</li>
+    </ul>
+
+    <h2>Recording preview — hypothetical, not a build spec</h2>
+    <p>The "recording preview" toggle shows Record adopting the recording
+    treatment <code>record-flow.md</code>'s Final choice settled: a solid
+    <code>alert</code> fill, a slowly pulsing dot (frozen under Reduce
+    Motion), the word swapping to an elapsed time. <strong>Deliberately,
+    in every material variant — including V-GLASS — this preview drops to a
+    fully opaque alert fill, never a tinted-glass alert.</strong> Recording
+    is the one state this app already always renders at full, unambiguous
+    opacity (<code>mic-button--listening</code> today); this preview keeps
+    that consistent rather than inventing a translucent alert. <strong>This
+    is shown for visual-language consistency only</strong> — tapping Record
+    on <code>home</code> still only ever navigates to <code>record</code>
+    (home-actions.md R1); no new inline-recording behaviour on
+    <code>home</code> is being proposed or built here.</p>
+
+    <h2>Accessibility, shared across all four</h2>
+    <ul style="padding-left:18px; margin:6px 0;">
+      <li><strong>Targets:</strong> Record is 72×72pt (well over the 44pt
+      floor, inside the brief's "≥64pt suggested" range) in every variant;
+      the field stays 44pt tall.</li>
+      <li><strong>Meaningful edges:</strong> every field keeps a
+      <code>colors.edge</code> ring (3.2:1, WCAG 1.4.11) regardless of
+      material — a blur or a shadow is additive, never the only boundary
+      cue, in all four.</li>
+      <li><strong>No colour-only states:</strong> Record always carries the
+      word "Record" (R1); the hypothetical recording state always pairs its
+      colour with the word and the time, never colour alone.</li>
+      <li><strong>VoiceOver order:</strong> list → <code>home-search-field</code>
+      → <code>home-ask-row</code> → Record, in every variant — Record is
+      drawn above the field in all four, so all four need the same explicit
+      order override already named for the earlier "S1 oval" exploration.
+      None of the four makes this better or worse than the others.</li>
+      <li><strong>Dynamic Type:</strong> at the largest accessibility size
+      (toggle above), round Record becomes a short stadium — same fallback
+      in all four, converging toward the earlier S1-oval's own "grows to
+      full width" precedent, so the word never clips.</li>
+      <li><strong>Reduce Motion:</strong> the only new motion in any of the
+      four is the hypothetical recording dot's pulse, which freezes under
+      Reduce Motion (toggle above) — no variant here introduces a crossfade
+      or transition beyond what the already-approved A1/S-family already
+      specifies for hiding Record while typing.</li>
+      <li><strong>Reduce Transparency:</strong> only V-GLASS is affected;
+      its fallback is pixel-identical to V-FLOATING (toggle "reduce
+      transparency" with material set to Glass to see it live).</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+  const PEOPLE = [
+    {name:"Amara Osei", meta:"friend · 3 notes · 2026-09-20", detail:"Training for a half marathon in spring."},
+    {name:"Ben Whitfield", meta:"colleague · 6 notes · 2026-10-01", detail:"Leading the Denver office move."},
+    {name:"Carla Jiménez", meta:"client · 2 notes · 2026-08-30", detail:"Wants the proposal by Friday."},
+    {name:"Derek Nakamura", meta:"friend · 5 notes · 2026-09-02", detail:"Just adopted a second greyhound, Mochi."},
+    {name:"Emily Santos", meta:"friend · 4 notes · 2026-10-05", detail:"Starting a pottery class on Tuesdays."},
+    {name:"Felix Grant", meta:"networking · 1 note · 2026-07-14", detail:"Met at the design meetup, works in fintech."},
+    {name:"Grace Oyelaran", meta:"foster · 8 notes · 2026-10-09", detail:"Fosters two greyhounds, looking for a third."},
+    {name:"Hassan Idris", meta:"client · 3 notes · 2026-09-28", detail:"Prefers calls over email."},
+    {name:"Isla Thompson", meta:"friend · 2 notes · 2026-06-19", detail:"Just moved to Lisbon."},
+    {name:"Jordan Lee", meta:"friend · 7 notes · 2026-10-11", detail:"Starting a new job at the shelter in March."},
+    {name:"Kavya Rao", meta:"colleague · 4 notes · 2026-09-15", detail:"Switching teams to the research group."},
+    {name:"Liam O'Connor", meta:"networking · 2 notes · 2026-08-02", detail:"Dog lover, works in logistics."},
+    {name:"Marcus Webb", meta:"friend · 9 notes · 2026-10-07", detail:"Training for his first marathon."},
+    {name:"Nina Petrov", meta:"client · 1 note · 2026-07-30", detail:"New to the city, asked for restaurant picks."},
+    {name:"Omar Farouk", meta:"friend · 3 notes · 2026-09-10", detail:"Opening a bakery downtown."},
+    {name:"Priya Kapoor", meta:"friend · 4 notes · 2026-10-02", detail:"She's fostering a second dog."},
+    {name:"Priya Shah", meta:"colleague · 7 notes · 2026-10-05", detail:"Starting a new job at the shelter in March."},
+    {name:"Quentin Ash", meta:"networking · 1 note · 2026-05-22", detail:"Met at the conference, works in logistics."},
+    {name:"Rosa Delgado", meta:"client · 5 notes · 2026-09-24", detail:"Renewing the contract in November."},
+    {name:"Sam Okafor", meta:"friend · 2 notes · 2026-08-18", detail:"Just got a rescue cat named Biscuit."}
+  ];
+  const INDEX_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ#".split("");
+  const PHOTO_NAMES = new Set(["Priya Shah", "Quentin Ash", "Rosa Delgado", "Sam Okafor"]);
+
+  const state = { variant: "glass", people: "20", conn: "online", query: "rest", kb: "down", content: "top", rt: "normal", recording: "resting", motion: "normal", type: "normal" };
+
+  function initials(name) {
+    const parts = name.split(" ");
+    return (parts[0][0] + (parts[parts.length - 1][0] || "")).toUpperCase();
+  }
+
+  function setState(patch) {
+    Object.assign(state, patch);
+    syncButtons();
+    render();
+  }
+  function syncButtons() {
+    const map = { variant: 'variant', people: 'people', conn: 'conn', query: 'query', kb: 'kb', content: 'content', rt: 'rt', recording: 'recording', motion: 'motion', type: 'type' };
+    for (const key in map) {
+      document.querySelectorAll('[data-' + map[key] + ']').forEach(b => b.classList.toggle('active', b.dataset[map[key]] === state[key]));
+    }
+  }
+
+  function matches(person, q) {
+    if (!q) return false;
+    const hay = (person.name + " " + person.detail).toLowerCase();
+    return hay.includes(q.toLowerCase());
+  }
+
+  function render() {
+    const screenEl = document.getElementById('screen');
+    screenEl.setAttribute('data-type-scale', state.type);
+    screenEl.setAttribute('data-variant', state.variant);
+    screenEl.setAttribute('data-rt', state.rt);
+    screenEl.classList.toggle('no-motion', state.motion === 'reduced');
+
+    const searching = state.query !== 'rest';
+    const hasQuery = state.query === 'pri';
+    const q = hasQuery ? 'Pri' : '';
+    const noPeople = state.people === '0';
+
+    document.getElementById('offline-line').style.display = (state.conn === 'offline' && !searching) ? 'block' : 'none';
+    document.getElementById('briefing').style.display = (!searching && !noPeople) ? 'block' : 'none';
+    document.getElementById('list-wrap').style.display = (!noPeople) ? 'block' : 'none';
+    document.getElementById('empty-state').style.display = noPeople ? 'flex' : 'none';
+
+    const listEl = document.getElementById('profile-list');
+    const indexEl = document.getElementById('home-index');
+    listEl.innerHTML = '';
+    indexEl.innerHTML = '';
+
+    if (!noPeople) {
+      if (!searching) {
+        let lastLetter = '';
+        PEOPLE.forEach(p => {
+          const letter = p.name[0].toUpperCase();
+          if (letter !== lastLetter) {
+            const h = document.createElement('li');
+            h.className = 'home-letter-heading';
+            h.textContent = letter;
+            listEl.appendChild(h);
+            lastLetter = letter;
+          }
+          listEl.appendChild(rowEl(p));
+        });
+        INDEX_LETTERS.forEach(l => {
+          const s = document.createElement('span');
+          s.textContent = l;
+          indexEl.appendChild(s);
+        });
+      } else if (hasQuery) {
+        PEOPLE.filter(p => matches(p, q)).forEach(p => listEl.appendChild(rowEl(p)));
+      }
+    }
+
+    const askRow = document.getElementById('ask-row');
+    if (!searching || noPeople) {
+      askRow.style.display = 'none';
+    } else {
+      askRow.style.display = 'block';
+      askRow.classList.remove('is-button', 'is-offline');
+      if (state.conn === 'offline') {
+        askRow.classList.add('is-offline');
+        askRow.textContent = 'Asking needs a connection. Names and words still work.';
+      } else if (hasQuery) {
+        askRow.classList.add('is-button');
+        askRow.textContent = 'Ask Andy: "' + q + '"';
+      } else {
+        askRow.classList.add('is-button');
+        askRow.textContent = 'Ask Andy in your own words';
+      }
+    }
+
+    document.querySelectorAll('.search-input').forEach(input => {
+      input.value = hasQuery ? q : '';
+      input.placeholder = 'Find a name or a word';
+    });
+    document.querySelectorAll('.clear-btn').forEach(b => b.style.display = hasQuery ? 'flex' : 'none');
+    document.querySelectorAll('.cancel-btn').forEach(b => b.style.display = searching ? 'inline-block' : 'none');
+
+    const recordHidden = searching || state.kb === 'up';
+    document.querySelectorAll('.record-btn').forEach(b => {
+      b.closest('.record-island') ? (b.closest('.record-island').style.display = (recordHidden ? 'none' : '')) : null;
+      if (!b.closest('.record-island')) b.style.display = recordHidden ? 'none' : 'flex';
+    });
+
+    // recording preview — applies uniformly to every record-btn, every variant
+    document.querySelectorAll('.record-btn').forEach(b => {
+      b.classList.toggle('is-recording', state.recording === 'recording');
+      if (state.recording === 'recording') {
+        b.innerHTML = '<span class="mic-dot-lg"></span><span class="record-time">0:04</span>';
+        b.title = 'Recording — 0:04 elapsed';
+      } else {
+        b.innerHTML = '<span class="mic-dot-lg"></span><span class="record-label">Record</span>';
+        b.title = 'Record — starts recording a new voice note';
+      }
+    });
+
+    document.getElementById('kb-overlay').classList.toggle('shown', state.kb === 'up');
+  }
+
+  function rowEl(p) {
+    const li = document.createElement('li');
+    li.className = 'profile-row';
+    const isWorstCase = state.content === 'bottom' && PHOTO_NAMES.has(p.name);
+    li.innerHTML =
+      '<div class="profile-row-avatar' + (isWorstCase ? ' profile-row-avatar--photo' : '') + '">' + (isWorstCase ? '' : initials(p.name)) + '</div>' +
+      '<div class="profile-row-main">' +
+        '<div class="profile-row-name">' + p.name + '</div>' +
+        '<div class="profile-row-detail">' + p.detail + '</div>' +
+        '<div class="profile-row-meta">' + p.meta + '</div>' +
+      '</div>';
+    return li;
+  }
+
+  document.querySelectorAll('[data-variant]').forEach(b => b.onclick = () => setState({ variant: b.dataset.variant }));
+  document.querySelectorAll('[data-people]').forEach(b => b.onclick = () => setState({ people: b.dataset.people }));
+  document.querySelectorAll('[data-conn]').forEach(b => b.onclick = () => setState({ conn: b.dataset.conn }));
+  document.querySelectorAll('[data-query]').forEach(b => b.onclick = () => setState({ query: b.dataset.query }));
+  document.querySelectorAll('[data-kb]').forEach(b => b.onclick = () => setState({ kb: b.dataset.kb }));
+  document.querySelectorAll('[data-content]').forEach(b => b.onclick = () => {
+    setState({ content: b.dataset.content });
+    const content = document.getElementById('content');
+    if (b.dataset.content === 'bottom') { content.scrollTop = content.scrollHeight; }
+    else { content.scrollTop = 0; }
+  });
+  document.querySelectorAll('[data-rt]').forEach(b => b.onclick = () => setState({ rt: b.dataset.rt }));
+  document.querySelectorAll('[data-recording]').forEach(b => b.onclick = () => setState({ recording: b.dataset.recording }));
+  document.querySelectorAll('[data-motion]').forEach(b => b.onclick = () => setState({ motion: b.dataset.motion }));
+  document.querySelectorAll('[data-type]').forEach(b => b.onclick = () => setState({ type: b.dataset.type }));
+  document.querySelectorAll('.cancel-btn').forEach(b => b.onclick = () => setState({ query: 'rest', kb: 'down' }));
+  document.querySelectorAll('.clear-btn').forEach(b => b.onclick = () => setState({ query: 'focus-empty' }));
+
+  function toggleDocTheme() {
+    const root = document.documentElement;
+    root.setAttribute('data-doc-theme', root.getAttribute('data-doc-theme') === 'dark' ? 'light' : 'dark');
+  }
+
+  render();
+</script>
+</body>
+</html>

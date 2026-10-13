@@ -1,0 +1,681 @@
+<!--
+  DESIGN PROTOTYPE — an HTML approximation of Andy's native `record` screen
+  (the Voice door, reached from `capture-orbit` — docs/design/decisions/
+  capture-doors.md, "Owner's orbit flow"), redrawn to the owner's reference
+  (a single large rounded card; live transcript in place of a waveform; a
+  timer centred under it, above the controls; a bottom row of three
+  controls, each with a small text label beneath it). Not production code.
+
+  Revision 2026-10-13 (this pass): the transcript now starts at the TOP of
+  its area and grows downward, auto-scrolling once it overflows, rather than
+  sitting pinned to the bottom. The word "Recording" and its red dot are
+  gone — the listening state is now carried by the running timer alone, the
+  centre control's red pause glyph, and a one-time VoiceOver announcement
+  when listening starts. The three controls are remapped: LEFT is always a
+  quiet trash icon (Start over), CENTRE is the red pause/resume toggle (no
+  longer the finishing action), RIGHT is a filled moss checkmark (Done) —
+  the only filled-moss control on this screen, on the right for thumb reach,
+  as far from the trash as the row allows. See the dated subsection in
+  record-flow.md for the full reasoning; the "What changed here" notes below
+  are updated in place rather than kept as a separate history.
+
+  Written for docs/design/decisions/record-flow.md, section "Voice screen —
+  owner's redesign" (appended alongside this file). Supersedes this
+  project's own record-flow-a.html for the voice door's shape only — typing
+  and the about-field pattern it established are unchanged and reused here.
+
+  Tokens are declared as CSS variables, named the same as
+  src/constants/theme.ts, so this mock and the app cannot quietly drift
+  apart. Lora / IBM Plex Mono are not loaded here, so serif/monospace fall
+  back to a close system face. The grey tooling above the phone frame is
+  mock-only — it does not exist on the real screen. Inside the frame, the
+  rig below really drives the screen (tap the buttons), and a few controls
+  on the screen itself are live too (the mic, trash, pause/resume and Done
+  buttons, the dialog), so the shape of the transitions can be felt, not
+  just read. The
+  surrounding document page (outside the phone) follows the reader's
+  light/dark preference for comfortable reading; the phone screen itself
+  never does — V1 is light mode only (STYLE.md), and everything inside
+  `.frame` stays `paper`/`ink` regardless of the reading-mode toggle.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>record — Voice screen, owner's redesign</title>
+<style>
+  :root {
+    /* --- app tokens, named as src/constants/theme.ts --- */
+    --color-ink: #2A2622;
+    --color-paper: #E8E6DE;
+    --color-moss: #5C6B4F;
+    --color-line: #B8B3A8;
+    --color-alert: #9F4C3B;
+    --color-placeholder: #63605A;
+    --color-edge: #857E6D;
+    --color-scrim: rgba(42, 38, 34, 0.42);
+    --space-xs: 4px; --space-sm: 8px; --space-md: 12px; --space-lg: 16px;
+    --space-xl: 24px; --space-xxl: 32px; --space-xxxl: 48px;
+    --text-xs: 12px; --text-sm: 13px; --text-md: 14px; --text-base: 15px;
+    --text-lg: 16px; --text-xl: 17px; --text-xxl: 18px;
+    --radius-control: 10px; --radius-card: 16px; --radius-pill: 999px;
+    --opacity-secondary: 0.8; --opacity-quiet: 0.7;
+    --font-display: Georgia, "Times New Roman", serif;   /* ~ Lora */
+    --font-utility: "Courier New", monospace;              /* ~ IBM Plex Mono */
+    /* --- doc chrome only (reading comfort, never the phone) --- */
+    --doc-bg: #d8d4c8; --doc-ink: #2A2622; --doc-quiet: #6f6a62;
+    --doc-rule: #cfcac0; --doc-card: #f6f4ee;
+  }
+  [data-doc-theme="dark"] {
+    --doc-bg: #1E1C19; --doc-ink: #ECE8E0; --doc-quiet: #A39D93;
+    --doc-rule: #3A3631; --doc-card: #26231F;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--doc-bg);
+    color: var(--doc-ink);
+    font-family: -apple-system, system-ui, sans-serif;
+    margin: 0;
+    padding: 24px;
+  }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .doc-note { max-width: 860px; margin: 0 auto 16px; font-size: 13px; opacity: 0.8; line-height: 1.5; }
+  .top-bar { max-width: 860px; margin: 0 auto 8px; display: flex; justify-content: space-between; align-items: baseline; }
+  .theme-toggle { font-size: 12px; background: none; border: 1px solid var(--doc-rule); border-radius: 6px; padding: 4px 8px; cursor: pointer; color: var(--doc-ink); }
+
+  .rig { max-width: 860px; margin: 0 auto 20px; display: flex; flex-wrap: wrap; gap: 10px; }
+  .rig fieldset { border: 1px dashed var(--doc-rule); border-radius: 8px; padding: 8px 10px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .rig legend { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.6; }
+  .rig button { font-size: 12px; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--doc-rule); background: var(--doc-card); color: var(--doc-ink); cursor: pointer; }
+  .rig button.active { background: var(--color-moss); color: var(--color-paper); border-color: var(--color-moss); }
+  .rig button:disabled { opacity: 0.35; cursor: default; }
+
+  .stage { max-width: 860px; margin: 0 auto; display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .frame { width: 390px; border-radius: 44px; background: #111; padding: 14px; box-shadow: 0 20px 50px rgba(0,0,0,0.35); flex-shrink: 0; }
+  .screen { background: var(--color-paper); color: var(--color-ink); border-radius: 32px; overflow: hidden; min-height: 844px; position: relative; display: flex; flex-direction: column; }
+  .ios-status-bar { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-size: 14px; font-weight: 600; flex-shrink: 0; }
+  .nav-bar { padding: 2px 20px 14px; border-bottom: 1px solid var(--color-line); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .nav-bar-back { font-size: 24px; width: 44px; height: 44px; display: flex; align-items: center; }
+  .nav-bar-title { font-size: var(--text-lg); font-weight: 600; }
+  .nav-bar-spacer { width: 44px; }
+
+  .side-notes { flex: 1; min-width: 300px; font-size: 13px; line-height: 1.55; color: var(--doc-ink); }
+  .side-notes h2 { font-size: 14px; margin: 18px 0 6px; }
+  .side-notes h2:first-child { margin-top: 0; }
+  .vo { font-family: var(--font-utility); font-size: 11.5px; background: var(--doc-card); border: 1px dashed var(--doc-rule); border-radius: 6px; padding: 5px 7px; display: block; margin-top: 4px; color: var(--doc-ink); }
+  .flag { background: #f1e6d8; border: 1px dashed #b89a6e; border-radius: 6px; padding: 6px 8px; margin-top: 6px; font-size: 12.5px; }
+
+  /* --- the "big card" read, without a second surface colour or a shadow
+     token: a one-pixel `edge` outline at `radius.card`, inset from the
+     screen edges by `space.sm`. See the side notes, "Adapting the
+     reference." --- */
+  .card-wrap { flex: 1; padding: var(--space-sm) var(--space-sm) var(--space-sm); display: flex; min-height: 0; }
+  .card { flex: 1; border: 1px solid var(--color-edge); border-radius: var(--radius-card); display: flex; flex-direction: column; padding: var(--space-xl) var(--space-lg) var(--space-lg); gap: var(--space-lg); min-height: 0; }
+
+  /* main area */
+  .main-area { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .prompt-wrap { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 var(--space-md); }
+  .record-prompt { font-size: var(--text-base); opacity: var(--opacity-quiet); line-height: 1.5; }
+  .error-banner { color: var(--color-alert); font-size: var(--text-md); line-height: 1.45; text-align: center; }
+
+  /* top-anchored: the first line sits at the top of the area and the block
+     grows downward; overflow scrolls, and the render step below pins
+     scrollTop to scrollHeight so the newest line stays in view. Was
+     flex-end (bottom-anchored) before the 2026-10-13 revision. */
+  .transcript-wrap { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; justify-content: flex-start; }
+  .transcript-live { font-size: var(--text-xxl); line-height: 1.55; display: flex; flex-direction: column; gap: 4px; }
+  .transcript-line { color: var(--color-ink); }
+  .transcript-line.quiet-3 { opacity: var(--opacity-quiet); }
+  .transcript-line.quiet-2 { opacity: var(--opacity-secondary); }
+  .transcript-line.quiet-1 { opacity: var(--opacity-secondary); }
+  .transcript-line.newest { opacity: 1; }
+  .caret { display: inline-block; width: 2px; height: 1em; background: var(--color-ink); vertical-align: -0.15em; margin-left: 2px; animation: blink 1s steps(1) infinite; }
+  [data-motion="reduced"] .caret { animation: none; opacity: 1; }
+  @keyframes blink { 0%, 50% { opacity: 1; } 50.01%, 100% { opacity: 0; } }
+
+  /* status: a bare timer while listening (no word, no dot — 2026-10-13);
+     a small quiet "Paused" word stacked above the frozen timer while
+     paused, same visual recipe as .field-label (quiet, uppercase, small)
+     reused here rather than shared as one class, since a field label and a
+     status word are different things that happen to look alike. */
+  .status-wrap { display: flex; justify-content: center; }
+  .status-stack { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .record-timer { font-family: var(--font-utility); font-size: var(--text-xxl); font-weight: 600; color: var(--color-ink); letter-spacing: 0.2px; }
+  .paused-label { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.6px; color: var(--color-ink); opacity: var(--opacity-quiet); }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+
+  /* a visible stand-in for the one-time VoiceOver announcement at the
+     start of listening — this HTML cannot speak, so it is shown briefly
+     instead. aria-hidden: it is a mock-only illustration, not a real
+     screen element. */
+  .vo-toast { position: absolute; top: 56px; left: 50%; transform: translateX(-50%); background: var(--color-ink); color: var(--color-paper); font-size: var(--text-sm); padding: 6px 12px; border-radius: var(--radius-pill); opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 5; }
+  .vo-toast.shown { opacity: 1; }
+  [data-motion="reduced"] .vo-toast { transition: none; }
+
+  /* controls row: LEFT (Start over) · CENTRE (Pause/Resume) · RIGHT (Done),
+     each with a visible text label beneath it. Sides 56pt, centre 76pt,
+     all over the 44pt floor. */
+  .controls-row { display: flex; align-items: center; justify-content: center; gap: var(--space-xxl); padding-bottom: var(--space-xs); }
+  .control { display: flex; flex-direction: column; align-items: center; gap: var(--space-xs); }
+  .control-label { font-size: var(--text-xs); color: var(--color-ink); text-align: center; max-width: 72px; line-height: 1.2; }
+  .side-btn { width: 56px; height: 56px; border-radius: 50%; border: 1.5px solid var(--color-edge); background: none; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--color-ink); flex-shrink: 0; }
+  .side-btn svg { width: 22px; height: 22px; }
+  .side-btn[disabled] { opacity: 0.4; cursor: default; }
+  /* the one filled-moss control in this row — Done, deliberately on the
+     opposite end from the trash icon (destructive vs. finish, kept apart) */
+  .side-btn--done { background: var(--color-moss); border-color: var(--color-moss); color: var(--color-paper); }
+
+  /* the before-recording mic button only: filled moss ring + fill, as
+     before. Unaffected by this revision. */
+  .main-ring { width: 76px; height: 76px; border-radius: 50%; border: 2px solid var(--color-edge); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: border-color 0.15s; }
+  .main-fill { width: 64px; height: 64px; border-radius: 50%; background: var(--color-moss); display: flex; align-items: center; justify-content: center; color: var(--color-paper); }
+  .main-fill svg { width: 26px; height: 26px; }
+  .main-ring[disabled] { opacity: 0.45; cursor: default; }
+
+  /* the CENTRE pause/resume control while listening or paused: a bare ring
+     with no inner fill — not moss, because Done is now the only filled
+     circle on this row. Ring and glyph both tint `alert` and pulse while
+     actively listening; both revert to a static, plain `ink`/`edge`
+     treatment the instant it pauses. */
+  .main-ring-bare { width: 76px; height: 76px; border-radius: 50%; border: 2px solid var(--color-edge); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; color: var(--color-ink); }
+  .main-ring-bare svg { width: 28px; height: 28px; }
+  .main-ring-bare.live { border-color: var(--color-alert); color: var(--color-alert); animation: ring-pulse 1.8s ease-in-out infinite; }
+  [data-motion="reduced"] .main-ring-bare.live { animation: none; }
+  @keyframes ring-pulse { 0%, 100% { border-color: var(--color-alert); } 50% { border-color: #c9847a; } }
+
+  /* fields, shared by review/typing/transcript — same shape as review's Field */
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px; opacity: var(--opacity-quiet); }
+  .field-input { border: none; border-bottom: 1px solid var(--color-edge); background: none; font-size: 16px; color: var(--color-ink); padding: 6px 0; width: 100%; font-family: inherit; }
+  .field-input::placeholder { color: var(--color-placeholder); }
+  .change-link { background: none; border: none; color: var(--color-moss); font-size: var(--text-sm); padding: 8px 0; min-height: 44px; cursor: pointer; align-self: flex-start; }
+  .lead { font-size: var(--text-base); opacity: 0.75; line-height: 1.5; }
+  .source-field { border: none; border-bottom: 1px solid var(--color-edge); background: none; font-size: var(--text-lg); line-height: 1.5; color: var(--color-ink); padding: 6px 0; width: 100%; font-family: inherit; resize: none; flex: 1; min-height: 100px; }
+  .offline-hint { font-size: var(--text-md); opacity: var(--opacity-quiet); line-height: 1.4; }
+  .error-line { color: var(--color-alert); font-size: var(--text-md); line-height: 1.4; }
+
+  .primary-btn { background: var(--color-moss); color: var(--color-paper); border-radius: var(--radius-pill); border: none; padding: 16px; font-size: 17px; font-weight: 600; min-height: 44px; cursor: pointer; width: 100%; }
+  .primary-btn:disabled { opacity: 0.5; cursor: default; }
+  .secondary-link { background: none; border: none; color: var(--color-ink); opacity: var(--opacity-secondary); font-size: var(--text-base); padding: 10px 0; min-height: 44px; cursor: pointer; align-self: center; }
+
+  .after-stack { display: flex; flex-direction: column; gap: var(--space-lg); flex: 1; min-height: 0; }
+
+  /* dialog */
+  .dialog-overlay { position: absolute; inset: 0; background: var(--color-scrim); display: none; align-items: center; justify-content: center; padding: 32px; }
+  .dialog-overlay.shown { display: flex; }
+  .dialog-card { background: var(--color-paper); border-radius: var(--radius-card); padding: 24px; width: 100%; }
+  .dialog-title { font-size: 18px; font-weight: 600; margin: 0 0 8px; }
+  .dialog-body { font-size: var(--text-base); opacity: var(--opacity-secondary); margin: 0 0 16px; line-height: 1.4; }
+  .dialog-action { background: var(--color-moss); color: var(--color-paper); border: none; border-radius: var(--radius-pill); padding: 16px; width: 100%; font-size: 16px; font-weight: 600; margin-bottom: 8px; cursor: pointer; }
+  .dialog-cancel { background: none; border: none; color: var(--color-ink); opacity: var(--opacity-quiet); font-size: var(--text-base); width: 100%; padding: 10px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <h1>record — Voice screen, owner's redesign</h1>
+  <button class="theme-toggle" onclick="toggleDocTheme()">Toggle reading mode</button>
+</div>
+<p class="doc-note">
+  Design prototype, not production code. This is the Voice door reached from
+  <code>capture-orbit</code> (<code>docs/design/decisions/capture-doors.md</code>) —
+  normally it opens straight into <code>record--listening</code>; the
+  mic-glyph "before" state shown here is the rare case (first-ever permission
+  ask, or after Start over). The rig below drives a real phone-sized mock; it
+  is not part of the design. A few controls on the screen are live too —
+  tap the centre (pause/resume), the trash (Start over) and Done buttons,
+  and the dialog's actions. The small banner that flashes near the top when
+  you start listening stands in for a one-time VoiceOver announcement — this
+  HTML cannot speak, so it is shown instead of heard.
+</p>
+
+<div class="rig">
+  <fieldset>
+    <legend>screen</legend>
+    <button data-screen="ready" class="active">Ready (rare)</button>
+    <button data-screen="listening">Listening</button>
+    <button data-screen="paused">Paused</button>
+    <button data-screen="after">After stop (editable)</button>
+  </fieldset>
+  <fieldset>
+    <legend>transcript</legend>
+    <button data-transcript="none" class="active">Not started</button>
+    <button data-transcript="short">Short</button>
+    <button data-transcript="long">Long (auto-scroll)</button>
+  </fieldset>
+  <fieldset>
+    <legend>from</legend>
+    <button data-ctx="home" class="active">Home</button>
+    <button data-ctx="scoped">Jordan Lee's page</button>
+  </fieldset>
+  <fieldset>
+    <legend>connection</legend>
+    <button data-conn="online" class="active">Online</button>
+    <button data-conn="offline">Offline</button>
+  </fieldset>
+  <fieldset>
+    <legend>ready error</legend>
+    <button data-rerr="none" class="active">None</button>
+    <button data-rerr="denied">Mic &amp; speech denied</button>
+    <button data-rerr="nodevice">No on-device speech (offline)</button>
+  </fieldset>
+  <fieldset>
+    <legend>after stop</legend>
+    <button data-busy="idle" class="active">Idle</button>
+    <button data-busy="reading">Reading…</button>
+    <button data-busy="failed">Read failed</button>
+  </fieldset>
+  <fieldset>
+    <legend>about who?</legend>
+    <button data-about="empty" class="active">Empty</button>
+    <button data-about="declared">Declared (Jordan Lee)</button>
+  </fieldset>
+  <fieldset>
+    <legend>start-over dialog</legend>
+    <button data-dialog="hidden" class="active">Hidden</button>
+    <button data-dialog="shown">Shown</button>
+  </fieldset>
+  <fieldset>
+    <legend>motion</legend>
+    <button data-motion="normal" class="active">Normal</button>
+    <button data-motion="reduced">Reduce Motion</button>
+  </fieldset>
+</div>
+
+<div class="stage">
+  <div class="frame">
+    <div class="screen" id="screen-root">
+      <div class="ios-status-bar"><span>9:41</span><span>⚫︎⚫︎⚫︎ 🔋</span></div>
+      <div class="nav-bar">
+        <span class="nav-bar-back" aria-label="Back">‹</span>
+        <span class="nav-bar-title">New note</span>
+        <span class="nav-bar-spacer"></span>
+      </div>
+
+      <div class="vo-toast" id="vo-announcement" aria-hidden="true"></div>
+
+      <div class="card-wrap">
+        <div class="card" id="card-body"><!-- rendered by JS --></div>
+      </div>
+
+      <div class="dialog-overlay" id="dialog-overlay">
+        <div class="dialog-card">
+          <p class="dialog-title">Start over?</p>
+          <p class="dialog-body">What you said so far will be cleared.</p>
+          <button class="dialog-action" onclick="confirmStartOver()">Start over</button>
+          <button class="dialog-cancel" onclick="setState({dialog:'hidden'})">Keep recording</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="side-notes">
+    <h2>Revision — 2026-10-13</h2>
+    <p>Four changes on top of the redesign below, from the owner's second
+    pass: (1) the transcript now starts at the <strong>top</strong> of its
+    area and grows downward — try the "Long" transcript toggle on Listening
+    to see it fill and auto-scroll, rather than sitting pinned to the
+    bottom from the first word. (2) The word "Recording" and its pulsing
+    dot are gone; the listening state is now carried by the running timer
+    alone, the centre control's red pause glyph, and a one-time VoiceOver
+    announcement when listening starts (the small banner that flashes near
+    the top when you tap the mic stands in for it — this HTML cannot
+    speak). (3) The three controls are remapped: LEFT is always a quiet
+    trash icon (Start over, no longer hidden until words exist), CENTRE is
+    the red pause/resume toggle, RIGHT is a filled moss checkmark (Done) —
+    pausing no longer sits where finishing used to, and finishing no
+    longer sits in the centre. (4) Each of the three now carries a small
+    visible text label beneath it ("Start over" / "Pause" or "Resume" /
+    "Done"), matching its VoiceOver name exactly. The sections below are
+    updated in place to describe the current shape, not kept as two
+    histories to reconcile by hand.</p>
+
+    <h2>What changed here</h2>
+    <p>The waveform becomes the live transcript — now the largest thing on
+    screen, not a decoration beside it. The timer keeps the reference's
+    exact position: centred, below the transcript, above the controls. The
+    bottom row keeps the reference's three-control shape, each labelled —
+    rather than today's full-width text pill plus a quiet "Start over" link
+    underneath it.</p>
+
+    <h2>Adapting the reference, deliberately</h2>
+    <p>The reference's card sits on a visibly different, lighter page. Andy
+    has one background tone (<code>paper</code>) everywhere — STYLE.md's
+    whole palette is six colours, and adding a second neutral or a shadow
+    token for one screen is exactly the ad-hoc drift the tokens rule
+    exists to prevent. The "card" here is a <code>1px colors.edge</code>
+    outline at <code>radius.card</code>, inset by <code>space.sm</code> from
+    the screen edges — it reads as a card through its shape alone, the same
+    discipline that already dropped the Briefing card's torn-edge border
+    (STYLE.md, Signature Element). No token proposed.</p>
+
+    <h2>The "before" state is rare now</h2>
+    <p>Under the orbit flow, tapping Voice starts listening at once —
+    <code>record--ready</code> (mic glyph, MAIN alone) now only appears on
+    the very first permission ask and after Start over, not on every open.
+    The old secondary row — "Scan a business card" / "Type it instead" — is
+    gone: Write and Photo are now their own orbit doors, not links on this
+    screen (<code>capture-doors.md</code>, "Owner's orbit flow").</p>
+    <div class="flag"><strong>Flagged for product-strategist:</strong> the
+    decided mic-denied line ends "…or type it instead," which assumed the
+    old inline link. There is no door to Write on this screen any more —
+    only the back chevron. Recommend either routing that phrase to "go back
+    and write it instead" or confirming the back chevron is enough.</div>
+
+    <h2>Start over is always reachable; emptiness decides whether it asks</h2>
+    <p>This replaces the previous rule ("Start over, once words exist"),
+    where LEFT was reserved but invisible until the first word. The owner's
+    remap gives LEFT a fixed, always-visible role (trash, Start over), so
+    hiding it would now mean MAIN and RIGHT shift sideways between states —
+    the exact jump the old rule existed to prevent, just moved to a
+    different control. Instead, the <em>confirmation</em> still depends on
+    whether there is anything to lose: tapping it with no words yet goes
+    straight back to <code>record--ready</code>, no dialog, the same "empty
+    leaves without asking" rule <code>record-flow.md</code>'s R12 already
+    applies to leaving <code>record--transcript</code>. Once there are heard
+    words, it opens <code>start-over-alert</code> as before. Try "Not
+    started" vs. "Short" on the transcript toggle, then tap the trash icon
+    on Listening, to feel the difference.</p>
+
+    <h2>The CENTRE ring's live indication — now on Pause, not Done</h2>
+    <p>Per the brief: "not a fake progress arc." The ring around CENTRE
+    tints to <code>alert</code> and pulses slowly while actually
+    listening — a uniform tint, never a sweep or a fill that could be read
+    as measuring something — and now holds the pause glyph rather than the
+    old stop glyph, since finishing moved to RIGHT. It reverts to the quiet
+    <code>edge</code> ring and a plain <code>ink</code> glyph, static, the
+    moment it pauses (the glyph itself also changes shape, pause → play, so
+    the state is never carried by colour alone even for someone who can't
+    see red as red). Reduce Motion keeps the tint, drops the pulse — colour
+    and shape still carry the state; motion never has to.</p>
+
+    <h2>Done moves to RIGHT, and becomes the one filled control</h2>
+    <p>The previous version filled MAIN with <code>moss</code> for the
+    finishing action. The owner's remap frees the centre for the red
+    pause/resume toggle instead, so Done — a 56pt checkmark circle — is now
+    the only <code>moss</code>-filled control on this screen, deliberately
+    on the opposite end from the trash icon: destructive and finishing stay
+    as far apart as a three-slot row allows, and the fill alone (smaller
+    than CENTRE, but the one spot of colour among three outlines) is enough
+    to mark it as "the one that moves you on," the same Von Restorff logic
+    this document already uses for <code>mic-button</code> on
+    <code>record--ready</code>.</p>
+
+    <h2>After Done: no new screen</h2>
+    <p>The card's content swaps in place for exactly <code>record-flow.md</code>
+    Option A's already-decided <code>record--transcript</code> shape —
+    <code>transcript-lead</code>, the unchanged <code>about-field</code>,
+    the editable <code>note-source-field</code>, <code>read-button</code> /
+    <code>record-again-button</code> — reflowed inside this card, not a
+    push to another screen. The three round controls are gone entirely
+    here, which is the "reduces sensibly" the brief asked for: once there is
+    nothing left to pause or discard mid-sentence, a pill and a plain link
+    say more plainly what to do next than three icons would.</p>
+
+    <h2>VoiceOver</h2>
+    <span class="vo">Order: transcript → timer/status → Start over → Pause/Resume → Done, the task's own left-to-right order on screen, so no override is needed.</span>
+    <span class="vo">CENTRE: "Pause" / "Resume" — no longer "Done talking." RIGHT: "Done" — no longer "Pause." Both now have a visible on-screen label too (below the icon), so for the first time on this screen the spoken name and the visible word are identical (2.5.3 satisfied directly, not by exemption).</span>
+    <span class="vo">LEFT: "Start over," unchanged in name, now always present rather than appearing only once words exist — a VoiceOver user no longer has to discover it by swiping into an element that wasn't there a moment ago.</span>
+    <span class="vo">record-timer gets its own accessibilityLabel in words ("1 minute 42 seconds elapsed"), not the raw "1:42" string — VoiceOver reads digits-with-colon oddly. Not a live region: read on request, per record-flow.md's Final choice, not announced every second.</span>
+    <span class="vo">The caret is decorative and hidden from VoiceOver. Listening no longer has a status word on screen at all (the dot and "Recording" are both gone) — instead, AccessibilityInfo.announceForAccessibility("Recording.") fires once, when listening starts, which this mock shows as a visible banner since it cannot speak. Paused keeps its "Paused" word, read in the normal reading order.</span>
+
+    <h2>Accessibility</h2>
+    <ul style="padding-left:18px; margin:6px 0;">
+      <li>Targets: CENTRE 76pt, LEFT/RIGHT 56pt (up from 52pt), both over the 44pt floor.</li>
+      <li>Contrast: <code>edge</code> ring 3.2:1 (WCAG 1.4.11); <code>alert</code>
+      ring/glyph ≥3:1 for a meaningful graphic (the already-tested pairing
+      record-flow.md's Final choice approved for the recording indicator);
+      <code>moss</code>/<code>paper</code> on the Done button reuses the
+      pairing already approved for <code>read-button</code> and
+      <code>name-choice--selected</code> — no new pairing; <code>ink</code> on
+      <code>paper</code> 12:1 for every icon, label and the transcript;
+      dimmed transcript lines and the paused label never below
+      <code>textOpacity.quiet</code> (5.0:1).</li>
+      <li>No colour-only state: listening vs. paused differs in three
+      non-colour ways at once — the timer runs or sits frozen, the centre
+      glyph's <em>shape</em> changes (pause bars → play triangle, not just
+      colour), and "Paused" is a word on screen. Colour (the red ring) is
+      one more cue layered on top, never the only one.</li>
+      <li>Dynamic Type: the transcript and the three control labels grow;
+      the three round controls keep their fixed size (the labels wrap
+      under them rather than stretching the circle) and stay reachable —
+      verify on a device, which this HTML cannot simulate.</li>
+      <li>Reduce Motion: the CENTRE ring's tint-pulse, the transcript caret
+      and the VoiceOver-announcement banner's fade all drop their animation
+      and hold a static, still-visible (or instantly-hidden) state — try
+      the Motion toggle above.</li>
+      <li>Permission-denied and no-on-device-speech states are both in the
+      "ready error" rig control; the typing door this error used to offer is
+      flagged above, not silently kept.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+  const state = {
+    screen: 'ready', transcript: 'none', ctx: 'home', conn: 'online',
+    rerr: 'none', busy: 'idle', about: 'empty', dialog: 'hidden', motion: 'normal'
+  };
+
+  const ICONS = {
+    mic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0014 0"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>',
+    pause: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>',
+    play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4l13 8-13 8V4z"/></svg>',
+    trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2"/><path d="M6 7l1 13a1 1 0 001 1h8a1 1 0 001-1l1-13"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>'
+  };
+
+  const LONG_LINES = [
+    "Ran into Priya at the registration desk.",
+    "She's fostering a second dog now, a lab mix called Finn.",
+    "Starting a new job at the downtown shelter in March.",
+    "Said she wants to grab coffee properly next week, not just a hallway chat.",
+    "Asked about the fundraiser — thinks the silent auction did better than last year.",
+    "Mentioned her sister is visiting from Denver this weekend."
+  ];
+  const SHORT_LINE = "Had coffee with Priya just now";
+  const FULL_TEXT = LONG_LINES.join(' ');
+
+  function setState(patch) {
+    Object.assign(state, patch);
+    syncRig();
+    render();
+  }
+
+  function syncRig() {
+    const map = { screen: 'screen', transcript: 'transcript', ctx: 'ctx', conn: 'conn', rerr: 'rerr', busy: 'busy', about: 'about', dialog: 'dialog', motion: 'motion' };
+    for (const key in map) {
+      document.querySelectorAll('[data-' + map[key] + ']').forEach(b => {
+        b.classList.toggle('active', b.dataset[map[key]] === state[key]);
+      });
+    }
+    document.getElementById('screen-root').setAttribute('data-motion', state.motion === 'reduced' ? 'reduced' : 'normal');
+  }
+
+  function tapMic() {
+    if (state.rerr === 'denied') return;
+    if (state.conn === 'offline' && state.rerr === 'nodevice') return;
+    setState({ screen: 'listening', transcript: 'none' });
+    // Stands in for a one-time AccessibilityInfo.announceForAccessibility
+    // ("Recording.") when listening starts — not fired again on resume.
+    flashAnnouncement('VoiceOver: “Recording.”');
+  }
+
+  function tapDoneTalking() { setState({ screen: 'after' }); }
+  function tapPauseToggle() { setState({ screen: state.screen === 'paused' ? 'listening' : 'paused' }); }
+
+  // Start over (trash, LEFT) is always reachable now, not reserved-empty
+  // until words exist. With no words yet there is nothing to lose, so it
+  // returns to ready at once, the same "empty leaves without asking" rule
+  // record-flow.md's R12 already applies elsewhere on this flow. Only once
+  // there are heard words does it ask first.
+  function tapStartOver() {
+    if (state.transcript === 'none') { confirmStartOver(); return; }
+    setState({ dialog: 'shown' });
+  }
+  function confirmStartOver() { setState({ dialog: 'hidden', screen: 'ready', transcript: 'none' }); }
+
+  function flashAnnouncement(text) {
+    const el = document.getElementById('vo-announcement');
+    if (!el) return;
+    el.textContent = text;
+    el.classList.add('shown');
+    clearTimeout(window.__voTimer);
+    window.__voTimer = setTimeout(() => el.classList.remove('shown'), 1600);
+  }
+
+  function transcriptLinesHtml(listening) {
+    const lines = state.transcript === 'long' ? LONG_LINES : [SHORT_LINE];
+    const n = lines.length;
+    return lines.map((text, i) => {
+      const fromEnd = n - 1 - i;
+      const cls = fromEnd === 0 ? 'newest' : fromEnd === 1 ? 'quiet-1' : 'quiet-2';
+      const caret = (listening && fromEnd === 0) ? '<span class="caret" aria-hidden="true"></span>' : '';
+      return '<div class="transcript-line ' + cls + '">' + text + caret + '</div>';
+    }).join('');
+  }
+
+  // No word "Recording", no dot (2026-10-13) — while listening, only the
+  // bare timer shows. The state is carried by the timer running, the
+  // centre control's red pause glyph, and the one-time announcement above.
+  // While paused, a small quiet "Paused" sits above the now-frozen timer —
+  // the one state word this revision keeps, because the owner's note only
+  // asked to remove "Recording".
+  function statusLineHtml() {
+    if (state.screen === 'listening') {
+      return '<div class="status-stack"><span class="record-timer">0:12</span></div>';
+    }
+    if (state.screen === 'paused') {
+      return '<div class="status-stack"><span class="paused-label">Paused</span><span class="record-timer">0:34</span></div>';
+    }
+    return '';
+  }
+
+  function aboutFieldHtml() {
+    const name = state.ctx === 'scoped' ? 'Jordan Lee' : 'Priya Kapoor';
+    if (state.about === 'declared' || state.ctx === 'scoped') {
+      return '<div class="field"><label class="field-label">About who?</label>'
+        + '<input class="field-input" value="' + name + '">'
+        + '<button class="change-link">Change</button></div>';
+    }
+    return '<div class="field"><label class="field-label">About who?</label>'
+      + '<input class="field-input" placeholder="Their name (optional)"></div>';
+  }
+
+  function readyPane() {
+    const denied = state.rerr === 'denied';
+    const nodevice = state.conn === 'offline' && state.rerr === 'nodevice';
+    const prompt = state.ctx === 'scoped'
+      ? "Tap record. This note goes to Jordan Lee, whoever else comes up."
+      : "Tap record. Say who it's about and what you want to remember.";
+    let errorHtml = '';
+    if (denied) {
+      errorHtml = '<div class="error-banner">Andy needs the microphone and speech recognition to take a voice note. Turn them on in Settings, or type it instead.</div>';
+    } else if (nodevice) {
+      errorHtml = '<div class="error-banner">Speech needs a connection for this language — type it instead.</div>';
+    }
+    return '<div class="main-area">'
+      + '<div class="prompt-wrap">' + (errorHtml || '<p class="record-prompt">' + prompt + '</p>') + '</div>'
+      + '</div>'
+      + '<div class="status-wrap"></div>'
+      + '<div class="controls-row">'
+      + '  <button class="main-ring" id="main-ring" ' + (denied || nodevice ? 'disabled' : '') + ' aria-label="Record" onclick="tapMic()"><span class="main-fill">' + ICONS.mic + '</span></button>'
+      + '</div>';
+  }
+
+  // LEFT · CENTRE · RIGHT = Start over (trash, always reachable) · Pause/
+  // Resume (bare ring, tints `alert` only while actually listening) · Done
+  // (the one filled-moss circle on this row). Replaces the old mapping
+  // (trash hidden until words existed · stop/Done in the centre · pause on
+  // the right) per the owner's 2026-10-13 note.
+  function listeningPane(paused) {
+    const hasWords = state.transcript !== 'none';
+    const mainContent = hasWords
+      ? transcriptLinesHtml(!paused)
+      : '<p class="record-prompt">Listening — say what\'s new.</p>';
+    const mainAreaHtml = hasWords
+      ? '<div class="transcript-wrap" id="transcript-scroll"><div class="transcript-live">' + mainContent + '</div></div>'
+      : '<div class="prompt-wrap">' + mainContent + '</div>';
+    const centreIcon = paused ? ICONS.play : ICONS.pause;
+    const centreLabel = paused ? 'Resume' : 'Pause';
+    const centreClass = 'main-ring-bare' + (paused ? '' : ' live');
+    return '<div class="main-area">' + mainAreaHtml + '</div>'
+      + '<div class="status-wrap">' + statusLineHtml() + '</div>'
+      + '<div class="controls-row">'
+      + '  <div class="control">'
+      + '    <button class="side-btn" aria-label="Start over" onclick="tapStartOver()">' + ICONS.trash + '</button>'
+      + '    <span class="control-label">Start over</span>'
+      + '  </div>'
+      + '  <div class="control">'
+      + '    <button class="' + centreClass + '" aria-label="' + centreLabel + '" onclick="tapPauseToggle()">' + centreIcon + '</button>'
+      + '    <span class="control-label">' + centreLabel + '</span>'
+      + '  </div>'
+      + '  <div class="control">'
+      + '    <button class="side-btn side-btn--done" aria-label="Done" onclick="tapDoneTalking()">' + ICONS.check + '</button>'
+      + '    <span class="control-label">Done</span>'
+      + '  </div>'
+      + '</div>';
+  }
+
+  function afterPane() {
+    const offline = state.conn === 'offline';
+    let primaryLabel = offline ? 'Keep this note' : 'Let Andy read it';
+    let disabled = false;
+    let errorHtml = '';
+    if (!offline) {
+      if (state.busy === 'reading') { primaryLabel = 'Reading…'; disabled = true; }
+      else if (state.busy === 'failed') { errorHtml = '<div class="error-line">Andy couldn\'t make sense of that one. Try again.</div>'; }
+    }
+    const offlineHint = offline ? '<div class="offline-hint">You\'re offline. Andy will keep this note on this phone and read it when you\'re back online.</div>' : '';
+    return '<div class="after-stack">'
+      + '<p class="lead">Is this what you said? Fix any name or word, then let Andy read it.</p>'
+      + aboutFieldHtml()
+      + '<div class="field" style="flex:1">'
+      + '  <label class="field-label">What you said</label>'
+      + '  <textarea class="source-field">' + FULL_TEXT + '</textarea>'
+      + '</div>'
+      + offlineHint + errorHtml
+      + '<button class="primary-btn" ' + (disabled ? 'disabled' : '') + '>' + primaryLabel + '</button>'
+      + '<button class="secondary-link">Record again</button>'
+      + '</div>';
+  }
+
+  function render() {
+    const body = document.getElementById('card-body');
+    if (state.screen === 'ready') {
+      body.innerHTML = readyPane();
+    } else if (state.screen === 'listening') {
+      body.innerHTML = listeningPane(false);
+      const scroller = document.getElementById('transcript-scroll');
+      if (scroller) scroller.scrollTop = scroller.scrollHeight;
+    } else if (state.screen === 'paused') {
+      body.innerHTML = listeningPane(true);
+      const scroller = document.getElementById('transcript-scroll');
+      if (scroller) scroller.scrollTop = scroller.scrollHeight;
+    } else {
+      body.innerHTML = afterPane();
+    }
+    document.getElementById('dialog-overlay').classList.toggle('shown', state.dialog === 'shown');
+  }
+
+  document.querySelectorAll('[data-screen]').forEach(b => b.onclick = () => setState({ screen: b.dataset.screen }));
+  document.querySelectorAll('[data-transcript]').forEach(b => b.onclick = () => setState({ transcript: b.dataset.transcript }));
+  document.querySelectorAll('[data-ctx]').forEach(b => b.onclick = () => setState({ ctx: b.dataset.ctx }));
+  document.querySelectorAll('[data-conn]').forEach(b => b.onclick = () => setState({ conn: b.dataset.conn }));
+  document.querySelectorAll('[data-rerr]').forEach(b => b.onclick = () => setState({ rerr: b.dataset.rerr }));
+  document.querySelectorAll('[data-busy]').forEach(b => b.onclick = () => setState({ busy: b.dataset.busy }));
+  document.querySelectorAll('[data-about]').forEach(b => b.onclick = () => setState({ about: b.dataset.about }));
+  document.querySelectorAll('[data-dialog]').forEach(b => b.onclick = () => setState({ dialog: b.dataset.dialog }));
+  document.querySelectorAll('[data-motion]').forEach(b => b.onclick = () => setState({ motion: b.dataset.motion }));
+
+  function toggleDocTheme() {
+    const root = document.documentElement;
+    root.setAttribute('data-doc-theme', root.getAttribute('data-doc-theme') === 'dark' ? 'light' : 'dark');
+  }
+
+  syncRig();
+  render();
+</script>
+</body>
+</html>
