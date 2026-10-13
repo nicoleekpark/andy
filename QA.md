@@ -198,6 +198,7 @@ live here rather than in §7 because that is the screen they happen on.
 |---|---|---|
 | 9.1 | Photograph an English card | Name is **`Joe King`**, not `JOE KING` |
 | 9.2 | Save, open the timeline | Toggle reads **`▸ What the card said`** |
+| 9.3 | On a phone that has **never** been asked for Photos: Record → Scan a business card → **Choose from library** | The photo picker opens straight away — **no "Andy would like to access your photos" prompt**. Pick a card → it is read as before. Andy never appears under iPhone Settings › Privacy › Photos | ⬜ |
 
 ## 10. Edges — where new bugs usually are
 
