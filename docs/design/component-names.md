@@ -141,6 +141,7 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `profile-row-name` | 프로필 이름 |
 | `profile-row-detail` | 그 프로필의 최근 기억할 내용 한 줄 (detail) |
 | `profile-row-meta` | 노트 수 · 마지막 날짜 |
+| `draft-line` | iOS가 앱을 닫았을 때 쓰던 노트 — "You were writing about Priya." (누군지 모르면 "You were writing a note.") + 초록 **Continue** / **Discard** (`draft-line-continue`, `draft-line-discard`). Discard는 먼저 물어봄. 없으면 안 보임 (device QA #52) |
 | `outbox-line` | 오프라인에서 폰에 보관한 노트 수. 오프라인: "2 notes kept on this phone, waiting for Andy to read them." 온라인: "2 notes kept on this phone." + `outbox-line-action` (없으면 안 보임) |
 | `outbox-line-action` | 온라인일 때 `outbox-line` 옆 초록 글자 — "Read the first now" / "Read it now". 가장 오래된 노트를 열어 바로 읽음 |
 | `pending-line` | 오프라인에서 바꾼 것(노트 수정·삭제)이 아직 저장 안 됐을 때 — "1 change made offline, not saved yet." |

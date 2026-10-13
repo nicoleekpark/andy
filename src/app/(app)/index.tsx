@@ -16,6 +16,8 @@ import { colors, fonts, radius, space, textOpacity, textSize } from "@/constants
 import { useOncePerSession } from "@/lib/use-once-per-session";
 import { formatDate } from "@/lib/dates";
 import { useOutbox } from "@/lib/outbox";
+import { useCaptureDraft, type CaptureDraft } from "@/lib/capture-draft";
+import { useConfirm } from "@/components/confirm-dialog";
 import { usePending } from "@/lib/pending-changes";
 import { NOTHING_KEPT_OFFLINE, useLiveOrCopy, useNothingKeptOffline } from "@/lib/offline-copy";
 import { peopleView } from "@convex/offlineViews";
@@ -96,6 +98,63 @@ function OutboxLine() {
         </Text>
       </View>
     </Pressable>
+  );
+}
+
+/**
+ * The note left half-written when iOS closed Andy in the background
+ * (`src/lib/capture-draft.ts`, device QA #52). Continue opens it as it was;
+ * Discard asks first, because it cannot be brought back. Nothing when there is
+ * none.
+ */
+/**
+ * A 21pt line of text grows to a 45pt target (WCAG 2.5.8 / STYLE.md's 44pt):
+ * 12 above and below, 8 at the sides where the words already give width.
+ */
+const LINE_ACTION_SLOP = { top: space.md, bottom: space.md, left: space.sm, right: space.sm };
+
+function DraftLine() {
+  const { draft, drop } = useCaptureDraft();
+  return draft === null ? null : <DraftOffer draft={draft} drop={drop} />;
+}
+
+function DraftOffer({ draft, drop }: { draft: CaptureDraft; drop: () => void }) {
+  const confirm = useConfirm();
+  const about = draft.aboutName?.trim();
+  const line = about ? `You were writing about ${about}.` : "You were writing a note.";
+  return (
+    <View testID="draft-line" style={styles.outboxRow}>
+      <Text style={styles.outboxText}>{line}</Text>
+      <Pressable
+        testID="draft-line-continue"
+        accessibilityRole="button"
+        accessibilityLabel="Continue"
+        hitSlop={LINE_ACTION_SLOP}
+        onPress={() =>
+          router.push(
+            draft.profileId === undefined
+              ? "/capture?resume=1"
+              : `/profile/${draft.profileId}/capture?resume=1`,
+          )
+        }
+      >
+        <Text style={styles.outboxAction}>Continue</Text>
+      </Pressable>
+      <Pressable
+        testID="draft-line-discard"
+        accessibilityRole="button"
+        accessibilityLabel="Discard"
+        hitSlop={LINE_ACTION_SLOP}
+        onPress={() =>
+          confirm("Discard this note?", "What you were writing can't be brought back.", [
+            { text: "Cancel", style: "cancel" },
+            { text: "Discard", style: "destructive", onPress: drop },
+          ])
+        }
+      >
+        <Text style={styles.outboxAction}>Discard</Text>
+      </Pressable>
+    </View>
   );
 }
 
@@ -230,6 +289,7 @@ export default function HomeScreen() {
             ListHeaderComponent={
               <>
                 <OfflineCopyLine takenAt={takenAt} />
+                <DraftLine />
                 <OutboxLine />
                 <PendingLine />
                 {briefing.state === "loading" ||

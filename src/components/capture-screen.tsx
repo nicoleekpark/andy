@@ -1,6 +1,7 @@
-import { Stack, router } from "expo-router";
+import { Stack, router, useNavigation } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  AppState,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -28,6 +29,7 @@ import { sourceLabel } from "@/lib/note-source";
 import { colors, radius, space, textOpacity, textSize } from "@/constants/theme";
 import { userMessage } from "@/lib/user-message";
 import { useOutbox } from "@/lib/outbox";
+import { useCaptureDraft, type CaptureDraft } from "@/lib/capture-draft";
 import { useLiveOrCopy } from "@/lib/offline-copy";
 import { withNotesView } from "@convex/offlineViews";
 
@@ -323,8 +325,15 @@ function Fate({
 export function CaptureScreen({
   profileId,
   outboxId,
+  resume = false,
 }: {
   profileId?: string;
+  /**
+   * Continue the note left half-written when iOS closed Andy
+   * (`src/lib/capture-draft.ts`), offered on home. Its words, or the draft
+   * under review, are back exactly as they were.
+   */
+  resume?: boolean;
   /**
    * A note kept on this phone while offline (`src/lib/outbox.tsx`), opened
    * from home to be read now. Its words go straight to reading, against the
@@ -333,6 +342,11 @@ export function CaptureScreen({
   outboxId?: string;
 }) {
   const confirm = useConfirm();
+  const captureDraft = useCaptureDraft();
+  /** What this screen opens with, when it continues a kept draft. Read once. */
+  const [resumed] = useState<CaptureDraft | null>(() =>
+    resume && outboxId === undefined ? captureDraft.draft : null,
+  );
   /**
    * Who this note is about, when the route already said.
    *
@@ -375,7 +389,7 @@ export function CaptureScreen({
    * screen. `saveCapture` refuses to guess if this is skipped.
    */
   const [resolutions, setResolutions] = useState<Record<string, string | null>>(
-    {},
+    () => resumed?.review?.resolutions ?? {},
   );
   /**
    * Names whose picker the user has opened by hand.
@@ -421,7 +435,9 @@ export function CaptureScreen({
   const waitingGone = outboxId !== undefined && waiting === undefined;
   const doneWaiting = outbox.done;
   /** `waiting.today`, for every reading of it. */
-  const saidOnRef = useRef<string | null>(waiting?.today ?? null);
+  const saidOnRef = useRef<string | null>(
+    waiting?.today ?? resumed?.today ?? null,
+  );
   /**
    * The waiting note this screen is still about. Let go the moment its words
    * leave the screen (Record again, Stop typing): whatever is saved after that
@@ -441,14 +457,18 @@ export function CaptureScreen({
   const readCard = useAction(api.extraction.fromBusinessCard);
   const saveCapture = useMutation(api.notes.saveCapture);
 
-  const [phase, setPhase] = useState<Phase>("idle");
+  const [phase, setPhase] = useState<Phase>(() =>
+    resumed?.review === undefined ? "idle" : "review",
+  );
   /** Finalised text, accumulated across the utterances of one recording. */
   const [finalText, setFinalText] = useState("");
   /** The in-flight guess, replaced on every event until it finalises. */
   const [interim, setInterim] = useState("");
   const [error, setError] = useState<string | null>(null);
   /** The draft under review — a working copy the user edits before it is saved. */
-  const [draft, setDraft] = useState<Draft | null>(null);
+  const [draft, setDraft] = useState<Draft | null>(
+    () => resumed?.review?.draft ?? null,
+  );
   /**
    * The draft exactly as extraction returned it, kept beside the working copy.
    *
@@ -456,7 +476,9 @@ export function CaptureScreen({
    * than by a flag every edit handler has to remember to set — the one that
    * gets forgotten is the one that silently throws work away.
    */
-  const [extracted, setExtracted] = useState<Draft | null>(null);
+  const [extracted, setExtracted] = useState<Draft | null>(
+    () => resumed?.review?.extracted ?? null,
+  );
 
   // Keys that follow each row, so removing one from the middle does not tear
   // down the field being typed in below it (src/lib/use-row-keys.ts).
@@ -687,7 +709,9 @@ export function CaptureScreen({
    * `current` is not a render input, so reading it to draw the review screen
    * would not re-render when it changed.
    */
-  const [transcript, setTranscript] = useState("");
+  const [transcript, setTranscript] = useState(
+    () => resumed?.review?.transcript ?? "",
+  );
   /**
    * The transcript as extraction last read it.
    *
@@ -698,7 +722,9 @@ export function CaptureScreen({
    * read-only and only the facts can be corrected, which means the note keeps
    * saying one thing and answering another for ever.
    */
-  const [readTranscript, setReadTranscript] = useState("");
+  const [readTranscript, setReadTranscript] = useState(
+    () => resumed?.review?.readTranscript ?? "",
+  );
   /**
    * Which front door this capture came through. The draft and the save path are
    * identical either way — this only decides what the note body is called on
@@ -706,7 +732,12 @@ export function CaptureScreen({
    */
   const [source, setSource] = useState<"voice" | "business_card" | "manual">(
     // A waiting note says how it was made; anything else starts as voice.
-    () => (waiting?.kind === "typed" ? "manual" : "voice"),
+    () =>
+      waiting !== undefined
+        ? waiting.kind === "typed"
+          ? "manual"
+          : "voice"
+        : (resumed?.source ?? "voice"),
   );
 
   /**
@@ -724,7 +755,7 @@ export function CaptureScreen({
    */
   // A waiting note opens with its words already here, from the first render.
   const [typing, setTyping] = useState<string | null>(
-    () => waiting?.text ?? null,
+    () => waiting?.text ?? resumed?.words ?? null,
   );
 
   const [locale, setLocale] = useState(DEFAULT_LOCALE);
@@ -760,6 +791,133 @@ export function CaptureScreen({
    * 2026-08-26) rather than silently replacing it with today.
    */
   const lastFirstMetRef = useRef<string | null>(null);
+
+  /**
+   * Keep what is on screen on the phone as it changes, so iOS closing Andy in
+   * the background loses none of it (device QA #52, `capture-draft.ts`).
+   *
+   * Written a moment after the last change rather than on every keystroke,
+   * and at once when Andy leaves the foreground — the last chance before iOS
+   * may close it. Put away when the screen is left on purpose (below), never
+   * merely because it unmounted: a session expiring unmounts every screen,
+   * and must not cost anyone the words they were writing.
+   *
+   * Not for a note opened from the outbox — that one is already kept there.
+   */
+  const { keep: keepDraft, drop: dropDraft } = captureDraft;
+  const keptElsewhere = captureDraft.draft !== null;
+  /** This screen wrote the kept draft (or opened with it), so may put it away. */
+  const ownsDraftRef = useRef(resumed !== null);
+  /** Left on purpose: nothing more is kept, even by a render on the way out. */
+  const leftRef = useRef(false);
+  /** The day the draft was begun, fixed at its first keep. */
+  const draftDayRef = useRef<string | null>(resumed?.today ?? null);
+  const unkeptRef = useRef<Omit<CaptureDraft, "ownerId" | "keptAt"> | null>(
+    null,
+  );
+  useEffect(() => {
+    if (leftRef.current || linkedRef.current !== undefined) return;
+    const words =
+      phase === "extracting" && draft === null
+        ? transcript
+        : typing !== null
+          ? typing
+          : phase === "listening" || phase === "starting"
+            ? finalText
+            : "";
+    // The same test the review screen is drawn by (below).
+    const reviewing =
+      draft !== null &&
+      extracted !== null &&
+      (phase === "review" || phase === "saving" || phase === "extracting");
+    if (!reviewing && words.trim() === "") {
+      unkeptRef.current = null;
+      if (ownsDraftRef.current) {
+        ownsDraftRef.current = false;
+        draftDayRef.current = null;
+        dropDraft();
+      }
+      return;
+    }
+    // Another note is already kept and this screen did not start it — one
+    // waiting on home, or a second capture screen pushed over this one (a
+    // nudge). There is one place to keep a draft, and taking it would lose
+    // that note without a word; this one goes unkept instead, as every note
+    // did before. (Owner to decide whether to keep several, 2026-10-13.)
+    if (!ownsDraftRef.current && keptElsewhere) return;
+    draftDayRef.current ??= saidOnRef.current ?? localToday();
+    unkeptRef.current = {
+      today: draftDayRef.current,
+      profileId,
+      aboutName: aboutName ?? draft?.primary.name ?? undefined,
+      source,
+      // The editor's words even under review: "Discard and start over"
+      // returns to them.
+      ...(words.trim() === "" ? {} : { words }),
+      ...(reviewing
+        ? {
+            review: {
+              transcript,
+              readTranscript,
+              draft,
+              extracted,
+              resolutions,
+            },
+          }
+        : {}),
+    };
+    const timer = setTimeout(() => {
+      if (unkeptRef.current === null || leftRef.current) return;
+      keepDraft(unkeptRef.current);
+      unkeptRef.current = null;
+      ownsDraftRef.current = true;
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [
+    phase,
+    typing,
+    finalText,
+    draft,
+    extracted,
+    transcript,
+    readTranscript,
+    resolutions,
+    source,
+    profileId,
+    aboutName,
+    keepDraft,
+    dropDraft,
+    keptElsewhere,
+  ]);
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (next) => {
+      if (next === "active" || unkeptRef.current === null || leftRef.current) {
+        return;
+      }
+      keepDraft(unkeptRef.current);
+      unkeptRef.current = null;
+      ownsDraftRef.current = true;
+    });
+    return () => subscription.remove();
+  }, [keepDraft]);
+  /**
+   * Left on purpose — saved, kept offline, or backed out of: put it away.
+   * Every one of those leaves by `back` or `replace`, so this one event
+   * covers them all; a session ending unmounts without it.
+   */
+  const putDraftAway = useCallback(() => {
+    leftRef.current = true;
+    unkeptRef.current = null;
+    if (ownsDraftRef.current) {
+      ownsDraftRef.current = false;
+      dropDraft();
+    }
+  }, [dropDraft]);
+  const navigation = useNavigation();
+  useEffect(
+    () => navigation.addListener("beforeRemove", putDraftAway),
+    [navigation, putDraftAway],
+  );
 
   const runExtraction = useCallback(
     /**
