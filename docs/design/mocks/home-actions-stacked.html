@@ -1,0 +1,822 @@
+<!--
+  DESIGN PROTOTYPE — an HTML approximation of native `home` for Andy. Not
+  production code — a design prototype for the owner to pick from, not a
+  screen to ship.
+
+  Follow-up to docs/design/mocks/home-actions-a-variants.html. The owner
+  picked **A1 "stacked"** from that file — record-button on its own full-width
+  row, directly above a full-width home-search-field at the very bottom — and
+  asked: "within this stacked idea, is there an even better design?"
+
+  This file holds four explorations of the stacked idea itself (not a return
+  to the single-row Option A/A2/A3 family). All four keep what the owner
+  already approved: model (a) — home-search-field filters profile-list in
+  place, free and offline — an "Ask Andy: '{query}'" row under results for the
+  paid step, and record-button as the primary, worded, moss-filled control.
+  Only the *shape, order and behaviour* of the two-row stack changes, aimed at
+  A1's three named costs: its tallest bottom chrome of the family (least
+  home-index headroom), Record reading before the field in default VoiceOver
+  order (needs an explicit override to keep the brief's "search, then Record"),
+  and the flat visual weight of two full-width bars stacked on each other.
+
+    S1 — Oval Record: a centered, content-width oval/pill (Voice Memos /
+         camera-shutter family) on its own row, above the full-width field.
+    S2 — Compact panel: same two rows as A1, drawn as one panel with a
+         hairline and tightened spacing — no new tokens, just space.xs in
+         place of space.sm between/around the rows.
+    S3 — Scroll-aware Record: Record's row is present at rest, and steps
+         aside while the list is actively scrolling (not searching),
+         returning when scrolling settles — disabled at the largest Dynamic
+         Type size, and only ever a hide, never a shrink of the 44pt target.
+    S4 — Swapped rows: the field sits above Record, which becomes the very
+         last, bottom-most control — removing the need for a VoiceOver-order
+         override, at the cost of the field leaving the single "very bottom"
+         position A1 borrowed from iOS 26's search placement.
+
+  Tokens are declared as CSS variables, named the same as
+  src/constants/theme.ts, so this mock and the app cannot quietly drift
+  apart. Lora / IBM Plex Mono are not loaded here, so serif/monospace fall
+  back to a close system face. SF Symbols (gearshape, a magnifying glass) are
+  approximated with small CSS-drawn shapes — the real screen draws them with
+  expo-symbols, already a dependency. The rig above the phone frame is
+  mock-only tooling, not part of the design. Chrome-height figures in the
+  side notes are computed from this mock's own CSS (border + padding + row
+  heights), labelled as approximations to confirm on device, same caveat the
+  brief's own R7 already carries for home-index at the largest Dynamic Type
+  size.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>home-actions — stacked explorations (S1–S4)</title>
+<style>
+  :root {
+    /* --- app tokens, named as src/constants/theme.ts --- */
+    --color-ink: #2A2622;
+    --color-paper: #E8E6DE;
+    --color-moss: #5C6B4F;
+    --color-brass: #B8935A;
+    --color-line: #B8B3A8;
+    --color-alert: #9F4C3B;
+    --color-placeholder: #63605A;
+    --color-edge: #857E6D;
+    --color-scrim: rgba(42, 38, 34, 0.42);
+    --space-xs: 4px; --space-sm: 8px; --space-md: 12px; --space-lg: 16px;
+    --space-xl: 24px; --space-xxl: 32px; --space-xxxl: 48px;
+    --text-xs: 12px; --text-sm: 13px; --text-md: 14px; --text-base: 15px;
+    --text-lg: 16px; --text-xl: 17px; --text-xxl: 18px;
+    --radius-control: 10px; --radius-card: 16px; --radius-pill: 999px;
+    --opacity-secondary: 0.8; --opacity-quiet: 0.7;
+    --size-avatar: 40px;
+    --font-display: Georgia, "Times New Roman", serif;   /* ~ Lora */
+    --font-utility: "Courier New", monospace;              /* ~ IBM Plex Mono */
+    /* --- doc chrome only (reading comfort, never the phone) --- */
+    --doc-bg: #d8d4c8; --doc-ink: #2A2622; --doc-quiet: #6f6a62;
+    --doc-rule: #cfcac0; --doc-card: #f6f4ee;
+  }
+  [data-doc-theme="dark"] {
+    --doc-bg: #1E1C19; --doc-ink: #ECE8E0; --doc-quiet: #A39D93;
+    --doc-rule: #3A3631; --doc-card: #26231F;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--doc-bg); color: var(--doc-ink); font-family: -apple-system, system-ui, sans-serif; margin: 0; padding: 24px; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .doc-note { max-width: 1060px; margin: 0 auto 16px; font-size: 13px; opacity: 0.8; line-height: 1.5; }
+  .top-bar { max-width: 1060px; margin: 0 auto 8px; display: flex; justify-content: space-between; align-items: baseline; }
+  .theme-toggle { font-size: 12px; background: none; border: 1px solid var(--doc-rule); border-radius: 6px; padding: 4px 8px; cursor: pointer; color: var(--doc-ink); }
+
+  .rig { max-width: 1060px; margin: 0 auto 20px; display: flex; flex-wrap: wrap; gap: 10px; }
+  .rig fieldset { border: 1px dashed var(--doc-rule); border-radius: 8px; padding: 8px 10px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .rig legend { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.6; }
+  .rig button { font-size: 12px; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--doc-rule); background: var(--doc-card); color: var(--doc-ink); cursor: pointer; }
+  .rig button.active { background: var(--color-moss); color: var(--color-paper); border-color: var(--color-moss); }
+  .rig fieldset.variant-rig { border-color: var(--color-moss); }
+  .rig fieldset.variant-rig button.active { background: var(--color-ink); border-color: var(--color-ink); }
+
+  .stage { max-width: 1060px; margin: 0 auto; display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .frame { width: 390px; border-radius: 44px; background: #111; padding: 14px; box-shadow: 0 20px 50px rgba(0,0,0,0.35); flex-shrink: 0; }
+  .screen { background: var(--color-paper); color: var(--color-ink); border-radius: 32px; overflow: hidden; height: 844px; position: relative; display: flex; flex-direction: column; }
+  .ios-status-bar { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-size: 14px; font-weight: 600; flex-shrink: 0; }
+
+  /* nav bar */
+  .nav-bar { padding: 2px 12px 14px; border-bottom: 1px solid var(--color-line); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .nav-bar-back { width: 44px; height: 44px; visibility: hidden; }
+  .nav-bar-title { font-family: var(--font-display); font-size: 20px; font-weight: 600; }
+  .nav-bar-action-right { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .gearshape { width: 20px; height: 20px; border: 2px solid var(--color-ink); border-radius: 50%; }
+
+  .content { flex: 1; overflow-y: auto; position: relative; display: flex; flex-direction: column; }
+  .offline-copy-line { font-size: var(--text-xs); opacity: var(--opacity-quiet); text-align: center; padding: var(--space-sm) var(--space-lg) 0; }
+
+  /* briefing card, simplified */
+  .briefing-card { margin: var(--space-lg); border-radius: var(--radius-card); background: var(--doc-card); border-left: 4px solid var(--color-brass); padding: var(--space-lg); flex-shrink: 0; }
+  .briefing-card-title { font-weight: 600; font-size: var(--text-lg); margin: 0 0 4px; }
+  .briefing-card-body { font-size: var(--text-base); opacity: var(--opacity-secondary); margin: 0; }
+
+  /* list */
+  .list-wrap { position: relative; flex: 1; }
+  .profile-list { list-style: none; margin: 0; padding: 0 var(--space-lg); }
+  .home-letter-heading { font-size: var(--text-sm); font-weight: 700; opacity: var(--opacity-quiet); text-transform: uppercase; letter-spacing: 0.06em; padding: var(--space-md) 0 var(--space-xs); }
+  .profile-row { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) 0; min-height: 44px; border-bottom: 1px solid var(--color-line); }
+  .profile-row-avatar { width: var(--size-avatar); height: var(--size-avatar); border-radius: 50%; background: var(--color-moss); color: var(--color-paper); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: var(--text-base); flex-shrink: 0; }
+  .profile-row-main { flex: 1; min-width: 0; }
+  .profile-row-name { font-family: var(--font-display); font-size: var(--text-lg); line-height: 1.3; }
+  .profile-row-detail { font-size: var(--text-sm); opacity: var(--opacity-secondary); line-height: 1.3; }
+  .profile-row-meta { font-family: var(--font-utility); font-size: var(--text-xs); opacity: var(--opacity-quiet); margin-top: 2px; }
+  .profile-row-match { font-size: var(--text-xs); opacity: var(--opacity-quiet); font-style: italic; margin-top: 2px; }
+
+  .home-index { position: absolute; top: 4px; bottom: var(--space-sm); right: 2px; width: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; }
+  .home-index span { font-family: var(--font-utility); font-size: 9px; color: var(--color-moss); line-height: 1.05; }
+
+  .home-ask-row { margin: var(--space-sm) var(--space-lg) 0; padding: var(--space-md); border: 1px solid var(--color-edge); border-radius: var(--radius-control); font-size: var(--text-base); }
+  .home-ask-row.is-button { cursor: pointer; color: var(--color-moss); font-weight: 600; }
+  .home-ask-row.is-offline { color: var(--color-ink); opacity: var(--opacity-secondary); border-style: dashed; cursor: default; }
+
+  .empty-state { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 var(--space-xxl); font-size: var(--text-base); opacity: var(--opacity-secondary); line-height: 1.5; }
+
+  /* --- bottom bar: shared base, variant-specific arrangement --- */
+  .bottom-bar-wrap { flex-shrink: 0; position: relative; z-index: 2; }
+  .home-bottom-bar { display: flex; flex-direction: column; align-items: stretch; border-top: 1px solid var(--color-line); background: var(--color-paper); }
+  .bar-s1, .bar-s2, .bar-s3, .bar-s4 { display: none; }
+  .screen[data-variant="s1"] .bar-s1 { display: flex; }
+  .screen[data-variant="s2"] .bar-s2 { display: flex; }
+  .screen[data-variant="s3"] .bar-s3 { display: flex; }
+  .screen[data-variant="s4"] .bar-s4 { display: flex; }
+
+  .home-search-field-wrap { flex: 1; display: flex; align-items: center; gap: var(--space-sm); border: 1px solid var(--color-edge); border-radius: var(--radius-pill); padding: 0 var(--space-md); height: 44px; min-width: 0; }
+  .search-glass { width: 13px; height: 13px; border: 2px solid var(--color-placeholder); border-radius: 50%; position: relative; flex-shrink: 0; }
+  .search-glass::after { content: ''; position: absolute; width: 6px; height: 2px; background: var(--color-placeholder); bottom: -3px; right: -4px; transform: rotate(45deg); border-radius: 1px; }
+  .home-search-field { border: none; background: none; outline: none; font-size: var(--text-base); color: var(--color-ink); flex: 1; min-width: 0; font-family: inherit; }
+  .home-search-field::placeholder { color: var(--color-placeholder); }
+  .clear-search-button { width: 22px; height: 22px; border-radius: 50%; background: var(--color-placeholder); color: var(--color-paper); font-size: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+  .cancel-search-button { background: none; border: none; color: var(--color-moss); font-size: var(--text-base); font-weight: 600; padding: 0 var(--space-xs); min-height: 44px; cursor: pointer; flex-shrink: 0; }
+  .record-button { background: var(--color-moss); color: var(--color-paper); border: none; border-radius: var(--radius-pill); height: 44px; padding: 0 var(--space-lg); font-size: var(--text-lg); font-weight: 600; display: flex; align-items: center; justify-content: center; gap: var(--space-xs); flex-shrink: 0; cursor: pointer; white-space: nowrap; width: 100%; }
+  .mic-dot { width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--color-paper); flex-shrink: 0; }
+
+  .home-bottom-bar-row--search { display: flex; align-items: center; gap: var(--space-sm); }
+  .home-bottom-bar-row--record.hidden-el { display: none; }
+
+  /* ---- S1: oval, centered, content-width Record above the field ---- */
+  .home-bottom-bar--s1 { gap: var(--space-sm); padding: var(--space-sm) var(--space-lg) calc(var(--space-sm) + 20px); }
+  .home-bottom-bar--s1 .home-bottom-bar-row--record { display: flex; justify-content: center; }
+  .home-bottom-bar--s1 .record-button { width: auto; padding: 0 var(--space-xl); border-radius: var(--radius-pill); }
+  /* degrades to full width at the largest type size, same shape family as S2/S4 at that size */
+  .screen[data-type-scale="large"] .home-bottom-bar--s1 .record-button { width: 100%; padding: 0 var(--space-md); }
+
+  /* ---- S2: one panel, tightened spacing, horizontal hairline between rows ---- */
+  .home-bottom-bar--s2 { gap: var(--space-xs); padding: var(--space-xs) var(--space-lg) calc(var(--space-xs) + 20px); }
+  .home-bottom-bar-divider--h { height: 1px; background: var(--color-line); margin: 0; flex-shrink: 0; }
+  .screen[data-type-scale="large"] .home-bottom-bar-divider--h { opacity: 0.6; }
+
+  /* ---- S3: same shape as A1, Record's row can hide on scroll (not just on typing) ---- */
+  .home-bottom-bar--s3 { gap: var(--space-sm); padding: var(--space-sm) var(--space-lg) calc(var(--space-sm) + 20px); }
+  .home-bottom-bar--s3 .home-bottom-bar-row--record { overflow: hidden; max-height: 60px; opacity: 1; transition: opacity 180ms ease, max-height 180ms ease, margin-bottom 180ms ease; margin-bottom: 0; }
+  .home-bottom-bar--s3 .home-bottom-bar-row--record.hidden-el { display: flex; max-height: 0; opacity: 0; }
+  .screen.no-motion .home-bottom-bar--s3 .home-bottom-bar-row--record { transition: none; }
+  .scroll-note { text-align: center; font-size: 11px; color: var(--color-placeholder); padding: 2px 0 0; display: none; }
+  .screen[data-scroll="scrolling"][data-variant="s3"] .scroll-note { display: block; }
+
+  /* ---- S4: field row first, Record row last (the very bottom) ---- */
+  .home-bottom-bar--s4 { gap: var(--space-sm); padding: var(--space-sm) var(--space-lg) calc(var(--space-sm) + 20px); }
+
+  .keyboard-overlay { position: absolute; left: 0; right: 0; bottom: 0; height: 291px; background: #d6d2c8; border-top: 1px solid var(--color-line); z-index: 1; display: none; }
+  .keyboard-overlay.shown { display: block; }
+  .keyboard-overlay-label { text-align: center; font-size: 11px; color: var(--color-placeholder); padding-top: 8px; }
+
+  .side-notes { flex: 1; min-width: 320px; font-size: 13px; line-height: 1.55; color: var(--doc-ink); }
+  .side-notes h2 { font-size: 14px; margin: 18px 0 6px; }
+  .side-notes h2:first-child { margin-top: 0; }
+  .side-notes h3 { font-size: 13px; margin: 14px 0 4px; }
+  .vo { font-family: var(--font-utility); font-size: 11.5px; background: var(--doc-card); border: 1px dashed var(--doc-rule); border-radius: 6px; padding: 5px 7px; display: block; margin-top: 4px; color: var(--doc-ink); }
+  .verdict { background: var(--doc-card); border-left: 3px solid var(--color-moss); border-radius: 6px; padding: 8px 10px; margin-top: 6px; }
+  .risk { background: var(--doc-card); border-left: 3px solid var(--color-alert); border-radius: 6px; padding: 8px 10px; margin-top: 6px; }
+  .compare-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 6px; }
+  .compare-table th, .compare-table td { border: 1px solid var(--doc-rule); padding: 5px 6px; text-align: left; vertical-align: top; }
+  .compare-table th { background: var(--doc-card); font-weight: 600; }
+
+  /* large dynamic type demo — shared sizing */
+  .screen[data-type-scale="large"] .nav-bar-title { font-size: 26px; }
+  .screen[data-type-scale="large"] .profile-row-name { font-size: 20px; }
+  .screen[data-type-scale="large"] .profile-row-detail,
+  .screen[data-type-scale="large"] .profile-row-meta { font-size: 15px; }
+  .screen[data-type-scale="large"] .home-search-field,
+  .screen[data-type-scale="large"] .record-button,
+  .screen[data-type-scale="large"] .cancel-search-button,
+  .screen[data-type-scale="large"] .home-ask-row { font-size: 19px; }
+  .screen[data-type-scale="large"] .record-button { white-space: normal; text-align: center; height: auto; min-height: 44px; }
+  .screen[data-type-scale="large"] .home-index span { font-size: 11px; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <h1>home-actions — stacked explorations (S1–S4), within the owner's chosen A1</h1>
+  <button class="theme-toggle" onclick="toggleDocTheme()">Toggle reading mode</button>
+</div>
+<p class="doc-note">
+  Design prototype, not production code. The owner picked A1 "stacked" from
+  <code>docs/design/mocks/home-actions-a-variants.html</code> and asked: within
+  this stacked idea, is there an even better design? All four variants below
+  keep the approved model — <code>home-search-field</code> filters
+  <code>profile-list</code> in place, free and offline (R3–R5), a plain-text
+  <code>Ask Andy: "{query}"</code> row for the paid step (R4/R9), and
+  <code>record-button</code> as the one filled, worded, <code>moss</code>
+  control (R1/R2). Only the stack's shape, order or behaviour changes. The rig
+  below drives the phone frame; it is not part of the design.
+</p>
+
+<div class="rig">
+  <fieldset class="variant-rig">
+    <legend>variant</legend>
+    <button data-variant="s1" class="active">S1 — oval Record</button>
+    <button data-variant="s2">S2 — compact panel</button>
+    <button data-variant="s3">S3 — scroll-aware</button>
+    <button data-variant="s4">S4 — swapped rows</button>
+  </fieldset>
+  <fieldset>
+    <legend>people</legend>
+    <button data-people="20" class="active">20 people</button>
+    <button data-people="0">No one yet</button>
+  </fieldset>
+  <fieldset>
+    <legend>connection</legend>
+    <button data-conn="online" class="active">Online</button>
+    <button data-conn="offline">Offline</button>
+  </fieldset>
+  <fieldset>
+    <legend>search</legend>
+    <button data-query="rest" class="active">Resting</button>
+    <button data-query="focus-empty">Focused, empty</button>
+    <button data-query="pri">Typed "Pri"</button>
+    <button data-query="greyhound">Typed "greyhound"</button>
+  </fieldset>
+  <fieldset>
+    <legend>keyboard</legend>
+    <button data-kb="down" class="active">Down</button>
+    <button data-kb="up">Up</button>
+  </fieldset>
+  <fieldset>
+    <legend>list (S3 only)</legend>
+    <button data-scroll="resting" class="active">At rest</button>
+    <button data-scroll="scrolling">Actively scrolling</button>
+  </fieldset>
+  <fieldset>
+    <legend>motion (S3 only)</legend>
+    <button data-motion="normal" class="active">Normal</button>
+    <button data-motion="reduced">Reduce Motion</button>
+  </fieldset>
+  <fieldset>
+    <legend>dynamic type</legend>
+    <button data-type="normal" class="active">Normal</button>
+    <button data-type="large">Largest accessibility size</button>
+  </fieldset>
+</div>
+
+<div class="stage">
+  <div class="frame">
+    <div class="screen" id="screen" data-variant="s1">
+      <div class="ios-status-bar"><span>9:41</span><span>⚫︎⚫︎⚫︎ 🔋</span></div>
+      <div class="nav-bar">
+        <div class="nav-bar-back"></div>
+        <span class="nav-bar-title">andy</span>
+        <div class="nav-bar-action-right" aria-label="Settings" role="button" title="Settings — opens settings">
+          <div class="gearshape"></div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="offline-copy-line" id="offline-line" style="display:none">Offline — showing what Andy had at 3:40 PM.</div>
+
+        <div class="briefing-card" id="briefing">
+          <p class="briefing-card-title">Nothing coming up</p>
+          <p class="briefing-card-body">Connect your calendar and Andy will brief you before you walk in.</p>
+        </div>
+
+        <div class="list-wrap" id="list-wrap">
+          <ol class="profile-list" id="profile-list"></ol>
+          <div class="home-index" id="home-index"></div>
+        </div>
+
+        <div class="home-ask-row" id="ask-row" style="display:none"></div>
+        <p class="scroll-note">S3 only — Record stepped aside while the list is moving; reappears when it settles.</p>
+
+        <div class="empty-state" id="empty-state" style="display:none">No one yet — tap record to remember your first person.</div>
+      </div>
+
+      <div class="bottom-bar-wrap" id="bottom-bar-wrap">
+        <!-- S1: centered, content-width oval Record above the full-width field -->
+        <div class="home-bottom-bar home-bottom-bar--s1 bar-s1">
+          <div class="home-bottom-bar-row--record" id="s1-record-row">
+            <button class="record-button record-btn" title="Record — starts recording a new voice note"><span class="mic-dot"></span>Record</button>
+          </div>
+          <div class="home-bottom-bar-row--search">
+            <div class="home-search-field-wrap">
+              <div class="search-glass"></div>
+              <input class="home-search-field search-input" placeholder="Find a name or a word" readonly>
+              <div class="clear-search-button clear-btn" style="display:none" title="Clear">✕</div>
+            </div>
+            <button class="cancel-search-button cancel-btn" style="display:none">Cancel</button>
+          </div>
+        </div>
+
+        <!-- S2: one panel, both rows full-width, tightened spacing + a horizontal hairline -->
+        <div class="home-bottom-bar home-bottom-bar--s2 bar-s2">
+          <div class="home-bottom-bar-row--record" id="s2-record-row">
+            <button class="record-button record-btn" title="Record — starts recording a new voice note"><span class="mic-dot"></span>Record</button>
+          </div>
+          <div class="home-bottom-bar-divider--h" aria-hidden="true"></div>
+          <div class="home-bottom-bar-row--search">
+            <div class="home-search-field-wrap">
+              <div class="search-glass"></div>
+              <input class="home-search-field search-input" placeholder="Find a name or a word" readonly>
+              <div class="clear-search-button clear-btn" style="display:none" title="Clear">✕</div>
+            </div>
+            <button class="cancel-search-button cancel-btn" style="display:none">Cancel</button>
+          </div>
+        </div>
+
+        <!-- S3: same shape as A1; Record's row can also hide while the list is scrolling -->
+        <div class="home-bottom-bar home-bottom-bar--s3 bar-s3">
+          <div class="home-bottom-bar-row--record" id="s3-record-row">
+            <button class="record-button record-btn" title="Record — starts recording a new voice note"><span class="mic-dot"></span>Record</button>
+          </div>
+          <div class="home-bottom-bar-row--search">
+            <div class="home-search-field-wrap">
+              <div class="search-glass"></div>
+              <input class="home-search-field search-input" placeholder="Find a name or a word" readonly>
+              <div class="clear-search-button clear-btn" style="display:none" title="Clear">✕</div>
+            </div>
+            <button class="cancel-search-button cancel-btn" style="display:none">Cancel</button>
+          </div>
+        </div>
+
+        <!-- S4: field row first, Record row last — the very bottom edge -->
+        <div class="home-bottom-bar home-bottom-bar--s4 bar-s4">
+          <div class="home-bottom-bar-row--search">
+            <div class="home-search-field-wrap">
+              <div class="search-glass"></div>
+              <input class="home-search-field search-input" placeholder="Find a name or a word" readonly>
+              <div class="clear-search-button clear-btn" style="display:none" title="Clear">✕</div>
+            </div>
+            <button class="cancel-search-button cancel-btn" style="display:none">Cancel</button>
+          </div>
+          <div class="home-bottom-bar-row--record" id="s4-record-row">
+            <button class="record-button record-btn" title="Record — starts recording a new voice note"><span class="mic-dot"></span>Record</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="keyboard-overlay" id="kb-overlay"><p class="keyboard-overlay-label">(iOS keyboard)</p></div>
+    </div>
+  </div>
+
+  <div class="side-notes">
+    <h2>The question this follow-up answers</h2>
+    <p>A1 fixed the proximity misreading completely (Record and the field are
+    never in the same row, at any width), but it is the tallest bottom chrome
+    of the three A-variants and puts Record visually before the field — the
+    opposite of the brief's §9 order ("list → search → Record"), needing an
+    explicit VoiceOver-order override to keep it. Both are named costs, not
+    blockers, in <code>home-actions.md</code>'s "Option A variants" section.
+    The four explorations below each attack one of A1's three named costs —
+    chrome height, the VoiceOver-order override, or the flat weight of two
+    full-width bars — while keeping everything else about A1 unchanged.</p>
+
+    <h2>S1 — Oval Record, centred and content-width</h2>
+    <p>Record stays its own row above the field, but instead of a full-width
+    pill it is a centred, content-width oval — horizontal padding
+    <code>space.xl</code> each side of the label, same 44pt height, same
+    <code>radius.pill</code> shape token, same <code>moss</code> fill. The
+    Voice Memos / camera-shutter family: a round control reads as *the one
+    special action* rather than another bar.</p>
+    <span class="vo"><strong>Principle:</strong> Von Restorff — a shape that
+    breaks the rectangular rhythm of the field below it is the one thing the
+    eye lands on, doing visually what A1 already does structurally (Record is
+    never "in" the field's row). <strong>Resting:</strong> oval centred above
+    the full-width field. <strong>Typing:</strong> the oval row crossfades out
+    exactly as A1's record row does today, same mechanism. <strong>Offline:</strong>
+    unchanged — the field still filters, <code>home-ask-row</code> still
+    shows the C6 sentence. <strong>Largest Dynamic Type:</strong> the oval
+    grows to full width at the largest size (shown in the toggle above),
+    converging on A1's exact shape under stress — a graceful fallback, not a
+    separate design to maintain. <strong>44pt:</strong> height unchanged from
+    A1; width is content-driven (no raw pixel width — padding token only), so
+    it stays comfortably above the 44×44pt floor at any label length.
+    <strong>VoiceOver order:</strong> unchanged from A1 — Record still reads
+    visually before the field, so the same explicit order override is still
+    needed; S1 does not touch this cost. <strong>Thumb reach:</strong> a
+    centred target is neutral for either hand, same as A1's full-width Record
+    — reachable by sliding the thumb to centre rather than to an edge, the
+    same tap-anywhere-on-a-wide-target ease A1 already has, just over a
+    narrower band.</span>
+    <div class="verdict"><strong>Verdict:</strong> the lowest-risk, purely
+    cosmetic move of the four — it answers "the weight of two bars" by making
+    one of them stop reading as a bar at all, costs no chrome height (same
+    133pt total as A1) and touches no business rule, copy or accessibility
+    order. It does not fix A1's VoiceOver-order cost or its chrome-height
+    cost — those are still open if S1 ships alone.</div>
+
+    <h2>S2 — Compact panel, tightened spacing</h2>
+    <p>Same two full-width rows, same order as A1, but drawn as one panel: a
+    1pt horizontal hairline (<code>home-bottom-bar-divider</code>, already
+    proposed for A3, here laid flat instead of upright) replaces the open gap
+    between rows, and the panel's own vertical padding moves from
+    <code>space.sm</code> (8pt) to <code>space.xs</code> (4pt) at the top and
+    around the divider. No new token — this is the existing scale read more
+    tightly, the same move <code>STYLE.md</code> already describes for
+    "existing screens move onto the scale as they're touched."</p>
+    <span class="vo"><strong>Principle:</strong> Gestalt common region — a
+    shared background and a single shared edge read as *one* control (a
+    panel with two rows) rather than two independent bars stacked with a gap,
+    which is the more literal fix for "the weight of two full-width bars."
+    <strong>Resting / typing / offline:</strong> identical behaviour to A1,
+    only the spacing and the divider differ. <strong>Largest Dynamic Type:</strong>
+    both rows are already full width, so — like A1 — the size grows row
+    height only, no reflow; the divider's opacity is reduced slightly at that
+    size so it doesn't compete with larger text. <strong>44pt:</strong> both
+    controls stay exactly 44pt tall; only the *panel's own padding* shrank,
+    never a tap target. <strong>VoiceOver order:</strong> unchanged from A1 —
+    Record still visually precedes the field, same override still needed.
+    <strong>Thumb reach:</strong> identical to A1 — full-width Record, neutral
+    for either hand.</span>
+    <p><strong>Chrome height, computed from this mock's own CSS:</strong> A1 =
+    border(1) + pad-top(8) + record row(44) + gap(8) + search row(44) +
+    pad-bottom(8+20 safe area) = <strong>133pt</strong>. S2 = border(1) +
+    pad-top(4) + record row(44) + divider(1) + search row(44) + pad-bottom(4+20)
+    = <strong>121pt</strong> — <strong>12pt less</strong>, handed back to
+    <code>home-index</code> headroom for R7's "27 letters at the largest
+    Dynamic Type size" check. An approximation from this mock's own CSS, to
+    confirm against the shipped <code>home-index</code> component on device,
+    the same caveat the brief's own Option A recommendation already carries.</p>
+    <div class="verdict"><strong>Verdict:</strong> the only variant that
+    directly reduces chrome height, by a real if modest 12pt (~9%), at zero
+    new tokens and zero behaviour change — it is a tightening, not a
+    redesign, and is compatible with any of S1/S3/S4 (stack it with whichever
+    shape or order the owner picks). It does not touch the VoiceOver-order
+    cost or the "two bars" weight on its own (the hairline helps a little, by
+    visually binding the rows together, but it's a smaller signal than S1's
+    shape change).</div>
+
+    <h2>S3 — Scroll-aware Record</h2>
+    <p>At rest, identical to A1. While the list is being actively scrolled —
+    not searching, just browsing the A–Z list — Record's row steps aside
+    (crossfades out, 180ms), the same way it already does for typing, and
+    reappears once scrolling settles. This gives <code>home-index</code> its
+    full headroom back exactly during the one interaction most likely to need
+    it: flicking through a long alphabetised list. iOS's own Safari and Mail
+    compact or hide their bottom toolbar on scroll and bring it back on scroll
+    up or at rest — the same learned pattern, not a novel one (Jakob's law).</p>
+    <span class="vo"><strong>Resting:</strong> full A1 chrome, 133pt.
+    <strong>Actively scrolling</strong> (toggle above): Record's row hides,
+    leaving only the field row — border(1) + pad-top(8) + search row(44) +
+    pad-bottom(28) = <strong>81pt</strong>, a temporary <strong>52pt</strong>
+    of headroom back, only for the duration of the gesture.
+    <strong>Typing:</strong> unchanged from A1 — the same hide, same trigger
+    as before; this variant adds a second trigger, it doesn't change the
+    first. <strong>Offline:</strong> unchanged. <strong>Largest Dynamic
+    Type:</strong> the scroll-triggered hide is <em>disabled</em> at this
+    size (toggle "list (S3 only)" has no effect once "dynamic type" is set to
+    large) — a person relying on the largest text is relying on deliberate,
+    predictable chrome, not a control that comes and goes. <strong>44pt:</strong>
+    never shrunk — this variant only ever fully shows or fully hides Record's
+    44pt target, never a smaller "compact" version of it still meant to be
+    tapped; a shrunk-but-tappable control is a worse half-measure than a
+    clean hide. <strong>VoiceOver order:</strong> same override as A1 needed
+    whenever Record is present; while scrolling and hidden, the control is
+    also removed from the accessibility tree (not just visually), so
+    VoiceOver never lands on it then either. <strong>Reduce Motion</strong>
+    (toggle above): the hide/show still happens, but instantly — no crossfade,
+    following the same rule the brief already states for the search field's
+    own expand/collapse.</span>
+    <div class="risk"><strong>Risk, named plainly:</strong> R1 says Record
+    must be "visible without scrolling... at rest." Hiding it <em>while</em>
+    scrolling is a reading of "at rest" this brief never tested, not a
+    settled answer — and it has a real cost: the exact moment someone spots a
+    name while flicking through the list is also the exact moment they might
+    want to hit Record, and this variant removes the control for that moment
+    until scrolling settles. This needs explicit sign-off from
+    `product-strategist`/the owner on that reading of R1 before it is
+    buildable, not a default to ship quietly. It is also the only variant
+    here with new, non-trivial state (a scroll listener, a settle-timeout,
+    an accessibility-tree toggle) — real build cost the other three don't
+    carry.</div>
+    <div class="verdict"><strong>Verdict:</strong> the most ambitious answer
+    to the chrome-height cost — strictly better than S2's 12pt during the
+    moment it matters most — but the only one that reopens a business rule's
+    wording and carries a genuine, named reach risk. Worth prototyping on
+    device and testing against the brief's own S1 ("the owner reaches Record
+    without shifting grip") and S5 ("no mis-taps... no accidental Record when
+    reaching for search") before committing, not a safe default.</div>
+
+    <h2>S4 — Swapped rows: field above, Record last</h2>
+    <p>The field's row moves to the top of the stack; Record's row becomes
+    the very last, bottom-most element of the screen. Nothing else changes —
+    same two full-width rows, same heights, same hide-on-typing mechanism,
+    just reordered.</p>
+    <span class="vo"><strong>Principle:</strong> this is the one variant that
+    makes the required VoiceOver order the <em>default</em> geometric one,
+    not an override. The brief's §9 asks for "list → search → Record";
+    visually, that is now top-to-bottom exactly as drawn — field directly
+    under the list, Record last. No accessibility-order override to write,
+    test or keep in sync with a future redesign. <strong>Resting:</strong>
+    field row, then Record row, both full width, 133pt total — unchanged
+    height from A1. <strong>Typing:</strong> Record's row hides exactly as in
+    A1; the remaining field row stays pinned to the bottom of the screen (the
+    bottom-bar-wrap is still the last flex child of the screen, so a shorter
+    bar is still flush bottom, not floating mid-screen). <strong>Offline /
+    largest Dynamic Type:</strong> identical to A1 in every other respect.
+    <strong>44pt:</strong> unchanged. <strong>Thumb reach:</strong> this is
+    the one variant with a second, uncredited win worth naming directly: the
+    brief's own Hoober citation (§5) calls the literal bottom edge of the
+    screen the single easiest reach for a one-handed grip, in <em>either</em>
+    hand. In A1, that literal edge is occupied by the field — the free,
+    secondary action — while Record, the control R1 says must "win any
+    conflict for the most reachable, most visible spot," sits one row above
+    it. S4 puts Record on that literal edge instead, which is arguably closer
+    to what R1 already asks for than A1 itself is.</span>
+    <div class="verdict"><strong>Verdict:</strong> the only variant that
+    removes the VoiceOver-order cost outright (not reduces it) and brings
+    Record into the single most reachable position on the screen, at the
+    same chrome height as A1 — the strongest result-to-cost ratio of the
+    four on the metrics A1's own write-up named. The one thing it gives up,
+    stated plainly rather than decided here: the field no longer sits at the
+    literal "very bottom" position the owner specifically liked about A1 (the
+    iOS 26 Notes/Mail search placement cited in the brief's §5). It is still
+    part of the same unified bottom chrome, directly above Record, not buried
+    — but it is one row higher, and that is a real trade against a position
+    the owner named, not a free win. Flagging for the owner's eyes rather
+    than resolving it here.</div>
+
+    <h2>Side-by-side</h2>
+    <table class="compare-table">
+      <tr><th></th><th>S1 — oval Record</th><th>S2 — compact panel</th><th>S3 — scroll-aware</th><th>S4 — swapped rows</th></tr>
+      <tr><td>Chrome height vs A1 (133pt)</td><td>Same (133pt)</td><td><strong>−12pt (121pt)</strong></td><td>Same at rest; <strong>−52pt while scrolling</strong> (81pt)</td><td>Same (133pt)</td></tr>
+      <tr><td>"Two full bars" weight</td><td>Fixed by shape</td><td>Reduced by common-region grouping</td><td>Unchanged at rest</td><td>Unchanged</td></tr>
+      <tr><td>VoiceOver order vs §9</td><td>Still needs override</td><td>Still needs override</td><td>Still needs override (when shown)</td><td><strong>No override needed</strong></td></tr>
+      <tr><td>Thumb reach</td><td>Neutral, same as A1</td><td>Neutral, same as A1</td><td>Neutral at rest; absent mid-scroll</td><td><strong>Best — Record on the literal edge</strong></td></tr>
+      <tr><td>New build/behaviour cost</td><td>None — shape only</td><td>None — spacing only</td><td>Scroll listener, settle-timeout, a11y-tree toggle</td><td>None — order only</td></tr>
+      <tr><td>Open question for the owner</td><td>none</td><td>none</td><td>Does hiding mid-scroll fit R1's "at rest"? (sign-off needed)</td><td>Accept the field leaving "the very bottom"?</td></tr>
+      <tr><td>New names, if shipped</td><td>none (style only)</td><td><code>home-bottom-bar-divider</code> (already proposed, laid flat)</td><td><code>record-button--compact</code> is NOT used — a hide, not a shrink; no new name needed</td><td>none — same rows, reordered</td></tr>
+    </table>
+
+    <h2>Recommendation</h2>
+    <p><strong>S4</strong>, with <strong>S2's tightened spacing stacked on
+    top of it</strong> (they don't conflict — S2 is a spacing change, S4 is
+    an ordering change; nothing stops shipping both at once, at 121pt with no
+    VoiceOver override). Together they answer two of A1's three named costs
+    outright — the order override and a real slice of the chrome height —
+    while changing nothing about copy, model, or any business rule's
+    behaviour, only the brief's own observation about which row sits where.
+    The one thing this combination gives up, repeated from S4's writeup: the
+    field leaves the exact "very bottom" position that was part of why A1 was
+    picked over Option A's single-row shape. If the owner weighs that
+    position as non-negotiable, <strong>S1</strong> is the safe fallback —
+    zero behaviour change, answers the "two heavy bars" complaint on its own,
+    and can also be combined with S2's spacing. <strong>S3</strong> is the one
+    with the largest upside (headroom exactly when scrolling needs it most)
+    and the largest open question (a reading of R1 that needs the owner's and
+    `product-strategist`'s sign-off before it's buildable, plus real new
+    state to build and test) — worth a follow-up only if the owner wants to
+    pursue it deliberately, not a default. <strong>This is a design
+    hypothesis, not tested behaviour</strong> — the brief's own S4 success
+    criterion (confusingly numbered the same as this section's S4 variant;
+    "did you know whether Andy would answer or just find names?") and S1/S5
+    ("reach... without shifting grip", "no mis-taps") are what would actually
+    confirm any of this, on a device, not this mock.</p>
+
+    <h2>Accessibility, shared across all four</h2>
+    <ul style="padding-left:18px; margin:6px 0;">
+      <li><code>home-search-field</code>'s only edge is <code>colors.edge</code>
+      on <code>paper</code>, 3.2:1 (WCAG 1.4.11) — reused, unchanged.</li>
+      <li><code>record-button</code>'s <code>moss</code> fill with
+      <code>paper</code> label text is an existing pairing, already covered
+      by <code>__tests__/contrast.test.ts</code> — no new pairing in any of
+      S1–S4.</li>
+      <li>Every control stays at or above 44×44pt in every variant; S3 is the
+      one variant that could have been tempted to shrink Record instead of
+      hiding it, and deliberately doesn't.</li>
+      <li>Meaning never depends on colour alone: Record is always the word
+      "Record" plus a filled background in all four (R1 forbids an icon-only
+      control); S1 adds a shape cue, S2 adds a shared-panel cue, on top of
+      that.</li>
+      <li>Reduce Motion: S1/S2/S4 introduce no new animation beyond what A1
+      already specifies (the crossfade on entering/leaving search). S3 is
+      the one with genuinely new motion (the scroll-triggered hide) and its
+      Reduce Motion behaviour is spelled out above — instant, not animated,
+      never disabled outright, since the state change itself (hidden vs.
+      shown) still needs to happen for the headroom gain to mean anything.</li>
+      <li>VoiceOver order is stated per variant above; S4 is the only one
+      that needs no override at all. S1/S2/S3 each need the same explicit
+      order (list → field → <code>home-ask-row</code> → Record) A1 already
+      requires.</li>
+      <li>Toggle "largest accessibility size" above: S1's oval grows to full
+      width (converges on A1's shape); S2's rows just grow taller, same as
+      A1; S3 disables its scroll-hide outright at this size; S4 behaves
+      exactly as A1 does, just reordered.</li>
+    </ul>
+
+    <h2>Considered and set aside: a second "Type" entry beside Record</h2>
+    <p>The brief for this follow-up raised a possible fifth idea: a small
+    secondary control beside Record that jumps straight to typing a note
+    (the <code>record</code> screen already has
+    <code>type-instead-button</code> for this, one screen in). Flagging this
+    as a scope question rather than a fifth stacked variant: it would add a
+    second capture entry point to <code>home</code>'s chrome itself, which
+    nothing in the <code>home-actions.md</code> brief asked for (§11's "Not
+    in this brief" doesn't name it, but it also isn't in Should/Must Have),
+    and R1 already requires Record to be the one, unambiguous primary action
+    at rest — a second button right beside it works against Hick's law at the
+    exact spot the brief asks to keep simplest. Not designed here; if the
+    owner wants it, it needs its own brief from
+    <code>product-strategist</code> first, per this project's Scope
+    Discipline rule.</p>
+  </div>
+</div>
+
+<script>
+  const PEOPLE = [
+    {name:"Amara Osei", meta:"friend · 3 notes · 2026-09-20", detail:"Training for a half marathon in spring."},
+    {name:"Ben Whitfield", meta:"colleague · 6 notes · 2026-10-01", detail:"Leading the Denver office move."},
+    {name:"Carla Jiménez", meta:"client · 2 notes · 2026-08-30", detail:"Wants the proposal by Friday."},
+    {name:"Derek Nakamura", meta:"friend · 5 notes · 2026-09-02", detail:"Just adopted a second greyhound, Mochi."},
+    {name:"Emily Santos", meta:"friend · 4 notes · 2026-10-05", detail:"Starting a pottery class on Tuesdays."},
+    {name:"Felix Grant", meta:"networking · 1 note · 2026-07-14", detail:"Met at the design meetup, works in fintech."},
+    {name:"Grace Oyelaran", meta:"foster · 8 notes · 2026-10-09", detail:"Fosters two greyhounds, looking for a third."},
+    {name:"Hassan Idris", meta:"client · 3 notes · 2026-09-28", detail:"Prefers calls over email."},
+    {name:"Isla Thompson", meta:"friend · 2 notes · 2026-06-19", detail:"Just moved to Lisbon."},
+    {name:"Jordan Lee", meta:"friend · 7 notes · 2026-10-11", detail:"Starting a new job at the shelter in March."},
+    {name:"Kavya Rao", meta:"colleague · 4 notes · 2026-09-15", detail:"Switching teams to the research group."},
+    {name:"Liam O'Connor", meta:"networking · 2 notes · 2026-08-02", detail:"Dog lover, works in logistics."},
+    {name:"Marcus Webb", meta:"friend · 9 notes · 2026-10-07", detail:"Training for his first marathon."},
+    {name:"Nina Petrov", meta:"client · 1 note · 2026-07-30", detail:"New to the city, asked for restaurant picks."},
+    {name:"Omar Farouk", meta:"friend · 3 notes · 2026-09-10", detail:"Opening a bakery downtown."},
+    {name:"Priya Kapoor", meta:"friend · 4 notes · 2026-10-02", detail:"She's fostering a second dog."},
+    {name:"Priya Shah", meta:"colleague · 7 notes · 2026-10-05", detail:"Starting a new job at the shelter in March."},
+    {name:"Quentin Ash", meta:"networking · 1 note · 2026-05-22", detail:"Met at the conference, works in logistics."},
+    {name:"Rosa Delgado", meta:"client · 5 notes · 2026-09-24", detail:"Renewing the contract in November."},
+    {name:"Sam Okafor", meta:"friend · 2 notes · 2026-08-18", detail:"Just got a rescue cat named Biscuit."}
+  ];
+  const INDEX_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ#".split("");
+
+  const state = { variant: "s1", people: "20", conn: "online", query: "rest", kb: "down", scroll: "resting", motion: "normal", type: "normal" };
+
+  function initials(name) {
+    const parts = name.split(" ");
+    return (parts[0][0] + (parts[parts.length - 1][0] || "")).toUpperCase();
+  }
+
+  function setState(patch) {
+    Object.assign(state, patch);
+    syncButtons();
+    render();
+  }
+  function syncButtons() {
+    const map = { variant: 'variant', people: 'people', conn: 'conn', query: 'query', kb: 'kb', scroll: 'scroll', motion: 'motion', type: 'type' };
+    for (const key in map) {
+      document.querySelectorAll('[data-' + map[key] + ']').forEach(b => b.classList.toggle('active', b.dataset[map[key]] === state[key]));
+    }
+  }
+
+  function matches(person, q) {
+    if (!q) return false;
+    const hay = (person.name + " " + person.detail).toLowerCase();
+    return hay.includes(q.toLowerCase());
+  }
+
+  function render() {
+    const screenEl = document.getElementById('screen');
+    screenEl.setAttribute('data-type-scale', state.type);
+    screenEl.setAttribute('data-variant', state.variant);
+    screenEl.setAttribute('data-scroll', state.scroll);
+    screenEl.classList.toggle('no-motion', state.motion === 'reduced');
+
+    const searching = state.query !== 'rest';
+    const hasQuery = state.query === 'pri' || state.query === 'greyhound';
+    const q = state.query === 'pri' ? 'Pri' : state.query === 'greyhound' ? 'greyhound' : '';
+    const noPeople = state.people === '0';
+
+    // offline line
+    document.getElementById('offline-line').style.display = (state.conn === 'offline' && !searching) ? 'block' : 'none';
+
+    // briefing + list + empty
+    document.getElementById('briefing').style.display = (!searching && !noPeople) ? 'block' : 'none';
+    document.getElementById('list-wrap').style.display = (!noPeople) ? 'block' : 'none';
+    document.getElementById('empty-state').style.display = noPeople ? 'flex' : 'none';
+
+    const listEl = document.getElementById('profile-list');
+    const indexEl = document.getElementById('home-index');
+    listEl.innerHTML = '';
+    indexEl.innerHTML = '';
+
+    if (!noPeople) {
+      if (!searching) {
+        let lastLetter = '';
+        PEOPLE.forEach(p => {
+          const letter = p.name[0].toUpperCase();
+          if (letter !== lastLetter) {
+            const h = document.createElement('li');
+            h.className = 'home-letter-heading';
+            h.textContent = letter;
+            listEl.appendChild(h);
+            lastLetter = letter;
+          }
+          listEl.appendChild(rowEl(p, false));
+        });
+        INDEX_LETTERS.forEach(l => {
+          const s = document.createElement('span');
+          s.textContent = l;
+          indexEl.appendChild(s);
+        });
+      } else if (hasQuery) {
+        const found = PEOPLE.filter(p => matches(p, q));
+        found.forEach(p => listEl.appendChild(rowEl(p, true, q)));
+        if (found.length === 0) {
+          const li = document.createElement('li');
+          li.style.padding = '16px 0';
+          li.style.opacity = '0.7';
+          li.textContent = 'No one matches "' + q + '".';
+          listEl.appendChild(li);
+        }
+      }
+    }
+
+    // ask row
+    const askRow = document.getElementById('ask-row');
+    if (!searching || noPeople) {
+      askRow.style.display = 'none';
+    } else {
+      askRow.style.display = 'block';
+      askRow.classList.remove('is-button', 'is-offline');
+      if (state.conn === 'offline') {
+        askRow.classList.add('is-offline');
+        askRow.textContent = 'Asking needs a connection. Names and words still work.';
+      } else if (hasQuery) {
+        askRow.classList.add('is-button');
+        askRow.textContent = 'Ask Andy: "' + q + '"';
+      } else {
+        askRow.classList.add('is-button');
+        askRow.textContent = 'Ask Andy in your own words';
+      }
+    }
+
+    // search fields (all four variants kept in sync, only one visible)
+    document.querySelectorAll('.search-input').forEach(input => {
+      input.value = hasQuery ? q : '';
+      input.placeholder = 'Find a name or a word';
+    });
+    document.querySelectorAll('.clear-btn').forEach(b => b.style.display = hasQuery ? 'flex' : 'none');
+    document.querySelectorAll('.cancel-btn').forEach(b => b.style.display = searching ? 'inline-block' : 'none');
+    document.querySelectorAll('.record-btn').forEach(b => b.style.display = searching ? 'none' : 'flex');
+
+    // S1/S2/S4: Record's row hides only while searching, same as A1.
+    ['s1-record-row', 's2-record-row', 's4-record-row'].forEach(id => {
+      document.getElementById(id).classList.toggle('hidden-el', searching);
+    });
+    // S3: Record's row hides while searching OR while actively scrolling —
+    // except at the largest Dynamic Type size, where scroll-hide is disabled.
+    const s3ScrollHide = (state.scroll === 'scrolling') && (state.type !== 'large');
+    document.getElementById('s3-record-row').classList.toggle('hidden-el', searching || s3ScrollHide);
+
+    document.getElementById('bottom-bar-wrap').style.display = noPeople ? 'none' : 'block';
+
+    // keyboard
+    document.getElementById('kb-overlay').classList.toggle('shown', state.kb === 'up');
+  }
+
+  function rowEl(p, showMatch, q) {
+    const li = document.createElement('li');
+    li.className = 'profile-row';
+    li.innerHTML =
+      '<div class="profile-row-avatar">' + initials(p.name) + '</div>' +
+      '<div class="profile-row-main">' +
+        '<div class="profile-row-name">' + p.name + '</div>' +
+        '<div class="profile-row-detail">' + p.detail + '</div>' +
+        '<div class="profile-row-meta">' + p.meta + '</div>' +
+        (showMatch && q && p.detail.toLowerCase().includes(q.toLowerCase()) && !p.name.toLowerCase().includes(q.toLowerCase())
+          ? '<div class="profile-row-match">matched by word in what you kept about them</div>' : '') +
+      '</div>';
+    return li;
+  }
+
+  document.querySelectorAll('[data-variant]').forEach(b => b.onclick = () => setState({ variant: b.dataset.variant }));
+  document.querySelectorAll('[data-people]').forEach(b => b.onclick = () => setState({ people: b.dataset.people }));
+  document.querySelectorAll('[data-conn]').forEach(b => b.onclick = () => setState({ conn: b.dataset.conn }));
+  document.querySelectorAll('[data-query]').forEach(b => b.onclick = () => setState({ query: b.dataset.query }));
+  document.querySelectorAll('[data-kb]').forEach(b => b.onclick = () => setState({ kb: b.dataset.kb }));
+  document.querySelectorAll('[data-scroll]').forEach(b => b.onclick = () => setState({ scroll: b.dataset.scroll }));
+  document.querySelectorAll('[data-motion]').forEach(b => b.onclick = () => setState({ motion: b.dataset.motion }));
+  document.querySelectorAll('[data-type]').forEach(b => b.onclick = () => setState({ type: b.dataset.type }));
+  document.querySelectorAll('.cancel-btn').forEach(b => b.onclick = () => setState({ query: 'rest', kb: 'down' }));
+  document.querySelectorAll('.clear-btn').forEach(b => b.onclick = () => setState({ query: 'focus-empty' }));
+
+  function toggleDocTheme() {
+    const root = document.documentElement;
+    root.setAttribute('data-doc-theme', root.getAttribute('data-doc-theme') === 'dark' ? 'light' : 'dark');
+  }
+
+  render();
+</script>
+</body>
+</html>

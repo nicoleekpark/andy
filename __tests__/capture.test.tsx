@@ -2839,6 +2839,27 @@ describe("capture screen business card door", () => {
     expect(call.draft.primary.name).toBe("Sarah Chen");
   });
 
+  test("should not ask for the whole photo library to pick one card", async () => {
+    mockAlert("Choose from library");
+    const ask = ImagePicker.requestMediaLibraryPermissionsAsync as jest.Mock;
+    const launch = ImagePicker.launchImageLibraryAsync as jest.Mock;
+    launch.mockResolvedValueOnce({ canceled: true, assets: null });
+
+    const result = renderRouter("src/app", { initialUrl: "/profile/contact-1/capture" });
+    await result;
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Scan a business card" }));
+    });
+
+    await waitFor(() => expect(launch).toHaveBeenCalledTimes(1));
+    // The iOS picker runs outside the app and returns only the chosen photo.
+    // Asking bought read access to the whole library, and a "no" blocked a
+    // choice that works regardless — the same mistake the profile photo
+    // picker already avoids (profile.test.tsx).
+    expect(ask).not.toHaveBeenCalled();
+    expect(screen.queryByText(/needs access to your photos/)).toBeNull();
+  });
+
   // Found on the simulator 2026-10-01: while a card was being read, the
   // screen behind it still said "Tap record and say what you want to
   // remember", an instruction to do something else entirely.

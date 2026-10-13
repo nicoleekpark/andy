@@ -1,0 +1,1080 @@
+<!--
+  DESIGN PROTOTYPE — an HTML approximation of native `home`, `record` and a
+  new full-screen camera for Andy. Not production code — this draws the
+  owner's own flow (decided 2026-10-13), not a set of options to choose
+  between. It builds on three already-shipped decisions, unchanged:
+
+    home-actions.md Final choice   V-NOTCHED: a round 72pt button straddling
+                                    the bottom bar's hairline, above a
+                                    full-width home-search-field.
+    record-flow.md Final choice    Option A's about-field ("About who?"),
+                                    the red (alert) "Recording" indicator with
+                                    a live m:ss timer, a large Done and a
+                                    small Pause/Resume.
+    capture-doors.md               capture-menu-item--write/--photo,
+                                    photo-offline-notice, record--picture
+                                    ("What the picture said").
+
+  What's new here, per the owner's brief:
+
+    1. Home's round button is a TRIGGER ("New note"), not Record — it opens
+       a radial menu and becomes a close (✕) while open. Two label variants
+       (T1/T2) are switchable in the rig.
+    2. Three round doors fan out around it over a scrim (Google Calendar's
+       focus-dim): Voice at 12, Write at 10, Photo at 2 o'clock — bilaterally
+       symmetric, so handedness doesn't change the layout.
+    3. Voice opens `record--listening` already listening — no second tap.
+       This amends record-flow.md R2 (see the decision file's new section);
+       the first-ever use still asks for the microphone before any audio is
+       captured, same escape hatch capture-doors.md's M3 proposed.
+    4. Write opens record--typing with the keyboard already up and the
+       cursor in About who? — both from home (empty) and from a person's
+       page (declared, cursor moves to the body instead).
+    5. Photo opens a full-screen camera directly (no Take/Choose sheet) —
+       this supersedes capture-doors.md's "Answered once" §R9 answer for
+       this flow specifically. Album is a button inside the camera screen,
+       not a separate step.
+    6. Offline, the Photo door says so before anything opens.
+    7. A scope switch (S-a "Notes and cards" / S-b "Cards only") changes the
+       frame hint, the door's own word, and the denied-state copy, so the
+       owner can compare both before deciding capture-doors.md's open scope
+       question.
+
+  Tokens are declared as CSS variables, named the same as
+  src/constants/theme.ts, so this mock and the app cannot quietly drift
+  apart. No new tokens are proposed. The camera viewfinder itself is drawn
+  with a plain dark placeholder, labelled as such — like ios-status-bar or
+  the keyboard graphic in this project's other mocks, it is system/sensor
+  content, not an app-drawn surface, so it is not a token colour. Lora / IBM
+  Plex Mono are not loaded here, so serif/monospace fall back to a close
+  system face. SF Symbols (mic.fill, pencil, camera) are approximated with
+  small CSS-drawn shapes. Pixel figures in the side notes are computed from
+  this mock's own CSS, labelled as approximations to confirm on device, the
+  same caveat this project's other geometry mocks carry.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>capture-orbit — the owner's flow (2026-10-13)</title>
+<style>
+  :root {
+    /* --- app tokens, named as src/constants/theme.ts (confirmed values) --- */
+    --color-ink: #2A2622;
+    --color-paper: #E8E6DE;
+    --color-moss: #5C6B4F;
+    --color-brass: #B8935A;
+    --color-line: #B8B3A8;
+    --color-alert: #9F4C3B;
+    --color-placeholder: #63605A;
+    --color-edge: #857E6D;
+    --color-scrim: rgba(42, 38, 34, 0.42);
+    --space-xs: 4px; --space-sm: 8px; --space-md: 12px; --space-lg: 16px;
+    --space-xl: 24px; --space-xxl: 32px; --space-xxxl: 48px;
+    --text-xs: 12px; --text-sm: 13px; --text-md: 14px; --text-base: 15px;
+    --text-lg: 16px; --text-xl: 17px; --text-xxl: 18px;
+    --radius-control: 10px; --radius-card: 16px; --radius-pill: 999px;
+    --opacity-secondary: 0.8; --opacity-quiet: 0.7;
+    --size-avatar: 40px;
+    --font-display: Georgia, "Times New Roman", serif;   /* ~ Lora */
+    --font-utility: "Courier New", monospace;              /* ~ IBM Plex Mono */
+
+    /* --- doc chrome only (reading comfort, never the phone) --- */
+    --doc-bg: #d8d4c8; --doc-ink: #2A2622; --doc-quiet: #6f6a62;
+    --doc-rule: #cfcac0; --doc-card: #f6f4ee;
+  }
+  [data-doc-theme="dark"] {
+    --doc-bg: #1E1C19; --doc-ink: #ECE8E0; --doc-quiet: #A39D93;
+    --doc-rule: #3A3631; --doc-card: #26231F;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--doc-bg); color: var(--doc-ink); font-family: -apple-system, system-ui, sans-serif; margin: 0; padding: 24px; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .doc-note { max-width: 1160px; margin: 0 auto 16px; font-size: 13px; opacity: 0.82; line-height: 1.55; }
+  .top-bar { max-width: 1160px; margin: 0 auto 8px; display: flex; justify-content: space-between; align-items: baseline; }
+  .theme-toggle { font-size: 12px; background: none; border: 1px solid var(--doc-rule); border-radius: 6px; padding: 4px 8px; cursor: pointer; color: var(--doc-ink); }
+
+  .rig { max-width: 1160px; margin: 0 auto 14px; display: flex; flex-wrap: wrap; gap: 10px; }
+  .rig fieldset { border: 1px dashed var(--doc-rule); border-radius: 8px; padding: 8px 10px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .rig legend { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.6; }
+  .rig button { font-size: 12px; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--doc-rule); background: var(--doc-card); color: var(--doc-ink); cursor: pointer; }
+  .rig button.active { background: var(--color-moss); color: var(--color-paper); border-color: var(--color-moss); }
+  .rig fieldset.variant-rig { border-color: var(--color-moss); }
+  .rig fieldset.variant-rig button.active { background: var(--color-ink); border-color: var(--color-ink); }
+  .rig-divider { max-width: 1160px; margin: 0 auto 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.55; font-weight: 600; }
+
+  .stage { max-width: 1160px; margin: 0 auto; display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .frame { width: 390px; border-radius: 44px; background: #111; padding: 14px; box-shadow: 0 20px 50px rgba(0,0,0,0.35); flex-shrink: 0; position: sticky; top: 24px; }
+  .screen { background: var(--color-paper); color: var(--color-ink); border-radius: 32px; overflow: hidden; height: 844px; position: relative; display: flex; flex-direction: column; }
+  .ios-status-bar { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-size: 14px; font-weight: 600; flex-shrink: 0; z-index: 2; }
+  .ios-status-bar.on-dark { color: var(--color-paper); }
+
+  .nav-bar { padding: 2px 16px 14px; border-bottom: 1px solid var(--color-line); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .nav-bar-title { font-family: var(--font-display); font-size: 20px; font-weight: 600; }
+  .nav-bar-title--record { font-family: inherit; font-size: var(--text-lg); font-weight: 600; }
+  .nav-bar-back { font-size: 24px; width: 44px; height: 44px; display: flex; align-items: center; }
+  .nav-bar-action-right { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
+  .nav-bar-spacer { width: 44px; height: 44px; }
+  .gearshape { width: 20px; height: 20px; border: 2px solid var(--color-ink); border-radius: 50%; }
+
+  .pane { display: none; flex: 1; flex-direction: column; position: relative; overflow: hidden; }
+  .pane.active { display: flex; }
+
+  /* ================= HOME ================= */
+  .home-content { flex: 1; overflow-y: auto; }
+  .briefing-card { margin: var(--space-lg); border-radius: var(--radius-card); background: var(--doc-card); border-left: 4px solid var(--color-brass); padding: var(--space-lg); }
+  .briefing-card-title { font-weight: 600; font-size: var(--text-lg); margin: 0 0 4px; }
+  .briefing-card-body { font-size: var(--text-base); opacity: var(--opacity-secondary); margin: 0; }
+  .profile-list { list-style: none; margin: 0; padding: 0 var(--space-lg); }
+  .profile-row { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) 0; min-height: 44px; border-bottom: 1px solid var(--color-line); }
+  .profile-row-avatar { width: var(--size-avatar); height: var(--size-avatar); border-radius: 50%; background: var(--color-moss); color: var(--color-paper); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: var(--text-base); flex-shrink: 0; }
+  .profile-row-main { flex: 1; min-width: 0; }
+  .profile-row-name { font-family: var(--font-display); font-size: var(--text-lg); line-height: 1.3; }
+  .profile-row-detail { font-size: var(--text-sm); opacity: var(--opacity-secondary); line-height: 1.3; }
+
+  .home-bottom-bar { position: relative; background: var(--color-paper); border-top: 1px solid var(--color-line); flex-shrink: 0; padding: var(--space-xs) var(--space-lg) calc(var(--space-sm) + 20px); display: flex; flex-direction: column; align-items: center; gap: var(--space-sm); z-index: 4; }
+  .bar-row { display: flex; align-items: center; justify-content: center; gap: var(--space-sm); width: 100%; margin-top: 36px; }
+  .home-search-field-wrap { flex: 1; display: flex; align-items: center; gap: var(--space-sm); border-radius: var(--radius-pill); height: 44px; padding: 0 var(--space-md); border: 1px solid var(--color-edge); background: var(--color-paper); min-width: 0; }
+  .search-glass { width: 13px; height: 13px; border: 2px solid var(--color-placeholder); border-radius: 50%; position: relative; flex-shrink: 0; }
+  .search-glass::after { content: ''; position: absolute; width: 6px; height: 2px; background: var(--color-placeholder); bottom: -3px; right: -4px; transform: rotate(45deg); border-radius: 1px; }
+  .home-search-field { border: none; background: none; outline: none; font-size: var(--text-base); color: var(--color-placeholder); flex: 1; min-width: 0; font-family: inherit; }
+
+  /* ---- the orbit anchor: same point the shipped record-button occupied ---- */
+  .capture-orbit-wrap { position: absolute; left: 50%; top: 0; transform: translateX(-50%); width: 320px; height: 1px; z-index: 5; }
+
+  .capture-orbit-trigger { position: absolute; left: 50%; top: 0; transform: translate(-50%, -50%); z-index: 6; width: 72px; height: 72px; border-radius: var(--radius-pill); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--color-paper); background: var(--color-moss); box-shadow: 0 4px 14px rgba(42,38,34,0.22); }
+  .plus-glyph { position: relative; width: 22px; height: 22px; }
+  .plus-glyph::before, .plus-glyph::after { content: ''; position: absolute; background: var(--color-paper); border-radius: 2px; }
+  .plus-glyph::before { width: 22px; height: 4px; top: 9px; left: 0; }
+  .plus-glyph::after { width: 4px; height: 22px; top: 0; left: 9px; }
+  .close-glyph { font-size: 26px; line-height: 1; color: var(--color-paper); }
+  .capture-orbit-trigger-caption { position: absolute; left: 50%; top: 0; transform: translate(-50%, 40px); white-space: nowrap; font-size: var(--text-xs); font-weight: 700; color: var(--color-ink); z-index: 6; }
+  .capture-orbit-trigger-caption.hidden-el { display: none; }
+
+  /* ---- scrim, Google-Calendar-style focus dim ---- */
+  .capture-orbit-scrim { position: absolute; inset: 0; background: var(--color-scrim); opacity: 0; pointer-events: none; transition: opacity 220ms ease; z-index: 5; }
+  .screen.no-motion .capture-orbit-scrim { transition: opacity 120ms linear; }
+  .capture-orbit-scrim.shown { opacity: 1; pointer-events: auto; }
+
+  /* ---- the three orbit items ---- */
+  .capture-orbit-item { position: absolute; left: 50%; top: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; z-index: 6; opacity: 0; pointer-events: none; transform: translate(-50%, -50%) scale(0.4); transition: opacity 220ms ease, transform 260ms cubic-bezier(.2,.8,.2,1); }
+  .screen.no-motion .capture-orbit-item { transition: opacity 120ms linear, transform 0ms; }
+  .orbit-item-badge { width: 56px; height: 56px; border-radius: var(--radius-pill); background: var(--color-moss); display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 10px rgba(42,38,34,0.2); }
+  .orbit-item-label { background: var(--color-paper); border-radius: var(--radius-control); padding: 3px 10px; text-align: center; min-width: 44px; }
+  .orbit-item-word { font-size: var(--text-sm); font-weight: 700; color: var(--color-ink); display: block; line-height: 1.3; }
+  .orbit-item-meta { font-size: 11px; color: var(--color-ink); opacity: var(--opacity-quiet); display: block; line-height: 1.25; }
+
+  .pencil-glyph { width: 15px; height: 15px; border-bottom: 2px solid var(--color-paper); border-right: 2px solid var(--color-paper); transform: rotate(-45deg); }
+  .camera-glyph { width: 18px; height: 12px; border: 2px solid var(--color-paper); border-radius: 2px; position: relative; }
+  .camera-glyph::before { content:''; position:absolute; width:6px; height:6px; border:2px solid var(--color-paper); border-radius:50%; top:1px; left:4px; }
+  .mic-capsule { width: 9px; height: 13px; border-radius: 5px; background: var(--color-paper); display: block; margin: 0 auto; }
+  .mic-stand { width: 2px; height: 5px; background: var(--color-paper); margin: 1px auto 0; border-radius: 1px; }
+
+  .capture-orbit-wrap.open .capture-orbit-item--write  { opacity: 1; pointer-events: auto; transform: translate(calc(-50% - 104px), calc(-50% - 60px)) scale(1); transition-delay: 0ms; }
+  .capture-orbit-wrap.open .capture-orbit-item--voice  { opacity: 1; pointer-events: auto; transform: translate(-50%, calc(-50% - 120px)) scale(1); transition-delay: 35ms; }
+  .capture-orbit-wrap.open .capture-orbit-item--photo  { opacity: 1; pointer-events: auto; transform: translate(calc(-50% + 104px), calc(-50% - 60px)) scale(1); transition-delay: 70ms; }
+  .capture-orbit-item.is-offline .orbit-item-badge { opacity: var(--opacity-secondary); }
+
+  /* ---- Dynamic Type fallback: orbit converges to a plain stacked list ---- */
+  .orbit-type-fallback { display: none; position: absolute; left: var(--space-lg); right: var(--space-lg); bottom: 108px; background: var(--color-paper); border-radius: var(--radius-card); border: 1px solid var(--color-edge); padding: var(--space-sm); z-index: 6; }
+  .orbit-type-fallback.shown { display: block; }
+  .fallback-row { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-md) var(--space-sm); min-height: 44px; cursor: pointer; }
+  .fallback-row + .fallback-row { border-top: 1px solid var(--color-line); }
+  .fallback-row .fallback-badge { width: 32px; height: 32px; border-radius: 50%; background: var(--color-moss); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .fallback-row .fallback-word { font-size: 19px; font-weight: 600; display: block; }
+  .fallback-row .fallback-meta { font-size: var(--text-sm); opacity: var(--opacity-quiet); display: block; }
+
+  /* ---- geometry overlay (mock tooling only) ---- */
+  .geometry-overlay { display: none; position: absolute; left: 50%; top: 0; transform: translate(-50%, -50%); width: 240px; height: 240px; border-radius: 50%; border: 1px dashed var(--color-alert); z-index: 8; pointer-events: none; }
+  .geometry-overlay.shown { display: block; }
+  .geometry-label { display: none; position: absolute; font-family: var(--font-utility); font-size: 10px; color: var(--color-alert); background: var(--color-paper); padding: 1px 3px; z-index: 9; pointer-events: none; }
+  .geometry-label.shown { display: block; }
+
+  /* ---- VoiceOver order badges (mock tooling only) ---- */
+  .vo-badge { position: absolute; left: -8px; top: -8px; width: 20px; height: 20px; border-radius: 50%; background: var(--color-alert); color: var(--color-paper); font-size: 11px; font-family: var(--font-utility); display: none; align-items: center; justify-content: center; z-index: 9; }
+  [data-vo="on"] .vo-badge { display: flex; }
+
+  /* ================= VOICE (record--ready / --listening / --paused) ================= */
+  .rf-pane { flex: 1; display: flex; flex-direction: column; padding: var(--space-xl); gap: var(--space-lg); overflow-y: auto; }
+  .prompt-area { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 8px; }
+  .record-prompt { font-size: var(--text-base); opacity: var(--opacity-quiet); line-height: 1.5; }
+  .recording-indicator { background: var(--color-alert); color: var(--color-paper); border-radius: var(--radius-pill); padding: var(--space-md) var(--space-lg); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: var(--text-base); font-weight: 600; }
+  .recording-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--color-paper); }
+  @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+  .recording-indicator .recording-dot { animation: pulse-dot 1.8s ease-in-out infinite; }
+  .screen.no-motion .recording-indicator .recording-dot { animation: none; opacity: 1; }
+  .recording-time { font-family: var(--font-utility); }
+  .transcript-live { font-size: 18px; line-height: 1.5; text-align: left; align-self: stretch; }
+  .transcript-live .interim { opacity: var(--opacity-quiet); }
+  .done-pause-row { display: flex; align-items: center; gap: var(--space-md); }
+  .done-button { flex: 1; background: var(--color-moss); color: var(--color-paper); border-radius: var(--radius-pill); border: none; padding: 18px; font-size: 17px; font-weight: 600; min-height: 44px; cursor: pointer; }
+  .pause-button { background: none; border: 1px solid var(--color-edge); color: var(--color-ink); border-radius: var(--radius-pill); padding: 10px 16px; font-size: var(--text-sm); font-weight: 600; min-height: 44px; cursor: pointer; }
+  .resume-button { background: var(--color-moss); color: var(--color-paper); border-radius: var(--radius-pill); border: none; padding: 10px 18px; font-size: var(--text-sm); font-weight: 600; min-height: 44px; cursor: pointer; }
+
+  /* generic small iOS system sheet, approximate — not Andy's own chrome */
+  .ios-permission-sheet { position: absolute; left: var(--space-xl); right: var(--space-xl); bottom: 90px; background: #f2f1ec; border-radius: 14px; padding: var(--space-lg); box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 10; display: none; }
+  .ios-permission-sheet.shown { display: block; }
+  .ios-permission-sheet-title { font-size: 15px; font-weight: 700; margin: 0 0 6px; text-align: center; }
+  .ios-permission-sheet-body { font-size: 13px; opacity: 0.75; margin: 0 0 14px; text-align: center; line-height: 1.4; }
+  .ios-permission-sheet-row { display: flex; border-top: 1px solid #d8d6cf; }
+  .ios-permission-sheet-btn { flex: 1; padding: 11px 0; text-align: center; font-size: 15px; color: #0a7ea4; cursor: pointer; }
+  .ios-permission-sheet-btn.primary { font-weight: 700; border-left: 1px solid #d8d6cf; }
+
+  /* ================= WRITE (record--typing) ================= */
+  .field { display: flex; flex-direction: column; gap: 8px; }
+  .field-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px; opacity: var(--opacity-quiet); }
+  .field-input-row { display: flex; align-items: baseline; gap: 4px; border-bottom: 1px solid var(--color-edge); padding: 8px 0; }
+  .field-input-row.is-focused { border-bottom: 2px solid var(--color-moss); }
+  .field-input { border: none; background: none; font-size: 16px; color: var(--color-ink); width: 100%; font-family: inherit; }
+  .field-input::placeholder { color: var(--color-placeholder); }
+  .field-caret { display: inline-block; width: 1px; height: 17px; background: var(--color-ink); animation: caret-blink 1s step-end infinite; }
+  .screen.no-motion .field-caret { animation: none; }
+  @keyframes caret-blink { 0%, 50% { opacity: 1; } 50.01%, 100% { opacity: 0; } }
+  .declared-line { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .declared-name { font-size: 16px; }
+  .change-link { background: none; border: none; color: var(--color-moss); font-size: var(--text-sm); padding: 10px 0; min-height: 44px; cursor: pointer; }
+  .body-field-wrap { position: relative; flex: 1; display: flex; flex-direction: column; }
+  .body-input-shell { border: none; border-bottom: 1px solid var(--color-edge); font-size: 18px; line-height: 1.5; color: var(--color-ink); padding: 8px 68px 8px 0; width: 100%; min-height: 150px; }
+  .body-input-shell.is-empty { color: var(--color-placeholder); }
+  .ios-paste-button { position: absolute; top: 8px; right: 0; background: var(--color-moss); color: var(--color-paper); border-radius: var(--radius-control); font-size: 13px; font-weight: 600; padding: 6px 10px; display: flex; align-items: center; gap: 4px; min-height: 32px; }
+  .ios-paste-button .paste-glyph { width: 10px; height: 10px; border: 2px solid var(--color-paper); border-radius: 2px; }
+  .secondary-link { background: none; border: none; color: var(--color-ink); opacity: var(--opacity-secondary); font-size: var(--text-base); padding: 12px 6px; min-height: 44px; cursor: pointer; }
+  .read-button { background: var(--color-moss); color: var(--color-paper); border-radius: var(--radius-pill); border: none; padding: 18px; font-size: 17px; font-weight: 600; min-height: 44px; cursor: pointer; width: 100%; }
+  .keyboard-overlay { position: absolute; left: 0; right: 0; bottom: 0; height: 291px; background: #d6d2c8; border-top: 1px solid var(--color-line); z-index: 3; display: none; }
+  .keyboard-overlay.shown { display: block; }
+  .keyboard-overlay-label { text-align: center; font-size: 11px; color: var(--color-placeholder); padding-top: 8px; }
+
+  /* ================= CAMERA (card-scan) ================= */
+  .card-scan { background: #15140f; position: relative; flex: 1; display: flex; flex-direction: column; }
+  .card-scan-viewfinder { flex: 1; position: relative; background: radial-gradient(circle at 50% 38%, #3a362c 0%, #1b1a15 55%, #0c0b08 100%); overflow: hidden; }
+  .card-scan-viewfinder-note { position: absolute; top: 6px; left: 0; right: 0; text-align: center; font-size: 10px; color: rgba(232,230,222,0.45); font-family: var(--font-utility); }
+
+  .card-scan-close-button { position: absolute; top: var(--space-lg); left: var(--space-lg); width: 44px; height: 44px; border-radius: 50%; background: rgba(42,38,34,0.42); display: flex; align-items: center; justify-content: center; color: var(--color-paper); font-size: 18px; z-index: 4; cursor: pointer; }
+
+  .card-scan-frame { position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%); width: 290px; height: 190px; z-index: 2; }
+  .card-scan-frame-corner { position: absolute; width: 26px; height: 26px; border-color: var(--color-paper); }
+  .card-scan-frame-corner.tl { top: 0; left: 0; border-top: 3px solid; border-left: 3px solid; border-radius: 6px 0 0 0; }
+  .card-scan-frame-corner.tr { top: 0; right: 0; border-top: 3px solid; border-right: 3px solid; border-radius: 0 6px 0 0; }
+  .card-scan-frame-corner.bl { bottom: 0; left: 0; border-bottom: 3px solid; border-left: 3px solid; border-radius: 0 0 0 6px; }
+  .card-scan-frame-corner.br { bottom: 0; right: 0; border-bottom: 3px solid; border-right: 3px solid; border-radius: 0 0 6px 0; }
+  .card-scan-hint { position: absolute; left: 50%; top: calc(46% + 120px); transform: translateX(-50%); width: 260px; text-align: center; color: var(--color-paper); font-size: var(--text-sm); line-height: 1.4; z-index: 2; }
+
+  .card-scan-controls { position: relative; flex-shrink: 0; height: 128px; display: flex; align-items: center; justify-content: center; }
+  .card-scan-shutter-button { width: 72px; height: 72px; border-radius: 50%; border: 4px solid var(--color-paper); background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 4; }
+  .card-scan-shutter-button-inner { width: 56px; height: 56px; border-radius: 50%; background: var(--color-paper); }
+  .card-scan-album-button { position: absolute; left: var(--space-xl); top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border-radius: 10px; border: 2px solid var(--color-paper); background: rgba(232,230,222,0.18); cursor: pointer; z-index: 4; }
+
+  .card-scan-permission-overlay, .card-scan-denied-overlay, .card-scan-captured-overlay { position: absolute; inset: 0; display: none; flex-direction: column; z-index: 5; }
+  .card-scan-permission-overlay.shown, .card-scan-denied-overlay.shown, .card-scan-captured-overlay.shown { display: flex; }
+
+  .card-scan-denied-card { margin: auto var(--space-xl); background: var(--color-paper); border-radius: var(--radius-card); padding: var(--space-lg); text-align: center; }
+  .card-scan-denied-line { font-size: var(--text-base); line-height: 1.45; margin: 0 0 var(--space-md); }
+  .card-scan-open-settings-button { background: var(--color-moss); color: var(--color-paper); border: none; border-radius: var(--radius-pill); padding: 12px 20px; font-size: var(--text-base); font-weight: 600; min-height: 44px; cursor: pointer; width: 100%; }
+  .card-scan-denied-footnote { font-size: var(--text-xs); opacity: var(--opacity-quiet); margin: var(--space-md) 0 0; }
+
+  .card-scan-captured-photo { flex: 1; background: linear-gradient(160deg, #e9e4d6 0%, #cfc9b8 55%, #bdb6a2 100%); margin: var(--space-lg); border-radius: var(--radius-card); display: flex; align-items: center; justify-content: center; }
+  .card-scan-captured-photo-label { font-family: var(--font-utility); font-size: 11px; color: rgba(42,38,34,0.4); }
+  .card-scan-captured-actions { flex-shrink: 0; padding: var(--space-lg) var(--space-xl) calc(var(--space-lg) + 10px); display: flex; flex-direction: column; gap: var(--space-sm); background: var(--color-paper); }
+  .card-scan-use-photo-button { background: var(--color-moss); color: var(--color-paper); border: none; border-radius: var(--radius-pill); padding: 16px; font-size: 17px; font-weight: 600; min-height: 44px; cursor: pointer; }
+  .card-scan-retake-button { background: none; border: none; color: var(--color-ink); opacity: var(--opacity-secondary); font-size: var(--text-base); padding: 10px; min-height: 44px; cursor: pointer; align-self: center; }
+
+  /* ================= PICTURE CHECK (record--picture) ================= */
+  .lead { font-size: var(--text-base); opacity: 0.75; line-height: 1.5; }
+  .body-input { border: none; border-bottom: 1px solid var(--color-edge); background: none; font-size: 18px; line-height: 1.5; color: var(--color-ink); padding: 8px 0; width: 100%; font-family: inherit; min-height: 150px; resize: none; }
+
+  /* ================= photo-offline-notice dialog ================= */
+  .dialog-overlay { position: absolute; inset: 0; background: var(--color-scrim); display: none; align-items: center; justify-content: center; padding: 32px; z-index: 10; }
+  .dialog-overlay.shown { display: flex; }
+  .dialog-card { background: var(--color-paper); border-radius: var(--radius-card); padding: 24px; width: 100%; }
+  .dialog-body { font-size: var(--text-base); opacity: var(--opacity-secondary); margin: 0 0 16px; line-height: 1.4; }
+  .dialog-action { background: var(--color-moss); color: var(--color-paper); border: none; border-radius: var(--radius-pill); padding: 16px; width: 100%; font-size: 16px; font-weight: 600; margin-bottom: 8px; cursor: pointer; min-height: 44px; }
+  .dialog-cancel { background: none; border: none; color: var(--color-ink); opacity: var(--opacity-quiet); font-size: var(--text-base); width: 100%; padding: 10px; cursor: pointer; min-height: 44px; }
+
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+
+  .side-notes { flex: 1; min-width: 380px; font-size: 13px; line-height: 1.55; color: var(--doc-ink); }
+  .side-notes h2 { font-size: 14px; margin: 18px 0 6px; }
+  .side-notes h2:first-child { margin-top: 0; }
+  .side-notes h3 { font-size: 13px; margin: 12px 0 4px; }
+  .vo { font-family: var(--font-utility); font-size: 11.5px; background: var(--doc-card); border: 1px dashed var(--doc-rule); border-radius: 6px; padding: 5px 7px; display: block; margin-top: 4px; color: var(--doc-ink); }
+  .verdict { background: var(--doc-card); border-left: 3px solid var(--color-moss); border-radius: 6px; padding: 8px 10px; margin-top: 6px; }
+  .risk { background: var(--doc-card); border-left: 3px solid var(--color-alert); border-radius: 6px; padding: 8px 10px; margin-top: 6px; }
+  .compare-table { width: 100%; border-collapse: collapse; font-size: 11.5px; margin-top: 6px; }
+  .compare-table th, .compare-table td { border: 1px solid var(--doc-rule); padding: 5px 6px; text-align: left; vertical-align: top; }
+  .compare-table th { background: var(--doc-card); font-weight: 600; }
+
+  /* ---- largest Dynamic Type demo ---- */
+  .screen[data-type-scale="large"] .nav-bar-title,
+  .screen[data-type-scale="large"] .nav-bar-title--record { font-size: 24px; }
+  .screen[data-type-scale="large"] .profile-row-name { font-size: 20px; }
+  .screen[data-type-scale="large"] .profile-row-detail { font-size: 15px; }
+  .screen[data-type-scale="large"] .home-search-field,
+  .screen[data-type-scale="large"] .record-prompt,
+  .screen[data-type-scale="large"] .field-input,
+  .screen[data-type-scale="large"] .body-input,
+  .screen[data-type-scale="large"] .body-input-shell,
+  .screen[data-type-scale="large"] .lead,
+  .screen[data-type-scale="large"] .secondary-link { font-size: 19px; }
+  .screen[data-type-scale="large"] .capture-orbit-trigger { width: auto; height: 56px; padding: 0 var(--space-lg); border-radius: var(--radius-pill); }
+  .screen[data-type-scale="large"] .capture-orbit-trigger-caption,
+  .screen[data-type-scale="large"] .capture-orbit-item,
+  .screen[data-type-scale="large"] .geometry-overlay { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <h1>capture-orbit — the owner's flow (decided 2026-10-13)</h1>
+  <button class="theme-toggle" onclick="toggleDocTheme()">Toggle reading mode</button>
+</div>
+<p class="doc-note">
+  Design prototype, not production code. This draws the owner's own flow —
+  home's round button as a generic trigger that fans into Voice / Write /
+  Photo over a scrim, Voice opening straight into listening, Write opening
+  with the keyboard already up, and Photo as a full-screen camera with an
+  in-screen album button. It is not three options to pick between; the rig
+  below switches the two things the owner asked to compare (the trigger's
+  label, and the notes-vs-cards-only scope) and every state the flow passes
+  through.
+</p>
+
+<div class="rig">
+  <fieldset class="variant-rig">
+    <legend>home trigger</legend>
+    <button data-trigger="t1" class="active">T1 — "+" with "New note" label</button>
+    <button data-trigger="t2">T2 — "+" only</button>
+  </fieldset>
+  <fieldset class="variant-rig">
+    <legend>scope</legend>
+    <button data-scope="a" class="active">S-a — notes and cards</button>
+    <button data-scope="b">S-b — cards only</button>
+  </fieldset>
+</div>
+
+<div class="rig-divider">home / orbit</div>
+<div class="rig">
+  <fieldset>
+    <legend>screen</legend>
+    <button data-screen="home" class="active">Resting</button>
+    <button data-screen="orbit">Orbit open</button>
+  </fieldset>
+</div>
+
+<div class="rig-divider">voice</div>
+<div class="rig">
+  <fieldset>
+    <legend>screen</legend>
+    <button data-screen="voice-perm">First ever use — asking permission</button>
+    <button data-screen="voice-listening">Listening</button>
+    <button data-screen="voice-paused">Paused</button>
+  </fieldset>
+</div>
+
+<div class="rig-divider">write</div>
+<div class="rig">
+  <fieldset>
+    <legend>screen</legend>
+    <button data-screen="write-home">From home — about who? empty</button>
+    <button data-screen="write-profile">From Jordan Lee's page — declared</button>
+  </fieldset>
+</div>
+
+<div class="rig-divider">photo</div>
+<div class="rig">
+  <fieldset>
+    <legend>screen</legend>
+    <button data-screen="camera">Camera open</button>
+    <button data-screen="camera-perm">First tap — asking permission</button>
+    <button data-screen="camera-denied">Camera denied</button>
+    <button data-screen="camera-captured">Captured — Retake / Use photo</button>
+    <button data-screen="picture-check">Words check (record--picture)</button>
+    <button data-screen="photo-offline">Offline — explains, no camera</button>
+  </fieldset>
+</div>
+
+<div class="rig">
+  <fieldset>
+    <legend>connection</legend>
+    <button data-conn="online" class="active">Online</button>
+    <button data-conn="offline">Offline</button>
+  </fieldset>
+  <fieldset>
+    <legend>geometry overlay</legend>
+    <button data-geo="off" class="active">Hidden</button>
+    <button data-geo="on">Show radius + offsets</button>
+  </fieldset>
+  <fieldset>
+    <legend>voiceover order</legend>
+    <button data-vo="off" class="active">Hidden</button>
+    <button data-vo="on">Show order badges</button>
+  </fieldset>
+  <fieldset>
+    <legend>reduce motion</legend>
+    <button data-motion="normal" class="active">Normal</button>
+    <button data-motion="reduced">Reduce Motion</button>
+  </fieldset>
+  <fieldset>
+    <legend>dynamic type</legend>
+    <button data-type="normal" class="active">Normal</button>
+    <button data-type="large">Largest accessibility size</button>
+  </fieldset>
+</div>
+
+<div class="stage">
+  <div class="frame">
+    <div class="screen" id="screen">
+      <div class="ios-status-bar" id="status-bar"><span>9:41</span><span>⚫︎⚫︎⚫︎ 🔋</span></div>
+
+      <div class="nav-bar" id="nav-bar">
+        <div class="nav-bar-spacer" id="nav-left"></div>
+        <span class="nav-bar-title" id="nav-title">andy</span>
+        <div class="nav-bar-action-right" id="nav-right" aria-label="Settings" role="button"><div class="gearshape"></div></div>
+      </div>
+
+      <!-- ============ HOME / ORBIT ============ -->
+      <div class="pane active" id="pane-home">
+        <div class="home-content">
+          <div class="briefing-card">
+            <p class="briefing-card-title">Nothing coming up</p>
+            <p class="briefing-card-body">Connect your calendar and Andy will brief you before you walk in.</p>
+          </div>
+          <ul class="profile-list">
+            <li class="profile-row"><div class="profile-row-avatar">PK</div><div class="profile-row-main"><div class="profile-row-name">Priya Kapoor</div><div class="profile-row-detail">She's fostering a second dog.</div></div></li>
+            <li class="profile-row"><div class="profile-row-avatar">JL</div><div class="profile-row-main"><div class="profile-row-name">Jordan Lee</div><div class="profile-row-detail">Starting a new job at the shelter in March.</div></div></li>
+            <li class="profile-row"><div class="profile-row-avatar">DN</div><div class="profile-row-main"><div class="profile-row-name">Derek Nakamura</div><div class="profile-row-detail">Just adopted a second greyhound, Mochi.</div></div></li>
+          </ul>
+        </div>
+
+        <div class="home-bottom-bar">
+          <div class="capture-orbit-wrap" id="orbit-wrap">
+            <div class="geometry-overlay" id="geo-circle"></div>
+            <span class="geometry-label" id="geo-label-voice" style="top:-120px; left:50%; transform:translate(-50%,-100%);">0, -120</span>
+            <span class="geometry-label" id="geo-label-write" style="top:-60px; left:calc(50% - 104px); transform:translate(-50%,-100%);">-104, -60</span>
+            <span class="geometry-label" id="geo-label-photo" style="top:-60px; left:calc(50% + 104px); transform:translate(-50%,-100%);">104, -60</span>
+
+            <div class="capture-orbit-scrim" id="orbit-scrim"></div>
+
+            <div class="capture-orbit-item capture-orbit-item--voice" id="item-voice" role="button" aria-label="Voice — record a voice note">
+              <div class="vo-badge" id="vo-voice">1</div>
+              <div class="orbit-item-badge"><span class="mic-capsule"></span></div>
+              <div class="orbit-item-label"><span class="orbit-item-word">Voice</span></div>
+            </div>
+
+            <div class="capture-orbit-item capture-orbit-item--write" id="item-write" role="button" aria-label="Write — write it instead">
+              <div class="vo-badge" id="vo-write">2</div>
+              <div class="orbit-item-badge"><span class="pencil-glyph"></span></div>
+              <div class="orbit-item-label"><span class="orbit-item-word">Write</span></div>
+            </div>
+
+            <div class="capture-orbit-item capture-orbit-item--photo" id="item-photo" role="button">
+              <div class="vo-badge" id="vo-photo">3</div>
+              <div class="orbit-item-badge"><span class="camera-glyph"></span></div>
+              <div class="orbit-item-label">
+                <span class="orbit-item-word" id="photo-word">Photo</span>
+                <span class="orbit-item-meta" id="photo-meta" style="display:none">Needs a connection</span>
+              </div>
+            </div>
+
+            <button class="capture-orbit-trigger" id="orbit-trigger" aria-label="New note">
+              <div class="vo-badge" id="vo-close" style="display:none">4</div>
+              <span class="plus-glyph" id="trigger-glyph"></span>
+            </button>
+            <span class="capture-orbit-trigger-caption" id="trigger-caption">New note</span>
+          </div>
+
+          <div class="orbit-type-fallback" id="orbit-fallback">
+            <div class="fallback-row" onclick="goVoice()">
+              <div class="fallback-badge"><span class="mic-capsule"></span></div>
+              <span class="fallback-word">Voice</span>
+            </div>
+            <div class="fallback-row" onclick="goWrite('home')">
+              <div class="fallback-badge"><span class="pencil-glyph"></span></div>
+              <span class="fallback-word">Write</span>
+            </div>
+            <div class="fallback-row" id="fallback-photo-row" onclick="goPhoto()">
+              <div class="fallback-badge"><span class="camera-glyph"></span></div>
+              <div>
+                <span class="fallback-word" id="fallback-photo-word">Photo</span>
+                <span class="fallback-meta" id="fallback-photo-meta" style="display:none">Needs a connection</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="bar-row">
+            <div class="home-search-field-wrap">
+              <div class="search-glass"></div>
+              <input class="home-search-field" placeholder="Find a name or a word" readonly>
+            </div>
+          </div>
+        </div>
+
+        <div class="dialog-overlay" id="photo-offline-overlay">
+          <div class="dialog-card">
+            <p class="dialog-body">Photos need a connection to be read. Take it with the iPhone Camera now and choose it here later.</p>
+            <button class="dialog-action" onclick="goWrite('home')">Write it instead</button>
+            <button class="dialog-cancel" onclick="setState({screen:'orbit'})">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ VOICE ============ -->
+      <div class="pane" id="pane-voice">
+        <div class="rf-pane" id="voice-rf">
+          <!-- filled by render() -->
+        </div>
+        <div class="ios-permission-sheet" id="mic-permission-sheet">
+          <p class="ios-permission-sheet-title">"andy" Would Like to Access the Microphone</p>
+          <p class="ios-permission-sheet-body">Andy needs the microphone to take a voice note. Speech recognition may use Apple's servers if your phone has no on-device model for this language.</p>
+          <div class="ios-permission-sheet-row">
+            <div class="ios-permission-sheet-btn" onclick="void(0)">Don't Allow</div>
+            <div class="ios-permission-sheet-btn primary" onclick="setState({screen:'voice-listening'})">OK</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ WRITE (record--typing) ============ -->
+      <div class="pane" id="pane-write">
+        <div class="rf-pane" style="gap:16px">
+          <div class="field">
+            <label class="field-label">About who?</label>
+            <div class="field-input-row" id="about-field-row">
+              <!-- filled by render() -->
+            </div>
+          </div>
+          <div class="field body-field-wrap" style="flex:1">
+            <label class="field-label" id="body-label">What do you want to remember?</label>
+            <div class="body-input-shell" id="body-shell">
+              <!-- filled by render() -->
+            </div>
+            <div class="ios-paste-button" id="paste-button"><span class="paste-glyph"></span>Paste</div>
+          </div>
+          <button class="read-button">Let Andy read it</button>
+          <button class="secondary-link" style="align-self:center">Cancel</button>
+        </div>
+        <div class="keyboard-overlay shown"><p class="keyboard-overlay-label">(iOS keyboard — already up)</p></div>
+      </div>
+
+      <!-- ============ CAMERA (card-scan) ============ -->
+      <div class="pane" id="pane-camera">
+        <div class="card-scan">
+          <div class="card-scan-viewfinder">
+            <p class="card-scan-viewfinder-note">(live camera preview — placeholder, not a themed surface)</p>
+            <div class="card-scan-close-button" id="scan-close" role="button" aria-label="Close">✕</div>
+            <div class="card-scan-frame" id="scan-frame">
+              <div class="card-scan-frame-corner tl"></div>
+              <div class="card-scan-frame-corner tr"></div>
+              <div class="card-scan-frame-corner bl"></div>
+              <div class="card-scan-frame-corner br"></div>
+            </div>
+            <p class="card-scan-hint" id="scan-hint">Fit the note or card inside the frame</p>
+
+            <div class="card-scan-permission-overlay" id="scan-perm-overlay">
+              <div class="ios-permission-sheet shown" style="position:relative; margin:auto var(--space-xl); bottom:auto;">
+                <p class="ios-permission-sheet-title">"andy" Would Like to Access the Camera</p>
+                <p class="ios-permission-sheet-body">Andy needs the camera to take a photo of a note or a card.</p>
+                <div class="ios-permission-sheet-row">
+                  <div class="ios-permission-sheet-btn" onclick="setState({screen:'camera-denied'})">Don't Allow</div>
+                  <div class="ios-permission-sheet-btn primary" onclick="setState({screen:'camera'})">OK</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card-scan-denied-overlay" id="scan-denied-overlay">
+              <div class="card-scan-denied-card">
+                <p class="card-scan-denied-line" id="scan-denied-line">Andy needs the camera to take a photo of a note or a card. You can turn it on in Settings.</p>
+                <button class="card-scan-open-settings-button">Open iPhone Settings</button>
+                <p class="card-scan-denied-footnote">The album below still works.</p>
+              </div>
+            </div>
+
+            <div class="card-scan-captured-overlay" id="scan-captured-overlay">
+              <div class="card-scan-captured-photo"><span class="card-scan-captured-photo-label">(captured photo)</span></div>
+              <div class="card-scan-captured-actions">
+                <button class="card-scan-use-photo-button" onclick="setState({screen:'picture-check'})">Use photo</button>
+                <button class="card-scan-retake-button" onclick="setState({screen:'camera'})">Retake</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-scan-controls" id="scan-controls">
+            <div class="card-scan-album-button" role="button" aria-label="Choose a photo" title="Choose a photo — opens the system picker, no permission prompt"></div>
+            <div class="card-scan-shutter-button" id="shutter-btn" role="button" aria-label="Take photo" onclick="setState({screen:'camera-captured'})">
+              <div class="card-scan-shutter-button-inner"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ PICTURE CHECK (record--picture) ============ -->
+      <div class="pane" id="pane-picture">
+        <div class="rf-pane">
+          <p class="lead" id="picture-lead">Is this what the picture says? Fix any name or word, then let Andy read it.</p>
+          <div class="field" style="flex:1">
+            <label class="field-label" id="picture-label">What the picture said</label>
+            <textarea class="body-input">Prlya Kapoor — Pr0duct Design, Northwind Co.
+Said she's hiring for a design role in March.</textarea>
+          </div>
+          <button class="read-button">Let Andy read it</button>
+          <button class="secondary-link" style="align-self:center" onclick="setState({screen:'camera'})">Take it again</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="side-notes">
+    <h2>What this flow is</h2>
+    <p>Home's round button (<code>capture-orbit-trigger</code>, new) keeps
+    its slot, size and shape from <code>home-actions.md</code>'s shipped
+    V-NOTCHED Record — but it no longer records anything itself. It opens
+    <code>capture-orbit</code> (new): a scrim over the whole screen,
+    Google-Calendar-style, with three equal, round doors fanning out —
+    Voice at 12, Write at 10, Photo at 2 o'clock — and the trigger itself
+    becomes a close (✕). Tapping the scrim, the ✕, or any door closes it.</p>
+
+    <h2>1–2 — the trigger and the orbit</h2>
+    <p>Two trigger labels, switchable above: <strong>T1</strong> draws "+"
+    inside the moss circle with "New note" set beneath it as its own caption
+    (<code>capture-orbit-trigger-caption</code>) — recognition over recall,
+    the exact shape <code>record-button</code> already had, with its word
+    moved outside the circle rather than inside it. <strong>T2</strong> is
+    "+" alone; VoiceOver still says "New note" on either. Both converge to a
+    bare ✕ while open — no caption needed there, the same established
+    icon-only exception <code>settings-button</code>'s gearshape already
+    uses (one universally recognised symbol, nothing competing for its
+    meaning).</p>
+    <p>Each orbit item is a 56pt moss circle (icon) with its word in a solid
+    <strong>paper</strong> chip directly beneath — never bare ink text
+    floating on the scrim itself. This matters for contrast: the scrim is
+    <code>ink</code> at 42% composited over whatever is behind it, which
+    measures as a mid grey, not a reliable 4.5:1 backdrop for text at full
+    opacity. Every other dialog in this app already follows this rule —
+    <code>confirm-dialog</code>'s text sits on a solid <code>paper</code>
+    card floating above the scrim, never directly on it — this is the same
+    rule, applied to a smaller shape.</p>
+    <span class="vo"><strong>Geometry (toggle "geometry overlay" above):</strong>
+    each item sits at radius 120pt from the trigger's centre — Write and
+    Photo at ±104pt horizontal / -60pt vertical (60° off vertical), Voice at
+    0 / -120pt (straight up). At 390pt width with the trigger centred, the
+    widest item's outer edge lands at ~328pt from the right edge, ~62pt from
+    the left — both comfortably inside the 16pt margin either side.
+    <strong>Approximate, confirm on device</strong>, the same caveat this
+    project's other geometry mocks already carry. Because the orbit is
+    bilaterally symmetric around a centred trigger, it is identical for a
+    right- or left-handed grip — no handedness trade-off, the same finding
+    <code>capture-radial.html</code>'s arc already established.</span>
+    <div class="verdict"><strong>This supersedes, for this flow:</strong>
+    <code>home-actions.md</code>'s own copy for <code>record-button</code>
+    ("keeps the visible word 'Record'") — the round button's word is now
+    "New note" (reusing capture-doors.md's own C6), and its role is a
+    chooser, not a recorder. <code>record-flow.md</code>'s R2 ("recording
+    starts only on an explicit tap of <code>mic-button</code>") is amended:
+    tapping the Voice door <em>is</em> that explicit tap, so
+    <code>record--listening</code> opening already-listening does not
+    violate R2's intent, it relocates where the explicit tap happens.</div>
+
+    <h2>Copy flagged for product-strategist</h2>
+    <p>"Voice" / "Write" / "Photo" as the three door words are the owner's
+    own words for this flow, not capture-doors.md's copy table (which had
+    <code>capture-menu-item--voice</code> say "Record", C1) — here "Record"
+    would be confusing twice over (it's not the trigger, and it's not a verb
+    distinct from "Voice" as a door name), so this mock uses "Voice"
+    throughout. <strong>Flag:</strong> confirm "Voice"/"Write"/"Photo" as
+    the orbit's words, superseding C1 for this flow. Also flagged:
+    "Retake" / "Use photo" (<code>card-scan-retake-button</code> /
+    <code>-use-photo-button</code>) and "Take it again" on
+    <code>record--picture</code> are this designer's plain, conventional
+    words (Camera/Photos' own vocabulary), not from any copy table yet.</p>
+
+    <h2>3 — Voice opens already listening</h2>
+    <p>Tapping Voice (toggle "voice: listening" above) opens
+    <code>record--listening</code> exactly as <code>record-flow.md</code>'s
+    Final choice already drew it: the red (<code>alert</code>) "Recording"
+    indicator with a live m:ss timer, the growing transcript, a large Done
+    and a small Pause beside it — carried here unchanged, including Pause's
+    own "Paused · m:ss" + Resume + Done (toggle "voice: paused"). <strong>On
+    the very first ever use</strong> (toggle "voice: first ever use"), the
+    system microphone prompt appears before any audio is captured — the
+    same escape hatch capture-doors.md's M3 proposed for exactly this
+    problem — and only once it is granted does listening begin; declining
+    returns to <code>home</code> with the typing door still fully open, per
+    capture-doors.md R4/R5.</p>
+
+    <h2>4 — Write opens with the keyboard already up</h2>
+    <p>From home (toggle "write: from home"), <code>about-field</code> is
+    empty with the cursor already in it (shown here with a blinking caret,
+    frozen under Reduce Motion) and the keyboard is already up — no second
+    tap to focus the field. The body shows the system
+    <code>ClipboardPasteButton</code> when empty, per capture-doors.md's
+    "answered once" §R7. From a person's page (toggle "write: from Jordan
+    Lee's page"), <code>about-field</code> is already declared — the same
+    <code>about-field--declared</code> shape <code>record-flow.md</code>'s
+    Option A settled, with a <code>Change</code> link — and the cursor moves
+    to the body instead, since the subject is already known.</p>
+
+    <h2>5 — Photo opens the camera directly</h2>
+    <p><code>card-scan</code> (new): a full-screen camera on
+    <code>expo-camera</code>, no VisionKit, no live edge tracking — the
+    frame guide (<code>card-scan-frame</code>, four static corner brackets)
+    never moves or reacts to what's under it, which is the honest reading of
+    "no live edge detection." <code>card-scan-close-button</code> top-left,
+    <code>card-scan-album-button</code> bottom-left (opens the system photo
+    picker directly — no Photos permission prompt, capture-doors.md R13),
+    <code>card-scan-shutter-button</code> large and centred. No mode tabs:
+    Andy reads a card and a handwritten page the same way. After capture
+    (toggle "photo: captured"), the photo shows with
+    <code>card-scan-retake-button</code> (plain text) and
+    <code>card-scan-use-photo-button</code> (primary pill) — then
+    <code>record--picture</code> (toggle "photo: words check"), already
+    named in capture-doors.md: the lead and label swap to "the card" /
+    "What the card said" under scope S-b, where every photo is a card, and
+    stay generic ("the picture" / "What the picture said", C9/C10) under
+    S-a. One photo per note (capture-doors.md R14) — there is no "add
+    another" control anywhere in this screen.</p>
+    <div class="risk"><strong>Supersedes capture-doors.md's own "answered
+    once" §R9/call 4</strong> (one Photo item opening a Take/Choose sheet):
+    this flow's Photo door opens the camera immediately, with the album as
+    an in-screen button rather than a separate step. One fewer tap to the
+    camera; the cost is that someone who only ever wants the library now
+    sees the camera UI first, even briefly, before reaching for the album
+    button — named rather than hidden, since it is a real, if small, change
+    of direction from that earlier decision.</div>
+
+    <h2>Camera permission, denied</h2>
+    <p>Toggle "photo: first tap" for the system prompt (approximate — exact
+    wording is Apple's, set by <code>NSCameraUsageDescription</code>) over
+    the still-visible frame guide, and "photo: camera denied" for the
+    refusal state: a plain card over the dark viewfinder,
+    <code>card-scan-open-settings-button</code>, and a footnote that the
+    album still works — <code>card-scan-album-button</code> stays reachable
+    beneath the denied card the whole time, per the brief's own "album still
+    usable" rule.</p>
+    <span class="vo"><strong>Copy, scope-dependent (toggle "scope" above):</strong>
+    S-a: "Andy needs the camera to take a photo of a note or a card. You can
+    turn it on in Settings." (this designer's extrapolation of C13 to cover
+    notes, not yet in the copy table — flag). S-b: "Andy needs the camera to
+    take a photo of a card. You can turn it on in Settings." (C13,
+    verbatim).</span>
+
+    <h2>6 — Offline, said before anything opens</h2>
+    <p>Toggle "connection: offline". While the orbit is open, the Photo
+    item's own label swaps inline from "Photo"/"Card" to a second, quiet
+    line reading "Needs a connection" (<code>ink</code> at
+    <code>textOpacity.quiet</code>, 5.0:1 on the item's <code>paper</code>
+    chip — an approved pairing, not a new one) — visible before the tap, not
+    only after. Tapping it anyway (toggle "photo: offline") shows
+    <code>photo-offline-notice</code> as a <code>confirm-dialog</code>-shaped
+    card over the still-open orbit, never opening the camera first and
+    failing. Voice and Write are completely unaffected offline, exactly as
+    today.</p>
+    <div class="risk"><strong>Wording discrepancy, named rather than
+    resolved:</strong> this task's own offline sentence — "Photos need a
+    connection to be read. Take it with the iPhone Camera now and choose it
+    here later." — differs slightly from capture-doors.md's already-decided
+    C11 ("Reading a photo needs a connection. Take it with your Camera now
+    and choose it here later, or write it instead."). This mock uses the
+    newer wording as given for this task; <strong>flag for
+    product-strategist</strong> to pick one and update the other document,
+    so the app doesn't end up with two true sentences for the same state.</div>
+
+    <h2>7 — Scope switch (S-a / S-b)</h2>
+    <p>Toggle "scope" above to compare, side by side, the two answers to
+    capture-doors.md's own open scope question (§12.1): <strong>S-a "Notes
+    and cards"</strong> — the frame hint says "Fit the note or card inside
+    the frame," the door says "Photo," and <code>record--picture</code>
+    stays generic, because its free-text editor already copes with several
+    names in one note. <strong>S-b "Cards only"</strong> — the hint says
+    "Fit the card inside the frame," the door says "Card," and
+    <code>record--picture</code>'s own lead/label specialise to "the card" /
+    "What the card said," matching copy-build-4's existing precedent for a
+    card's busy state ("Reading the card…", C14). Neither changes
+    <code>card-scan</code>'s own mechanics — the camera, the frame, the
+    shutter and the words-check step are identical either way; only three
+    words move.</p>
+
+    <h2>Tap counts, from home at rest</h2>
+    <table class="compare-table">
+      <tr><th>Door</th><th>Taps</th><th>What happens</th></tr>
+      <tr><td>Voice, returning (mic already granted)</td><td><strong>2</strong></td><td>New note → Voice → listening starts at once</td></tr>
+      <tr><td>Voice, first ever use</td><td>2 + a system prompt</td><td>New note → Voice → permission sheet → listening starts once granted</td></tr>
+      <tr><td>Write, from home</td><td><strong>2</strong></td><td>New note → Write → record--typing, keyboard up, cursor in About who?</td></tr>
+      <tr><td>Write, from a person's page</td><td><strong>2</strong></td><td>New note → Write → record--typing, About who? already declared, cursor in the body</td></tr>
+      <tr><td>Photo, to the camera opening</td><td><strong>2</strong></td><td>New note → Photo → card-scan opens (if already granted)</td></tr>
+      <tr><td>Photo, full path to record--picture</td><td>4</td><td>New note → Photo → Shutter → Use photo → record--picture</td></tr>
+      <tr><td>Photo, via the album</td><td>2 + a system picker</td><td>New note → Photo → Album → system picker (no prompt) → choose → record--picture</td></tr>
+      <tr><td>Photo, offline</td><td><strong>2</strong></td><td>New note → Photo → explanation shown, no camera opens</td></tr>
+    </table>
+    <p style="font-size:12px; opacity:0.75;">All four doors are reached in
+    exactly 2 taps from home at rest — the orbit's own cost (one extra tap
+    to open it, same as capture-doors.md's M1) is paid once, equally, by
+    every door, rather than by Voice alone. This is the trade this flow
+    makes deliberately: Voice is no longer 1 tap (as M2/M3/R2/R3 achieved
+    elsewhere in this project's exploration), in exchange for every door —
+    including the two rarer ones — being exactly as fast to reach as Voice
+    is, and none of them living behind a smaller or secondary control.</p>
+
+    <h2>Accessibility</h2>
+    <ul style="padding-left:18px; margin:6px 0;">
+      <li><strong>Modal, explicit order.</strong> <code>capture-orbit</code>
+      sets <code>accessibilityViewIsModal</code>; on open, focus moves to
+      Voice first, then Write, then Photo, then the trigger-as-close last —
+      <strong>Voice → Write → Photo → Close</strong>, per the brief. Toggle
+      "voiceover order" above for the numbered badges live on the screen.
+      The two-finger-Z escape gesture or a swipe past Photo also closes it.</li>
+      <li><strong>Targets.</strong> Each orbit item's badge is 56pt; its
+      full hit area (badge + label chip) exceeds 44×44pt. The trigger is
+      72pt. <code>card-scan-shutter-button</code> is 72pt,
+      <code>card-scan-album-button</code> and <code>-close-button</code> are
+      44×44pt.</li>
+      <li><strong>No icon-only doors.</strong> Every orbit item shows its
+      word in the paper chip beneath its icon. The camera's shutter, close
+      and album controls are icon-only, justified the same way
+      <code>settings-button</code>'s gearshape already is — each is a
+      single, universally recognised camera convention (Camera, Instagram,
+      Snapchat) with a VoiceOver label, not a command hidden with no spoken
+      equivalent.</li>
+      <li><strong>Reduce Motion</strong> (toggle above): the fan-out and the
+      trigger's icon swap drop to a 120ms opacity crossfade only, no
+      translate or scale; the recording dot and the field caret both freeze
+      rather than pulse/blink.</li>
+      <li><strong>Dynamic Type</strong> (toggle above): at the largest
+      accessibility size, the orbit hides and converges to
+      <code>orbit-type-fallback</code>, a plain full-width stacked list —
+      Voice, Write, Photo in that order — the same convergence pattern
+      <code>capture-radial.html</code>'s arc already established, so there
+      is no new fallback shape to design or test.</li>
+      <li><strong>Contrast, no new pairings.</strong> Orbit item words:
+      <code>ink</code> on <code>paper</code> chip (12.0:1). Offline meta:
+      <code>ink</code> at <code>textOpacity.quiet</code> on the same chip
+      (5.0:1). <code>card-scan</code>'s hint text is <code>paper</code> on a
+      dark camera placeholder — not a themed pairing (the backdrop is sensor
+      content, not an app surface), kept at full opacity precisely so it
+      stays legible regardless of what the lens sees.</li>
+      <li><strong>Colour never carries meaning alone.</strong> Recording
+      says "Recording" and the time, not just red; offline says "Needs a
+      connection" and the explanation dialog's own sentence, not just a
+      dimmed icon; denied states always pair with a sentence and a way
+      forward (Settings, or the album).</li>
+    </ul>
+
+    <h2>Names proposed, if this ships</h2>
+    <ul style="padding-left:18px; margin:6px 0;">
+      <li><code>capture-orbit-trigger</code> (new) — the round button on
+      home; states <code>--open</code> (✕). Takes over
+      <code>record-button</code>'s slot and size; no longer records.</li>
+      <li><code>capture-orbit</code> (new) — the open radial menu: the
+      scrim, the three items, the trigger acting as Close.</li>
+      <li><code>capture-orbit-item--voice</code> / <code>--write</code> /
+      <code>--photo</code> (named in the brief) — the three round doors.</li>
+      <li><code>card-scan</code> (new) — the full-screen camera.
+      <code>card-scan-frame</code>, <code>-shutter-button</code>,
+      <code>-album-button</code> (all named in the brief),
+      <code>-close-button</code>, <code>-retake-button</code>,
+      <code>-use-photo-button</code>, <code>-denied-line</code>,
+      <code>-open-settings-button</code> (added here, following the
+      brief's own naming shape).</li>
+      <li><code>record--picture</code> and <code>photo-offline-notice</code>
+      — already proposed in <code>capture-doors.md</code>, reused unchanged;
+      here <code>photo-offline-notice</code> is triggered directly from the
+      orbit's Photo item rather than from a photo-source sheet, since this
+      flow has no sheet to trigger it from.</li>
+    </ul>
+    <p>No new tokens proposed — every surface reuses <code>moss</code>,
+    <code>ink</code>, <code>paper</code>, <code>edge</code>, <code>line</code>,
+    <code>placeholder</code>, <code>scrim</code>, and the one named
+    <code>alert</code> exception (the recording indicator).</p>
+  </div>
+</div>
+
+<script>
+  const state = {
+    trigger: 't1', scope: 'a', screen: 'home', conn: 'online',
+    geo: 'off', vo: 'off', motion: 'normal', type: 'normal'
+  };
+
+  function setState(patch) {
+    Object.assign(state, patch);
+    syncButtons();
+    render();
+  }
+  function syncButtons() {
+    const map = { trigger: 'trigger', scope: 'scope', screen: 'screen', conn: 'conn', geo: 'geo', vo: 'vo', motion: 'motion', type: 'type' };
+    for (const key in map) {
+      document.querySelectorAll('[data-' + map[key] + ']').forEach(b => b.classList.toggle('active', b.dataset[map[key]] === state[key]));
+    }
+  }
+
+  function goVoice() { setState({ screen: 'voice-listening' }); }
+  function goWrite(ctx) { setState({ screen: ctx === 'profile' ? 'write-profile' : 'write-home' }); }
+  function goPhoto() {
+    if (state.conn === 'offline') { setState({ screen: 'photo-offline' }); }
+    else { setState({ screen: 'camera' }); }
+  }
+
+  const PANE_OF = {
+    home: 'home', orbit: 'home', 'photo-offline': 'home',
+    'voice-perm': 'voice', 'voice-listening': 'voice', 'voice-paused': 'voice',
+    'write-home': 'write', 'write-profile': 'write',
+    'camera': 'camera', 'camera-perm': 'camera', 'camera-denied': 'camera', 'camera-captured': 'camera',
+    'picture-check': 'picture'
+  };
+  const NAV_TITLE = { home: 'andy', voice: 'New note', write: 'New note', camera: '', picture: 'New note' };
+
+  function render() {
+    const screenEl = document.getElementById('screen');
+    screenEl.setAttribute('data-type-scale', state.type);
+    screenEl.setAttribute('data-vo', state.vo);
+    screenEl.classList.toggle('no-motion', state.motion === 'reduced');
+
+    const pane = PANE_OF[state.screen];
+    document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+    document.getElementById('pane-' + pane).classList.add('active');
+
+    // nav bar — hidden entirely on the full-screen camera
+    const onCamera = pane === 'camera';
+    document.getElementById('nav-bar').style.display = onCamera ? 'none' : 'flex';
+    document.getElementById('status-bar').classList.toggle('on-dark', onCamera);
+    document.getElementById('nav-title').classList.toggle('nav-bar-title--record', pane !== 'home');
+    document.getElementById('nav-title').textContent = NAV_TITLE[pane];
+    document.getElementById('nav-left').innerHTML = (pane === 'home') ? '' : '<span class="nav-bar-back">‹</span>';
+    document.getElementById('nav-right').style.visibility = (pane === 'home') ? 'visible' : 'hidden';
+
+    renderHome();
+    renderVoice();
+    renderWrite();
+    renderCamera();
+    renderPicture();
+
+    // geometry overlay + VO badges apply everywhere they exist
+    document.getElementById('geo-circle').classList.toggle('shown', state.geo === 'on');
+    document.querySelectorAll('.geometry-label').forEach(l => l.classList.toggle('shown', state.geo === 'on'));
+  }
+
+  function photoWord() { return state.scope === 'b' ? 'Card' : 'Photo'; }
+  function frameHint() { return state.scope === 'b' ? 'Fit the card inside the frame' : 'Fit the note or card inside the frame'; }
+  function pictureNoun() { return state.scope === 'b' ? 'card' : 'picture'; }
+
+  function renderHome() {
+    const isOrbit = state.screen === 'orbit';
+    const wrap = document.getElementById('orbit-wrap');
+    wrap.classList.toggle('open', isOrbit);
+    document.getElementById('orbit-scrim').classList.toggle('shown', isOrbit);
+
+    // trigger glyph + caption
+    const glyph = document.getElementById('trigger-glyph');
+    glyph.className = isOrbit ? 'close-glyph' : 'plus-glyph';
+    glyph.textContent = isOrbit ? '✕' : '';
+    const caption = document.getElementById('trigger-caption');
+    caption.classList.toggle('hidden-el', isOrbit || state.trigger === 't2');
+    document.getElementById('orbit-trigger').setAttribute('aria-label', isOrbit ? 'Close' : 'New note');
+    document.getElementById('vo-close').style.display = isOrbit ? 'flex' : 'none';
+
+    document.getElementById('orbit-trigger').onclick = () => setState({ screen: isOrbit ? 'home' : 'orbit' });
+    document.getElementById('orbit-scrim').onclick = () => setState({ screen: 'home' });
+    document.getElementById('item-voice').onclick = goVoice;
+    document.getElementById('item-write').onclick = () => goWrite('home');
+    document.getElementById('item-photo').onclick = goPhoto;
+
+    // offline — inline meta on the Photo item + the fallback row
+    const offline = state.conn === 'offline';
+    document.getElementById('photo-word').textContent = photoWord();
+    document.getElementById('photo-meta').style.display = offline ? 'block' : 'none';
+    document.getElementById('item-photo').classList.toggle('is-offline', offline);
+    document.getElementById('fallback-photo-word').textContent = photoWord();
+    document.getElementById('fallback-photo-meta').style.display = offline ? 'block' : 'none';
+
+    // photo-offline dialog — shown over the still-open orbit
+    document.getElementById('photo-offline-overlay').classList.toggle('shown', state.screen === 'photo-offline');
+    if (state.screen === 'photo-offline') { wrap.classList.add('open'); document.getElementById('orbit-scrim').classList.add('shown'); }
+
+    // Dynamic Type fallback replaces the geometric orbit when open
+    document.getElementById('orbit-fallback').classList.toggle('shown', state.type === 'large' && (isOrbit || state.screen === 'photo-offline'));
+  }
+
+  function renderVoice() {
+    const el = document.getElementById('voice-rf');
+    const permSheet = document.getElementById('mic-permission-sheet');
+    permSheet.classList.toggle('shown', state.screen === 'voice-perm');
+
+    if (state.screen === 'voice-perm') {
+      el.innerHTML = '<div class="prompt-area"><p class="record-prompt">Andy needs the microphone to take a voice note.</p></div>';
+    } else if (state.screen === 'voice-paused') {
+      el.innerHTML =
+        '<div class="recording-indicator" style="background:var(--color-ink)"><span>Paused · 0:14</span></div>' +
+        '<div class="transcript-live">Had coffee with Priya just now — she is fostering a second dog.</div>' +
+        '<div class="done-pause-row"><button class="done-button">Done</button><button class="resume-button">Resume</button></div>';
+    } else {
+      // voice-listening (default landing for the Voice door)
+      el.innerHTML =
+        '<div class="recording-indicator"><span class="recording-dot"></span><span>Recording</span><span class="recording-time">0:07</span></div>' +
+        '<div class="transcript-live">Had coffee with <span class="interim">Priya just now</span></div>' +
+        '<div class="done-pause-row"><button class="done-button">Done</button><button class="pause-button">Pause</button></div>';
+    }
+  }
+
+  function renderWrite() {
+    const declared = state.screen === 'write-profile';
+    const aboutRow = document.getElementById('about-field-row');
+    aboutRow.classList.toggle('is-focused', !declared);
+    if (declared) {
+      aboutRow.innerHTML = '<div class="declared-line" style="width:100%"><span class="declared-name">Jordan Lee</span><button class="change-link">Change</button></div>';
+    } else {
+      aboutRow.innerHTML = '<input class="field-input" placeholder="Their name (optional)" value=""><span class="field-caret"></span>';
+    }
+
+    const bodyShell = document.getElementById('body-shell');
+    const bodyLabel = document.getElementById('body-label');
+    if (declared) {
+      bodyLabel.textContent = 'What do you want to remember about Jordan Lee?';
+      bodyShell.classList.remove('is-empty');
+      bodyShell.innerHTML = '<span class="field-caret"></span>';
+    } else {
+      bodyLabel.textContent = 'What do you want to remember?';
+      bodyShell.classList.add('is-empty');
+      bodyShell.textContent = 'Write or paste what you want to remember — one person at a time.';
+    }
+    document.getElementById('paste-button').style.display = declared ? 'none' : 'flex';
+  }
+
+  function renderCamera() {
+    document.getElementById('scan-hint').textContent = frameHint();
+    document.getElementById('scan-close').onclick = () => setState({ screen: 'home' });
+
+    document.getElementById('scan-perm-overlay').classList.toggle('shown', state.screen === 'camera-perm');
+    document.getElementById('scan-denied-overlay').classList.toggle('shown', state.screen === 'camera-denied');
+    document.getElementById('scan-captured-overlay').classList.toggle('shown', state.screen === 'camera-captured');
+
+    const liveControlsHidden = state.screen === 'camera-captured';
+    document.getElementById('scan-controls').style.visibility = liveControlsHidden ? 'hidden' : 'visible';
+    document.getElementById('scan-frame').style.visibility = (state.screen === 'camera-captured') ? 'hidden' : 'visible';
+
+    document.getElementById('scan-denied-line').textContent = state.scope === 'b'
+      ? 'Andy needs the camera to take a photo of a card. You can turn it on in Settings.'
+      : 'Andy needs the camera to take a photo of a note or a card. You can turn it on in Settings.';
+  }
+
+  function renderPicture() {
+    const noun = pictureNoun();
+    document.getElementById('picture-lead').textContent = 'Is this what the ' + noun + ' says? Fix any name or word, then let Andy read it.';
+    document.getElementById('picture-label').textContent = 'What the ' + noun + ' said';
+  }
+
+  document.querySelectorAll('[data-trigger]').forEach(b => b.onclick = () => setState({ trigger: b.dataset.trigger }));
+  document.querySelectorAll('[data-scope]').forEach(b => b.onclick = () => setState({ scope: b.dataset.scope }));
+  document.querySelectorAll('[data-screen]').forEach(b => b.onclick = () => setState({ screen: b.dataset.screen }));
+  document.querySelectorAll('[data-conn]').forEach(b => b.onclick = () => setState({ conn: b.dataset.conn }));
+  document.querySelectorAll('[data-geo]').forEach(b => b.onclick = () => setState({ geo: b.dataset.geo }));
+  document.querySelectorAll('[data-vo]').forEach(b => b.onclick = () => setState({ vo: b.dataset.vo }));
+  document.querySelectorAll('[data-motion]').forEach(b => b.onclick = () => setState({ motion: b.dataset.motion }));
+  document.querySelectorAll('[data-type]').forEach(b => b.onclick = () => setState({ type: b.dataset.type }));
+
+  function toggleDocTheme() {
+    const root = document.documentElement;
+    root.setAttribute('data-doc-theme', root.getAttribute('data-doc-theme') === 'dark' ? 'light' : 'dark');
+  }
+
+  syncButtons();
+  render();
+</script>
+</body>
+</html>

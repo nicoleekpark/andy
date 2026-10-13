@@ -713,6 +713,25 @@ describe("search screen", () => {
     expect(screen.getByRole("button", { name: "2 other notes came up" })).toBeTruthy();
   });
 
+  test("should not fold in notes that matched less well than anything the answer used", async () => {
+    recall.mockResolvedValue({
+      query: "pottery studio",
+      answer: "Amy is opening a pottery studio in October.",
+      results: [
+        buildResult({ noteId: "note-amy", used: true, score: 0.55 }),
+        buildResult({ noteId: "note-close", used: false, score: 0.6 }),
+        buildResult({ noteId: "note-far", used: false, score: 0.2 }),
+        buildResult({ noteId: "note-far-2", used: false, score: 0.18 }),
+      ],
+    });
+    await renderSearch();
+
+    await ask("pottery studio");
+
+    // Device QA #38: only the one that might have been missed, not the noise.
+    expect(screen.getByRole("button", { name: "1 other note came up" })).toBeTruthy();
+  });
+
   test("should show no answer block at all when the search found nothing to answer from", async () => {
     recall.mockResolvedValue({ query: "the capital of France", answer: "", results: [] });
     await renderSearch();

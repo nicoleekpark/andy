@@ -1,0 +1,888 @@
+<!--
+  DESIGN PROTOTYPE — an HTML approximation of native `home` and `record` for
+  Andy. Not production code — a design prototype for the owner to choose
+  from, not a screen to ship.
+
+  Follow-up to docs/design/decisions/capture-doors.md (M1/M2/M3, mocked in
+  capture-doors.html) and docs/design/decisions/home-actions.md (the shipped
+  V-NOTCHED bottom chrome: a round 72pt record-button straddling a hairline
+  above a full-width home-search-field). The owner sent two references and
+  asked to see that feel drawn around the already-settled round Record:
+
+    Google Calendar's + FAB   Tapping dims the whole screen (scrim) and
+                              labelled pills (icon + word) stack ABOVE the
+                              FAB, which turns into a close (✕).
+    Samsung Air Command       Round icon buttons laid out on an ARC around an
+                              edge trigger, each with a text label BESIDE it,
+                              over a dimmed/blurred background.
+
+  Three radial variants, same geometry family (an arc of two labelled
+  satellites — Write, Photo — fanning upward from the centred round Record,
+  in the thumb zone), different interaction model:
+
+    R1  Tap to fan.      Tap Record -> scrim + arc opens (Write, Photo).
+                         Record itself stays in place, grows slightly
+                         ("armed"). Tap it again -> starts listening.
+                         Voice = 2 taps, zero finger travel. Tap the scrim,
+                         the close control, or an item to close.
+    R2  Tap records;     Tap Record -> starts listening at once (1 tap).
+        hold fans.       Press-and-hold Record, OR tap a small visible
+                         "More" badge beside it, opens the same arc (Write,
+                         Photo) over a scrim. Hold is a shortcut only — the
+                         badge is the plain-tap path a command must always
+                         have (Apple HIG / NN/G: never hide a command only
+                         behind a long-press).
+    R3  Arc always       Two small labelled satellites rest on the notched
+        half-open.       bar beside/above Record permanently. No scrim, no
+                         open/close state at all. Voice = 1 tap, Write and
+                         Photo are also each 1 tap — nothing is ever behind
+                         a reveal step.
+
+  All three inherit, unchanged: the V-NOTCHED bar and round record-button
+  from home-actions.md's Final choice; capture-menu-item--write/--photo and
+  capture-menu-close from capture-doors.md (reused inside the arc, or as the
+  always-visible satellites in R3); colors.scrim; the Write and Photo doors'
+  own screens (record--typing, the photo-source-dialog / photo-offline-notice)
+  exactly as capture-doors.html already shows them in full — only shown
+  briefly here, not re-specified.
+
+  Tokens are declared as CSS variables, named the same as
+  src/constants/theme.ts, so this mock and the app cannot quietly drift
+  apart. No new tokens are proposed by this file. Lora / IBM Plex Mono are
+  not loaded here, so serif/monospace fall back to a close system face. SF
+  Symbols (mic.fill, pencil, camera, chevron.up) are approximated with small
+  CSS-drawn shapes or glyph characters — the real screen draws them with
+  expo-symbols. The rig above the phone frame, the VoiceOver order badges and
+  the geometry overlay are mock-only tooling, not part of the design. Pixel
+  figures in the side notes are computed from this mock's own CSS, labelled
+  as approximations to confirm on device — the same caveat this project's
+  other geometry-heavy mocks already carry.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>capture-doors — radial explorations (R1 / R2 / R3)</title>
+<style>
+  :root {
+    /* --- app tokens, named as src/constants/theme.ts (confirmed values) --- */
+    --color-ink: #2A2622;
+    --color-paper: #E8E6DE;
+    --color-moss: #5C6B4F;
+    --color-brass: #B8935A;
+    --color-line: #B8B3A8;
+    --color-alert: #9F4C3B;
+    --color-placeholder: #63605A;
+    --color-edge: #857E6D;
+    --color-scrim: rgba(42, 38, 34, 0.42);
+    --space-xs: 4px; --space-sm: 8px; --space-md: 12px; --space-lg: 16px;
+    --space-xl: 24px; --space-xxl: 32px; --space-xxxl: 48px;
+    --text-xs: 12px; --text-sm: 13px; --text-md: 14px; --text-base: 15px;
+    --text-lg: 16px; --text-xl: 17px; --text-xxl: 18px;
+    --radius-control: 10px; --radius-card: 16px; --radius-pill: 999px;
+    --opacity-secondary: 0.8; --opacity-quiet: 0.7;
+    --size-avatar: 40px;
+    --font-display: Georgia, "Times New Roman", serif;   /* ~ Lora */
+    --font-utility: "Courier New", monospace;              /* ~ IBM Plex Mono */
+
+    /* --- doc chrome only (reading comfort, never the phone) --- */
+    --doc-bg: #d8d4c8; --doc-ink: #2A2622; --doc-quiet: #6f6a62;
+    --doc-rule: #cfcac0; --doc-card: #f6f4ee;
+  }
+  [data-doc-theme="dark"] {
+    --doc-bg: #1E1C19; --doc-ink: #ECE8E0; --doc-quiet: #A39D93;
+    --doc-rule: #3A3631; --doc-card: #26231F;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--doc-bg); color: var(--doc-ink); font-family: -apple-system, system-ui, sans-serif; margin: 0; padding: 24px; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .doc-note { max-width: 1120px; margin: 0 auto 16px; font-size: 13px; opacity: 0.82; line-height: 1.55; }
+  .top-bar { max-width: 1120px; margin: 0 auto 8px; display: flex; justify-content: space-between; align-items: baseline; }
+  .theme-toggle { font-size: 12px; background: none; border: 1px solid var(--doc-rule); border-radius: 6px; padding: 4px 8px; cursor: pointer; color: var(--doc-ink); }
+
+  .rig { max-width: 1120px; margin: 0 auto 20px; display: flex; flex-wrap: wrap; gap: 10px; }
+  .rig fieldset { border: 1px dashed var(--doc-rule); border-radius: 8px; padding: 8px 10px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .rig legend { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.6; }
+  .rig button { font-size: 12px; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--doc-rule); background: var(--doc-card); color: var(--doc-ink); cursor: pointer; }
+  .rig button.active { background: var(--color-moss); color: var(--color-paper); border-color: var(--color-moss); }
+  .rig fieldset.variant-rig { border-color: var(--color-moss); }
+  .rig fieldset.variant-rig button.active { background: var(--color-ink); border-color: var(--color-ink); }
+  .rig-note { max-width: 1120px; margin: -8px auto 16px; font-size: 12px; opacity: 0.75; font-style: italic; }
+
+  .stage { max-width: 1120px; margin: 0 auto; display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .frame { width: 390px; border-radius: 44px; background: #111; padding: 14px; box-shadow: 0 20px 50px rgba(0,0,0,0.35); flex-shrink: 0; position: sticky; top: 24px; }
+  .screen { background: var(--color-paper); color: var(--color-ink); border-radius: 32px; overflow: hidden; height: 844px; position: relative; display: flex; flex-direction: column; }
+  .ios-status-bar { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-size: 14px; font-weight: 600; flex-shrink: 0; }
+
+  .nav-bar { padding: 2px 16px 14px; border-bottom: 1px solid var(--color-line); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .nav-bar-title { font-family: var(--font-display); font-size: 20px; font-weight: 600; }
+  .nav-bar-title--record { font-family: inherit; font-size: var(--text-lg); font-weight: 600; }
+  .nav-bar-back { font-size: 24px; width: 44px; height: 44px; display: flex; align-items: center; }
+  .nav-bar-action-right { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
+  .nav-bar-spacer { width: 44px; height: 44px; }
+  .gearshape { width: 20px; height: 20px; border: 2px solid var(--color-ink); border-radius: 50%; }
+
+  .pane { display: none; flex: 1; flex-direction: column; position: relative; overflow: hidden; }
+  .pane.active { display: flex; }
+
+  /* -------- home pane -------- */
+  .home-content { flex: 1; overflow-y: auto; }
+  .briefing-card { margin: var(--space-lg); border-radius: var(--radius-card); background: var(--doc-card); border-left: 4px solid var(--color-brass); padding: var(--space-lg); }
+  .briefing-card-title { font-weight: 600; font-size: var(--text-lg); margin: 0 0 4px; }
+  .briefing-card-body { font-size: var(--text-base); opacity: var(--opacity-secondary); margin: 0; }
+  .profile-list { list-style: none; margin: 0; padding: 0 var(--space-lg); }
+  .profile-row { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) 0; min-height: 44px; border-bottom: 1px solid var(--color-line); }
+  .profile-row-avatar { width: var(--size-avatar); height: var(--size-avatar); border-radius: 50%; background: var(--color-moss); color: var(--color-paper); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: var(--text-base); flex-shrink: 0; }
+  .profile-row-main { flex: 1; min-width: 0; }
+  .profile-row-name { font-family: var(--font-display); font-size: var(--text-lg); line-height: 1.3; }
+  .profile-row-detail { font-size: var(--text-sm); opacity: var(--opacity-secondary); line-height: 1.3; }
+
+  /* -------- bottom bar (V-NOTCHED, shipped geometry) -------- */
+  .home-bottom-bar--notched { position: relative; background: var(--color-paper); border-top: 1px solid var(--color-line); flex-shrink: 0; padding: var(--space-xs) var(--space-lg) calc(var(--space-sm) + 20px); display: flex; flex-direction: column; align-items: center; gap: var(--space-sm); z-index: 4; }
+  .bar-row { display: flex; align-items: center; justify-content: center; gap: var(--space-sm); width: 100%; margin-top: 36px; }
+  .home-search-field-wrap { flex: 1; display: flex; align-items: center; gap: var(--space-sm); border-radius: var(--radius-pill); height: 44px; padding: 0 var(--space-md); border: 1px solid var(--color-edge); background: var(--color-paper); min-width: 0; }
+  .search-glass { width: 13px; height: 13px; border: 2px solid var(--color-placeholder); border-radius: 50%; position: relative; flex-shrink: 0; }
+  .search-glass::after { content: ''; position: absolute; width: 6px; height: 2px; background: var(--color-placeholder); bottom: -3px; right: -4px; transform: rotate(45deg); border-radius: 1px; }
+  .home-search-field { border: none; background: none; outline: none; font-size: var(--text-base); color: var(--color-placeholder); flex: 1; min-width: 0; font-family: inherit; }
+
+  /* -------- the arc anchor: same point the shipped record-button occupies -------- */
+  .capture-arc-wrap { position: absolute; left: 50%; top: 0; transform: translateX(-50%); width: 320px; height: 1px; z-index: 5; }
+
+  .record-button--round { position: absolute; left: 50%; top: 0; transform: translate(-50%, -50%); z-index: 6; width: 72px; height: 72px; border-radius: var(--radius-pill); border: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--color-paper); background: var(--color-moss); box-shadow: 0 4px 14px rgba(42,38,34,0.22); transition: width 220ms ease, height 220ms ease; }
+  .record-button--round .mic-dot-lg { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--color-paper); }
+  .record-button--round .record-label { font-size: var(--text-xs); font-weight: 700; letter-spacing: 0.01em; line-height: 1; }
+  .record-button--round .record-time { font-family: var(--font-utility); font-size: 11px; line-height: 1; }
+  .record-button--round.record-button--armed { width: 84px; height: 84px; }
+  .record-button--round.is-recording { background: var(--color-alert); }
+  @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+  .record-button--round.is-recording .mic-dot-lg { animation: pulse-dot 1.8s ease-in-out infinite; }
+  .screen.no-motion .record-button--round.is-recording .mic-dot-lg { animation: none; opacity: 1; }
+
+  /* -------- scrim (R1 / R2 only, while open) -------- */
+  .capture-menu-overlay-arc { position: absolute; inset: 0; background: var(--color-scrim); opacity: 0; pointer-events: none; transition: opacity 220ms ease; z-index: 5; }
+  .screen.no-motion .capture-menu-overlay-arc { transition: opacity 120ms linear; }
+  .capture-menu-overlay-arc.shown { opacity: 1; pointer-events: auto; }
+
+  /* -------- the two arc satellites (capture-menu-item--write / --photo, redrawn) -------- */
+  .capture-arc-item {
+    position: absolute; left: 50%; top: 0; width: 128px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    background: var(--color-paper); border: 1px solid var(--color-edge); border-radius: var(--radius-pill);
+    min-height: 44px; padding: 6px 10px; text-align: center; cursor: pointer; z-index: 6;
+    opacity: 0; pointer-events: none;
+    transform: translate(-50%, -50%) scale(0.4);
+    transition: opacity 220ms ease, transform 260ms cubic-bezier(.2,.8,.2,1);
+  }
+  .capture-arc-item .arc-item-row { display: flex; align-items: center; gap: 6px; }
+  .capture-arc-item .arc-item-word { font-size: var(--text-base); font-weight: 600; color: var(--color-ink); }
+  .capture-arc-item .arc-item-meta { font-size: 11px; opacity: var(--opacity-quiet); line-height: 1.2; }
+  .capture-arc-item.is-offline .arc-item-word { opacity: var(--opacity-secondary); }
+  .capture-arc-item .pencil-glyph { width: 13px; height: 13px; border-bottom: 2px solid var(--color-ink); border-right: 2px solid var(--color-ink); transform: rotate(-45deg); flex-shrink: 0; }
+  .capture-arc-item .camera-glyph { width: 15px; height: 10px; border: 2px solid var(--color-ink); border-radius: 2px; flex-shrink: 0; }
+
+  /* open (R1 / R2): fan out from Record's own centre to the final arc position */
+  .capture-arc-wrap.open .capture-arc-item--write { opacity: 1; pointer-events: auto; transform: translate(calc(-50% - 80px), calc(-50% - 67px)) scale(1); transition-delay: 0ms; }
+  .capture-arc-wrap.open .capture-arc-item--photo { opacity: 1; pointer-events: auto; transform: translate(calc(-50% + 80px), calc(-50% - 67px)) scale(1); transition-delay: 45ms; }
+  .screen.no-motion .capture-arc-item { transition: opacity 120ms linear, transform 0ms; }
+
+  /* always-open (R3): same final position, no scrim, no transition needed */
+  .capture-arc-wrap.r3-static .capture-arc-item--write { opacity: 1; pointer-events: auto; transform: translate(calc(-50% - 80px), calc(-50% - 67px)) scale(1); transition: none; }
+  .capture-arc-wrap.r3-static .capture-arc-item--photo { opacity: 1; pointer-events: auto; transform: translate(calc(-50% + 80px), calc(-50% - 67px)) scale(1); transition: none; }
+
+  /* -------- R2's visible "More" badge + first-run hint -------- */
+  .capture-arc-more { position: absolute; left: 50%; top: 0; transform: translate(calc(-50% + 40px), calc(-50% - 36px)); z-index: 7; display: none; align-items: center; justify-content: center; gap: 3px; background: var(--color-paper); border: 1px solid var(--color-edge); border-radius: var(--radius-pill); min-width: 44px; min-height: 36px; padding: 4px 10px; font-size: 11px; font-weight: 600; color: var(--color-ink); cursor: pointer; box-shadow: 0 2px 8px rgba(42,38,34,0.18); }
+  .capture-arc-more .chevron { font-size: 12px; line-height: 1; }
+  .capture-arc-hint { position: absolute; left: 50%; top: 0; transform: translate(calc(-50% + 92px), calc(-50% - 78px)); z-index: 7; display: none; background: var(--color-ink); color: var(--color-paper); font-size: 12px; padding: 6px 10px; border-radius: var(--radius-control); max-width: 150px; line-height: 1.3; }
+  .capture-arc-hint::after { content:''; position:absolute; bottom:-5px; left: 18px; width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-top:5px solid var(--color-ink); }
+
+  /* -------- close control (R1 / R2, while open) -------- */
+  .capture-menu-close-arc { position: absolute; left: 50%; top: 0; transform: translate(-50%, calc(-50% - 132px)) scale(0.4); width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; z-index: 7; opacity: 0; pointer-events: none; transition: opacity 220ms ease, transform 260ms cubic-bezier(.2,.8,.2,1); cursor: pointer; }
+  .capture-menu-close-arc .close-visual { width: 36px; height: 36px; border-radius: 50%; background: var(--doc-card); display: flex; align-items: center; justify-content: center; font-size: 15px; color: var(--color-ink); }
+  .capture-arc-wrap.open .capture-menu-close-arc { opacity: 1; pointer-events: auto; transform: translate(-50%, calc(-50% - 132px)) scale(1); transition-delay: 70ms; }
+  .screen.no-motion .capture-menu-close-arc { transition: opacity 120ms linear, transform 0ms; }
+
+  /* -------- Dynamic Type fallback: arc converges to the plain stacked capture-menu -------- */
+  .arc-type-fallback { display: none; position: absolute; left: var(--space-lg); right: var(--space-lg); bottom: 108px; background: var(--color-paper); border-radius: var(--radius-card); border: 1px solid var(--color-edge); padding: var(--space-sm); z-index: 6; }
+  .arc-type-fallback.shown { display: block; }
+  .fallback-row { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-md) var(--space-sm); min-height: 44px; }
+  .fallback-row + .fallback-row { border-top: 1px solid var(--color-line); }
+  .fallback-row .fallback-word { font-size: 19px; font-weight: 600; }
+  .fallback-row .fallback-meta { font-size: var(--text-sm); opacity: var(--opacity-quiet); display: block; }
+
+  /* -------- geometry overlay (mock tooling only) -------- */
+  .geometry-overlay { display: none; position: absolute; left: 50%; top: 0; transform: translate(-50%, -50%); width: 208px; height: 208px; border-radius: 50%; border: 1px dashed var(--color-alert); z-index: 8; pointer-events: none; }
+  .geometry-overlay.shown { display: block; }
+  .geometry-label { display: none; position: absolute; font-family: var(--font-utility); font-size: 10px; color: var(--color-alert); background: var(--color-paper); padding: 1px 3px; z-index: 9; pointer-events: none; }
+  .geometry-label.shown { display: block; }
+
+  /* -------- record-flow panes, reused briefly from capture-doors.html -------- */
+  .rf-pane { flex: 1; display: flex; flex-direction: column; padding: var(--space-xl); gap: var(--space-lg); overflow-y: auto; }
+  .prompt-area { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 8px; }
+  .record-prompt { font-size: var(--text-base); opacity: var(--opacity-quiet); line-height: 1.5; }
+  .recording-indicator { background: var(--color-alert); color: var(--color-paper); border-radius: var(--radius-pill); padding: var(--space-md) var(--space-lg); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: var(--text-base); font-weight: 600; }
+  .recording-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--color-paper); }
+  .recording-indicator .recording-dot { animation: pulse-dot 1.8s ease-in-out infinite; }
+  .screen.no-motion .recording-indicator .recording-dot { animation: none; opacity: 1; }
+  .recording-time { font-family: var(--font-utility); }
+  .transcript-live { font-size: 18px; line-height: 1.5; text-align: left; align-self: stretch; }
+  .done-pause-row { display: flex; align-items: center; gap: var(--space-md); }
+  .done-button { flex: 1; background: var(--color-moss); color: var(--color-paper); border-radius: var(--radius-pill); border: none; padding: 18px; font-size: 17px; font-weight: 600; min-height: 44px; cursor: pointer; }
+  .pause-button { background: none; border: 1px solid var(--color-edge); color: var(--color-ink); border-radius: var(--radius-pill); padding: 10px 16px; font-size: var(--text-sm); font-weight: 600; min-height: 44px; cursor: pointer; }
+  .field { display: flex; flex-direction: column; gap: 8px; }
+  .field-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px; opacity: var(--opacity-quiet); }
+  .field-input { border: none; border-bottom: 1px solid var(--color-edge); background: none; font-size: 16px; color: var(--color-ink); padding: 8px 0; width: 100%; font-family: inherit; }
+  .field-input::placeholder { color: var(--color-placeholder); }
+  .body-field-wrap { position: relative; flex: 1; display: flex; flex-direction: column; }
+  .body-input { border: none; border-bottom: 1px solid var(--color-edge); background: none; font-size: 18px; line-height: 1.5; color: var(--color-ink); padding: 8px 68px 8px 0; width: 100%; font-family: inherit; min-height: 150px; resize: none; }
+  .body-input::placeholder { color: var(--color-placeholder); }
+  .ios-paste-button { position: absolute; top: 8px; right: 0; background: var(--color-moss); color: var(--color-paper); border-radius: var(--radius-control); font-size: 13px; font-weight: 600; padding: 6px 10px; display: flex; align-items: center; gap: 4px; min-height: 32px; }
+  .ios-paste-button .paste-glyph { width: 10px; height: 10px; border: 2px solid var(--color-paper); border-radius: 2px; }
+  .secondary-link { background: none; border: none; color: var(--color-ink); opacity: var(--opacity-secondary); font-size: var(--text-base); padding: 12px 6px; min-height: 44px; cursor: pointer; }
+  .read-button { background: var(--color-moss); color: var(--color-paper); border-radius: var(--radius-pill); border: none; padding: 18px; font-size: 17px; font-weight: 600; min-height: 44px; cursor: pointer; width: 100%; }
+
+  .dialog-overlay { position: absolute; inset: 0; background: var(--color-scrim); display: none; align-items: center; justify-content: center; padding: 32px; z-index: 10; }
+  .dialog-overlay.shown { display: flex; }
+  .dialog-card { background: var(--color-paper); border-radius: var(--radius-card); padding: 24px; width: 100%; }
+  .dialog-title { font-size: 18px; font-weight: 600; margin: 0 0 8px; }
+  .dialog-body { font-size: var(--text-base); opacity: var(--opacity-secondary); margin: 0 0 16px; line-height: 1.4; }
+  .dialog-action { background: var(--color-moss); color: var(--color-paper); border: none; border-radius: var(--radius-pill); padding: 16px; width: 100%; font-size: 16px; font-weight: 600; margin-bottom: 8px; cursor: pointer; min-height: 44px; }
+  .dialog-cancel { background: none; border: none; color: var(--color-ink); opacity: var(--opacity-quiet); font-size: var(--text-base); width: 100%; padding: 10px; cursor: pointer; min-height: 44px; }
+
+  /* -------- VoiceOver order badges (mock tooling only) -------- */
+  .vo-badge { position: absolute; left: -8px; top: -8px; width: 20px; height: 20px; border-radius: 50%; background: var(--color-alert); color: var(--color-paper); font-size: 11px; font-family: var(--font-utility); display: none; align-items: center; justify-content: center; z-index: 9; }
+  [data-vo="on"] .vo-badge { display: flex; }
+
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+
+  .side-notes { flex: 1; min-width: 360px; font-size: 13px; line-height: 1.55; color: var(--doc-ink); }
+  .side-notes h2 { font-size: 14px; margin: 18px 0 6px; }
+  .side-notes h2:first-child { margin-top: 0; }
+  .side-notes h3 { font-size: 13px; margin: 12px 0 4px; }
+  .vo { font-family: var(--font-utility); font-size: 11.5px; background: var(--doc-card); border: 1px dashed var(--doc-rule); border-radius: 6px; padding: 5px 7px; display: block; margin-top: 4px; color: var(--doc-ink); }
+  .verdict { background: var(--doc-card); border-left: 3px solid var(--color-moss); border-radius: 6px; padding: 8px 10px; margin-top: 6px; }
+  .risk { background: var(--doc-card); border-left: 3px solid var(--color-alert); border-radius: 6px; padding: 8px 10px; margin-top: 6px; }
+  .compare-table { width: 100%; border-collapse: collapse; font-size: 11.5px; margin-top: 6px; }
+  .compare-table th, .compare-table td { border: 1px solid var(--doc-rule); padding: 5px 6px; text-align: left; vertical-align: top; }
+  .compare-table th { background: var(--doc-card); font-weight: 600; }
+
+  /* -------- largest Dynamic Type demo -------- */
+  .screen[data-type-scale="large"] .nav-bar-title,
+  .screen[data-type-scale="large"] .nav-bar-title--record { font-size: 24px; }
+  .screen[data-type-scale="large"] .profile-row-name { font-size: 20px; }
+  .screen[data-type-scale="large"] .profile-row-detail { font-size: 15px; }
+  .screen[data-type-scale="large"] .home-search-field,
+  .screen[data-type-scale="large"] .record-prompt,
+  .screen[data-type-scale="large"] .field-input,
+  .screen[data-type-scale="large"] .body-input,
+  .screen[data-type-scale="large"] .secondary-link { font-size: 19px; }
+  .screen[data-type-scale="large"] .record-button--round { width: auto; height: 56px; padding: 0 var(--space-lg); border-radius: var(--radius-pill); }
+  .screen[data-type-scale="large"] .record-button--round .record-label { font-size: 17px; }
+  .screen[data-type-scale="large"] .record-button--round.record-button--armed { width: auto; height: 64px; }
+  .screen[data-type-scale="large"] .capture-arc-item,
+  .screen[data-type-scale="large"] .capture-arc-more,
+  .screen[data-type-scale="large"] .capture-menu-close-arc,
+  .screen[data-type-scale="large"] .geometry-overlay { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <h1>capture-doors — radial explorations (R1 / R2 / R3)</h1>
+  <button class="theme-toggle" onclick="toggleDocTheme()">Toggle reading mode</button>
+</div>
+<p class="doc-note">
+  Design prototype, not production code. Three ways to draw a dimmed-focus
+  arc/fan around the already-shipped round <code>record-button</code>
+  (home-actions.md's V-NOTCHED), after the owner sent Google Calendar's +
+  (scrim, labelled pills stacking above the button) and Samsung Air
+  Command (round buttons on an arc, labels beside them, dimmed background)
+  as references. Switch <strong>variant</strong> first; the
+  <strong>screen</strong> rig then shows that variant's states. Connection,
+  Reduce Motion, Dynamic Type and VoiceOver order compose with any variant.
+</p>
+
+<div class="rig">
+  <fieldset class="variant-rig">
+    <legend>variant</legend>
+    <button data-variant="r1" class="active">R1 — tap to fan</button>
+    <button data-variant="r2">R2 — tap records, hold fans</button>
+    <button data-variant="r3">R3 — arc always half-open</button>
+  </fieldset>
+</div>
+<div class="rig">
+  <fieldset>
+    <legend>screen</legend>
+    <button data-screen="rest" class="active">Resting</button>
+    <button data-screen="open">Arc open</button>
+    <button data-screen="listening">Listening (after Record)</button>
+    <button data-screen="write">Write door</button>
+    <button data-screen="photo-sheet">Photo — take / choose</button>
+    <button data-screen="photo-offline-dialog">Photo — offline, after tap</button>
+  </fieldset>
+</div>
+<p class="rig-note" id="rig-note"></p>
+<div class="rig">
+  <fieldset>
+    <legend>connection</legend>
+    <button data-conn="online" class="active">Online</button>
+    <button data-conn="offline">Offline</button>
+  </fieldset>
+  <fieldset>
+    <legend>first-run hint (R2)</legend>
+    <button data-hint="off" class="active">Dismissed</button>
+    <button data-hint="on">First run — shown</button>
+  </fieldset>
+  <fieldset>
+    <legend>hand</legend>
+    <button data-hand="right" class="active">Right-handed</button>
+    <button data-hand="left">Left-handed</button>
+  </fieldset>
+  <fieldset>
+    <legend>geometry overlay</legend>
+    <button data-geo="off" class="active">Hidden</button>
+    <button data-geo="on">Show radius + clearances</button>
+  </fieldset>
+  <fieldset>
+    <legend>voiceover order</legend>
+    <button data-vo="off" class="active">Hidden</button>
+    <button data-vo="on">Show order badges</button>
+  </fieldset>
+  <fieldset>
+    <legend>reduce motion</legend>
+    <button data-motion="normal" class="active">Normal</button>
+    <button data-motion="reduced">Reduce Motion</button>
+  </fieldset>
+  <fieldset>
+    <legend>dynamic type</legend>
+    <button data-type="normal" class="active">Normal</button>
+    <button data-type="large">Largest accessibility size</button>
+  </fieldset>
+</div>
+
+<div class="stage">
+  <div class="frame">
+    <div class="screen" id="screen">
+      <div class="ios-status-bar"><span>9:41</span><span>⚫︎⚫︎⚫︎ 🔋</span></div>
+
+      <div class="nav-bar" id="nav-bar">
+        <div class="nav-bar-spacer" id="nav-left"></div>
+        <span class="nav-bar-title" id="nav-title">andy</span>
+        <div class="nav-bar-action-right" id="nav-right" aria-label="Settings" role="button"><div class="gearshape"></div></div>
+      </div>
+
+      <!-- ============ HOME ============ -->
+      <div class="pane active" id="pane-home">
+        <div class="home-content">
+          <div class="briefing-card">
+            <p class="briefing-card-title">Nothing coming up</p>
+            <p class="briefing-card-body">Connect your calendar and Andy will brief you before you walk in.</p>
+          </div>
+          <ul class="profile-list">
+            <li class="profile-row"><div class="profile-row-avatar">PK</div><div class="profile-row-main"><div class="profile-row-name">Priya Kapoor</div><div class="profile-row-detail">She's fostering a second dog.</div></div></li>
+            <li class="profile-row"><div class="profile-row-avatar">JL</div><div class="profile-row-main"><div class="profile-row-name">Jordan Lee</div><div class="profile-row-detail">Starting a new job at the shelter in March.</div></div></li>
+            <li class="profile-row"><div class="profile-row-avatar">DN</div><div class="profile-row-main"><div class="profile-row-name">Derek Nakamura</div><div class="profile-row-detail">Just adopted a second greyhound, Mochi.</div></div></li>
+          </ul>
+        </div>
+
+        <div class="home-bottom-bar--notched">
+          <div class="capture-arc-wrap" id="arc-wrap">
+            <div class="geometry-overlay" id="geo-circle"></div>
+            <span class="geometry-label" id="geo-label-l" style="top:-67px; left:calc(50% - 80px); transform:translate(-50%,-100%);">80, -67</span>
+            <span class="geometry-label" id="geo-label-r" style="top:-67px; left:calc(50% + 80px); transform:translate(-50%,-100%);">80, -67</span>
+
+            <div class="capture-menu-overlay-arc" id="arc-scrim"></div>
+
+            <div class="capture-arc-item capture-arc-item--write" id="item-write">
+              <div class="vo-badge" id="vo-write">2</div>
+              <div class="arc-item-row"><span class="pencil-glyph"></span><span class="arc-item-word">Write</span></div>
+            </div>
+            <div class="capture-arc-item capture-arc-item--photo" id="item-photo">
+              <div class="vo-badge" id="vo-photo">3</div>
+              <div class="arc-item-row"><span class="camera-glyph"></span><span class="arc-item-word">Photo</span></div>
+              <span class="arc-item-meta" id="photo-meta">a card, a page of notes, a screenshot</span>
+            </div>
+
+            <div class="capture-menu-close-arc" id="arc-close" role="button" aria-label="Close">
+              <div class="vo-badge" id="vo-close">4</div>
+              <div class="close-visual">✕</div>
+            </div>
+
+            <button class="capture-arc-more" id="arc-more" title="Write or add a photo">
+              <span class="chevron">⌃</span>More
+            </button>
+            <div class="capture-arc-hint" id="arc-hint">Hold for more, or tap ⌃ More</div>
+
+            <button class="record-button--round" id="record-btn">
+              <div class="vo-badge" id="vo-record">1</div>
+              <span class="mic-dot-lg"></span><span class="record-label" id="record-label">Record</span>
+            </button>
+          </div>
+
+          <div class="arc-type-fallback" id="arc-fallback">
+            <div class="fallback-row" onclick="goWrite()">
+              <span class="pencil-glyph"></span>
+              <span class="fallback-word">Write</span>
+            </div>
+            <div class="fallback-row" id="fallback-photo-row" onclick="goPhoto()">
+              <span class="camera-glyph"></span>
+              <div>
+                <span class="fallback-word">Photo</span>
+                <span class="fallback-meta" id="fallback-photo-meta">a card, a page of notes, a screenshot</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="bar-row">
+            <div class="home-search-field-wrap">
+              <div class="search-glass"></div>
+              <input class="home-search-field" placeholder="Find a name or a word" readonly>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ LISTENING (brief preview — full detail in capture-doors.html) ============ -->
+      <div class="pane" id="pane-listening">
+        <div class="rf-pane">
+          <div class="recording-indicator">
+            <span class="recording-dot"></span>
+            <span>Recording</span>
+            <span class="recording-time">0:04</span>
+          </div>
+          <div class="transcript-live">Had coffee with Priya just now —</div>
+          <div class="done-pause-row">
+            <button class="done-button">Done</button>
+            <button class="pause-button">Pause</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ WRITE (record--typing, brief preview) ============ -->
+      <div class="pane" id="pane-write">
+        <div class="rf-pane">
+          <div class="field">
+            <label class="field-label">About who?</label>
+            <input class="field-input" placeholder="Their name (optional)">
+          </div>
+          <div class="field body-field-wrap" style="flex:1">
+            <label class="field-label">What do you want to remember?</label>
+            <textarea class="body-input" placeholder="Write or paste what you want to remember — one person's notes at a time."></textarea>
+            <div class="ios-paste-button"><span class="paste-glyph"></span>Paste</div>
+          </div>
+          <button class="read-button">Let Andy read it</button>
+          <button class="secondary-link" style="align-self:center">Cancel</button>
+        </div>
+      </div>
+
+      <!-- ============ PHOTO SOURCE SHEET ============ -->
+      <div class="dialog-overlay" id="photo-sheet-overlay">
+        <div class="dialog-card">
+          <p class="dialog-title">Add a photo</p>
+          <p class="dialog-body">A card, a page of notes, or a screenshot.</p>
+          <button class="dialog-action">Take a photo</button>
+          <button class="dialog-action" style="margin-bottom:8px">Choose a photo</button>
+          <button class="dialog-cancel" onclick="setState({screen:'rest'})">Cancel</button>
+        </div>
+      </div>
+
+      <!-- ============ PHOTO OFFLINE NOTICE (shown after tapping Photo, per capture-doors.md R16) ============ -->
+      <div class="dialog-overlay" id="photo-offline-overlay">
+        <div class="dialog-card">
+          <p class="dialog-body" style="margin-bottom:20px">Reading a photo needs a connection. Take it with your Camera now and choose it here later, or write it instead.</p>
+          <button class="dialog-action" onclick="goWrite()">Write it instead</button>
+          <button class="dialog-cancel" onclick="setState({screen:'rest'})">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="side-notes">
+    <h2>What this follow-up answers</h2>
+    <p>The owner wants the <em>feel</em> of a dimmed-focus arc/fan menu around
+    the already-settled round <code>record-button</code>, not a return to
+    either reference wholesale. All three variants below share the same arc
+    geometry (two labelled satellites, Write and Photo, fanning upward from
+    Record's centre, in the thumb zone) and the same downstream screens
+    (<code>record--typing</code>, the photo sheet, the offline notice —
+    unchanged from <code>capture-doors.html</code>, shown briefly here for
+    continuity). They differ only in <strong>when the arc is visible and
+    what a tap on Record means</strong> — the same axis capture-doors.md's
+    M1/M2/M3 already varied, redrawn as an arc instead of a scrim sheet.</p>
+
+    <h2>Geometry, shared by all three</h2>
+    <p>Each satellite sits at radius <strong>~104pt</strong> from Record's
+    centre, ~50° off vertical: <code>dx ≈ ±80pt, dy ≈ -67pt</code> (toggle
+    "geometry overlay" to see the dashed radius circle and the offsets
+    live). At 390pt width, with Record centred at x=195: the left satellite's
+    left edge lands at ~49pt from the screen edge, the right satellite's
+    right edge at ~341pt — both comfortably inside the 16pt margin on either
+    side (<code>space.lg</code>), with room to spare. <strong>Approximate,
+    confirm on device</strong> — the usual caveat this project's geometry
+    mocks carry, same as home-actions.md's own overlap-buffer math.</p>
+    <span class="vo"><strong>One-handed reach (toggle "hand" above):</strong>
+    the arc is bilaterally symmetric around a centred Record, so it is
+    identical for a right- or left-handed grip — nothing here favours one
+    thumb's arc the way a corner-anchored FAB (home-actions.md Option C)
+    would. The toggle doesn't change the layout; that <em>is</em> the
+    finding.</span>
+
+    <h2>R1 — Tap to fan</h2>
+    <p>Tap Record: a scrim dims the list, the arc opens (Write, Photo), and
+    Record itself stays exactly where it is, growing slightly
+    (<code>record-button--armed</code>, 72pt → 84pt) — never relabelled,
+    never replaced by a ✕ the way Google Calendar's own FAB does. Tap the
+    now-larger Record again to start listening. Voice is <strong>2 taps,
+    zero finger travel</strong> — the thumb never leaves the one spot.</p>
+    <span class="vo"><strong>Principle:</strong> Von Restorff by motion — the
+    arc visibly grows out from behind the one thing that doesn't move,
+    which is also the thing most worth tapping twice in a row.
+    <strong>The button-naming question (capture-doors.md R3), resolved
+    differently from M1:</strong> M1 had to rename "Record" to "New note"
+    because tapping it opened a menu containing a Record <em>row</em> — the
+    button and the door became two different things. Here Record never
+    stops being the one and only path to listening; Write and Photo are
+    drawn beside it, not inside it, so the label stays literally true in a
+    stricter sense than M1's. <strong>Worth seeing plainly, not declared
+    settled:</strong> the first tap doesn't record — it arms. Whether
+    "Record, tap twice" still satisfies "one action, one name" as cleanly
+    as a button that simply does the thing on every tap is a smaller, real
+    hair to split, and the owner should weigh it with eyes open rather than
+    take R1's resolution as fully closing the question M1 raised.</span>
+    <div class="risk"><strong>Cost named plainly:</strong> voice costs a tap
+    more than R2/R3 (2 vs 1) — the same cost M1 paid, for less of M1's
+    "every door equal weight" benefit, since Write/Photo are still visually
+    secondary satellites, not equal-weight peers.</div>
+    <div class="verdict"><strong>Verdict:</strong> the closest match to the
+    Google Calendar reference's exact gesture (tap opens, tap-again acts),
+    with a genuinely better-kept label than M1 paid for it with — but it is
+    dominated by R2 below on both the tap count and the "no gesture
+    required" question, for a naming benefit R2 matches in full.</div>
+
+    <h2>R2 — Tap records at once; hold fans</h2>
+    <p>Tap Record: listening starts immediately, exactly as it does today,
+    no detour (1 tap). A small, separately-labelled <strong>"More"</strong>
+    badge (<code>capture-arc-more</code>, new) sits at Record's upper edge —
+    reusing M2's already-approved words, "Write or add a photo", as its
+    VoiceOver label, so nothing new is invented there. <strong>Press-and-hold
+    Record is a shortcut to the same arc</strong> — never the only way in,
+    per capture-doors.md R4 and Apple HIG/NN/G's rule that a command must
+    never live only behind a gesture nothing shows exists. A first-run hint
+    (toggle above) points at the badge once, then stays dismissed.</p>
+    <span class="vo"><strong>Principle:</strong> recognition over recall —
+    Record's behaviour never changes from what a returning user already
+    knows (Fitts's law: it stays the largest, nearest, unchanged target);
+    the one new thing to learn is a single small badge, discovered once via
+    the hint and reachable by a plain tap forever after.
+    <strong>Button-naming question: fully resolved, not just better-kept.</strong>
+    Record always means "start listening," on every tap, with no exception
+    and no "armed" middle state to reason about — the cleanest of the
+    three on this specific question.</span>
+    <div class="risk"><strong>Named, same shape as M2's own open risk:</strong>
+    the badge is a new, unlearned affordance, the same risk M2's
+    <code>capture-more-button</code> already named for itself — here drawn
+    smaller and closer to Record, which may read as more integrated (Air
+    Command's own idiom) or may read as easier to miss; this is exactly
+    what capture-doors.md's own TestFlight findability pass/kill line (§10)
+    would settle, not something arguable from a mock alone.</div>
+    <div class="verdict"><strong>Verdict:</strong> the strongest match to
+    what the owner asked to see — the Air Command arc-and-labels feel, kept
+    alive by a real press-and-hold — while matching M2/M3's 1-tap voice and
+    fully closing the naming question R1 only partly closes. The one real
+    cost is a new, small, as-yet-unlearned control, named rather than
+    hidden.</div>
+
+    <h3>Why not icon-only?</h3>
+    <p>The badge carries the single word "More" beside its chevron rather
+    than being a bare icon — unlike <code>settings-button</code>'s gearshape
+    (icon-only, acceptable there because it is one universally-recognised
+    symbol with a clear spoken label and nothing else competing for its
+    meaning), a "more capture options" affordance has no equally-settled
+    icon convention yet, so this mock keeps the word rather than relying on
+    the chevron alone. <strong>Flagged for <code>product-strategist</code>:</strong>
+    "More" is this designer's shortest-possible proposed word, not from the
+    brief's copy table (C1–C15) — confirm or adjust before this ships.</p>
+
+    <h2>R3 — Arc always half-open</h2>
+    <p>Write and Photo rest, permanently, in the arc's final position beside
+    Record — no scrim, no open state, nothing to reveal, ever. Tap Record:
+    listening starts at once. Tap Write or Photo: that door opens at once.
+    <strong>Every door in this variant is exactly one tap</strong> — the
+    only one of the three (or of M1/M2/M3) where that is true of all three
+    doors simultaneously.</p>
+    <span class="vo"><strong>Principle:</strong> Hick's law at its floor —
+    there is no decision about <em>whether</em> to reveal anything, because
+    nothing is ever hidden; and Jakob's law in reverse — this is the one
+    variant with no gesture or control to learn at all, at the acknowledged
+    cost of not delivering the "dimmed focus" drama either reference
+    actually showed.</span>
+    <div class="risk"><strong>Named plainly:</strong> this is the one variant
+    that doesn't deliver the thing the owner explicitly asked to explore —
+    there is no scrim, no fan-out, no moment of focus. It is included
+    because it is the honest zero-cost floor the other two should be judged
+    against, not because it matches the brief of this follow-up.</div>
+    <div class="verdict"><strong>Verdict:</strong> the fastest and simplest
+    of the three by every tap-count and discoverability measure, and the
+    one to pick only if the owner decides, having seen R1/R2, that the arc's
+    visual drama isn't worth any new control at all.</div>
+
+    <h2>Shared across all three</h2>
+    <ul style="padding-left:18px; margin:6px 0;">
+      <li><strong>Downstream screens are unchanged.</strong> Write opens
+      <code>record--typing</code> with the system Paste control
+      (capture-doors.md's "Answered once"); Photo opens the same
+      <code>photo-source-dialog</code> (Take a photo / Choose a photo);
+      offline Photo shows the same <code>photo-offline-notice</code> text
+      before any camera or picker — all shown briefly above, fully specified
+      in <code>capture-doors.html</code>.</li>
+      <li><strong>Offline, inline.</strong> Toggle "connection: offline" at
+      rest — the Photo satellite's meta line swaps from "a card, a page of
+      notes, a screenshot" to "Needs a connection" (quieter text, not a
+      disabled control), so the state is visible before the tap, not only
+      after it opens the full offline notice.</li>
+      <li><strong>No new tokens.</strong> Every surface reuses <code>moss</code>,
+      <code>ink</code>, <code>edge</code>, <code>line</code>,
+      <code>placeholder</code>, <code>scrim</code>, <code>paper</code> and
+      the one named <code>alert</code> exception (the recording indicator,
+      already established by record-flow.md).</li>
+    </ul>
+
+    <h2>Accessibility, all three</h2>
+    <ul style="padding-left:18px; margin:6px 0;">
+      <li><strong>Targets.</strong> Record is 72pt (84pt armed, R1); each
+      satellite pill is ≥44pt tall; the close control and the "More" badge
+      draw smaller (36pt) but sit inside a 44×44pt hit area, the same
+      pattern <code>nav-bar-action-right</code> already uses for a small
+      visual inside a larger target.</li>
+      <li><strong>No icon-only doors.</strong> Write and Photo always show
+      their word beside the icon (capture-doors.md §9) in every variant,
+      including R3's permanently-visible satellites.</li>
+      <li><strong>VoiceOver order, R1/R2 (modal while open):</strong> on
+      open, focus moves to Record first (it remains live — tapping it again
+      acts, unlike M1/M2's menu rows, which replace the trigger entirely),
+      then Write, then Photo; the close control and the dismissed background
+      are reached by the two-finger-Z escape gesture or a swipe past Photo,
+      matching capture-doors.md R17. Toggle "voiceover order" above for the
+      numbered badges live on the arc.</li>
+      <li><strong>VoiceOver order, R3 (nothing modal, ever):</strong> the two
+      satellites simply join the already-established bottom-chrome order —
+      list → field → Write → Photo → Record (Record last, the same
+      deliberate override home-actions.md's S4 exploration already
+      established, kept here rather than re-opened).</li>
+      <li><strong>Labels</strong> (proposed, confirm with
+      <code>product-strategist</code>): Record — "Record a voice note" at
+      rest, with an accessibility hint "Double dash tap again to start
+      listening" only while armed (R1); Write — "Write it instead"; Photo —
+      "Add a photo of a note or card"; Close — "Close"; R2's badge —
+      "Write or add a photo" (M2's own words, reused).</li>
+      <li><strong>Reduce Motion</strong> (toggle above): the fan-out and the
+      close control's pop both become an instant position with only a
+      120ms opacity crossfade — no translate, no scale, no spring, matching
+      capture-doors.md §9's rule for <code>capture-menu</code>.</li>
+      <li><strong>Dynamic Type</strong> (toggle above): at the largest
+      accessibility size, the arc itself is hidden and
+      <code>capture-menu--arc</code> converges to the plain stacked
+      <code>capture-menu</code> card it is a state of — full-width Write and
+      Photo rows, no absolute geometry to collide — the same convergence
+      pattern home-actions.md's S1-oval already established ("grows to full
+      width" rather than maintaining a shape that can't scale).</li>
+      <li><strong>Contrast.</strong> No new pairings: satellite pills are
+      <code>ink</code> text on <code>paper</code> with an <code>edge</code>
+      ring (3.2:1, WCAG 1.4.11), identical to every other field/control in
+      this system.</li>
+    </ul>
+
+    <h2>Tap counts, from <code>home</code> at rest</h2>
+    <table class="compare-table">
+      <tr><th>Door</th><th>R1</th><th>R2</th><th>R3</th><th>for reference: M1 / M2 / M3</th></tr>
+      <tr><td>Voice</td><td>2</td><td><strong>1</strong></td><td><strong>1</strong></td><td>2 / 1 / 1</td></tr>
+      <tr><td>Write</td><td>2</td><td>2 (hold or tap "More", then Write)</td><td><strong>1</strong></td><td>2 / 2 / 2 (+ brief live mic)</td></tr>
+      <tr><td>Photo (either source)</td><td>3</td><td>3</td><td><strong>2</strong></td><td>3 / 3 / 3</td></tr>
+      <tr><td>New control to learn</td><td>none — only taps Record ever had</td><td>a small "More" badge</td><td>none</td><td>— / a pill beside Record / —</td></tr>
+      <tr><td>Delivers the scrim/fan "feel" asked for</td><td>yes</td><td>yes, on demand</td><td><strong>no</strong></td><td>—</td></tr>
+    </table>
+
+    <h2>Recommendation</h2>
+    <p><strong>Ranked: R2, then R3, then R1.</strong> R2 is the only one of
+    the three that gets everything at once: 1-tap voice, the arc/fan feel
+    the owner actually asked to see (on a hold, or a plain tap on "More"),
+    and a fully — not just more cleanly — resolved answer to "can it still
+    be called Record." Its one real cost, a small new badge to learn, is
+    the same shape of risk M2 already named for itself in
+    <code>capture-doors.md</code>, not a new kind of risk this exploration
+    introduces. <strong>R3</strong> is the right fallback if, having seen
+    R1/R2, the owner decides no amount of visual drama is worth even one
+    small new control — it is strictly faster on every door than either R1
+    or R2 (and than M1/M2/M3), at the cost of being the one variant that
+    doesn't actually deliver a "dimmed focus" moment at all, which is the
+    thing this whole follow-up set out to explore. <strong>R1</strong> is
+    ranked last: it is dominated by R2 on both the tap count and the "does a
+    plain tap always exist" question, for a naming benefit R2 matches in
+    full — it is the variant closest to the Google Calendar reference's
+    literal gesture, which is worth seeing in full for that reason, but not
+    the one to build first.</p>
+    <p><strong>Hypotheses, not tested behaviour</strong> (same discipline as
+    every prior exploration in this file's family): that a small badge
+    beside Record is noticed when needed and ignored otherwise (R2) — tested
+    directly by capture-doors.md §10's TestFlight findability pass/kill
+    line. That the naming distinction this document draws between R1's
+    "armed" state and R2/R3's always-honest label actually matters to a
+    real user, rather than only to this analysis — nothing here measures
+    that; it is named as a risk to watch, not a proven cost.</p>
+
+    <h2>Names, if a variant ships</h2>
+    <ul style="padding-left:18px; margin:6px 0;">
+      <li><code>capture-menu--arc</code> (new state of the existing
+      <code>capture-menu</code>) — the arc-shaped presentation, used by R1
+      and R2; converges to the plain stacked <code>capture-menu</code> at
+      the largest Dynamic Type size. Holds the already-named
+      <code>capture-menu-item--write</code> / <code>--photo</code> and
+      <code>capture-menu-close</code>.</li>
+      <li><code>record-button--armed</code> (new state of
+      <code>record-button--round</code>, R1 only) — the enlarged centre
+      state between the arming tap and the tap that starts listening.</li>
+      <li><code>capture-arc-more</code> (new, R2 only) — the small, always
+      visible "More" badge beside Record; opens <code>capture-menu--arc</code>
+      on a tap, same as a long-press shortcut on Record itself.</li>
+      <li><code>capture-arc-hint</code> (new, R2 only) — the one-time
+      tooltip pointing at <code>capture-arc-more</code> on first run.</li>
+      <li><code>capture-satellite-button--write</code> /
+      <code>--photo</code> (new, R3 only) — the permanently visible,
+      no-indirection doors beside Record. Unlike
+      <code>capture-menu-item--write</code>/<code>--photo</code>, these are
+      never inside a menu and never animate open or closed.</li>
+    </ul>
+    <p>No new tokens proposed by this document.</p>
+  </div>
+</div>
+
+<script>
+  const state = { variant: 'r1', screen: 'rest', conn: 'online', hint: 'off', hand: 'right', geo: 'off', vo: 'off', motion: 'normal', type: 'normal' };
+
+  function setState(patch) {
+    Object.assign(state, patch);
+    syncButtons();
+    render();
+  }
+  function syncButtons() {
+    const map = { variant: 'variant', screen: 'screen', conn: 'conn', hint: 'hint', hand: 'hand', geo: 'geo', vo: 'vo', motion: 'motion', type: 'type' };
+    for (const key in map) {
+      document.querySelectorAll('[data-' + map[key] + ']').forEach(b => b.classList.toggle('active', b.dataset[map[key]] === state[key]));
+    }
+  }
+
+  function goWrite() { setState({ screen: 'write' }); }
+  function goPhoto() { setState({ screen: state.conn === 'offline' ? 'photo-offline-dialog' : 'photo-sheet' }); }
+
+  const SCREEN_NOTE = {
+    open: { r3: "R3 has no open/close state — the arc rests half-open permanently. Showing 'Resting' instead." },
+  };
+
+  function render() {
+    const screenEl = document.getElementById('screen');
+    screenEl.setAttribute('data-type-scale', state.type);
+    screenEl.setAttribute('data-vo', state.vo);
+    screenEl.classList.toggle('no-motion', state.motion === 'reduced');
+
+    let screen = state.screen;
+    if (screen === 'open' && state.variant === 'r3') screen = 'rest';
+    const note = SCREEN_NOTE[state.screen] && SCREEN_NOTE[state.screen][state.variant];
+    document.getElementById('rig-note').textContent = note || '';
+    document.querySelector('[data-screen="open"]').disabled = state.variant === 'r3';
+
+    // panes
+    const panePer = { rest: 'home', open: 'home', listening: 'listening', write: 'write', 'photo-sheet': 'home', 'photo-offline-dialog': 'home' };
+    document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+    document.getElementById('pane-' + panePer[screen]).classList.add('active');
+
+    const onHome = panePer[screen] === 'home';
+    document.getElementById('nav-title').classList.toggle('nav-bar-title--record', !onHome);
+    document.getElementById('nav-title').textContent = onHome ? 'andy' : 'New note';
+    document.getElementById('nav-left').innerHTML = onHome ? '' : '<span class="nav-bar-back">‹</span>';
+    document.getElementById('nav-right').style.visibility = onHome ? 'visible' : 'hidden';
+
+    const arcWrap = document.getElementById('arc-wrap');
+    const isR3 = state.variant === 'r3';
+    const isOpen = screen === 'open' && !isR3;
+    arcWrap.classList.toggle('r3-static', isR3);
+    arcWrap.classList.toggle('open', isOpen);
+    document.getElementById('arc-scrim').classList.toggle('shown', isOpen);
+
+    // record button label / armed state / behaviour
+    const recordBtn = document.getElementById('record-btn');
+    const recordLabel = document.getElementById('record-label');
+    recordBtn.classList.remove('record-button--armed');
+    if (state.variant === 'r1' && isOpen) {
+      recordBtn.classList.add('record-button--armed');
+      recordLabel.textContent = 'Record';
+    } else {
+      recordLabel.textContent = 'Record';
+    }
+    recordBtn.onclick = () => {
+      if (state.variant === 'r1') {
+        if (screen === 'open') { setState({ screen: 'listening' }); }
+        else { setState({ screen: 'open' }); }
+        return;
+      }
+      // r2 and r3: a plain tap always starts listening
+      setState({ screen: 'listening' });
+    };
+    recordBtn.title = (state.variant === 'r1' && screen === 'open')
+      ? 'Record a voice note. Double tap to start listening.'
+      : 'Record a voice note';
+
+    // R2's visible "More" badge + hint
+    const moreBtn = document.getElementById('arc-more');
+    const hint = document.getElementById('arc-hint');
+    moreBtn.style.display = (state.variant === 'r2') ? 'flex' : 'none';
+    moreBtn.onclick = () => setState({ screen: 'open', hint: 'off' });
+    hint.style.display = (state.variant === 'r2' && state.hint === 'on' && screen === 'rest') ? 'block' : 'none';
+
+    // close control only for r1/r2 while open
+    document.getElementById('arc-close').style.display = isR3 ? 'none' : 'flex';
+    document.getElementById('arc-close').onclick = () => setState({ screen: 'rest' });
+
+    // item clicks
+    document.getElementById('item-write').onclick = goWrite;
+    document.getElementById('item-photo').onclick = goPhoto;
+
+    // offline — inline meta swap on the Photo item + fallback card
+    const offline = state.conn === 'offline';
+    ['photo-meta', 'fallback-photo-meta'].forEach(id => {
+      document.getElementById(id).textContent = offline ? 'Needs a connection' : 'a card, a page of notes, a screenshot';
+    });
+    document.getElementById('item-photo').classList.toggle('is-offline', offline);
+
+    // dialogs
+    document.getElementById('photo-sheet-overlay').classList.toggle('shown', screen === 'photo-sheet');
+    document.getElementById('photo-offline-overlay').classList.toggle('shown', screen === 'photo-offline-dialog');
+
+    // geometry overlay
+    document.getElementById('geo-circle').classList.toggle('shown', state.geo === 'on');
+    document.querySelectorAll('.geometry-label').forEach(l => l.classList.toggle('shown', state.geo === 'on'));
+
+    // Dynamic Type fallback (arc -> stacked card)
+    const showFallback = state.type === 'large' && (isOpen || isR3);
+    document.getElementById('arc-fallback').classList.toggle('shown', showFallback);
+  }
+
+  document.querySelectorAll('[data-variant]').forEach(b => b.onclick = () => setState({ variant: b.dataset.variant, screen: 'rest' }));
+  document.querySelectorAll('[data-screen]').forEach(b => b.onclick = () => { if (!b.disabled) setState({ screen: b.dataset.screen }); });
+  document.querySelectorAll('[data-conn]').forEach(b => b.onclick = () => setState({ conn: b.dataset.conn }));
+  document.querySelectorAll('[data-hint]').forEach(b => b.onclick = () => setState({ hint: b.dataset.hint }));
+  document.querySelectorAll('[data-hand]').forEach(b => b.onclick = () => setState({ hand: b.dataset.hand }));
+  document.querySelectorAll('[data-geo]').forEach(b => b.onclick = () => setState({ geo: b.dataset.geo }));
+  document.querySelectorAll('[data-vo]').forEach(b => b.onclick = () => setState({ vo: b.dataset.vo }));
+  document.querySelectorAll('[data-motion]').forEach(b => b.onclick = () => setState({ motion: b.dataset.motion }));
+  document.querySelectorAll('[data-type]').forEach(b => b.onclick = () => setState({ type: b.dataset.type }));
+
+  function toggleDocTheme() {
+    const root = document.documentElement;
+    root.setAttribute('data-doc-theme', root.getAttribute('data-doc-theme') === 'dark' ? 'light' : 'dark');
+  }
+
+  syncButtons();
+  render();
+</script>
+</body>
+</html>

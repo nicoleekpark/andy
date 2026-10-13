@@ -825,18 +825,20 @@ export function CaptureScreen({
     async (from: "camera" | "library") => {
       setError(null);
 
-      // Asked for at the moment of use, per feature, never on launch.
-      const permission =
-        from === "camera"
-          ? await ImagePicker.requestCameraPermissionsAsync()
-          : await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        setError(
-          from === "camera"
-            ? "Andy needs the camera to photograph a card. You can turn it on in Settings."
-            : "Andy needs access to your photos to read a card. You can turn it on in Settings.",
-        );
-        return;
+      // The camera is asked for at the moment of use, per feature, never on
+      // launch. The library is not asked for at all: on iOS 14+ the picker
+      // runs outside the app and hands back only the photo the person chose,
+      // so asking would buy read access to their whole library for nothing —
+      // and refusing would have blocked a choice that works regardless. The
+      // profile photo picker already works this way.
+      if (from === "camera") {
+        const permission = await ImagePicker.requestCameraPermissionsAsync();
+        if (!permission.granted) {
+          setError(
+            "Andy needs the camera to photograph a card. You can turn it on in Settings.",
+          );
+          return;
+        }
       }
 
       // `allowsEditing` puts a crop step in front of the picker. It earns its

@@ -86,7 +86,8 @@ Added 2026-10-08, the same way (`src/constants/theme.ts`):
   points. The sizes the screens already use; nothing outside it without adding
   it here first.
 - **`radius`**: **control 10 · card 16 · pill 999**. `pill` is the app's button shape; `control` the bordered secondary button (Sign out) and fields.
-- **`size`**: **avatar 40** — the photo-or-initials circle beside a name on home, Contacts' list size.
+- **`size`**: **avatar 40** — the photo-or-initials circle beside a name on home, Contacts' list size. **icon 22** — a system symbol in the nav bar.
+- **Icons are Apple's SF Symbols, through `expo-symbols`, and nothing else** (decided 2026-10-12). No icon font or drawn icon set: a system symbol already matches the iOS chrome around it. (This is not the drawn, branded set the Briefing card's *quiet icon* would have needed — see below; that one is still not chosen.) Drawn at a fixed `size`, so it does not grow with Dynamic Type; its 44pt target and VoiceOver label carry it instead. Always `ink` (or the control's own token), always with a VoiceOver label, always with a worded `fallback` for a build without symbols. First use: the Settings gear on home (`settings-button`).
 - **`textOpacity`**: **secondary 0.8 · quiet 0.7**. Dimmed `ink` text never goes
   below 0.7, the lowest that still passes WCAG AA on `paper` (5.0:1).
 - **`colors.scrim`**: the dim behind a dialog, `ink` at 42%.

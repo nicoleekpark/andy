@@ -32,6 +32,7 @@ These appear on most screens and mean the same thing everywhere.
 | `nav-bar-back` | iOS 뒤로가기 — 어느 화면이든 ‹ 아이콘만, 글자 없음 (2026-10-12, copy-build-4 #27/#37). VoiceOver는 "Back" |
 | `nav-bar-title` | 맨 위 가운데 제목 |
 | `nav-bar-action-right` | 맨 위 오른쪽 자리 — 화면마다 다름 (Settings, Edit) |
+| `settings-button` | home 오른쪽 위 톱니바퀴(SF Symbol `gearshape`, 44pt). VoiceOver "Settings". 심볼이 없는 빌드에선 "Settings" 글자 |
 | `expo-dev-menu` | 왼쪽 위 톱니 — 개발용 빌드에만 있음, 테스터 앱엔 없음 |
 | `debug-panel` | record 화면 아래 개발용 진단 줄 — 테스터 빌드에서 숨길지 결정 필요 |
 | `offline-copy-line` | 오프라인에서 폰의 사본을 보여줄 때 화면 맨 위 — "Offline — showing what Andy had at 3:40 PM." (home·프로필·노트·Ask 공통, 온라인이면 안 보임) |
