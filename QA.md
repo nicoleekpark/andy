@@ -326,6 +326,7 @@ reach: a real screen, a real keyboard, and a real transcript at its real length.
 | 14.6 | Ask something matching two notes about the *same* person | Two cards, separated by a hairline rule — not one run-on block with the name repeated |
 | 14.7 | Turn Wi-Fi off, ask anything | One error line, and **not** the "Type a name, or ask in your own words" invitation underneath it. The screen must not apologise and then act as though nothing was asked |
 | 14.8 | Ask, then immediately watch the space below the field | A spinner while it runs, replaced by results. No flash of the invitation in between |
+| 14.10 | With **two people called Priya** (different "how you know them"), each with a note about coffee: ask "coffee with priya" | The answer **tells them apart** — e.g. "You had coffee with Priya (friend)… Priya (colleague) also…" — and never speaks of one Priya combining both notes (device QA #47). With no "how you know them" on either, it says "person 1" / "person 2" | ⬜ |
 
 ## 15. Ask Andy's written answer
 
