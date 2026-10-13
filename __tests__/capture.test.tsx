@@ -18,6 +18,9 @@ import { ConvexError } from "convex/values";
 import { scrollViewAround, scrollsAboveKeyboard } from "../test-support/keyboard";
 import { pressConfirmButton, spyOnConfirm } from "../test-support/dialog";
 
+/** The Write body, by the words on screen (its label is its placeholder). */
+const WRITE_BODY = /^Write (or paste )?what you want to remember/;
+
 /**
  * src/app/(app)/profile/[id]/capture.tsx's whole reason to exist is the
  * confirm/edit step between transcript and saved fact — see that file's
@@ -1624,7 +1627,7 @@ describe("capture screen review step", () => {
     });
     await act(async () => {
       fireEvent.changeText(
-        screen.getByLabelText("Type a note"),
+        screen.getByLabelText(WRITE_BODY),
         "Emma is a branding designer.",
       );
     });
@@ -1666,27 +1669,11 @@ describe("capture screen review step", () => {
     expect(
       screen.queryByRole("button", { name: "Scan a business card" }),
     ).toBeNull();
-    expect(screen.getByLabelText("Type a note")).toBeTruthy();
+    expect(screen.getByLabelText(WRITE_BODY)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Let Andy read it" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Stop typing" })).toBeTruthy();
-  });
-
-  test("should put the recording screen back when typing is cancelled", async () => {
-    (useAction as jest.Mock).mockReturnValue(jest.fn(async () => makeDraft()));
-    scopeTo("Emma");
-    captureListeners();
-
-    const result = renderRouter("src/app", { initialUrl: "/capture" });
-    await result;
-    await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Type it instead" }));
-    });
-    await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Stop typing" }));
-    });
-
-    expect(screen.getByRole("button", { name: "Start recording" })).toBeTruthy();
-    expect(screen.queryByLabelText("Type a note")).toBeNull();
+    // One button: back is the chevron (capture-doors.md, the Write screen).
+    expect(screen.queryByRole("button", { name: "Stop typing" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();
   });
 
   test("should not read an empty typed note", async () => {
@@ -2981,7 +2968,7 @@ describe("capture screen offline", () => {
       fireEvent.press(screen.getByRole("button", { name: "Type it instead" }));
     });
     await act(async () => {
-      fireEvent.changeText(screen.getByLabelText("Type a note"), text);
+      fireEvent.changeText(screen.getByLabelText(WRITE_BODY), text);
     });
     // Wrapped: an async function returning the router result directly would
     // await it, and what came back would no longer have `getPathname`.
@@ -3047,7 +3034,7 @@ describe("capture screen offline", () => {
     });
 
     expect(screen.getByText(/Andy couldn't keep this note on the phone/)).toBeTruthy();
-    expect(screen.getByLabelText("Type a note").props.value).toBe("Met Rowan at the booth.");
+    expect(screen.getByLabelText(WRITE_BODY).props.value).toBe("Met Rowan at the booth.");
     expect(result.getPathname()).toBe("/capture");
   });
 
@@ -3095,6 +3082,30 @@ describe("capture screen offline", () => {
     expect(kept()).toEqual([]);
   });
 
+  test("should leave a waiting note without asking — it stays kept whatever is pressed", async () => {
+    connected(true);
+    waiting("Met Rowan at the booth.");
+    (useAction as jest.Mock).mockReturnValue(
+      jest.fn(async () => {
+        throw new Error("network");
+      }),
+    );
+    const result = renderRouter("src/app", { initialUrl: "/" });
+    await result;
+    await act(async () => {
+      router.push("/capture?outbox=w1");
+    });
+    await waitFor(() => expect(screen.getByText(/couldn't make sense of that one/)).toBeTruthy());
+
+    await act(async () => {
+      router.back();
+    });
+
+    expect(screen.queryByTestId("confirm-dialog")).toBeNull();
+    expect(result.getPathname()).toBe("/");
+    expect(kept().map((n) => n.text)).toEqual(["Met Rowan at the booth."]);
+  });
+
   test("should keep a waiting note on the phone when it is not saved", async () => {
     connected(true);
     waiting("Met Rowan at the booth.");
@@ -3107,7 +3118,7 @@ describe("capture screen offline", () => {
     await renderRouter("src/app", { initialUrl: "/capture?outbox=w1" });
 
     await waitFor(() => expect(screen.getByText(/couldn't make sense of that one/)).toBeTruthy());
-    expect(screen.getByLabelText("Type a note").props.value).toBe("Met Rowan at the booth.");
+    expect(screen.getByLabelText(WRITE_BODY).props.value).toBe("Met Rowan at the booth.");
     expect(kept().map((n) => n.text)).toEqual(["Met Rowan at the booth."]);
   });
 
@@ -3122,7 +3133,7 @@ describe("capture screen offline", () => {
     await renderRouter("src/app", { initialUrl: "/capture?outbox=w1" });
 
     // Its words, marked as still kept — and nothing that would keep it again.
-    expect(screen.getByLabelText("Type a note").props.value).toBe("Met Rowan at the booth.");
+    expect(screen.getByLabelText(WRITE_BODY).props.value).toBe("Met Rowan at the booth.");
     expect(screen.getByText(/This note is still kept on this phone/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Keep this note" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Let Andy read it" })).toBeNull();
@@ -3209,4 +3220,31 @@ describe("capture screen offline", () => {
       (ExpoSpeechRecognitionModule.supportsOnDeviceRecognition as jest.Mock).mockReturnValue(false);
     }
   });
+});
+
+test("should leave words just heard without asking — only written words do", async () => {
+  scopeTo("Emma");
+  const handlers = captureListeners();
+  const result = renderRouter("src/app", { initialUrl: "/" });
+  await result;
+  await act(async () => {
+    router.push("/capture");
+  });
+  await act(async () => {
+    handlers.start?.();
+  });
+  await act(async () => {
+    handlers.result?.({ results: [{ transcript: "Met Emma at the booth" }], isFinal: true });
+  });
+  await act(async () => {
+    handlers.end?.();
+  });
+  expect(screen.getByLabelText("What you said")).toBeTruthy();
+
+  await act(async () => {
+    router.back();
+  });
+
+  expect(screen.queryByTestId("confirm-dialog")).toBeNull();
+  expect(result.getPathname()).toBe("/");
 });

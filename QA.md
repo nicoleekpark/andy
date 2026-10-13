@@ -187,14 +187,18 @@ live here rather than in §7 because that is the screen they happen on.
 | 7a.39 | On **Check this over**, change a word in **What you said** | Right under it: "The details above still come from the old wording.", above **Read it again**. Tap **Remember this** anyway → it **saves at once, no dialog**, with your corrected wording and the details as they were. Or tap **Read it again** → the details (and Also came up) are rebuilt from the corrected wording and the line goes (device QA #18/#19) | ⬜ |
 | 7a.40 | Type a note (or record and stop), or reach **Check this over** and correct a fact. Swipe Andy away in the app switcher (that is what iOS closing it in the background looks like), then open Andy again | `home` shows `draft-line`: *"You were writing a note."* (from someone's page: *"You were writing about Priya."*) with green **Continue** and **Discard**. **Continue** opens the words, or **Check this over** with your correction, exactly as left — no new Claude call. **Discard** asks *"Discard this note?"* first. Leaving the capture screen with back, saving, or **Keep this note** offline leaves **no** line. **Up to three:** with a line waiting, start another note and swipe Andy away again → two lines, newest first; each Continue opens its own note. With three waiting, a fourth is not kept and none of the three disappears. Device QA #52; kept on the phone, so the unit tests cannot close the app for real | ⬜ |
 
-## 8. Typing instead of speaking
+## 8. Write (capture-doors.md, Final choice: the Write screen)
 
-| # | Do this | Expect |
-|---|---|---|
-| 8.1 | `Type it instead` | **Whole screen**; record and business-card buttons gone |
-| 8.2 | `Let Andy read it` with nothing typed | Disabled |
-| 8.3 | Type, then `Let Andy read it` | Review screen; body label reads **`What you wrote`** |
-| 8.4 | `Cancel`, then record | Label is back to `What you said` |
+| # | Do this | Expect | |
+|---|---|---|---|
+| 8.1 | + → **Write** | The whole screen is the note: the keyboard is **already up**, the cursor in it, the placeholder *"Write or paste what you want to remember — one person's notes at a time."*, and **one** button, **Let Andy read it** (disabled while empty). No Cancel, no Stop typing | ⬜ |
+| 8.2 | In another app copy some text; in Write, long-press the body → **Paste** | It pastes, with **no** "Allow Paste?" question | ⬜ |
+| 8.3 | Type, then **Let Andy read it** | Review screen; body label reads **What you wrote** | ⬜ |
+| 8.4 | On someone's page: **Add a note → Write** | A quiet **About Nina** at the top; placeholder *"Write what you want to remember about Nina."* | ⬜ |
+| 8.5 | Open Write and go back (chevron, or swipe from the edge) without typing | Leaves at once, no question | ⬜ |
+| 8.6 | Type something, then go back (chevron **and** the swipe) | *"Discard this note?"* — **Cancel** stays with the words; **Discard** leaves and nothing is offered on home | ⬜ |
+| 8.7 | Paste a very long text (over 11,000 characters) | A count appears at the bottom right ("11,240 / 12,000"); over 12,000 it turns red, *"That note is longer than Andy can take in one go. Try splitting it into two."* shows, and Read is off | ⬜ |
+| 8.8 | Wi-Fi off, Write, type, **Keep this note** | Back on home with no question; home says the note is kept | ⬜ |
 
 ## 9. Business cards
 

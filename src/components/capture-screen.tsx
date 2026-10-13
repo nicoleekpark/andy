@@ -18,7 +18,7 @@ import {
 import { useAction, useMutation, useQuery } from "convex/react";
 import { useOffline } from "@/lib/connection";
 import { api } from "@convex/_generated/api";
-import type { Draft } from "@convex/extractionPrompt";
+import { MAX_TRANSCRIPT_CHARS, type Draft } from "@convex/extractionPrompt";
 import { matchKey } from "@convex/naming";
 import { useJustAdded } from "@/lib/use-just-added";
 import { FORM_SCROLL } from "@/lib/form-scroll";
@@ -26,7 +26,7 @@ import { useRowKeys } from "@/lib/use-row-keys";
 import { localToday } from "@/lib/dates";
 import { describePerson } from "@/lib/describe-person";
 import { sourceLabel } from "@/lib/note-source";
-import { colors, radius, space, textOpacity, textSize } from "@/constants/theme";
+import { colors, fonts, radius, space, textOpacity, textSize } from "@/constants/theme";
 import { userMessage } from "@/lib/user-message";
 import { useOutbox } from "@/lib/outbox";
 import { useCaptureDrafts, type CaptureDraft } from "@/lib/capture-draft";
@@ -918,9 +918,47 @@ export function CaptureScreen({
     dropDraft(draftId);
   }, [dropDraft, draftId]);
   const navigation = useNavigation();
+  /**
+   * Leaving on purpose without being asked: Keep this note, saving, or the
+   * answer "Discard" to the question below.
+   */
+  const leavingOnPurposeRef = useRef(false);
+  /**
+   * Words written on the Write screen and not yet read: backing out of them
+   * asks first (capture-doors.md, Final choice — the Write screen has no
+   * Cancel of its own; back is the chevron). An empty screen leaves at once.
+   */
+  const writtenUnread =
+    typing !== null &&
+    source === "manual" &&
+    typing.trim() !== "" &&
+    !(draft !== null && (phase === "review" || phase === "saving" || phase === "extracting"));
   useEffect(
-    () => navigation.addListener("beforeRemove", putDraftAway),
-    [navigation, putDraftAway],
+    () =>
+      navigation.addListener("beforeRemove", (event) => {
+        // Not for a note opened from the outbox: it stays kept on the phone
+        // whatever is pressed, so there is nothing to discard.
+        if (writtenUnread && linkedRef.current === undefined && !leavingOnPurposeRef.current) {
+          event.preventDefault();
+          confirm("Discard this note?", "What you wrote will be cleared.", [
+            {
+              text: "Discard",
+              style: "destructive",
+              onPress: () => {
+                leavingOnPurposeRef.current = true;
+                // Here, not left to the next `beforeRemove`: the action a
+                // listener stopped is not announced again when re-sent.
+                putDraftAway();
+                navigation.dispatch(event.data.action);
+              },
+            },
+            { text: "Cancel", style: "cancel" },
+          ]);
+          return;
+        }
+        putDraftAway();
+      }),
+    [navigation, putDraftAway, writtenUnread, confirm],
   );
 
   const runExtraction = useCallback(
@@ -1966,6 +2004,13 @@ export function CaptureScreen({
    */
   if (typing !== null) {
     const empty = typing.trim() === "";
+    // The same ceiling the server keeps (`MAX_TRANSCRIPT_CHARS`), said while
+    // writing: a count in the last thousand, and past it the server's own
+    // line with Read switched off — never a long paste cut short in silence.
+    // What is sent is the text as typed, so that is what is counted.
+    const length = typing.length;
+    const nearLimit = length > MAX_TRANSCRIPT_CHARS - 1000;
+    const overLimit = length > MAX_TRANSCRIPT_CHARS;
     // The same editor for two doors: words typed from scratch, and words just
     // spoken, waiting to be checked before anything reads them.
     const heard = source === "voice";
@@ -2002,6 +2047,12 @@ export function CaptureScreen({
             chosen from six mockups).
           */}
           {heard ? <Text style={styles.fieldLabel}>What you said</Text> : null}
+          {!heard && aboutName !== undefined ? (
+            // From someone's page: the note is about them, said once, quietly.
+            <Text style={styles.writeAbout} testID="write-about">
+              About <Text style={styles.writeAboutName}>{aboutName}</Text>
+            </Text>
+          ) : null}
           <TextInput
             value={typing}
             onChangeText={setTyping}
@@ -2016,12 +2067,34 @@ export function CaptureScreen({
             textAlignVertical="top"
             placeholder={
               aboutName === undefined
-                ? "What do you want to remember?"
-                : `What do you want to remember about ${aboutName}?`
+                ? "Write or paste what you want to remember — one person's notes at a time."
+                : `Write what you want to remember about ${aboutName}.`
             }
             placeholderTextColor={colors.placeholder}
-            accessibilityLabel={heard ? "What you said" : "Type a note"}
+            // The words on screen, so Voice Control can say them (WCAG 2.5.3).
+            accessibilityLabel={
+              heard
+                ? "What you said"
+                : aboutName === undefined
+                  ? "Write or paste what you want to remember"
+                  : `Write what you want to remember about ${aboutName}`
+            }
+            testID={heard ? undefined : "write-body"}
           />
+
+          {nearLimit ? (
+            <Text
+              style={[styles.writeCount, overLimit && styles.writeCountOver]}
+              testID="write-count"
+            >
+              {length.toLocaleString()} / {MAX_TRANSCRIPT_CHARS.toLocaleString()}
+            </Text>
+          ) : null}
+          {overLimit ? (
+            <Text style={styles.error}>
+              That note is longer than Andy can take in one go. Try splitting it into two.
+            </Text>
+          ) : null}
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -2057,14 +2130,15 @@ export function CaptureScreen({
                   );
                   return;
                 }
+                leavingOnPurposeRef.current = true;
                 // Back to wherever the note was started — home says it is
                 // waiting. Home when there is nothing to go back to (opened
                 // from a link).
                 if (router.canGoBack()) router.back();
                 else router.replace("/");
               }}
-              disabled={empty}
-              style={[styles.primaryButton, empty && styles.disabled]}
+              disabled={empty || overLimit}
+              style={[styles.primaryButton, (empty || overLimit) && styles.disabled]}
             >
               <Text style={styles.primaryLabel}>Keep this note</Text>
             </Pressable>
@@ -2073,8 +2147,8 @@ export function CaptureScreen({
               accessibilityRole="button"
               accessibilityLabel="Let Andy read it"
               onPress={() => void runExtraction(typing)}
-              disabled={empty || busy}
-              style={[styles.primaryButton, (empty || busy) && styles.disabled]}
+              disabled={empty || busy || overLimit}
+              style={[styles.primaryButton, (empty || busy || overLimit) && styles.disabled]}
             >
               <Text style={styles.primaryLabel}>
                 {/* The same words the wait is labelled with, so pressing it
@@ -2098,23 +2172,9 @@ export function CaptureScreen({
             >
               <Text style={styles.secondaryLabel}>Record again</Text>
             </Pressable>
-          ) : (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Stop typing"
-              onPress={() => {
-                letGoOfWaiting();
-                setTyping(null);
-                // Back to the door this screen opens on, or a later recording
-                // would be filed as something the user wrote.
-                setSource("voice");
-              }}
-              disabled={busy}
-              style={styles.secondaryButton}
-            >
-              <Text style={styles.secondaryLabel}>Cancel</Text>
-            </Pressable>
-          )}
+          ) : null}
+          {/* Writing has no Cancel of its own: back is the chevron, which
+              asks first when there are words (capture-doors.md). */}
         </ScrollView>
       </>
     );
@@ -2390,6 +2450,19 @@ const styles = StyleSheet.create({
   disagree: { color: colors.moss, fontSize: 13 },
   /** The note being typed, filling the space the transcript would. */
   // The field's only visible edge: `edge`, 3:1 (WCAG 1.4.11), and a whole point wide.
+  writeAbout: { color: colors.ink, fontSize: textSize.md, opacity: textOpacity.quiet },
+  writeAboutName: { fontWeight: "600" },
+  // Plex Mono, like every number Andy keeps in a column (STYLE.md).
+  writeCount: {
+    color: colors.ink,
+    fontFamily: fonts.utility,
+    fontSize: textSize.xs,
+    opacity: textOpacity.quiet,
+    textAlign: "right",
+    fontVariant: ["tabular-nums"],
+  },
+  // Past the limit the count is the problem, so it takes the error colour.
+  writeCountOver: { color: colors.alert, opacity: 1 },
   typedNote: {
     color: colors.ink,
     fontSize: 18,

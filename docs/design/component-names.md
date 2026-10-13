@@ -171,13 +171,18 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | S5b | `record--listening` | 기록 — 듣는 중 |
 | S5c | `record--transcript` | 기록 — 들은 내용 확인 (Read it 전) |
 | S5d | `record--scoped` | 기록 — 프로필에서 시작 (노트가 그 프로필로 감) |
+| S5e | `write` | Write — orbit의 Write 문 (또는 Type it instead). 키보드가 바로 올라오고 본문만, 버튼은 Let Andy read it 하나 (예전 `record--typing`) |
 
 | Name | 설명 |
 |---|---|
 | `record-prompt` | 무엇을 하면 되는지 한 줄 |
 | `mic-button` | Record — 누르면 듣기 시작 (상태 mic-button--listening = Stop) |
 | `scan-card-button` | 명함 스캔 |
-| `type-instead-button` | 말 대신 타이핑 |
+| `type-instead-button` | 말 대신 타이핑 (→ `write`) |
+| `write-about` | `write` — 사람 페이지에서 열었을 때 맨 위 조용한 "About Priya" |
+| `write-body` | `write` 본문 — "Write or paste what you want to remember — one person's notes at a time." (사람 페이지: "Write what you want to remember about Priya."). 붙여넣기는 iOS 길게 누르기 |
+| `write-count` | `write` — 12,000자 중 마지막 1,000자부터 "11,240 / 12,000". 넘으면 빨간색 + 안내문, Read 꺼짐 |
+| `write-discard-alert` | `write`에서 글이 있을 때 뒤로 가면 — "Discard this note?" / "What you wrote will be cleared." (Discard / Cancel) |
 | `transcript-live` | 실시간 받아쓰기 |
 | `mic-button--listening` | Stop — 듣기 끝 |
 | `start-over-button` | 처음부터 다시 |
