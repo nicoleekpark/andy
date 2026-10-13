@@ -15,6 +15,7 @@ import { api } from "@convex/_generated/api";
 import { colors, fonts, space, textOpacity } from "@/constants/theme";
 import { formatDate } from "@/lib/dates";
 import { userMessage } from "@/lib/user-message";
+import { othersWorthShowing } from "@/lib/ask-results";
 import { TimedOut, withTimeout } from "@/lib/with-timeout";
 import { searchView } from "@convex/offlineViews";
 import { NOTHING_KEPT_OFFLINE, useLiveOrCopy, useNothingKeptOffline, useOnline } from "@/lib/offline-copy";
@@ -116,7 +117,7 @@ export default function SearchScreen() {
    */
   const [showOthers, setShowOthers] = useState(false);
   const shown = (results ?? []).filter((result) => !cited || result.used);
-  const others = (results ?? []).filter((result) => cited && !result.used);
+  const others = othersWorthShowing(results ?? []);
   const othersLabel = showOthers
     ? "Hide the other notes"
     : others.length === 1
