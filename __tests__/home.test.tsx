@@ -277,6 +277,18 @@ describe("home screen", () => {
     expect(result.getSegments()).toEqual(["(app)", "capture"]);
   });
 
+  test("should show Settings as the gear, a 44pt target still called Settings", async () => {
+    mockPeopleQuery([buildPerson()]);
+    await renderRouter("src/app", { initialUrl: "/" });
+
+    // Device QA #3: an icon rather than the word, as iOS apps do.
+    const button = screen.getByRole("button", { name: "Settings" });
+    expect(button.props.testID).toBe("settings-button");
+    expect(screen.getByTestId("settings-gear").props.name).toBe("gearshape");
+    const style = Object.assign({}, ...[button.props.style].flat(Infinity));
+    expect([style.width, style.height]).toEqual([44, 44]);
+  });
+
   test("should route to settings when the header Settings button is tapped", async () => {
     mockPeopleQuery([]);
 

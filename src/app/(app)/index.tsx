@@ -1,4 +1,5 @@
 import { Stack, router } from "expo-router";
+import { SymbolView } from "expo-symbols";
 import { useRef } from "react";
 import { Pressable, SectionList, StyleSheet, Text, View } from "react-native";
 import { useQuery } from "convex/react";
@@ -12,7 +13,7 @@ import { useBriefingActions } from "@/lib/use-briefing-actions";
 import { ThreadLoop } from "@/components/thread-loop";
 import { useFeature } from "@/lib/feature-flags";
 import { useBriefing } from "@/lib/use-briefing";
-import { colors, fonts, radius, space, textOpacity, textSize } from "@/constants/theme";
+import { colors, fonts, radius, size, space, textOpacity, textSize } from "@/constants/theme";
 import { useOncePerSession } from "@/lib/use-once-per-session";
 import { formatDate } from "@/lib/dates";
 import { useOutbox } from "@/lib/outbox";
@@ -184,9 +185,18 @@ export default function HomeScreen() {
               accessibilityRole="button"
               accessibilityLabel="Settings"
               onPress={() => router.push("/settings")}
-              hitSlop={12}
+              style={styles.settingsButton}
+              testID="settings-button"
             >
-              <Text style={styles.headerAction}>Settings</Text>
+              {/* The gear, as iOS draws it (device QA #3). The word stands in
+                  where a build has no SF Symbols. */}
+              <SymbolView
+                name="gearshape"
+                size={size.icon}
+                tintColor={colors.ink}
+                fallback={<Text style={styles.headerAction}>Settings</Text>}
+                testID="settings-gear"
+              />
             </Pressable>
           ),
         }}
@@ -354,6 +364,8 @@ const styles = StyleSheet.create({
   outboxAction: { color: colors.moss, fontSize: 14, lineHeight: 21 },
   container: { flex: 1, backgroundColor: colors.paper, padding: 24, gap: 16 },
   headerAction: { color: colors.ink, fontSize: 15 },
+  /** 44pt square, so the small gear is still an easy target. */
+  settingsButton: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
 
   /** The list, and the A–Z index beside it when there is one. */
   listArea: { flex: 1, flexDirection: "row" },
