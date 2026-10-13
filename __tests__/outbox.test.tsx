@@ -21,6 +21,7 @@ const fs = () =>
   jest.requireMock("expo-file-system") as { __files: Map<string, string>; __folders: Set<string> };
 const OUTBOX = "file:///documents/outbox/notes.json";
 const COPIED = "file:///documents/clipboard/copied.json";
+const DRAFT = "file:///documents/capture-draft/draft.json";
 
 function note(ownerId: string, text: string): OutboxNote {
   return { id: `${ownerId}-${text}`, ownerId, keptAt: 1, today: "2026-10-07", text, kind: "typed" };
@@ -251,6 +252,8 @@ describe("outbox in the app", () => {
 
   test("should forget the notes kept on this phone when its owner chooses to sign out", async () => {
     files().set(OUTBOX, JSON.stringify([note("user_default", "one")]));
+    // A note left half-written on the capture screen (device QA #52).
+    files().set(DRAFT, JSON.stringify({ ownerId: "user_default", keptAt: 1, today: "2026-10-13", source: "manual", words: "Priya moved" }));
     const signOut = signedInAs("user_default");
     const cancel = remindersPending();
     fs().__folders.add("file:///caches/ImagePicker");
@@ -266,6 +269,7 @@ describe("outbox in the app", () => {
 
     expect(signOut).toHaveBeenCalledTimes(1);
     expect(files().has(OUTBOX)).toBe(false);
+    expect(files().has(DRAFT)).toBe(false);
     // A reminder naming somebody must not outlive the account on this phone —
     // pending, or already delivered and sitting in Notification Center.
     await waitFor(() => expect(cancel).toHaveBeenCalledWith("ours"));
