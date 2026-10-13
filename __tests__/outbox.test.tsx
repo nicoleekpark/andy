@@ -253,7 +253,7 @@ describe("outbox in the app", () => {
   test("should forget the notes kept on this phone when its owner chooses to sign out", async () => {
     files().set(OUTBOX, JSON.stringify([note("user_default", "one")]));
     // A note left half-written on the capture screen (device QA #52).
-    files().set(DRAFT, JSON.stringify({ ownerId: "user_default", keptAt: 1, today: "2026-10-13", source: "manual", words: "Priya moved" }));
+    files().set(DRAFT, JSON.stringify([{ id: "d1", ownerId: "user_default", keptAt: 1, today: "2026-10-13", source: "manual", words: "Priya moved" }]));
     const signOut = signedInAs("user_default");
     const cancel = remindersPending();
     fs().__folders.add("file:///caches/ImagePicker");

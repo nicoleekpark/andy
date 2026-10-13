@@ -29,7 +29,7 @@ import { sourceLabel } from "@/lib/note-source";
 import { colors, radius, space, textOpacity, textSize } from "@/constants/theme";
 import { userMessage } from "@/lib/user-message";
 import { useOutbox } from "@/lib/outbox";
-import { useCaptureDraft, type CaptureDraft } from "@/lib/capture-draft";
+import { useCaptureDrafts, type CaptureDraft } from "@/lib/capture-draft";
 import { useLiveOrCopy } from "@/lib/offline-copy";
 import { withNotesView } from "@convex/offlineViews";
 
@@ -325,15 +325,15 @@ function Fate({
 export function CaptureScreen({
   profileId,
   outboxId,
-  resume = false,
+  resumeId,
 }: {
   profileId?: string;
   /**
-   * Continue the note left half-written when iOS closed Andy
-   * (`src/lib/capture-draft.ts`), offered on home. Its words, or the draft
-   * under review, are back exactly as they were.
+   * Continue a note left half-written when iOS closed Andy
+   * (`src/lib/capture-draft.ts`), offered on home — by its id. Its words, or
+   * the draft under review, are back exactly as they were.
    */
-  resume?: boolean;
+  resumeId?: string;
   /**
    * A note kept on this phone while offline (`src/lib/outbox.tsx`), opened
    * from home to be read now. Its words go straight to reading, against the
@@ -342,10 +342,12 @@ export function CaptureScreen({
   outboxId?: string;
 }) {
   const confirm = useConfirm();
-  const captureDraft = useCaptureDraft();
+  const captureDrafts = useCaptureDrafts();
   /** What this screen opens with, when it continues a kept draft. Read once. */
   const [resumed] = useState<CaptureDraft | null>(() =>
-    resume && outboxId === undefined ? captureDraft.draft : null,
+    resumeId === undefined || outboxId !== undefined
+      ? null
+      : (captureDrafts.drafts.find((kept) => kept.id === resumeId) ?? null),
   );
   /**
    * Who this note is about, when the route already said.
@@ -804,10 +806,16 @@ export function CaptureScreen({
    *
    * Not for a note opened from the outbox — that one is already kept there.
    */
-  const { keep: keepDraft, drop: dropDraft } = captureDraft;
-  const keptElsewhere = captureDraft.draft !== null;
-  /** This screen wrote the kept draft (or opened with it), so may put it away. */
-  const ownsDraftRef = useRef(resumed !== null);
+  const { keep: keepDraft, drop: dropDraft } = captureDrafts;
+  /**
+   * This screen's draft, under its own id — so it only ever replaces or puts
+   * away its own, never another note kept on the phone.
+   */
+  const [draftId] = useState(
+    () =>
+      resumed?.id ??
+      `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+  );
   /** Left on purpose: nothing more is kept, even by a render on the way out. */
   const leftRef = useRef(false);
   /** The day the draft was begun, fixed at its first keep. */
@@ -832,21 +840,13 @@ export function CaptureScreen({
       (phase === "review" || phase === "saving" || phase === "extracting");
     if (!reviewing && words.trim() === "") {
       unkeptRef.current = null;
-      if (ownsDraftRef.current) {
-        ownsDraftRef.current = false;
-        draftDayRef.current = null;
-        dropDraft();
-      }
+      draftDayRef.current = null;
+      dropDraft(draftId);
       return;
     }
-    // Another note is already kept and this screen did not start it — one
-    // waiting on home, or a second capture screen pushed over this one (a
-    // nudge). There is one place to keep a draft, and taking it would lose
-    // that note without a word; this one goes unkept instead, as every note
-    // did before. (Owner to decide whether to keep several, 2026-10-13.)
-    if (!ownsDraftRef.current && keptElsewhere) return;
     draftDayRef.current ??= saidOnRef.current ?? localToday();
     unkeptRef.current = {
+      id: draftId,
       today: draftDayRef.current,
       profileId,
       aboutName: aboutName ?? draft?.primary.name ?? undefined,
@@ -868,9 +868,10 @@ export function CaptureScreen({
     };
     const timer = setTimeout(() => {
       if (unkeptRef.current === null || leftRef.current) return;
+      // Not kept when all the places are taken by other notes — none of
+      // them is thrown away to make room (`capture-draft.ts`).
       keepDraft(unkeptRef.current);
       unkeptRef.current = null;
-      ownsDraftRef.current = true;
     }, 400);
     return () => clearTimeout(timer);
   }, [
@@ -887,7 +888,7 @@ export function CaptureScreen({
     aboutName,
     keepDraft,
     dropDraft,
-    keptElsewhere,
+    draftId,
   ]);
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (next) => {
@@ -896,7 +897,6 @@ export function CaptureScreen({
       }
       keepDraft(unkeptRef.current);
       unkeptRef.current = null;
-      ownsDraftRef.current = true;
     });
     return () => subscription.remove();
   }, [keepDraft]);
@@ -908,11 +908,8 @@ export function CaptureScreen({
   const putDraftAway = useCallback(() => {
     leftRef.current = true;
     unkeptRef.current = null;
-    if (ownsDraftRef.current) {
-      ownsDraftRef.current = false;
-      dropDraft();
-    }
-  }, [dropDraft]);
+    dropDraft(draftId);
+  }, [dropDraft, draftId]);
   const navigation = useNavigation();
   useEffect(
     () => navigation.addListener("beforeRemove", putDraftAway),
