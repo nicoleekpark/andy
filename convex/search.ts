@@ -4,7 +4,7 @@ import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { action, internalQuery } from "./_generated/server";
 import { embedQuery } from "./embeddings";
-import { MAX_ANSWER_NOTES, MAX_QUESTION_CHARS } from "./answerPrompt";
+import { MAX_ANSWER_NOTES, MAX_QUESTION_CHARS, aboutLabels } from "./answerPrompt";
 import { getAuthenticatedUser } from "./users";
 
 /**
@@ -312,13 +312,22 @@ export const recall = action({
     // is rate-limiting us would fail the important half for the sake of the
     // optional one. The empty answer is the signal: the screen shows results
     // with no answer block above them.
+    const forAnswer = results.slice(0, MAX_ANSWER_NOTES);
+    // Two people who share a name are labelled apart (device QA #47).
+    const labels = aboutLabels(
+      forAnswer.map((result) => ({
+        profileId: result.profile.profileId,
+        name: result.profile.name,
+        relationshipContext: result.profile.relationshipContext,
+      })),
+    );
     let answer: { answer: string; usedNotes: number[] };
     try {
       answer = await ctx.runAction(internal.answer.write, {
         question: query,
-        notes: results.slice(0, MAX_ANSWER_NOTES).map((result, index) => ({
+        notes: forAnswer.map((result, index) => ({
           index,
-          aboutName: result.profile.name,
+          aboutName: labels[index] ?? result.profile.name,
           createdAt: new Date(result.createdAt).toISOString().slice(0, 10),
           keyFacts: result.keyFacts,
           text: result.text,
