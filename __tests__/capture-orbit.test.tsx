@@ -8,6 +8,9 @@ import * as native from "@/lib/native";
 import { answerByName, nameOf } from "../test-support/convex-mocks";
 import { answerDialog, spyOnConfirm } from "../test-support/dialog";
 
+/** The Write body, by the words on screen (its label is its placeholder). */
+const WRITE_BODY = /^Write (or paste )?what you want to remember/;
+
 jest.mock("expo-haptics", () => ({
   impactAsync: jest.fn(async () => undefined),
   ImpactFeedbackStyle: { Light: "light" },
@@ -104,7 +107,7 @@ test("should open the editor straight away through Write", async () => {
 
   expect(result.getPathname()).toBe("/capture");
   expect(result.getSearchParams()).toEqual({ door: "write" });
-  expect(screen.getByLabelText("Type a note")).toBeTruthy();
+  expect(screen.getByLabelText(WRITE_BODY)).toBeTruthy();
 });
 
 test("should start listening at once through Voice — asking for the microphone first", async () => {

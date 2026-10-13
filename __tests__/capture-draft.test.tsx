@@ -8,7 +8,10 @@ import type { Draft } from "@convex/extractionPrompt";
 import type { CaptureDraft } from "../src/lib/capture-draft";
 import { forgetOnThisPhone } from "../src/lib/on-phone";
 import { answerByName, nameOf, quietCall } from "../test-support/convex-mocks";
-import { pressConfirmButton } from "../test-support/dialog";
+import { answerDialog, pressConfirmButton } from "../test-support/dialog";
+
+/** The Write body, by the words on screen (its label is its placeholder). */
+const WRITE_BODY = /^Write (or paste )?what you want to remember/;
 
 /**
  * The note on the capture screen survives iOS closing Andy (device QA #52):
@@ -82,7 +85,7 @@ async function typeANote(words: string) {
     fireEvent.press(screen.getByRole("button", { name: "Type it instead" }));
   });
   await act(async () => {
-    fireEvent.changeText(screen.getByLabelText("Type a note"), words);
+    fireEvent.changeText(screen.getByLabelText(WRITE_BODY), words);
   });
   return result;
 }
@@ -129,6 +132,10 @@ test("should put the draft away when the screen is backed out of", async () => {
   await act(async () => {
     router.back();
   });
+  // Written words ask before going (the Write screen); this one says yes.
+  await act(async () => {
+    await answerDialog("Discard");
+  });
 
   expect(kept()).toBeNull();
 });
@@ -166,7 +173,7 @@ test("should offer the half-written note on home, and continue it as it was", as
 
   expect(result.getPathname()).toBe("/capture");
   expect(result.getSearchParams()).toEqual({ resume: "d1" });
-  expect(screen.getByLabelText("Type a note").props.value).toBe("Priya moved to Lisbon");
+  expect(screen.getByLabelText(WRITE_BODY).props.value).toBe("Priya moved to Lisbon");
 });
 
 test("should continue a note recorded on someone's page from that page", async () => {
@@ -234,7 +241,7 @@ test("should not open a new note with the kept words unless Continue was chosen"
     router.push("/capture");
   });
 
-  expect(screen.queryByLabelText("Type a note")).toBeNull();
+  expect(screen.queryByLabelText(WRITE_BODY)).toBeNull();
   // And opening it without writing anything leaves the kept one alone.
   await act(async () => {
     router.back();
@@ -283,7 +290,7 @@ test("should offer each kept note on its own line, newest first, and continue th
   });
 
   expect(result.getSearchParams()).toEqual({ resume: "a" });
-  expect(screen.getByLabelText("Type a note").props.value).toBe("Priya moved");
+  expect(screen.getByLabelText(WRITE_BODY).props.value).toBe("Priya moved");
 });
 
 test("should not keep a fourth note while three are waiting — and throw none of the three away", async () => {
@@ -309,6 +316,9 @@ test("should put away only its own note when backed out of, never another one wa
   await act(async () => {
     router.back();
   });
+  await act(async () => {
+    await answerDialog("Discard");
+  });
 
   expect(all().map((d) => d.words)).toEqual(["Priya moved to Lisbon"]);
 });
@@ -318,7 +328,7 @@ test("should keep updating the note it continued rather than add a second copy",
 
   await renderRouter("src/app", { initialUrl: "/capture?resume=d1" });
   await act(async () => {
-    fireEvent.changeText(screen.getByLabelText("Type a note"), "Priya moved to Lisbon");
+    fireEvent.changeText(screen.getByLabelText(WRITE_BODY), "Priya moved to Lisbon");
   });
 
   await waitFor(() => expect(kept()?.words).toBe("Priya moved to Lisbon"));
@@ -338,5 +348,5 @@ test("should still offer a note kept the way the first version wrote it, as one 
     fireEvent.press(screen.getByRole("button", { name: "Continue the note you were writing" }));
   });
 
-  expect(screen.getByLabelText("Type a note").props.value).toBe("Priya moved");
+  expect(screen.getByLabelText(WRITE_BODY).props.value).toBe("Priya moved");
 });
