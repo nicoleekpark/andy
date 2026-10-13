@@ -326,6 +326,7 @@ export function CaptureScreen({
   profileId,
   outboxId,
   resumeId,
+  door,
 }: {
   profileId?: string;
   /**
@@ -334,6 +335,12 @@ export function CaptureScreen({
    * the draft under review, are back exactly as they were.
    */
   resumeId?: string;
+  /**
+   * Which door of the orbit this was opened through (`capture-orbit.tsx`):
+   * voice starts listening at once, write opens on the editor, photo asks for
+   * the picture. Absent from links that predate the orbit.
+   */
+  door?: "voice" | "write" | "photo";
   /**
    * A note kept on this phone while offline (`src/lib/outbox.tsx`), opened
    * from home to be read now. Its words go straight to reading, against the
@@ -739,7 +746,7 @@ export function CaptureScreen({
         ? waiting.kind === "typed"
           ? "manual"
           : "voice"
-        : (resumed?.source ?? "voice"),
+        : (resumed?.source ?? (door === "write" ? "manual" : "voice")),
   );
 
   /**
@@ -757,7 +764,7 @@ export function CaptureScreen({
    */
   // A waiting note opens with its words already here, from the first render.
   const [typing, setTyping] = useState<string | null>(
-    () => waiting?.text ?? resumed?.words ?? null,
+    () => waiting?.text ?? resumed?.words ?? (door === "write" ? "" : null),
   );
 
   const [locale, setLocale] = useState(DEFAULT_LOCALE);
@@ -1198,6 +1205,23 @@ export function CaptureScreen({
       requiresOnDeviceRecognition: preferOnDevice && onDeviceAvailable,
     });
   }, [locale, preferOnDevice, offline]);
+
+  /**
+   * Opened through Voice or Photo: start that door once, as the tap that
+   * opened the screen asked. Not for a note being continued or read from the
+   * phone — those open on what they already hold.
+   */
+  const doorOpenedRef = useRef(false);
+  useEffect(() => {
+    if (doorOpenedRef.current || resumed !== null || waiting !== undefined) return;
+    doorOpenedRef.current = true;
+    // Just after mount, not inside it: listening is the person's tap
+    // carried through, and the screen should be on show when it starts.
+    if (door === "voice") queueMicrotask(() => void start());
+    // Photo's own screens come with the Photo slice; until then, today's
+    // choice of camera or library.
+    if (door === "photo") chooseCardSource();
+  }, [door, resumed, waiting, start, chooseCardSource]);
 
   const stop = useCallback(() => {
     ExpoSpeechRecognitionModule.stop();

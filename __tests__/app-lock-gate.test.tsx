@@ -40,7 +40,7 @@ test("should render the real app when unlocked", async () => {
   const result = renderRouter("src/app", { initialUrl: "/" });
   await result;
 
-  expect(screen.getByRole("button", { name: "Record" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "New note" })).toBeTruthy();
 });
 
 test("should show the lock screen, not the app, while locked", async () => {
@@ -54,7 +54,7 @@ test("should show the lock screen, not the app, while locked", async () => {
   await result;
 
   expect(screen.getByText("Andy is locked.")).toBeTruthy();
-  expect(screen.queryByRole("button", { name: "Record" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "New note" })).toBeNull();
 });
 
 test("should show neither the app nor the lock screen while checking — the leak this gate exists to close", async () => {
@@ -67,7 +67,7 @@ test("should show neither the app nor the lock screen while checking — the lea
   // Falling through to <Stack> here would be one frame of real content
   // rendered before the check resolves — the whole point of gating on
   // anything other than "unlocked" rather than only on "locked".
-  expect(screen.queryByRole("button", { name: "Record" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "New note" })).toBeNull();
   expect(screen.queryByText("Andy is locked.")).toBeNull();
 });
 

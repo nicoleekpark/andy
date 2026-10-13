@@ -24,6 +24,7 @@ import { NOTHING_KEPT_OFFLINE, useLiveOrCopy, useNothingKeptOffline } from "@/li
 import { peopleView } from "@convex/offlineViews";
 import { OfflineCopyLine } from "@/components/offline-copy-line";
 import { HomeBottomBar } from "@/components/home-bottom-bar";
+import { useCaptureOrbit } from "@/components/capture-orbit";
 import { NameResults } from "@/components/name-results";
 import { useNameSearch } from "@/lib/use-name-search";
 
@@ -52,7 +53,7 @@ function EmptyHome() {
     <View style={styles.emptyInner}>
       <ThreadLoop motion={first ? "draw" : "still"} width={EMPTY_THREAD_WIDTH} />
       <Text style={styles.quiet}>
-        No one yet — tap record to remember your first person.
+        No one yet — tap + to remember your first person.
       </Text>
     </View>
   );
@@ -223,6 +224,7 @@ export default function HomeScreen() {
   const { results: found } = useNameSearch(query);
   /** A query present: the list becomes what matches it (R6). */
   const searching = query.trim() !== "";
+  const newNote = useCaptureOrbit("/capture");
   // Letters and the A–Z index only once the list is long (`INDEX_FROM`).
   const { indexed, sections } = sectionsOf(people ?? [], (row) => row.profile.name);
   const list = useRef<SectionList<NonNullable<typeof people>[number], { letter: string }>>(null);
@@ -436,8 +438,9 @@ export default function HomeScreen() {
           onQuery={setQuery}
           online={online}
           showField={people !== undefined && people.length > 0}
-          onRecord={() => router.push("/capture")}
+          onNewNote={newNote.open}
         />
+        {newNote.orbit}
       </View>
     </>
   );

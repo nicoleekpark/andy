@@ -772,7 +772,7 @@ Motion are unit-tested; how it looks is not.
 | # | Do this | Expect | |
 |---|---|---|---|
 | 26.1 | Sign out (or fresh install) | The thread **writes "andy"** from the left edge, through the name and the loop, out past the right edge, in about 4 s — **then stops**. The twist appears along it as it goes | ⬜ |
-| 26.2 | On an account with nobody kept, open the app | Above "No one yet — tap record…", the loop **draws itself once in about 1.2 s** and rests, a clear gap above the words | ⬜ |
+| 26.2 | On an account with nobody kept, open the app | Above "No one yet — tap + …", the loop **draws itself once in about 1.2 s** and rests, a clear gap above the words | ⬜ |
 | 26.3 | Go to Settings and back to home | The loop is **already there**, still. It greets once per run of the app, not every visit | ⬜ |
 | 26.4 | Reduce Motion on, repeat 26.1 and 26.2 | Both appear **finished and still**; nothing draws, nothing flashes in first | ⬜ |
 
@@ -834,18 +834,33 @@ WCAG 1.4.11: a control whose outline is all that marks it out needs 3:1
 
 | # | Do this | Expect | |
 |---|---|---|---|
-| 31.1 | Open home with a few people | At the very bottom an opaque bar with a thin line on top, the **Find a name or a word** field in it, and the round green **Record** sitting half over that line. The last row and the A–Z letters are never hidden under it (scroll to the end) | ⬜ |
-| 31.2 | Tap the field | The keyboard comes up and the bar **rises with it**, above the keyboard. Record steps aside; **Cancel** appears; above the field, green **Ask Andy in your own words** | ⬜ |
+| 31.1 | Open home with a few people | At the very bottom an opaque bar with a thin line on top, the **Find a name or a word** field in it, and the round green **+** sitting half over that line. The last row and the A–Z letters are never hidden under it (scroll to the end) | ⬜ |
+| 31.2 | Tap the field | The keyboard comes up and the bar **rises with it**, above the keyboard. + steps aside; **Cancel** appears; above the field, green **Ask Andy in your own words** | ⬜ |
 | 31.3 | Type "pri" | Home becomes the matches (Priya…), no letters, no briefing; the row reads **Ask Andy: “pri”**. Drag the results → the keyboard goes down | ⬜ |
 | 31.4 | Tap **Ask Andy: “pri”** | Ask opens with "pri" already in its field, **not** asked yet (no spinner) | ⬜ |
 | 31.5 | Type a word in a note ("greyhound") | The person whose note says it shows, with the line it is in | ⬜ |
 | 31.6 | Type "zzz" | *No one matches “zzz”.* | ⬜ |
-| 31.7 | **Cancel** | The field empties, the keyboard goes, Record and the full list come back | ⬜ |
+| 31.7 | **Cancel** | The field empties, the keyboard goes, + and the full list come back | ⬜ |
 | 31.8 | Wi-Fi off, tap the field and type a name | Matches still show; instead of the Ask row: *"Asking needs a connection. Names and words still work."* | ⬜ |
-| 31.9 | Largest Dynamic Type | **Record widens into a short stadium** (the word is never cut or shrunk); the field and Cancel still fit; nothing overlaps the last row | ⬜ |
+| 31.9 | Largest Dynamic Type | The field and Cancel still fit; + stays a circle; nothing overlaps the last row | ⬜ |
 | 31.11 | On an iPhone with a home indicator (no Home button), look at the bottom | The field sits **above** the home indicator line, never under it | ⬜ |
-| 31.12 | VoiceOver on, swipe through home from the top | The list, then **Find a name or a word**, then **Record** — though Record is drawn above the field | ⬜ |
-| 31.10 | A new account with no people | No field — only Record and the invitation to record | ⬜ |
+| 31.12 | VoiceOver on, swipe through home from the top | The list, then **Find a name or a word**, then **New note** (the +) — though + is drawn above the field | ⬜ |
+| 31.10 | A new account with no people | No field — only + and "No one yet — tap + to remember your first person." | ⬜ |
+
+## 32. New note: the orbit (capture-doors.md, Final choice)
+
+| # | Do this | Expect | |
+|---|---|---|---|
+| 32.1 | On home, tap **+** | A light tap is felt (a build with expo-haptics); the screen dims and **Voice** (above), **Write** (upper left) and **Photo** (upper right) fan out from +, each a green circle with its word on a paper chip; + becomes ✕. Nothing is cut off at the screen edges | ⬜ |
+| 32.2 | Tap the dimmed area, then open again and tap ✕ | Closes both times, back to home | ⬜ |
+| 32.3 | **Voice** | The voice screen, **already listening** (first time ever: iOS asks for the microphone first) | ⬜ |
+| 32.4 | **Write** | The typing screen, empty | ⬜ |
+| 32.5 | **Photo** | For now, today's "Take a photo / Choose from library" choice (the Photo screens come next) | ⬜ |
+| 32.6 | Wi-Fi off, open the orbit | Photo's chip says **Needs a connection**; tapping it says *"Reading a photo needs a connection…"* with **Write instead** (opens Write) and **Cancel**; no camera opens | ⬜ |
+| 32.7 | On someone's page, **Add a note** | The same orbit; each door is about that person (Write → the typing screen on their page) | ⬜ |
+| 32.8 | Reduce Motion on, open the orbit | The doors fade in; nothing flies out | ⬜ |
+| 32.9 | Largest Dynamic Type, open the orbit | A plain list: Voice, Write, Photo, then ✕ | ⬜ |
+| 32.10 | VoiceOver on, open the orbit | Focus moves into it: Voice, Write, Photo, Close; the two-finger Z closes it; nothing behind it is reachable | ⬜ |
 
 ## Simulator pass, 2026-09-30 (Claude, while the developer was away)
 

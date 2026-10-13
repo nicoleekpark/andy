@@ -109,7 +109,7 @@ describe("home screen", () => {
     await result;
 
     expect(
-      screen.getByText("No one yet — tap record to remember your first person."),
+      screen.getByText("No one yet — tap + to remember your first person."),
     ).toBeTruthy();
   });
 
@@ -264,17 +264,21 @@ describe("home screen", () => {
     expect(result.getPathname()).toBe("/profile/profile-42");
   });
 
-  test("should route to capture when Record is tapped", async () => {
+  test("should route to capture through the orbit's Voice door", async () => {
     mockPeopleQuery([]);
 
     const result = renderRouter("src/app", { initialUrl: "/" });
     await result;
 
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Record" }));
+      fireEvent.press(screen.getByRole("button", { name: "New note" }));
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Voice" }));
     });
 
     expect(result.getSegments()).toEqual(["(app)", "capture"]);
+    expect(result.getSearchParams()).toEqual({ door: "voice" });
   });
 
   test("should show Settings as the gear, a 44pt target still called Settings", async () => {

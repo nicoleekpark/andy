@@ -112,14 +112,14 @@ describe("tapping the nudge", () => {
     (hasNativeModule as jest.Mock).mockReturnValueOnce(false);
     const missing = renderRouter("src/app", { initialUrl: "/" });
     await missing;
-    expect(screen.getByText("Record")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "New note" })).toBeTruthy();
 
     (Notifications.getLastNotificationResponse as jest.Mock).mockImplementationOnce(() => {
       throw new Error("no emitter in this binary");
     });
     const throwing = renderRouter("src/app", { initialUrl: "/" });
     await throwing;
-    expect(screen.getByText("Record")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "New note" })).toBeTruthy();
     expect(throwing.getPathname()).toBe("/");
   });
 });
