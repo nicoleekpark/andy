@@ -148,8 +148,13 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `pending-line` | 오프라인에서 바꾼 것(노트 수정·삭제)이 아직 저장 안 됐을 때 — "1 change made offline, not saved yet." |
 | `pending-line-sync` | 온라인일 때 `pending-line` 옆 초록 **Sync** — 누르면 모두 저장 (Syncing…) |
 | `sync-conflict-alert` | Sync 중 그 노트가 다른 기기에서 바뀌었을 때 묻는 창 — Keep theirs / Keep mine (둘 다 moss, Cancel 없음). `confirm-dialog`로 그림 (QA #51) |
-| `ask-button` | Ask Andy 화면을 여는 버튼 |
-| `record-button` | 새 노트를 기록하는 초록 버튼 |
+| `home-bottom-bar` | 홈 맨 아래 종이색 바 (위에 가는 선) — `home-search-field`가 들어 있고, `record-button`이 바 위쪽 선에 걸쳐 있음 (V-NOTCHED, home-actions.md) |
+| `record-button` | 72pt 둥근 초록 **Record** — `home-bottom-bar` 위쪽 선에 반쯤 걸침 (가장 큰 글자 크기에선 옆으로 늘어난 알약 모양). 검색칸을 쓰는 동안엔 비킴. VoiceOver 순서: 목록 → 검색칸 → Record |
+| `home-search-field` | "Find a name or a word" — 홈 목록을 그 자리에서 거름 (무료·오프라인, Ask와 같은 이름 검색). 사람이 없으면 안 보임 |
+| `home-search-clear` | 검색칸 안 오른쪽 ⓧ — 글자를 지움 (키보드는 그대로). 44pt 영역 |
+| `home-search-cancel` | 검색칸 옆 초록 **Cancel** — 지우고 키보드 내림, Record가 돌아옴 |
+| `home-ask-row` | 검색칸 위 초록 줄 — `Ask Andy: “…”` (비었으면 "Ask Andy in your own words"). 누르면 Ask에 그 글이 들어간 채 열림 (바로 묻지 않음). 오프라인: "Asking needs a connection. Names and words still work." (`home-ask-offline`) |
+| `home-search-results` | 검색 중 목록 자리 — People / Came up in (`name-results`, Ask와 같은 줄). 없으면 `No one matches “…”.` |
 
 ### `record`
 

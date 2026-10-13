@@ -826,9 +826,26 @@ WCAG 1.4.11: a control whose outline is all that marks it out needs 3:1
 
 | # | Look at | Expect | |
 |---|---|---|---|
-| 30.1 | **Ask Andy** on home, **Sign out** in Settings and on sign-in, **Add a note** and the empty **photo circle** on a profile | The outline is clearly visible against the page — darker than the thin divider lines, never faint | ⬜ |
+| 30.1 | The **search field** on home, **Sign out** in Settings and on sign-in, **Add a note** and the empty **photo circle** on a profile | The outline is clearly visible against the page — darker than the thin divider lines, never faint | ⬜ |
 | 30.2 | Review: a name with several people (`name-choice` cards), and the unticked `first-met-checkbox` under "First met" | Each card and the box have a clearly visible outline; the box's row is at least 44pt tall | ⬜ |
 | 30.3 | Dividers between rows and sections | Unchanged — still the light line | ⬜ |
+
+## 31. Home bottom bar (home-actions.md, S1 · V-NOTCHED)
+
+| # | Do this | Expect | |
+|---|---|---|---|
+| 31.1 | Open home with a few people | At the very bottom an opaque bar with a thin line on top, the **Find a name or a word** field in it, and the round green **Record** sitting half over that line. The last row and the A–Z letters are never hidden under it (scroll to the end) | ⬜ |
+| 31.2 | Tap the field | The keyboard comes up and the bar **rises with it**, above the keyboard. Record steps aside; **Cancel** appears; above the field, green **Ask Andy in your own words** | ⬜ |
+| 31.3 | Type "pri" | Home becomes the matches (Priya…), no letters, no briefing; the row reads **Ask Andy: “pri”**. Drag the results → the keyboard goes down | ⬜ |
+| 31.4 | Tap **Ask Andy: “pri”** | Ask opens with "pri" already in its field, **not** asked yet (no spinner) | ⬜ |
+| 31.5 | Type a word in a note ("greyhound") | The person whose note says it shows, with the line it is in | ⬜ |
+| 31.6 | Type "zzz" | *No one matches “zzz”.* | ⬜ |
+| 31.7 | **Cancel** | The field empties, the keyboard goes, Record and the full list come back | ⬜ |
+| 31.8 | Wi-Fi off, tap the field and type a name | Matches still show; instead of the Ask row: *"Asking needs a connection. Names and words still work."* | ⬜ |
+| 31.9 | Largest Dynamic Type | **Record widens into a short stadium** (the word is never cut or shrunk); the field and Cancel still fit; nothing overlaps the last row | ⬜ |
+| 31.11 | On an iPhone with a home indicator (no Home button), look at the bottom | The field sits **above** the home indicator line, never under it | ⬜ |
+| 31.12 | VoiceOver on, swipe through home from the top | The list, then **Find a name or a word**, then **Record** — though Record is drawn above the field | ⬜ |
+| 31.10 | A new account with no people | No field — only Record and the invitation to record | ⬜ |
 
 ## Simulator pass, 2026-09-30 (Claude, while the developer was away)
 

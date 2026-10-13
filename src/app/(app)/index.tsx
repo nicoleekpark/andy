@@ -1,7 +1,7 @@
 import { Stack, router } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { useRef } from "react";
-import { Pressable, SectionList, StyleSheet, Text, View } from "react-native";
+import { useRef, useState } from "react";
+import { Pressable, ScrollView, SectionList, StyleSheet, Text, View } from "react-native";
 import { useQuery } from "convex/react";
 import { useOffline } from "@/lib/connection";
 import { api } from "@convex/_generated/api";
@@ -13,7 +13,7 @@ import { useBriefingActions } from "@/lib/use-briefing-actions";
 import { ThreadLoop } from "@/components/thread-loop";
 import { useFeature } from "@/lib/feature-flags";
 import { useBriefing } from "@/lib/use-briefing";
-import { colors, fonts, radius, size, space, textOpacity, textSize } from "@/constants/theme";
+import { colors, fonts, size, space, textOpacity, textSize } from "@/constants/theme";
 import { useOncePerSession } from "@/lib/use-once-per-session";
 import { formatDate } from "@/lib/dates";
 import { useOutbox } from "@/lib/outbox";
@@ -23,6 +23,9 @@ import { usePending } from "@/lib/pending-changes";
 import { NOTHING_KEPT_OFFLINE, useLiveOrCopy, useNothingKeptOffline } from "@/lib/offline-copy";
 import { peopleView } from "@convex/offlineViews";
 import { OfflineCopyLine } from "@/components/offline-copy-line";
+import { HomeBottomBar } from "@/components/home-bottom-bar";
+import { NameResults } from "@/components/name-results";
+import { useNameSearch } from "@/lib/use-name-search";
 
 /**
  * Home: the people you keep, and the way in to everything else.
@@ -32,11 +35,10 @@ import { OfflineCopyLine } from "@/components/offline-copy-line";
  * the record button out to capture, the gear out to settings (and the only
  * sign-out button in the app).
  *
- * The search entry point is a button rather than the live box PROJECT_SCOPE.md
- * sketches, and that is a consequence of how recall works rather than a design
- * preference: every question costs a paid embedding call, so there is no
- * search-as-you-type to be had here. A field that looked live and only acted on
- * submit would promise something it cannot do.
+ * Finding someone is the bottom bar's field (`home-bottom-bar.tsx`): it filters
+ * this list in place by name or word, free and offline, with the same search
+ * Ask uses. Asking a question in words costs a call, so it is never what typing
+ * does — only the labelled "Ask Andy: “…”" row spends one (`home-actions.md`).
  */
 /**
  * Nobody kept yet. The loop draws itself the first time this appears in a run
@@ -211,6 +213,16 @@ export default function HomeScreen() {
     useFeature("calendarBriefing"),
   );
   const { askToMute, notNow, openIphoneSettings } = useBriefingActions();
+  const online = !useOffline();
+  /**
+   * What is typed into the bottom bar's field. In memory only, never on disk
+   * (`home-actions.md` R10): it survives opening a profile and coming back,
+   * and nothing new enters `forgetOnThisPhone`.
+   */
+  const [query, setQuery] = useState("");
+  const { results: found } = useNameSearch(query);
+  /** A query present: the list becomes what matches it (R6). */
+  const searching = query.trim() !== "";
   // Letters and the A–Z index only once the list is long (`INDEX_FROM`).
   const { indexed, sections } = sectionsOf(people ?? [], (row) => row.profile.name);
   const list = useRef<SectionList<NonNullable<typeof people>[number], { letter: string }>>(null);
@@ -271,6 +283,22 @@ export default function HomeScreen() {
       />
       <View style={styles.container}>
         <View style={styles.listArea}>
+          {searching ? (
+            // Not A–Z sections, so no letters and no index; the briefing and
+            // the lines above the list wait until the query clears (R6).
+            <ScrollView
+              style={styles.listBox}
+              contentContainerStyle={styles.results}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+              testID="home-search-results"
+            >
+              <NameResults results={found} />
+              {found !== undefined && found.people.length === 0 && found.mentions.length === 0 ? (
+                <Text style={styles.noMatch}>No one matches “{query.trim()}”.</Text>
+              ) : null}
+            </ScrollView>
+          ) : (
           <SectionList
             ref={list}
             // Its own width beside the index: in a row, the list's box needs
@@ -397,30 +425,19 @@ export default function HomeScreen() {
               </Pressable>
             )}
           />
-          {indexed ? (
+          )}
+          {indexed && !searching ? (
             <AzIndex available={sections.map((section) => section.letter)} onJump={(letter) => jumpTo(letter)} />
           ) : null}
         </View>
 
-        <View style={styles.actions}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Ask Andy"
-            onPress={() => router.push("/search")}
-            style={styles.askAndy}
-          >
-            <Text style={styles.askAndyLabel}>Ask Andy</Text>
-          </Pressable>
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Record"
-            onPress={() => router.push("/capture")}
-            style={styles.record}
-          >
-            <Text style={styles.recordLabel}>Record</Text>
-          </Pressable>
-        </View>
+        <HomeBottomBar
+          query={query}
+          onQuery={setQuery}
+          online={online}
+          showField={people !== undefined && people.length > 0}
+          onRecord={() => router.push("/capture")}
+        />
       </View>
     </>
   );
@@ -437,7 +454,9 @@ const styles = StyleSheet.create({
   settingsButton: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
 
   /** The list, and the A–Z index beside it when there is one. */
-  listArea: { flex: 1, flexDirection: "row" },
+  // Room for the half of round Record that rises above the bottom bar, so it
+  // never sits over the last row or the foot of the A–Z index.
+  listArea: { flex: 1, flexDirection: "row", paddingBottom: space.xl },
   listBox: { flex: 1 },
   list: { gap: 4, paddingBottom: 8, flexGrow: 1 },
   /**
@@ -476,22 +495,12 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  actions: { gap: 10 },
-  askAndy: {
-    // Its only edge, so `edge` (3:1), not `line` (1.67:1) — WCAG 1.4.11.
-    borderWidth: 1,
-    borderColor: colors.edge,
-    borderRadius: radius.pill,
-    paddingVertical: 15,
-    alignItems: "center",
+  results: { paddingBottom: space.xxl },
+  noMatch: {
+    color: colors.ink,
+    fontSize: textSize.base,
+    opacity: textOpacity.quiet,
+    marginTop: space.lg,
+    marginHorizontal: space.xl,
   },
-  askAndyLabel: { color: colors.ink, fontSize: 16 },
-
-  record: {
-    backgroundColor: colors.moss,
-    borderRadius: 999,
-    paddingVertical: 18,
-    alignItems: "center",
-  },
-  recordLabel: { color: colors.paper, fontSize: 17, fontWeight: "600" },
 });

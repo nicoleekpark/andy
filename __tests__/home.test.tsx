@@ -303,13 +303,18 @@ describe("home screen", () => {
   });
 
   test("should offer a way into Ask Andy, since a screen nobody can reach is not shipped", async () => {
-    mockPeopleQuery([]);
+    mockPeopleQuery([buildPerson()]);
 
     const router = renderRouter("src/app", { initialUrl: "/" });
     await router;
 
+    // Through the bottom bar's field (`home-actions.md`, S1): in use, it
+    // offers Ask.
     await act(async () => {
-      fireEvent.press(screen.getByLabelText("Ask Andy"));
+      fireEvent(screen.getByTestId("home-search-field"), "focus");
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Ask Andy in your own words" }));
     });
 
     expect(router.getPathname()).toBe("/search");
