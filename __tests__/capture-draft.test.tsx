@@ -1,6 +1,7 @@
 import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 import { AppState } from "react-native";
 import { useAction, useMutation, useQuery } from "convex/react";
+import { useSpeechRecognitionEvent } from "expo-speech-recognition";
 import { router } from "expo-router";
 import { renderRouter } from "expo-router/testing-library";
 import { api } from "@convex/_generated/api";
@@ -78,11 +79,9 @@ async function typeANote(words: string) {
   // From home, as a person gets there — so there is somewhere to go back to.
   const result = renderRouter("src/app", { initialUrl: "/" });
   await result;
+  // Through the orbit's Write door.
   await act(async () => {
-    router.push("/capture");
-  });
-  await act(async () => {
-    fireEvent.press(screen.getByRole("button", { name: "Type it instead" }));
+    router.push("/capture?door=write");
   });
   await act(async () => {
     fireEvent.changeText(screen.getByLabelText(WRITE_BODY), words);
@@ -349,4 +348,34 @@ test("should still offer a note kept the way the first version wrote it, as one 
   });
 
   expect(screen.getByLabelText(WRITE_BODY).props.value).toBe("Priya moved");
+});
+
+test("should keep a voice note's words while it is paused", async () => {
+  const handlers: Record<string, (event?: unknown) => void> = {};
+  (useSpeechRecognitionEvent as jest.Mock).mockImplementation((name: string, handler: (event?: unknown) => void) => {
+    handlers[name] = handler;
+  });
+  const result = renderRouter("src/app", { initialUrl: "/" });
+  await result;
+  await act(async () => {
+    router.push("/capture");
+  });
+  await act(async () => {
+    handlers.start?.();
+  });
+  await act(async () => {
+    handlers.result?.({ results: [{ transcript: "Met Nina at the gym" }], isFinal: true });
+  });
+  await waitFor(() => expect(kept()?.words).toBe("Met Nina at the gym"));
+
+  await act(async () => {
+    fireEvent.press(screen.getByRole("button", { name: "Pause" }));
+  });
+  await act(async () => {
+    handlers.end?.();
+  });
+  const pausedAt = Date.now();
+  await waitFor(() => expect(Date.now() - pausedAt).toBeGreaterThan(600));
+
+  expect(kept()?.words).toBe("Met Nina at the gym");
 });

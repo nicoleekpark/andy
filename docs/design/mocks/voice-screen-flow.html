@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--
+  Storyboard: the voice screen (record-flow.md, owner's redesign, revision
+  2026-10-13). Before and after. An HTML approximation of native
+  screens for explaining the change, not production code. Example people only.
+-->
+<title>Voice screen</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500&family=IBM+Plex+Mono&display=swap">
+<style>
+:root{--page:#EDEBE4;--page-ink:#2A2622;--quiet:#6F6A62;--rule:#CFCAC0;--paper:#E8E6DE;--ink:#2A2622;--line:#B8B3A8;--moss:#5C6B4F;
+  --serif:"Lora",Georgia,serif;--mono:"IBM Plex Mono",ui-monospace,monospace;--sans:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--page:#1E1C19;--page-ink:#ECE8E0;--quiet:#A39D93;--rule:#3A3631;color-scheme:dark}}
+:root[data-theme="dark"]{--page:#1E1C19;--page-ink:#ECE8E0;--quiet:#A39D93;--rule:#3A3631;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--page-ink);font-family:var(--sans);padding:0 20px}
+.wrap{max-width:900px;margin:0 auto;padding-block:40px 64px;display:grid;gap:28px}
+h1{font-family:var(--serif);font-weight:500;margin:0;font-size:clamp(26px,4vw,36px)}
+p{color:var(--quiet);margin:6px 0 0;max-width:68ch}
+.pair{display:flex;flex-wrap:wrap;gap:20px}
+.col{flex:1 1 300px;display:grid;gap:8px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.before .eyebrow{color:#9F4C3B}.after .eyebrow{color:var(--moss)}
+.phone{background:var(--paper);color:var(--ink);border:1px solid var(--rule);border-radius:22px;padding:16px}
+.row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--rule)}
+.row:last-child{border-bottom:none}
+.av{flex:0 0 40px;height:40px;border-radius:50%;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:15px;overflow:hidden;background:var(--paper)}
+.av.photo{background:linear-gradient(135deg,#b79c7e,#7a6a58);border-color:transparent}
+.t{min-width:0;flex:1}
+.name{font-family:var(--serif);font-size:18px}
+.fact{font-size:14px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta{font-family:var(--mono);font-size:12px;opacity:.7}
+.cap{font-size:13px;color:var(--quiet)}
+.phone{display:flex;flex-direction:column;min-height:420px;padding:0;overflow:hidden}
+.list{padding:12px 16px;flex:1}
+.bar{border-top:1px solid var(--line);padding:0 16px 14px;display:flex;flex-direction:column;align-items:center;gap:8px}
+.round{width:64px;height:64px;border-radius:50%;background:var(--moss);color:var(--paper);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;margin-top:-32px}
+.field{align-self:stretch;border:1px solid #857E6D;border-radius:999px;height:40px;display:flex;align-items:center;padding:0 12px;font-size:14px;color:#63605A;gap:8px}
+.pill{border-radius:999px;padding:12px;text-align:center;font-size:14px;margin:0 16px 8px}
+.pill.o{border:1px solid #857E6D}.pill.f{background:var(--moss);color:var(--paper);font-weight:600}
+.ask{align-self:stretch;color:var(--moss);font-size:14px}
+.res{font-size:15px;color:var(--moss);padding:8px 0}
+.lbl{font-size:11px;letter-spacing:.06em;text-transform:uppercase;opacity:.7;margin-top:6px}
+.cancel{color:var(--moss);font-size:14px}
+.card{margin:10px;border:1px solid #857E6D;border-radius:16px;flex:1;display:flex;flex-direction:column;padding:14px;gap:10px}
+.tx{font-size:15px;line-height:22px;flex:1}
+.tm{text-align:center;font-family:var(--mono);font-size:17px}
+.pl{text-align:center;font-size:10px;letter-spacing:.06em;opacity:.7}
+.row3{display:flex;justify-content:space-evenly;align-items:flex-start}
+.ctl{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px}
+.c{border-radius:50%;display:flex;align-items:center;justify-content:center}
+.s{width:48px;height:48px;border:1px solid #857E6D;margin-top:8px}
+.m{width:64px;height:64px;border:2px solid #9F4C3B;color:#9F4C3B}
+.m.p{border:1px solid #857E6D;color:var(--ink)}
+.d{width:48px;height:48px;background:var(--moss);color:var(--paper);margin-top:8px}
+.old{display:flex;flex-direction:column;gap:8px;padding:14px;flex:1}
+.pill{border-radius:999px;padding:10px;text-align:center;font-size:13px}
+.pill.f{background:#9F4C3B;color:var(--paper)}.pill.o{opacity:.8}
+.title{text-align:center;font-weight:600;font-size:14px;padding:10px;border-bottom:1px solid var(--line)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Voice screen</h1>
+  <p>Your redesign of 2026-10-13. One card: words from the top, the time under them, three controls with their words. Red marks listening; the word "Recording" and the dot are gone.</p>
+</header>
+<div class="pair">
+  <div class="col before"><div class="eyebrow">Before, listening</div>
+    <div class="phone" style="min-height:420px"><div class="title">‹ New note</div>
+      <div class="old"><div class="tx">Met Nina at the booth, she's moving to Lisbon…</div><div class="pill f">Stop</div><div class="pill o">Start over</div></div></div>
+    <div class="cap">One big Stop; Start over only once words came; no time; card and typing links when not recording.</div>
+  </div>
+  <div class="col after"><div class="eyebrow">After, listening</div>
+    <div class="phone" style="min-height:420px"><div class="title">‹ New note</div>
+      <div class="card"><div class="tx">Met Nina at the booth, she's moving to Lisbon…</div><div class="tm">0:42</div>
+      <div class="row3"><div class="ctl"><div class="c s">🗑</div>Start over</div><div class="ctl"><div class="c m">⏸</div>Pause</div><div class="ctl"><div class="c d">✓</div>Done</div></div></div></div>
+    <div class="cap">The red Pause and the running time say it is listening. Start over asks only when there are words.</div>
+  </div>
+  <div class="col after"><div class="eyebrow">After, paused</div>
+    <div class="phone" style="min-height:420px"><div class="title">‹ New note</div>
+      <div class="card"><div class="tx">Met Nina at the booth, she's moving to Lisbon…</div><div class="pl">PAUSED</div><div class="tm">0:42</div>
+      <div class="row3"><div class="ctl"><div class="c s">🗑</div>Start over</div><div class="ctl"><div class="c m p">▶</div>Resume</div><div class="ctl"><div class="c d">✓</div>Done</div></div></div></div>
+    <div class="cap">Resume adds to the same words. Done goes to the check step. If voice can't be used, a line and Write instead.</div>
+  </div>
+</div>
+</div>
+</body>
+</html>

@@ -70,7 +70,7 @@ describe("app route tree", () => {
     // The shared capture screen's idle copy — proof this is the real screen,
     // not an empty placeholder route.
     expect(
-      screen.getByText("Tap record and say what you want to remember."),
+      screen.getByText("Tap record. Say who it's about and what you want to remember."),
     ).toBeTruthy();
 
     // The scoped door has to say who it is scoped *to*, or the two routes are

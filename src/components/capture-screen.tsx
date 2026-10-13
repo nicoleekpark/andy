@@ -1,6 +1,7 @@
 import { Stack, router, useNavigation } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  AccessibilityInfo,
   AppState,
   Pressable,
   ScrollView,
@@ -26,9 +27,10 @@ import { useRowKeys } from "@/lib/use-row-keys";
 import { localToday } from "@/lib/dates";
 import { describePerson } from "@/lib/describe-person";
 import { sourceLabel } from "@/lib/note-source";
-import { colors, fonts, radius, space, textOpacity, textSize } from "@/constants/theme";
+import { colors, fonts, radius, size, space, textOpacity, textSize } from "@/constants/theme";
 import { userMessage } from "@/lib/user-message";
 import { useOutbox } from "@/lib/outbox";
+import { SymbolView } from "expo-symbols";
 import { useCaptureDrafts, type CaptureDraft } from "@/lib/capture-draft";
 import { useLiveOrCopy } from "@/lib/offline-copy";
 import { withNotesView } from "@convex/offlineViews";
@@ -81,7 +83,14 @@ import { withNotesView } from "@convex/offlineViews";
 const DEFAULT_LOCALE = "en-US";
 
 type Phase =
-  "idle" | "starting" | "listening" | "extracting" | "review" | "saving";
+  | "idle"
+  | "starting"
+  | "listening"
+  /** Listening stopped by Pause; the words so far are kept, Resume appends. */
+  | "paused"
+  | "extracting"
+  | "review"
+  | "saving";
 
 /**
  * What saving will do with one name, in a line.
@@ -471,6 +480,12 @@ export function CaptureScreen({
   );
   /** Finalised text, accumulated across the utterances of one recording. */
   const [finalText, setFinalText] = useState("");
+  /**
+   * The same words as the recogniser settled them, one piece per final
+   * result, so the newest can read strongest (record-flow.md: newest at full
+   * ink, the one before at `secondary`, older at `quiet`).
+   */
+  const [heardPieces, setHeardPieces] = useState<string[]>([]);
   /** The in-flight guess, replaced on every event until it finalises. */
   const [interim, setInterim] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -785,15 +800,26 @@ export function CaptureScreen({
    */
   const recordingRef = useRef(false);
   /**
-   * Set by "Start over" and spent by the `end` that concludes the recording it
-   * abandoned. The new recording is started from there, not straight after
-   * `abort()`: the old session's `end` still has to arrive, and if a new
-   * session were already listening by then, that `end` would look like the
-   * close of the new one and send half a sentence off to be read.
+   * Set by Pause and spent by the `end` that concludes the session it
+   * stopped: that `end` means "paused", not "finished", so it must not send
+   * the words on to be checked.
    */
-  const restartRef = useRef(false);
-  /** `start`, for the `end` handler above its declaration. */
-  const startRef = useRef<() => Promise<void>>(async () => {});
+  const pausingRef = useRef(false);
+  /** The transcript's scroller, kept on the newest line. */
+  const transcriptScroll = useRef<ScrollView>(null);
+  /**
+   * Why voice cannot be used right now, when it cannot (record-flow.md,
+   * decision B): said in a line, with Write instead beneath it.
+   */
+  const [voiceUnavailable, setVoiceUnavailable] = useState<"denied" | "noModel" | null>(null);
+  /**
+   * Time spent listening, for the timer: what earlier stretches added up to,
+   * and when the current one began (null while not listening). Pause freezes
+   * it; Resume carries on from where it stopped.
+   */
+  const [heardBefore, setHeardBefore] = useState(0);
+  const [listeningSince, setListeningSince] = useState<number | null>(null);
+  const [clock, setClock] = useState(() => Date.now());
   /**
    * The last first-met date we held, so unticking the box and changing your
    * mind restores the date extraction worked out ("어제 처음 만났는데" →
@@ -837,7 +863,7 @@ export function CaptureScreen({
         ? transcript
         : typing !== null
           ? typing
-          : phase === "listening" || phase === "starting"
+          : phase === "listening" || phase === "starting" || phase === "paused"
             ? finalText
             : "";
     // The same test the review screen is drawn by (below).
@@ -1097,8 +1123,31 @@ export function CaptureScreen({
     ]);
   }, [confirm, scanCard]);
 
+  /**
+   * Listening is over (Done, or the recogniser ended on its own): the words go
+   * onto the editor to be checked, or, with none, back to the start.
+   */
+  const finishListening = useCallback(() => {
+    setListeningSince((since) => {
+      if (since !== null) setHeardBefore((before) => before + Date.now() - since);
+      return null;
+    });
+    const spoken = finalRef.current.trim();
+    setInterim("");
+    if (spoken === "") {
+      setPhase("idle");
+      return;
+    }
+    // Onto the same editor a typed note uses, not straight to Claude
+    // (decided 2026-09-29). A misheard name fixed here is fixed once, in the
+    // words every field is then built from; fixed after extraction, it has to
+    // be fixed again in the draft, or read twice.
+    setTyping(spoken);
+  }, []);
+
   useSpeechRecognitionEvent("start", () => {
     recordingRef.current = true;
+    setListeningSince(Date.now());
     setPhase("listening");
   });
 
@@ -1108,6 +1157,7 @@ export function CaptureScreen({
       finalRef.current =
         `${finalRef.current}${finalRef.current ? " " : ""}${best}`.trim();
       setFinalText(finalRef.current);
+      if (best.trim() !== "") setHeardPieces((pieces) => [...pieces, best.trim()]);
       setInterim("");
     } else {
       setInterim(best);
@@ -1126,6 +1176,11 @@ export function CaptureScreen({
     if (!recordingRef.current) {
       return;
     }
+    // Stopped by Pause: whatever the session says on its way out is not
+    // about the note, which carries on when Resume is tapped.
+    if (pausingRef.current) {
+      return;
+    }
     recordingRef.current = false;
     // `no-speech` is what the recogniser reports when someone taps record and
     // then says nothing. That is a normal thing for a person to do, not a
@@ -1139,9 +1194,11 @@ export function CaptureScreen({
   });
 
   useSpeechRecognitionEvent("end", () => {
-    if (restartRef.current) {
-      restartRef.current = false;
-      void startRef.current();
+    if (pausingRef.current) {
+      pausingRef.current = false;
+      recordingRef.current = false;
+      setInterim("");
+      setPhase("paused");
       return;
     }
     // Exactly one `end` may start an extraction. A duplicate would re-run
@@ -1152,22 +1209,16 @@ export function CaptureScreen({
       return;
     }
     recordingRef.current = false;
-    const spoken = finalRef.current.trim();
-    if (spoken === "") {
-      setPhase("idle");
-      setInterim("");
-      return;
-    }
-    setInterim("");
-    // Onto the same editor a typed note uses, not straight to Claude
-    // (decided 2026-09-29). A misheard name fixed here is fixed once, in the
-    // words every field is then built from; fixed after extraction, it has to
-    // be fixed again in the draft, or read twice.
-    setTyping(spoken);
+    finishListening();
   });
 
-  const start = useCallback(async () => {
+  /**
+   * Start listening. `appending` is Resume: the words so far stay and new
+   * ones join them; otherwise this is a new recording from nothing.
+   */
+  const start = useCallback(async (appending = false) => {
     setError(null);
+    setVoiceUnavailable(null);
     setPhase("starting");
 
     // Asked for here, at the moment of use, rather than on launch — CLAUDE.md
@@ -1175,9 +1226,7 @@ export function CaptureScreen({
     const permission =
       await ExpoSpeechRecognitionModule.requestPermissionsAsync();
     if (!permission.granted) {
-      setError(
-        "Andy needs the microphone and speech recognition to take a voice note. You can turn them on in Settings.",
-      );
+      setVoiceUnavailable("denied");
       setPhase("idle");
       return;
     }
@@ -1189,9 +1238,7 @@ export function CaptureScreen({
     // no model for this language, recognition would go to Apple's servers and
     // fail — so say so before recording, rather than after someone has spoken.
     if (offline && !onDeviceAvailable) {
-      setError(
-        "Speech needs a connection for this language — type it instead.",
-      );
+      setVoiceUnavailable("noModel");
       setPhase("idle");
       return;
     }
@@ -1220,12 +1267,20 @@ export function CaptureScreen({
       }${localeNote}`,
     );
 
-    finalRef.current = "";
-    setFinalText("");
+    if (!appending) {
+      finalRef.current = "";
+      setFinalText("");
+      setHeardPieces([]);
+      setDraft(null);
+      setTranscript("");
+      setReadTranscript("");
+      setHeardBefore(0);
+      // Said once, when a recording begins — not on every Resume. There is
+      // no word "Recording" on screen any more (record-flow.md, revision
+      // 2026-10-13): the running timer and the red Pause carry it.
+      AccessibilityInfo.announceForAccessibility("Recording.");
+    }
     setInterim("");
-    setDraft(null);
-    setTranscript("");
-    setReadTranscript("");
 
     ExpoSpeechRecognitionModule.start({
       lang: locale,
@@ -1261,44 +1316,73 @@ export function CaptureScreen({
     if (door === "photo") chooseCardSource();
   }, [door, resumed, waiting, start, chooseCardSource]);
 
-  const stop = useCallback(() => {
+  /** Pause: stop listening, keep the words. */
+  const pause = useCallback(() => {
+    if (phase !== "listening") return;
+    pausingRef.current = true;
+    setListeningSince((since) => {
+      if (since !== null) setHeardBefore((before) => before + Date.now() - since);
+      return null;
+    });
     ExpoSpeechRecognitionModule.stop();
-  }, []);
-
-  useEffect(() => {
-    startRef.current = start;
-  }, [start]);
+  }, [phase]);
 
   /**
-   * Throw this recording away and listen again, without reading any of it.
-   *
-   * The only other way to redo a note used to be Stop → wait for extraction →
-   * "Discard and start over", which pays for a Claude call on words the
-   * person has already decided to throw away (asked for 2026-09-29).
-   * `restartRef` makes the abandoned session's `end` start the next recording
-   * instead of an extraction. `recordingRef` is dropped so anything else that
-   * session reports on its way out, an error included, is ignored rather than
-   * shown against the recording that replaces it.
+   * Done: finished talking. While listening the recogniser is stopped and
+   * its `end` hands the words on; while paused nothing is listening, so they
+   * go on at once.
+   */
+  const done = useCallback(() => {
+    if (phase === "listening") {
+      ExpoSpeechRecognitionModule.stop();
+    } else if (phase === "paused") {
+      finishListening();
+    }
+  }, [phase, finishListening]);
+
+  /**
+   * Start over: clear what was heard and go back to the start. With nothing
+   * heard yet there is nothing to lose, so it does not ask (record-flow.md,
+   * revision 2026-10-13); with words it asks first.
    */
   const startOver = useCallback(() => {
-    // One restart at a time. Two taps can land before the button unmounts,
-    // and a second `abort()` could produce a second `end` that arrives after
-    // the new recording has begun and closes it early.
-    if (restartRef.current) {
+    const clear = () => {
+      if (recordingRef.current) {
+        // The abandoned session's `end` and `aborted` are then ignored.
+        recordingRef.current = false;
+        ExpoSpeechRecognitionModule.abort();
+      }
+      pausingRef.current = false;
+      finalRef.current = "";
+      setFinalText("");
+      setHeardPieces([]);
+      setInterim("");
+      setListeningSince(null);
+      setHeardBefore(0);
+      setPhase("idle");
+    };
+    if ((finalRef.current + interim).trim() === "") {
+      clear();
       return;
     }
-    recordingRef.current = false;
-    restartRef.current = true;
-    finalRef.current = "";
-    setFinalText("");
-    setInterim("");
-    setPhase("starting");
-    ExpoSpeechRecognitionModule.abort();
-  }, []);
+    confirm("Start over?", "What you said so far will be cleared.", [
+      { text: "Start over", onPress: clear },
+      { text: "Keep recording", style: "cancel" },
+    ]);
+  }, [confirm, interim]);
+
+  // The timer moves once a second, and only while listening.
+  useEffect(() => {
+    if (listeningSince === null) return;
+    const timer = setInterval(() => setClock(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [listeningSince]);
+  const heardMs = heardBefore + (listeningSince === null ? 0 : Math.max(0, clock - listeningSince));
 
   const discard = useCallback(() => {
     finalRef.current = "";
     setFinalText("");
+      setHeardPieces([]);
     setInterim("");
     setDraft(null);
     setTranscript("");
@@ -2181,132 +2265,169 @@ export function CaptureScreen({
   }
 
   const body = finalText || interim;
+  const paused = phase === "paused";
+  /** Listening or paused: the three controls show. */
+  const recording = listening || paused || phase === "starting";
+  const minutes = Math.floor(heardMs / 60000);
+  const seconds = Math.floor((heardMs % 60000) / 1000);
+  const timer = `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  const unavailableLine =
+    voiceUnavailable === "denied"
+      ? "Andy needs the microphone and speech recognition to take a voice note. Turn them on in Settings, or write it instead."
+      : voiceUnavailable === "noModel"
+        ? "Speech needs a connection for this language — write it instead."
+        : null;
 
   return (
     <>
       <Stack.Screen options={{ title: "New note" }} />
       <View style={styles.container}>
-        <ScrollView
-          style={styles.transcriptArea}
-          // Centred while the screen is only holding a status line, top-aligned
-          // once there are words to read: a sentence pinned to the top of an
-          // otherwise empty screen reads as a fragment of a page that failed to
-          // load, which is exactly the wrong impression for "we can't reach the
-          // server" to give.
-          contentContainerStyle={[
-            styles.transcriptContent,
-            body ? null : styles.transcriptContentEmpty,
-          ]}
-        >
-          {body ? (
-            <Text style={styles.transcript}>
-              {finalText}
-              {interim ? (
-                <Text style={styles.interim}>
-                  {finalText ? " " : ""}
-                  {interim}
+        {/*
+          One card that holds the whole recording (record-flow.md, "Voice
+          screen — owner's redesign"): words on top, the time under them, the
+          controls at the foot. Its only edge is `edge`, at `radius.card`.
+        */}
+        <View style={styles.voiceCard} testID="record-card">
+          <ScrollView
+            ref={transcriptScroll}
+            style={styles.transcriptArea}
+            // Top-anchored, growing downwards; kept on the newest line
+            // (revision 2026-10-13). Centred only while it holds a sentence
+            // about what to do.
+            contentContainerStyle={[
+              styles.transcriptContent,
+              body ? null : styles.transcriptContentEmpty,
+            ]}
+            onContentSizeChange={() => transcriptScroll.current?.scrollToEnd({ animated: false })}
+          >
+            {body ? (
+              <Text style={styles.transcript}>
+                {heardPieces.map((piece, index) => (
+                  <Text
+                    key={index}
+                    style={
+                      index === heardPieces.length - 1
+                        ? null
+                        : index === heardPieces.length - 2
+                          ? styles.heardEarlier
+                          : styles.heardOldest
+                    }
+                  >
+                    {index > 0 ? " " : ""}
+                    {piece}
+                  </Text>
+                ))}
+                {interim ? (
+                  <Text style={styles.interim}>
+                    {finalText ? " " : ""}
+                    {interim}
+                  </Text>
+                ) : null}
+              </Text>
+            ) : unavailableLine !== null ? (
+              <View style={styles.unavailable}>
+                <Text style={styles.unavailableLine}>{unavailableLine}</Text>
+                {/* Decision B: the way to still leave a note, here. */}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Write instead"
+                  onPress={() => {
+                    setVoiceUnavailable(null);
+                    setSource("manual");
+                    setError(null);
+                    setTyping("");
+                  }}
+                  style={styles.writeInstead}
+                  testID="write-instead-button"
+                >
+                  <Text style={styles.primaryLabel}>Write instead</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <Text style={styles.empty}>
+                {listening
+                  ? "Listening — say what's new."
+                  : phase === "extracting"
+                    ? // A card is read from this screen, so without this the
+                      // invitation to record sat behind the whole wait.
+                      source === "business_card"
+                      ? "Reading the card…"
+                      : "Reading…"
+                    : waitingGone
+                      ? "That note isn't waiting on this phone any more — it may already be saved. Tap record to start a new one."
+                      : scopeMissing
+                        ? "Andy doesn't have anyone by that link."
+                        : scopeLoading
+                          ? "Finding out who this is about…"
+                          : aboutName !== undefined
+                            ? `Tap record. This note goes to ${aboutName}, whoever else comes up.`
+                            : "Tap record. Say who it's about and what you want to remember."}
+              </Text>
+            )}
+          </ScrollView>
+
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+
+          {recording ? (
+            // The time alone carries "recording" now — no word, no dot.
+            <View style={styles.status} testID="record-status">
+              {paused ? (
+                <Text style={styles.pausedLabel} testID="paused-label">
+                  Paused
                 </Text>
               ) : null}
-            </Text>
-          ) : (
-            <Text style={styles.empty}>
-              {listening
-                ? "Listening — say what's new."
-                : phase === "extracting"
-                  ? // A card is read from this screen, so without this the
-                    // invitation to record sat behind the whole wait.
-                    source === "business_card"
-                    ? "Reading the card…"
-                    : "Reading…"
-                  : waitingGone
-                    ? "That note isn't waiting on this phone any more — it may already be saved. Tap record to start a new one."
-                    : scopeMissing
-                      ? "Andy doesn't have anyone by that link."
-                      : scopeLoading
-                        ? "Finding out who this is about…"
-                        : aboutName !== undefined
-                          ? `Tap record. This note goes to ${aboutName}, whoever else comes up.`
-                          : "Tap record and say what you want to remember."}
-            </Text>
+              <Text style={styles.timer} testID="record-timer" accessibilityLabel={`${minutes} ${minutes === 1 ? "minute" : "minutes"} ${seconds} ${seconds === 1 ? "second" : "seconds"} elapsed`}>
+                {timer}
+              </Text>
+            </View>
+          ) : null}
+
+          {recording ? (
+            <View style={styles.controls}>
+              <ControlButton
+                label="Start over"
+                symbol="trash"
+                onPress={startOver}
+                variant="side"
+                // Not while a start is still on its way: nothing is listening
+                // yet to stop, and the start would land after the clear.
+                disabled={phase === "starting"}
+                testID="start-over-button"
+              />
+              <ControlButton
+                label={paused ? "Resume" : "Pause"}
+                symbol={paused ? "play.fill" : "pause.fill"}
+                onPress={paused ? () => void start(true) : pause}
+                variant={listening ? "live" : "centre"}
+                disabled={phase === "starting"}
+                testID="pause-button"
+              />
+              <ControlButton
+                label="Done"
+                symbol="checkmark"
+                onPress={done}
+                variant="done"
+                disabled={phase === "starting"}
+                testID="done-button"
+              />
+            </View>
+          ) : phase === "extracting" || unavailableLine !== null ? null : (
+            <View style={styles.controls}>
+              <ControlButton
+                label="Record"
+                symbol="mic.fill"
+                onPress={() => void start()}
+                variant="mic"
+                // Not recordable until the subject is known. Starting first and
+                // hoping the name arrives before the user stops talking would
+                // fail exactly when the network is slow, and fail silently.
+                disabled={busy || scopeLoading || scopeMissing}
+                hideLabel
+                testID="mic-button"
+              />
+            </View>
           )}
-        </ScrollView>
-
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={listening ? "Stop recording" : "Start recording"}
-          onPress={listening ? stop : start}
-          // Not recordable until the subject is known. Starting first and
-          // hoping the name arrives before the user stops talking would fail
-          // exactly when the network is slow, and fail silently — the note
-          // would be extracted as if it had come from home.
-          disabled={
-            phase === "starting" || busy || scopeLoading || scopeMissing
-          }
-          style={[
-            styles.primaryButton,
-            listening && styles.recording,
-            (busy || scopeLoading || scopeMissing) && styles.disabled,
-          ]}
-        >
-          <Text style={styles.primaryLabel}>
-            {phase === "extracting"
-              ? "Reading…"
-              : phase === "starting"
-                ? "Starting…"
-                : listening
-                  ? "Stop"
-                  : "Record"}
-          </Text>
-        </Pressable>
-
-        {/*
-          While recording, only what works while recording (2026-09-30). The
-          card and typing doors were disabled mid-recording but drawn exactly
-          like live buttons, so they read as broken; and Start over, shown
-          before any word was heard, had nothing to throw away and so seemed to
-          do nothing. Start over now waits for words; the two doors come back
-          once the recording ends.
-        */}
-        {listening && body !== "" ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Start over"
-            onPress={startOver}
-            style={styles.secondaryButton}
-          >
-            <Text style={styles.secondaryLabel}>Start over</Text>
-          </Pressable>
-        ) : null}
-
-        {listening || phase === "starting" ? null : (
-          <>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Scan a business card"
-              onPress={chooseCardSource}
-              disabled={busy}
-              style={styles.secondaryButton}
-            >
-              <Text style={styles.secondaryLabel}>Scan a business card</Text>
-            </Pressable>
-
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Type it instead"
-              onPress={() => {
-                setSource("manual");
-                setError(null);
-                setTyping("");
-              }}
-              disabled={busy}
-              style={styles.secondaryButton}
-            >
-              <Text style={styles.secondaryLabel}>Type it instead</Text>
-            </Pressable>
-          </>
-        )}
+        </View>
 
         {/*
           Measurement instrument, not product. PROJECT_SCOPE.md requires Korean
@@ -2347,6 +2468,62 @@ export function CaptureScreen({
   );
 }
 
+/**
+ * One of the recording controls (record-flow.md, revision 2026-10-13): a
+ * round button with its word beneath, the spoken name and the visible word
+ * the same (WCAG 2.5.3). `live` is Pause while listening — the one place
+ * `alert` marks a recording in progress; `done` is the one filled control.
+ */
+function ControlButton({
+  label,
+  symbol,
+  onPress,
+  variant,
+  disabled = false,
+  hideLabel = false,
+  testID,
+}: {
+  label: string;
+  symbol: React.ComponentProps<typeof SymbolView>["name"];
+  onPress: () => void;
+  variant: "side" | "centre" | "live" | "done" | "mic";
+  disabled?: boolean;
+  hideLabel?: boolean;
+  testID: string;
+}) {
+  const filled = variant === "done" || variant === "mic";
+  const tint = filled ? colors.paper : variant === "live" ? colors.alert : colors.ink;
+  return (
+    <View style={styles.control}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        onPress={onPress}
+        disabled={disabled}
+        style={[
+          variant === "side" || variant === "done" ? styles.controlSide : styles.controlMain,
+          filled ? styles.controlFilled : styles.controlRing,
+          variant === "live" && styles.controlLive,
+          disabled && styles.disabled,
+        ]}
+        testID={testID}
+      >
+        <SymbolView
+          name={symbol}
+          size={size.icon}
+          tintColor={tint}
+          fallback={<Text style={[styles.controlFallback, { color: tint }]}>{label}</Text>}
+        />
+      </Pressable>
+      {hideLabel ? null : (
+        <Text style={styles.controlLabel} importantForAccessibility="no" accessibilityElementsHidden>
+          {label}
+        </Text>
+      )}
+    </View>
+  );
+}
+
 function Field({
   label,
   children,
@@ -2371,6 +2548,73 @@ const styles = StyleSheet.create({
   reviewContent: { paddingBottom: 48, gap: 20 },
   lead: { color: colors.ink, fontSize: 15, opacity: 0.75, lineHeight: 22 },
 
+  // The recording's one card: its only edge is `edge`, at the card radius.
+  voiceCard: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.edge,
+    borderRadius: radius.card,
+    padding: space.lg,
+    gap: space.md,
+  },
+  status: { alignItems: "center", gap: space.xs },
+  pausedLabel: {
+    color: colors.ink,
+    fontSize: textSize.xs,
+    opacity: textOpacity.quiet,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
+  timer: {
+    color: colors.ink,
+    fontSize: textSize.xxl,
+    fontFamily: fonts.utility,
+    fontVariant: ["tabular-nums"],
+  },
+  controls: {
+    flexDirection: "row",
+    justifyContent: "space-evenly",
+    alignItems: "flex-start",
+  },
+  control: { alignItems: "center", gap: space.xs, flex: 1 },
+  controlMain: {
+    width: size.round,
+    height: size.round,
+    borderRadius: radius.pill,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  controlSide: {
+    width: size.touch + space.md,
+    height: size.touch + space.md,
+    borderRadius: radius.pill,
+    alignItems: "center",
+    justifyContent: "center",
+    // Lined up with the centre control's middle.
+    marginTop: (size.round - size.touch - space.md) / 2,
+  },
+  // Its only edge: `edge` (3:1, WCAG 1.4.11).
+  controlRing: { borderWidth: 1, borderColor: colors.edge },
+  // Listening: the ring and glyph in `alert`, STYLE.md's named exception for
+  // the live recording indicator (record-flow.md, Final choice).
+  controlLive: { borderColor: colors.alert, borderWidth: 2 },
+  controlFilled: { backgroundColor: colors.moss },
+  controlLabel: { color: colors.ink, fontSize: textSize.sm, textAlign: "center" },
+  controlFallback: { fontSize: textSize.xs },
+  unavailable: { alignItems: "center", gap: space.lg },
+  unavailableLine: {
+    color: colors.alert,
+    fontSize: textSize.md,
+    lineHeight: 21,
+    textAlign: "center",
+  },
+  writeInstead: {
+    backgroundColor: colors.moss,
+    borderRadius: radius.pill,
+    paddingHorizontal: space.xl,
+    minHeight: size.touch,
+    justifyContent: "center",
+  },
   transcriptArea: { flex: 1 },
   transcriptContent: { paddingVertical: 8 },
   transcriptContentEmpty: {
@@ -2379,6 +2623,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   transcript: { color: colors.ink, fontSize: 18, lineHeight: 27 },
+  // Recency by ink opacity alone, never below the 5.0:1 floor.
+  heardEarlier: { opacity: textOpacity.secondary },
+  heardOldest: { opacity: textOpacity.quiet },
   /** The unfinalised tail, dimmed so it reads as "still deciding". */
   interim: { color: colors.ink, opacity: textOpacity.quiet },
   empty: {
