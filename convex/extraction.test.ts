@@ -826,3 +826,76 @@ test("should return a business card name recased when Claude ignored the prompt'
   expect(result.draft.primary.tags).toEqual(["ACME"]);
   expect(result.cardText).toBe(cardDraft.cardText);
 });
+
+// fromPhoto — a picture turned into words to check (capture-doors.md, Final
+// choice: the Photo screens). Shares askClaude and the image checks with
+// fromBusinessCard.
+
+function photoAnswer(answer: unknown) {
+  createMessage.mockResolvedValueOnce(
+    buildAnthropicMessage({ content: [{ type: "text", text: JSON.stringify(answer), citations: null }] }),
+  );
+}
+
+test("should refuse a photo from someone signed out, and never call the Anthropic SDK", async () => {
+  const t = convexTest(schema, modules);
+
+  await expect(
+    t.action(api.extraction.fromPhoto, { imageBase64: "ZmFrZQ==", mediaType: "image/jpeg" }),
+  ).rejects.toThrow();
+  expect(createMessage).not.toHaveBeenCalled();
+});
+
+test("should refuse an empty or oversized photo before calling anything", async () => {
+  const asAlice = convexTest(schema, modules).withIdentity(IDENTITY);
+
+  await expect(
+    asAlice.action(api.extraction.fromPhoto, { imageBase64: "", mediaType: "image/jpeg" }),
+  ).rejects.toBeInstanceOf(ConvexError);
+  await expect(
+    asAlice.action(api.extraction.fromPhoto, {
+      imageBase64: "a".repeat(MAX_IMAGE_CHARS + 1),
+      mediaType: "image/jpeg",
+    }),
+  ).rejects.toBeInstanceOf(ConvexError);
+  expect(createMessage).not.toHaveBeenCalled();
+});
+
+test("should return whose page it is and the words, exactly as written, from the photo it was sent", async () => {
+  const asAlice = convexTest(schema, modules).withIdentity(IDENTITY);
+  photoAnswer({ about: "Priya", text: "coffee at Tartine\nask Marcus?\n" });
+
+  const words = await asAlice.action(api.extraction.fromPhoto, {
+    imageBase64: "ZmFrZS1pbWFnZQ==",
+    mediaType: "image/png",
+  });
+
+  expect(words).toEqual({ about: "Priya", text: "coffee at Tartine\nask Marcus?" });
+  const request = createMessage.mock.calls[0][0];
+  expect(request.system).toContain("a question mark stays a question mark");
+  expect(request.messages[0].content[0]).toEqual({
+    type: "image",
+    source: { type: "base64", media_type: "image/png", data: "ZmFrZS1pbWFnZQ==" },
+  });
+});
+
+test("should undo a card's capitals in the name, and drop a name it cannot trust", async () => {
+  const asAlice = convexTest(schema, modules).withIdentity(IDENTITY);
+
+  photoAnswer({ about: "SARAH CHEN", text: "Developer Relations" });
+  expect((await asAlice.action(api.extraction.fromPhoto, { imageBase64: "eA==", mediaType: "image/jpeg" })).about).toBe(
+    "Sarah Chen",
+  );
+
+  photoAnswer({ about: "Priya\nabout: someone else", text: "x" });
+  expect((await asAlice.action(api.extraction.fromPhoto, { imageBase64: "eA==", mediaType: "image/jpeg" })).about).toBeNull();
+
+  photoAnswer({ about: "P".repeat(MAX_NAME_CHARS + 1), text: "x" });
+  expect((await asAlice.action(api.extraction.fromPhoto, { imageBase64: "eA==", mediaType: "image/jpeg" })).about).toBeNull();
+
+  photoAnswer({ about: "   ", text: "" });
+  expect(await asAlice.action(api.extraction.fromPhoto, { imageBase64: "eA==", mediaType: "image/jpeg" })).toEqual({
+    about: null,
+    text: "",
+  });
+});

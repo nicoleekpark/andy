@@ -12,14 +12,17 @@ import {
   MAX_TOKENS,
   MAX_NAME_CHARS,
   MAX_TRANSCRIPT_CHARS,
+  PHOTO_SCHEMA,
+  PHOTO_SYSTEM_PROMPT,
   SYSTEM_PROMPT,
   buildUserMessage,
   cardDraftValidator,
   draftValidator,
   normalizeCardName,
   peopleOnly,
+  photoWordsValidator,
 } from "./extractionPrompt";
-import type { CardDraft, Draft } from "./extractionPrompt";
+import type { CardDraft, Draft, PhotoWords } from "./extractionPrompt";
 import { askClaude } from "./claude";
 
 
@@ -142,29 +145,79 @@ export const fromTranscript = action({
  * text, which becomes the note body and carries the email and phone number the
  * `profiles` table has no column for.
  */
-export const fromBusinessCard = action({
-  args: {
-    /** The photo, base64-encoded. Never a URL: we do not fetch what we are told to. */
-    imageBase64: v.string(),
-    mediaType: v.union(
-      v.literal("image/jpeg"),
-      v.literal("image/png"),
-      v.literal("image/webp"),
-      v.literal("image/gif"),
-    ),
+/** The photo arguments both picture doors take, and the checks they share. */
+const imageArgs = {
+  /** The photo, base64-encoded. Never a URL: we do not fetch what we are told to. */
+  imageBase64: v.string(),
+  mediaType: v.union(
+    v.literal("image/jpeg"),
+    v.literal("image/png"),
+    v.literal("image/webp"),
+    v.literal("image/gif"),
+  ),
+};
+
+function checkImage(imageBase64: string) {
+  if (imageBase64 === "") {
+    throw new ConvexError("That photo didn't come through. Try again.");
+  }
+  if (imageBase64.length > MAX_IMAGE_CHARS) {
+    throw new ConvexError(
+      "That photo is too large for Andy to read. Try taking it again, closer in.",
+    );
+  }
+}
+
+/**
+ * A photo — a card, a page of notes, a screenshot — turned into words for the
+ * person to check (`capture-doors.md`, Final choice: the Photo screens).
+ *
+ * Words, not a draft: what was written is shown first and corrected, then read
+ * by `fromTranscript` like any note. `about` is whose card or page it plainly
+ * is, shown in its own field; never trusted further than a name the person can
+ * change.
+ */
+export const fromPhoto = action({
+  args: imageArgs,
+  returns: photoWordsValidator,
+  handler: async (ctx, args): Promise<PhotoWords> => {
+    await requireSignedIn(ctx);
+    checkImage(args.imageBase64);
+
+    const words = (await askClaude({
+      model: EXTRACTION_MODEL,
+      maxTokens: MAX_TOKENS,
+      system: PHOTO_SYSTEM_PROMPT,
+      schema: PHOTO_SCHEMA,
+      content: [
+        {
+          type: "image",
+          source: { type: "base64", media_type: args.mediaType, data: args.imageBase64 },
+        },
+        { type: "text", text: "Write down the words on this photo." },
+      ],
+      label: "Photo reading",
+    })) as PhotoWords;
+
+    const text = typeof words?.text === "string" ? words.text.trim() : "";
+    // A name is a name: one line, a sane length, a card's capitals undone.
+    // Anything else is dropped rather than trusted — the field is then empty
+    // ("who?") and the words stay whole.
+    const raw = typeof words?.about === "string" ? words.about.trim() : "";
+    const about =
+      raw === "" || raw.length > MAX_NAME_CHARS || /[\r\n]/.test(raw)
+        ? null
+        : normalizeCardName(raw);
+    return { about, text };
   },
+});
+
+export const fromBusinessCard = action({
+  args: imageArgs,
   returns: cardDraftValidator,
   handler: async (ctx, args) => {
     await requireSignedIn(ctx);
-
-    if (args.imageBase64 === "") {
-      throw new ConvexError("That photo didn't come through. Try again.");
-    }
-    if (args.imageBase64.length > MAX_IMAGE_CHARS) {
-      throw new ConvexError(
-        "That photo is too large for Andy to read. Try taking it again, closer in.",
-      );
-    }
+    checkImage(args.imageBase64);
 
     const card = (await askClaude({
       model: EXTRACTION_MODEL,
