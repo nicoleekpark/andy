@@ -523,17 +523,19 @@ export const byId = query({
  * happened is a feature the schema is ready for but nothing asks for yet.
  */
 export const updateNote = mutation({
-  // No `text`. The transcript is the record of what was said, and a record you
-  // can rewrite is not one — so it is not an argument this mutation accepts.
-  //
-  // Removing the ability rather than policing it. A read-only field on the note
-  // screen would be a convention of that screen; this is the rule. It also
-  // closes the gap the facts-only search decision opened: if the transcript
-  // could still change while search no longer reads it, an edit would appear to
-  // do nothing, which is a worse kind of wrong than being refused.
+  // `text` was refused here for a long time, on the grounds that a record you
+  // can rewrite is not one. Device QA #48 showed the cost: "Hot coffee" for
+  // "hot coffee" stayed wrong for good. The owner's decision (2026-10-12) is
+  // that the words can be corrected and the note says so — `textEditedAt` —
+  // so a corrected record is still an honest one. The facts are not re-read:
+  // fixing a typo must not rewrite what someone confirmed. Search re-embeds
+  // below, which matters for a note with no facts, where the words are what
+  // search reads.
   args: {
     noteId: v.string(),
     keyFacts: v.array(v.string()),
+    /** The corrected words, or absent to leave them as they are. */
+    text: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -550,11 +552,23 @@ export const updateNote = mutation({
       throw new ConvexError("Andy couldn't find that note.");
     }
 
-    // The guards that used to stand here — refusing an emptied transcript and
-    // capping its length — went with the argument. Neither is reachable now:
-    // the text cannot be emptied or lengthened, and a note whose facts are all
-    // blanked still has its record, so clearing every field no longer empties a
-    // note by stealth.
+    // The same two guards `saveCapture` applies: an emptied record would be a
+    // note with nothing in it (deleting is its own, confirmed, action), and the
+    // ceiling is the one every other path into a note's text respects.
+    const text = args.text?.trim();
+    if (text === "") {
+      throw new ConvexError(
+        "A note needs some words. To remove it, delete the note instead.",
+      );
+    }
+    if (text !== undefined && text.length > MAX_TRANSCRIPT_CHARS) {
+      throw new ConvexError(
+        "That note is longer than Andy can take in one go. Try splitting it into two.",
+      );
+    }
+    // Marked only when the words actually changed: saving the facts with the
+    // record untouched is not an edit of it.
+    const textChanged = text !== undefined && text !== note.text;
 
     // A fact blanked out is a fact removed — the same rule the capture path
     // applies, repeated here because this is its own public entry point rather
@@ -571,6 +585,7 @@ export const updateNote = mutation({
       // an empty array would claim extraction ran and found nothing, which is a
       // different thing from a note that never had facts.
       keyFacts: keyFacts.length > 0 ? keyFacts : undefined,
+      ...(textChanged ? { text, textEditedAt: Date.now() } : {}),
       // `embedding` is still left alone here, and now that the pipeline exists
       // that is a decision rather than a deferral. Clearing it would drop the
       // note out of search until a network call succeeded; leaving it means the

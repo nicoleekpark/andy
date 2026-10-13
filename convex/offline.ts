@@ -35,6 +35,7 @@ export const snapshot = query({
           v.literal("calendar_nudge"),
         ),
         createdAt: v.number(),
+        textEditedAt: v.optional(v.number()),
       }),
     ),
     links: v.array(schema.doc("noteMentions")),

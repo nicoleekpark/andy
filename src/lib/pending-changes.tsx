@@ -22,7 +22,12 @@ import { userMessage } from "./user-message";
  * with the account, never shown to another, removed on a chosen sign-out.
  */
 
-type Facts = { keyFacts: string[] };
+/**
+ * A note as a change compares it. `text` only on a change that corrects the
+ * words (device QA #48) — one kept before that existed has none, and is
+ * compared on its facts alone, as it always was.
+ */
+type Facts = { keyFacts: string[]; text?: string };
 
 /** What the person edit screen changes — `updateProfile`'s arguments. */
 export type PersonFields = {
@@ -35,7 +40,16 @@ export type PersonFields = {
 };
 
 export type PendingChange =
-  | { id: string; kind: "updateNote"; noteId: string; keyFacts: string[]; base: Facts; madeAt: number }
+  | {
+      id: string;
+      kind: "updateNote";
+      noteId: string;
+      keyFacts: string[];
+      /** The corrected words, when they were changed. */
+      text?: string;
+      base: Facts;
+      madeAt: number;
+    }
   | { id: string; kind: "removeNote"; noteId: string; base: Facts; madeAt: number }
   | {
       id: string;
@@ -177,7 +191,7 @@ export function applyPending(copy: OfflineCopy, changes: PendingChange[]): Offli
     ...copy.notes.filter((note) => gonePeople.has(note.profileId)).map((note) => note._id as string),
   ]);
   const editedNotes = new Map(
-    changes.flatMap((c) => (c.kind === "updateNote" ? [[c.noteId, c.keyFacts] as const] : [])),
+    changes.flatMap((c) => (c.kind === "updateNote" ? [[c.noteId, c] as const] : [])),
   );
   return {
     ...copy,
@@ -196,9 +210,13 @@ export function applyPending(copy: OfflineCopy, changes: PendingChange[]): Offli
       }),
     notes: copy.notes
       .filter((note) => !goneNotes.has(note._id))
-      .map((note) =>
-        editedNotes.has(note._id) ? { ...note, keyFacts: editedNotes.get(note._id) } : note,
-      ),
+      .map((note) => {
+        const edited = editedNotes.get(note._id);
+        if (edited === undefined) return note;
+        return edited.text === undefined || edited.text === note.text
+          ? { ...note, keyFacts: edited.keyFacts }
+          : { ...note, keyFacts: edited.keyFacts, text: edited.text, textEditedAt: edited.madeAt };
+      }),
     links: copy.links.filter((link) => !goneNotes.has(link.noteId)),
   };
 }
@@ -227,6 +245,22 @@ const PendingContext = createContext<Context>({
 });
 
 /** Whether the server still holds what the change was made against. */
+/**
+ * What a note holds once `sent` is saved, in the shape `next` compares by: the
+ * words too when `next` has them — the corrected ones, or the ones `sent`
+ * left alone. The server trims words, so this does.
+ */
+function noteAfter(
+  sent: Extract<PendingChange, { kind: "updateNote" }>,
+  next: PendingChange,
+): Facts {
+  const keyFacts = sent.keyFacts;
+  if (!("keyFacts" in next.base) || next.base.text === undefined) {
+    return { keyFacts };
+  }
+  return { keyFacts, text: (sent.text ?? sent.base.text ?? next.base.text).trim() };
+}
+
 function same(now: Facts | PersonFields, base: Facts | PersonFields): boolean {
   return JSON.stringify(now) === JSON.stringify(base);
 }
@@ -281,7 +315,11 @@ export function PendingProvider({
     async (change: PendingChange) => {
       switch (change.kind) {
         case "updateNote":
-          await convex.mutation(api.notes.updateNote, { noteId: change.noteId, keyFacts: change.keyFacts });
+          await convex.mutation(api.notes.updateNote, {
+            noteId: change.noteId,
+            keyFacts: change.keyFacts,
+            ...(change.text === undefined ? {} : { text: change.text }),
+          });
           return;
         case "removeNote":
           await convex.mutation(api.notes.remove, { noteId: change.noteId });
@@ -305,7 +343,11 @@ export function PendingProvider({
     async (change: PendingChange): Promise<Facts | PersonFields | null> => {
       if (change.kind === "updateNote" || change.kind === "removeNote") {
         const now = await convex.query(api.notes.byId, { noteId: change.noteId });
-        return now === null ? null : { keyFacts: now.note.keyFacts ?? [] };
+        if (now === null) return null;
+        // In `base`'s own shape, words included only where it has them.
+        return change.base.text === undefined
+          ? { keyFacts: now.note.keyFacts ?? [] }
+          : { keyFacts: now.note.keyFacts ?? [], text: now.note.text };
       }
       const now = await convex.query(api.profiles.withNotes, { profileId: change.profileId });
       return now === null ? null : personFields(now.profile);
@@ -331,7 +373,10 @@ export function PendingProvider({
         if (sent.kind === "removeNote" || sent.kind === "removeProfile") return [];
         // What the server now holds: notes keep details verbatim; a person is
         // tidied on the way in, so compare against the tidied version.
-        const base = sent.kind === "updateNote" ? { keyFacts: sent.keyFacts } : storedPerson(sent.fields);
+        const base =
+          sent.kind === "updateNote"
+            ? noteAfter(sent, change)
+            : storedPerson(sent.fields);
         return [{ ...change, base } as PendingChange];
       });
       write(next);

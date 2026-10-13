@@ -693,10 +693,10 @@ export function CaptureScreen({
    *
    * Without it there is no way to know whether the words above the facts still
    * match the words the facts were built from — `transcript` alone cannot say,
-   * because editing it overwrites the only copy. So the two disagree silently,
-   * and saving freezes that disagreement for good: after the save the record is
-   * read-only and only the facts can be corrected, which means the note keeps
-   * saying one thing and answering another for ever.
+   * because editing it overwrites the only copy. So the two disagree silently.
+   * The words can be corrected after saving (the note screen, device QA #48),
+   * but nothing re-reads the facts then — so this is still the one moment the
+   * facts can be rebuilt from the corrected wording.
    */
   const [readTranscript, setReadTranscript] = useState("");
   /**

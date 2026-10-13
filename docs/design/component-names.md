@@ -277,14 +277,16 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 
 | Name | 설명 |
 |---|---|
-| `note-lead` | 노트 날짜 + 안내 한 줄 ("fix any fact Andy got wrong") |
+| `note-lead` | 노트 날짜 + 안내 한 줄 ("fix anything Andy got wrong") |
 | `note-details-label` | WHAT TO REMEMBER — 기억할 내용 섹션 제목 |
 | `note-details-empty` | 기억할 내용이 없을 때 문장 |
 | `note-details-hint` | "Clearing a line removes that fact." 도움말 |
 | `note-details-add-button` | Add a fact — 기억할 내용 한 줄 추가 (copy PR 후 Add a detail) |
 | `note-source-label` | WHAT YOU WROTE / SAID / THE CARD SAID — 노트 원문 섹션 제목 |
-| `note-source-text` | 노트 원문 (읽기 전용, 복사 가능) |
-| `note-source-hint` | "Kept as it was saved…" 원문은 못 고친다는 안내 |
+| `note-source-text` | 노트 원문 (읽을 때 — 복사 가능) |
+| `note-source-input` | Edit 중의 노트 원문 입력칸 — 오타를 고칠 수 있음 (device QA #48) |
+| `note-source-hint` | "Fix a word that came out wrong…" — 원문을 고쳐도 기억할 내용은 그대로이고, 노트에 Edited가 표시된다는 안내 |
+| `note-edited-mark` | 원문을 손으로 고친 노트의 `note-source-label` 옆 작은 **Edited** (읽을 때·Edit 중 모두) |
 | `note-save-button` | Save changes — 저장 |
 | `note-delete-button` | Delete this note — 노트 삭제 (확인 창이 뜸) |
 | `note-date` | 노트 날짜 |
