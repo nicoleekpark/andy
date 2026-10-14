@@ -9,7 +9,12 @@ import { api } from "@convex/_generated/api";
  */
 export type Feature =
   /** The calendar briefing card, reading the calendar, and its reminders. */
-  "calendarBriefing";
+  | "calendarBriefing"
+  /**
+   * The follow-up's format and tone choice (`follow-up-tones.md`). Off: the
+   * sheet writes today's email, with no picker and no chips.
+   */
+  | "followUpTones";
 
 /**
  * Whether a feature is on.

@@ -453,8 +453,17 @@ describe("follow-up email", () => {
     (hasNativeModule as jest.Mock).mockReturnValue(true);
   });
 
+  /**
+   * These tests are about today's email draft, which is what the sheet writes
+   * with the `followUpTones` switch off; the tones have their own tests
+   * (follow-up-tones.test.tsx).
+   */
+  function answerWith(result: unknown) {
+    answerByName(useQuery, { [nameOf(api.featureFlags.switchedOff)]: ["followUpTones"] }, () => result);
+  }
+
   async function reachProfile() {
-    (useQuery as jest.Mock).mockReturnValue(
+    answerWith(
       withNotes([
         {
           _id: "note-1",
@@ -472,7 +481,7 @@ describe("follow-up email", () => {
 
   /** Render a profile whose query result is spelled out, not the default one. */
   async function reachProfileWith(result: Record<string, unknown>) {
-    (useQuery as jest.Mock).mockReturnValue(result);
+    answerWith(result);
     const rendered = renderRouter("src/app", {
       initialUrl: "/profile/profile-1",
     });

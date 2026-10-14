@@ -75,7 +75,7 @@ test("should ask about replacing an edited draft inside the sheet, where it can 
   const dialogs = screen.getAllByTestId("confirm-dialog");
   expect(dialogs).toHaveLength(1);
   expect(insideSheet(dialogs[0]!)).toBe(true);
-  expect(screen.getByText("Replace what you wrote?")).toBeTruthy();
+  expect(screen.getByText("Write another?")).toBeTruthy();
 });
 
 test("should hand an open question back to the app while the sheet hides under the lock", async () => {
