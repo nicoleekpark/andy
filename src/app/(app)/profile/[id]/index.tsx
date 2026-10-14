@@ -282,7 +282,9 @@ export default function ProfileScreen() {
       // thing that changes is the attempt, not the text.
       setAttempt((previous) => ({
         id: (previous?.id ?? 0) + 1,
-        draft: written,
+        // Sent with no style, the server writes today's email, subject and
+        // all; the format and tone choice comes with the sheet's own change.
+        draft: { ...written, subject: written.subject ?? "" },
       }));
     } catch (thrown) {
       // Inline, not an alert. Every other error in this app is an inline line

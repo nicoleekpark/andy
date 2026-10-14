@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { followUpStyleValidator } from "./emailPrompt";
 import { EMBEDDING_DIMENSIONS } from "./embeddingModel";
 
 /**
@@ -46,6 +47,12 @@ export default defineSchema({
     firstMetDate: v.optional(v.string()),
     contactId: v.optional(v.string()), // linked iOS Contacts identifier
     photoStorageId: v.optional(v.id("_storage")),
+    /**
+     * The format and tone of the last follow-up written to this person
+     * (`docs/design/decisions/follow-up-tones.md`, Final choice): the next
+     * draft opens the same way. Additive; it goes with the person.
+     */
+    followUpStyle: v.optional(followUpStyleValidator),
     /**
      * True when Andy created this row rather than the user choosing to keep
      * the person: somebody named in passing inside a note about somebody else.

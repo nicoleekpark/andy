@@ -8,12 +8,15 @@ import {
   EMAIL_MODEL,
   EMAIL_SCHEMA,
   EMAIL_SYSTEM_PROMPT,
+  FOLLOW_UP_SYSTEM_PROMPT,
   MAX_EMAIL_BODY_CHARS,
   MAX_EMAIL_SUBJECT_CHARS,
+  MESSAGE_SCHEMA,
   buildEmailMessage,
-  emailDraftValidator,
+  followUpDraftValidator,
+  followUpStyleValidator,
 } from "./emailPrompt";
-import type { EmailDraft } from "./emailPrompt";
+import type { FollowUpDraft } from "./emailPrompt";
 
 /**
  * Writing the follow-up email.
@@ -37,38 +40,47 @@ export const write = internalAction({
         rawRecord: v.optional(v.string()),
       }),
     ),
+    /**
+     * A format and tone (`follow-up-tones.md`). Absent: today's email-only
+     * prompt, for a client with the `followUpTones` switch off.
+     */
+    style: v.optional(followUpStyleValidator),
   },
-  returns: emailDraftValidator,
-  handler: async (_ctx, args): Promise<EmailDraft> => {
+  returns: followUpDraftValidator,
+  handler: async (_ctx, args): Promise<FollowUpDraft> => {
+    const message = args.style?.format === "message";
     const result = (await askClaude({
       model: EMAIL_MODEL,
       maxTokens: EMAIL_MAX_TOKENS,
-      schema: EMAIL_SCHEMA,
-      system: EMAIL_SYSTEM_PROMPT,
+      schema: message ? MESSAGE_SCHEMA : EMAIL_SCHEMA,
+      system: args.style === undefined ? EMAIL_SYSTEM_PROMPT : FOLLOW_UP_SYSTEM_PROMPT,
       content: [
         {
           type: "text",
-          text: buildEmailMessage(args.personName, args.today, args.notes),
+          text: buildEmailMessage(args.personName, args.today, args.notes, args.style),
         },
       ],
       label: "Follow-up email",
-    })) as Partial<EmailDraft>;
+    })) as { subject?: unknown; body?: unknown };
 
     // `returns` validates after the handler has already read the result, so a
     // response missing a field becomes a raw TypeError and a generic client
     // message rather than something anyone can act on.
-    if (typeof result.subject !== "string" || typeof result.body !== "string") {
+    if (typeof result.body !== "string" || (!message && typeof result.subject !== "string")) {
       console.error("Follow-up email returned a body of the wrong shape.");
       throw new ConvexError(
         "Andy couldn't put that into words. Try again in a moment.",
       );
     }
 
+    if (message) {
+      return { body: result.body.trim().slice(0, MAX_EMAIL_BODY_CHARS) };
+    }
     return {
       // Capped for the same reason the body is:  is 1024, so
       // a misbehaving response can put thousands of characters here and
       // reintroduce the silent truncation the body cap exists to prevent.
-      subject: result.subject.trim().slice(0, MAX_EMAIL_SUBJECT_CHARS),
+      subject: (result.subject as string).trim().slice(0, MAX_EMAIL_SUBJECT_CHARS),
       // Cut here rather than trusting the prompt. This goes to Mail through a
       // `mailto:` URL, and an over-long URL is not refused — it is silently
       // truncated somewhere between the app, the OS and Mail, which would drop
