@@ -32,6 +32,7 @@ export const snapshot = query({
           v.literal("voice"),
           v.literal("manual"),
           v.literal("business_card"),
+          v.literal("photo"),
           v.literal("calendar_nudge"),
         ),
         createdAt: v.number(),

@@ -169,8 +169,8 @@ async function forgetAndysCopy(): Promise<void> {
  * - this app's reminders — pending, and already delivered in Notification
  *   Center (`forgetBriefings`) — which carry a person's name;
  * - photos: `expo-image`'s memory and disk caches (profile photos), and the
- *   copies `expo-image-picker` makes in `Caches/ImagePicker` (profile photos
- *   and business cards);
+ *   copies `expo-image-picker` makes in `Caches/ImagePicker` (profile photos,
+ *   and photos taken or chosen for a note — cards, pages of notes, screenshots);
  * - the clipboard, only while it still holds what Andy copied there
  *   (`forgetAndysCopy`).
  *

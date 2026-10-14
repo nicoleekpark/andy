@@ -379,3 +379,17 @@ test("should keep a voice note's words while it is paused", async () => {
 
   expect(kept()?.words).toBe("Met Nina at the gym");
 });
+
+test("should continue a photo's words on their check step, with the photo and the name as corrected", async () => {
+  seed({
+    source: "photo",
+    words: "coffee at Tartine",
+    photo: { uri: "file:///photo.jpg", from: "library", about: "Priya" },
+  });
+
+  await renderRouter("src/app", { initialUrl: "/capture?resume=d1" });
+
+  expect(screen.getByTestId("photo-words")).toBeTruthy();
+  expect(screen.getByLabelText("What the photo says about").props.value).toBe("Priya");
+  expect(screen.getByRole("button", { name: "Choose another" })).toBeTruthy();
+});

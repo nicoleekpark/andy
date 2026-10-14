@@ -44,9 +44,15 @@ export type CaptureDraft = {
   profileId?: string;
   /** Who it is about, as far as it is known — for home's line only. */
   aboutName?: string;
-  source: "voice" | "business_card" | "manual";
+  source: "voice" | "business_card" | "photo" | "manual";
   /** Words in the editor, not yet read by Andy. */
   words?: string;
+  /**
+   * The photo whose words these are (Photo door), and the name read off it as
+   * corrected — so Continue brings back the check step, not a bare editor.
+   * The picture itself stays in iOS's picker cache, gone with sign-out.
+   */
+  photo?: { uri: string; from: "camera" | "library"; about: string };
   /** Or a note Andy has read, under review. */
   review?: {
     transcript: string;
@@ -66,7 +72,7 @@ function isDraft(value: unknown): value is CaptureDraft {
     typeof v.ownerId === "string" &&
     typeof v.keptAt === "number" &&
     typeof v.today === "string" &&
-    (v.source === "voice" || v.source === "business_card" || v.source === "manual") &&
+    (v.source === "voice" || v.source === "business_card" || v.source === "photo" || v.source === "manual") &&
     (typeof v.words === "string" ||
       (typeof v.review === "object" &&
         v.review !== null &&

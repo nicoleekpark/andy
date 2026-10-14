@@ -71,6 +71,7 @@ const resultValidator = v.object({
     v.literal("voice"),
     v.literal("manual"),
     v.literal("business_card"),
+    v.literal("photo"),
     v.literal("calendar_nudge"),
   ),
   // Who the note is about. Always present: a note cannot exist without one.
