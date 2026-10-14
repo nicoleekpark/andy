@@ -9,6 +9,7 @@
  */
 
 import type * as account from "../account.js";
+import type * as aiPermission from "../aiPermission.js";
 import type * as answer from "../answer.js";
 import type * as answerPrompt from "../answerPrompt.js";
 import type * as appleSignIn from "../appleSignIn.js";
@@ -48,6 +49,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   account: typeof account;
+  aiPermission: typeof aiPermission;
   answer: typeof answer;
   answerPrompt: typeof answerPrompt;
   appleSignIn: typeof appleSignIn;

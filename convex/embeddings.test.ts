@@ -9,6 +9,7 @@ import {
   embeddingTextFor,
 } from "./embeddingModel";
 import schema from "./schema";
+import { aiNotEnforced } from "../test-support/ai-permission";
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -174,7 +175,7 @@ test("should cut a note down to the character budget rather than let the request
 // ---------------------------------------------------------------------------
 
 test("should ask OpenAI for the model and width the schema was built for, and store what comes back", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const { noteId } = await seedNote(t);
   fetchMock.mockResolvedValueOnce(embeddingsResponse([vectorFor(1)]));
 
@@ -197,7 +198,7 @@ test("should ask OpenAI for the model and width the schema was built for, and st
 });
 
 test("should pair each vector with the note it belongs to by the response's own index, not by array position", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const first = await seedNote(t, { text: "First note about climbing." });
   const second = await t.run(async (ctx) =>
     ctx.db.insert("notes", {
@@ -229,7 +230,7 @@ test("should pair each vector with the note it belongs to by the response's own 
 });
 
 test("should refuse a vector of the wrong width rather than store one the index will reject at search time", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const { noteId } = await seedNote(t);
   fetchMock.mockResolvedValueOnce(
     embeddingsResponse([Array.from({ length: 1536 }, () => 0.01)]),
@@ -245,7 +246,7 @@ test("should refuse a vector of the wrong width rather than store one the index 
 
 test("should leave the note unembedded and never call OpenAI when the deployment has no key", async () => {
   vi.stubEnv("OPENAI_API_KEY", "");
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const { noteId } = await seedNote(t);
 
   await expect(
@@ -260,7 +261,7 @@ test("should leave the note unembedded and never call OpenAI when the deployment
 });
 
 test("should surface a refused request as an error and store nothing", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const { noteId } = await seedNote(t);
   fetchMock.mockResolvedValueOnce({
     ok: false,
@@ -277,7 +278,7 @@ test("should surface a refused request as an error and store nothing", async () 
 });
 
 test("should log why a request failed without writing the note's contents into the logs", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const { noteId } = await seedNote(t, {
     text: "Priya's mother is unwell and she is struggling.",
   });
@@ -325,7 +326,7 @@ test("should log why a request failed without writing the note's contents into t
 // ---------------------------------------------------------------------------
 
 test("should drop a vector that was computed for text the note no longer has", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const { noteId } = await seedNote(t);
 
   // Exactly the shape of two fast edits: this job embedded the old text, and
@@ -344,7 +345,7 @@ test("should drop a vector that was computed for text the note no longer has", a
 });
 
 test("should store a vector that was computed for the text the note still has", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const { noteId } = await seedNote(t);
 
   const written = await t.mutation(internal.embeddings.writeEmbedding, {
@@ -359,7 +360,7 @@ test("should store a vector that was computed for the text the note still has", 
 });
 
 test("should skip a note deleted between being scheduled and being embedded, rather than failing the batch", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const { noteId } = await seedNote(t);
   await t.run(async (ctx) => ctx.db.delete("notes", noteId));
 
@@ -376,7 +377,7 @@ test("should skip a note deleted between being scheduled and being embedded, rat
 // ---------------------------------------------------------------------------
 
 test("should give a note saved through the capture path a vector without the user asking", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const asAlice = t.withIdentity(ALICE);
   await asAlice.mutation(api.users.ensureUser, {});
   fetchMock.mockResolvedValueOnce(embeddingsResponse([vectorFor(5)]));
@@ -412,7 +413,7 @@ test("should give a note saved through the capture path a vector without the use
 });
 
 test("should re-embed a note after a correction, so a fixed fact reaches search and not only the screen", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const asAlice = t.withIdentity(ALICE);
   await asAlice.mutation(api.users.ensureUser, {});
   fetchMock.mockResolvedValueOnce(embeddingsResponse([vectorFor(6)]));
@@ -448,7 +449,7 @@ test("should re-embed a note after a correction, so a fixed fact reaches search 
 });
 
 test("should keep the note saved when embedding fails, because search is a consequence of saving and not a condition of it", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const asAlice = t.withIdentity(ALICE);
   await asAlice.mutation(api.users.ensureUser, {});
   fetchMock.mockResolvedValueOnce({
@@ -488,7 +489,7 @@ test("should keep the note saved when embedding fails, because search is a conse
 // ---------------------------------------------------------------------------
 
 test("should give every note without a vector one, and leave the notes that already have theirs alone", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const { userId, profileId, noteId } = await seedNote(t, {
     text: "Already embedded.",
   });
@@ -531,7 +532,7 @@ test("should give every note without a vector one, and leave the notes that alre
 });
 
 test("should stop rather than loop forever on a note it can never embed", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   // Whitespace once trimmed: there is nothing to send, so this note will be
   // handed back by the "missing a vector" query on every pass, for ever.
   await seedNote(t, { text: "   " });
@@ -550,7 +551,7 @@ test("should stop rather than loop forever on a note it can never embed", async 
 // ---------------------------------------------------------------------------
 
 test("should recompute a vector that already exists, which the repair backfill will not", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const { noteId } = await seedNote(t, { text: "Already embedded." });
   const stale = vectorFor(1);
   await t.run(async (ctx) => ctx.db.patch("notes", noteId, { embedding: stale }));
@@ -569,7 +570,7 @@ test("should recompute a vector that already exists, which the repair backfill w
 });
 
 test("should walk past the end of one page rather than re-index only the first batch", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const { userId, profileId } = await seedNote(t, { text: "Note 0." });
   await t.run(async (ctx) => {
     for (let i = 1; i < 70; i += 1) {

@@ -5,6 +5,7 @@ import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { EMBEDDING_DIMENSIONS } from "./embeddingModel";
 import schema from "./schema";
+import { aiNotEnforced } from "../test-support/ai-permission";
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -134,7 +135,7 @@ async function seedNote(
 // ---------------------------------------------------------------------------
 
 test("should return the note that answers the question and leave out the one that does not", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const alice = await seedUser(t, ALICE);
   const climbing = await seedNote(t, {
     userId: alice,
@@ -163,7 +164,7 @@ test("should return the note that answers the question and leave out the one tha
 });
 
 test("should keep the index's ranking rather than re-sorting the results into some other order", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const alice = await seedUser(t, ALICE);
   // Three notes on the same axis at decreasing magnitudes would all score 1 —
   // cosine ignores length — so they are tilted off-axis by different amounts.
@@ -215,7 +216,7 @@ test("should keep the index's ranking rather than re-sorting the results into so
 });
 
 test("should carry who else came up in a note, so a person who only exists as a mention can still be found", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const alice = await seedUser(t, ALICE);
   const { noteId, profileId } = await seedNote(t, {
     userId: alice,
@@ -261,7 +262,7 @@ test("should carry who else came up in a note, so a person who only exists as a 
 });
 
 test("should keep a deleted person's name on the note that mentioned them, and mark them as no longer there", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const alice = await seedUser(t, ALICE);
   const { noteId } = await seedNote(t, {
     userId: alice,
@@ -300,7 +301,7 @@ test("should keep a deleted person's name on the note that mentioned them, and m
 });
 
 test("should return nothing rather than a page of confident citations when the question has no answer here", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const alice = await seedUser(t, ALICE);
   await seedNote(t, {
     userId: alice,
@@ -323,7 +324,7 @@ test("should return nothing rather than a page of confident citations when the q
 // ---------------------------------------------------------------------------
 
 test("should never return another user's note, even when it is a better answer than anything the caller owns", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const alice = await seedUser(t, ALICE);
   const bob = await seedUser(t, BOB);
 
@@ -351,7 +352,7 @@ test("should never return another user's note, even when it is a better answer t
 });
 
 test("should refuse to hydrate another user's note id even when handed one directly", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   await seedUser(t, ALICE);
   const bob = await seedUser(t, BOB);
   const bobsNote = await seedNote(t, {
@@ -372,7 +373,7 @@ test("should refuse to hydrate another user's note id even when handed one direc
 });
 
 test("should drop a note whose subject profile belongs to somebody else, rather than reading across the join", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const alice = await seedUser(t, ALICE);
   const bob = await seedUser(t, BOB);
 
@@ -409,7 +410,7 @@ test("should drop a note whose subject profile belongs to somebody else, rather 
 });
 
 test("should refuse a note owned by somebody else even when it points at the caller's own profile", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const alice = await seedUser(t, ALICE);
   const bob = await seedUser(t, BOB);
 
@@ -447,7 +448,7 @@ test("should refuse a note owned by somebody else even when it points at the cal
 });
 
 test("should never read another user's profile name through a mention link, even one recorded on the caller's own note", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const alice = await seedUser(t, ALICE);
   const bob = await seedUser(t, BOB);
 
@@ -494,7 +495,7 @@ test("should never read another user's profile name through a mention link, even
 });
 
 test("should not let another user's notes crowd the caller's own out of the result window", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const alice = await seedUser(t, ALICE);
   const bob = await seedUser(t, BOB);
 
@@ -543,7 +544,7 @@ test("should not let another user's notes crowd the caller's own out of the resu
 // ---------------------------------------------------------------------------
 
 test("should refuse a signed-out search without spending anything on it", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   await expect(
     t.action(api.search.recall, { query: "who runs a climbing gym" }),
   ).rejects.toThrow();
@@ -554,7 +555,7 @@ test("should refuse a signed-out search without spending anything on it", async 
 });
 
 test("should refuse an empty question without spending anything on it", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   await seedUser(t, ALICE);
 
   await expect(
@@ -564,7 +565,7 @@ test("should refuse an empty question without spending anything on it", async ()
 });
 
 test("should refuse a question that is really a pasted document", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   await seedUser(t, ALICE);
 
   await expect(
