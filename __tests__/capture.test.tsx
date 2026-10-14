@@ -11,6 +11,7 @@ import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from "expo-spe
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { renderRouter } from "expo-router/testing-library";
+import * as native from "@/lib/native";
 import { api } from "@convex/_generated/api";
 import type { Draft } from "@convex/extractionPrompt";
 import { answerByName, given, nameOf, quietCall } from "../test-support/convex-mocks";
@@ -2799,6 +2800,12 @@ describe("capture screen photo door", () => {
   // be exercising a state the real route passes through in milliseconds.
   beforeEach(() => {
     scopeTo("Nina");
+    // These are about the words step, reached through iOS's camera and album
+    // (a build without Andy's own camera). jest-expo stands in for every
+    // installed native module, so say so; Andy's camera has its own tests
+    // (photo-camera.test.tsx).
+    const real = native.hasNativeModule;
+    jest.spyOn(native, "hasNativeModule").mockImplementation((name) => name !== "ExpoCamera" && real(name));
   });
 
   afterEach(() => {

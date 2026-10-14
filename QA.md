@@ -202,7 +202,20 @@ live here rather than in §7 because that is the screen they happen on.
 
 ## 9. Photo: cards, notes, screenshots (capture-doors.md, Final choice: the Photo screens)
 
-Until Andy's own camera (Photo 5c), + → **Photo** asks *"Add a photo"* — Take a photo / Choose from library — and uses iOS's camera.
+**Needs build 5** (Andy's own camera, Photo 5c — a new native module). On a build without it, + → **Photo** still asks *"Add a photo"* — Take a photo / Choose from library — and uses iOS's camera.
+
+| # | Do this | Expect | |
+|---|---|---|---|
+| 9.0a | + → **Photo** (first time ever) | Andy's dark camera opens at once; iOS asks for the camera **once**, over it, with Andy's sentence about cards, notes and screenshots | ⬜ |
+| 9.0b | Look at the camera | ✕ top-left, *"A card, a page of notes, or a screenshot."* over the picture, a white shutter in the middle, the album bottom-left (where the iPhone Camera keeps it) | ⬜ |
+| 9.0c | Photograph a page of notes | Straight to *"Reading the photo…"* — no Use/Retake step — then the words step. The words are legible (the photo was made smaller to send, not too small to read) | ⬜ |
+| 9.0d | On the words step, **Retake** | Andy's camera again, not iOS's | ⬜ |
+| 9.0e | Album button in the camera | The camera goes, then iOS's photo picker opens — with no Photos permission question | ⬜ |
+| 9.0f | ✕ with no photo taken | Back where the note was started (home, or the person's page) | ⬜ |
+| 9.0g | Settings → Andy → Camera off; + → Photo | *"Andy needs the camera to take a photo. Turn it on in Settings, or choose a photo instead."* and a green **Choose a photo instead**; no shutter | ⬜ |
+| 9.0h | VoiceOver in the camera | Close, Take photo, Choose from library — each named | ⬜ |
+| 9.0i | First time ever, + → Photo, then wait on iOS's camera question without answering | iOS asks **once** — never a second question on top (the guard is not unit-tested: it is about React re-running the ask) | ⬜ |
+| 9.0j | Photograph a dim page, or a busy screenshot | It is read; if the picture is too big even after shrinking, *"That photo is too large for Andy to read…"* shows rather than nothing | ⬜ |
 
 | # | Do this | Expect | |
 |---|---|---|---|

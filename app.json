@@ -58,9 +58,18 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Pick a business card and Andy sends that photo to Anthropic's Claude API, which reads the name, title, company and any contact details printed on it into a profile draft you edit before saving. Pick a profile photo and it is saved to your private Andy account and shown only on that person's profile — it is never sent to Anthropic or any other AI service.",
-          "cameraPermission": "Andy uses the camera to photograph a business card, then sends that photo to Anthropic's Claude API, which reads the name, title, company and any contact details printed on it into a profile draft you edit before saving.",
+          "photosPermission": "Pick a business card, a page of notes or a screenshot and Andy sends that photo to Anthropic's Claude API, which reads the words on it for you to check and correct before anything is saved; the photo itself is not kept. Pick a profile photo and it is saved to your private Andy account and shown only on that person's profile — it is never sent to Anthropic or any other AI service.",
+          "cameraPermission": "Andy uses the camera to photograph a business card, a page of notes or a screenshot, then sends that photo to Anthropic's Claude API, which reads the words on it for you to check and correct before anything is saved. The photo itself is not kept.",
           "microphonePermission": "Andy records your voice note so you can capture what you just learned about someone. Recording only starts when you tap the record button."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Andy uses the camera to photograph a business card, a page of notes or a screenshot, then sends that photo to Anthropic's Claude API, which reads the words on it for you to check and correct before anything is saved. The photo itself is not kept.",
+          "microphonePermission": "Andy records your voice note so you can capture what you just learned about someone. Recording only starts when you tap the record button.",
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": false
         }
       ]
     ],

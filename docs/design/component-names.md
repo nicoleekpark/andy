@@ -172,6 +172,7 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | S5c | `record--transcript` | 기록 — 들은 내용 확인 (Read it 전) |
 | S5d | `record--scoped` | 기록 — 프로필에서 시작 (노트가 그 프로필로 감) |
 | S5f | `record--paused` | 기록 — 멈춤 (Paused, ▶ Resume). 들은 말은 그대로 |
+| S5h | `photo-camera` | Andy 카메라 (어두운 전체 화면) — Photo 문이 바로 엶. 새 빌드(5)부터; 그 전 빌드는 "Add a photo" 질문 |
 | S5g | `photo-words` | 사진 글 확인 — 작은 사진 + "WHAT THE PHOTO SAYS ABOUT" + 이름 + 글 (고칠 수 있음) + Let Andy read it + Retake/Choose another |
 | S5e | `write` | Write — orbit의 Write 문 (또는 Type it instead). 키보드가 바로 올라오고 본문만, 버튼은 Let Andy read it 하나 (예전 `record--typing`) |
 
@@ -185,6 +186,11 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `pause-button` | 가운데 76pt 원 — 듣는 중엔 빨간(`alert`) ⏸ "Pause", 멈췄을 땐 ▶ "Resume" (글은 남고 이어서 받아씀) |
 | `done-button` | 오른쪽 초록 채운 ✓ "Done" — 다 말함. 받아쓴 글을 고칠 수 있는 화면으로 |
 | `photo-words-thumb` | `photo-words` 맨 위 작은 사진 — 누르면 `photo-viewer` (전체 크기, ✕로 닫음) |
+| `photo-camera-close` | 카메라 왼쪽 위 ✕ — 사진 없이 닫으면 노트를 시작한 곳으로 |
+| `photo-camera-hint` | 사진 위 "A card, a page of notes, or a screenshot." |
+| `photo-camera-shutter` | 가운데 흰 셔터 (VoiceOver "Take photo") — 찍으면 바로 읽기 |
+| `photo-camera-album` | 왼쪽 아래 앨범 (VoiceOver "Choose from library") — iOS 사진 선택기, 권한 안 물음 |
+| `photo-camera-off` | 카메라 권한이 꺼졌을 때 — 안내 + 초록 **Choose a photo instead** |
 | `photo-viewer` | 작은 사진을 누르면 뜨는 전체 크기 사진 (어두운 배경) — 이름을 원본과 비교 |
 | `photo-viewer-close` | `photo-viewer` 왼쪽 위 ✕ (44pt) |
 | `photo-words-about` | 사진에서 읽은 이름 칸 (비면 "who?"). 사람 페이지에서 왔으면 고정된 이름 |
