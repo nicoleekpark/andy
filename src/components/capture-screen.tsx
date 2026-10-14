@@ -33,6 +33,8 @@ import { userMessage } from "@/lib/user-message";
 import { useOutbox } from "@/lib/outbox";
 import { SymbolView } from "expo-symbols";
 import { Image } from "expo-image";
+import { PhotoCamera } from "@/components/photo-camera";
+import { hasNativeModule } from "@/lib/native";
 import { useCaptureDrafts, type CaptureDraft } from "@/lib/capture-draft";
 import { useLiveOrCopy } from "@/lib/offline-copy";
 import { withNotesView } from "@convex/offlineViews";
@@ -489,6 +491,13 @@ export function CaptureScreen({
   const [photoEmpty, setPhotoEmpty] = useState(false);
   /** The photo full size, to compare a name against. */
   const [viewingPhoto, setViewingPhoto] = useState(false);
+  /** Andy's own camera is open (Photo 5c). */
+  const [cameraOpen, setCameraOpen] = useState(false);
+  /**
+   * Whether this build carries Andy's camera. One that does not (build 4)
+   * keeps iOS's camera and the album, asked as before.
+   */
+  const ownCamera = hasNativeModule("ExpoCamera") && hasNativeModule("ExpoImageManipulator");
   const saveCapture = useMutation(api.notes.saveCapture);
 
   const [phase, setPhase] = useState<Phase>(() =>
@@ -1071,6 +1080,41 @@ export function CaptureScreen({
     void runExtraction(waiting.text);
   }, [waiting, offline, runExtraction]);
 
+  /** A picture, from either camera or the album, read into words. */
+  const readPicture = useCallback(
+    async (picture: { uri: string; base64: string }, from: "camera" | "library") => {
+      setError(null);
+      setPhotoEmpty(false);
+      const asset = picture;
+      // Set before the read: the waiting screen says what it is reading.
+      setSource("photo");
+      setPhoto({ uri: asset.uri, from });
+      setPhotoAbout("");
+      setTyping(null);
+      setPhase("extracting");
+      try {
+        // `base64` is documented as the image's JPEG data regardless of the
+        // file picked, so the media type is known rather than guessed.
+        const words = await readPhoto({ imageBase64: asset.base64, mediaType: "image/jpeg" });
+        if (words.text === "") {
+          setPhotoEmpty(true);
+          setPhase("idle");
+          return;
+        }
+        setPhotoAbout(words.about ?? "");
+        // The words go to the check step, exactly as read; nothing is read
+        // into facts until the person says so.
+        setTyping(words.text);
+        setPhase("idle");
+      } catch (e) {
+        setPhoto(null);
+        setError(userMessage(e, "Andy couldn't read that photo. Try again."));
+        setPhase("idle");
+      }
+    },
+    [readPhoto],
+  );
+
   /**
    * A picture — a card, a page of notes, a screenshot — read into words to be
    * checked (`capture-doors.md`, Final choice: the Photo screens). Straight to
@@ -1122,34 +1166,9 @@ export function CaptureScreen({
         setError("That photo didn't come through. Try again.");
         return;
       }
-
-      // Set before the read: the waiting screen says what it is reading.
-      setSource("photo");
-      setPhoto({ uri: asset.uri, from });
-      setPhotoAbout("");
-      setTyping(null);
-      setPhase("extracting");
-      try {
-        // `base64` is documented as the image's JPEG data regardless of the
-        // file picked, so the media type is known rather than guessed.
-        const words = await readPhoto({ imageBase64: asset.base64, mediaType: "image/jpeg" });
-        if (words.text === "") {
-          setPhotoEmpty(true);
-          setPhase("idle");
-          return;
-        }
-        setPhotoAbout(words.about ?? "");
-        // The words go to the check step, exactly as read; nothing is read
-        // into facts until the person says so.
-        setTyping(words.text);
-        setPhase("idle");
-      } catch (e) {
-        setPhoto(null);
-        setError(userMessage(e, "Andy couldn't read that photo. Try again."));
-        setPhase("idle");
-      }
+      await readPicture({ uri: asset.uri, base64: asset.base64 }, from);
     },
-    [readPhoto],
+    [readPicture],
   );
 
   /**
@@ -1157,8 +1176,51 @@ export function CaptureScreen({
    * new one comes back — backing out of the camera leaves them as they were.
    */
   const retakePhoto = useCallback(() => {
-    void takePhoto(photo?.from ?? "camera");
-  }, [photo, takePhoto]);
+    const from = photo?.from ?? "camera";
+    if (from === "camera" && ownCamera) setCameraOpen(true);
+    else void takePhoto(from);
+  }, [photo, takePhoto, ownCamera]);
+
+  /** The album, from inside Andy's camera — once the camera has gone. */
+  const libraryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const chooseInstead = useCallback(() => {
+    setCameraOpen(false);
+    // iOS will not show the picker while the camera's sheet is still going.
+    if (libraryTimer.current !== null) clearTimeout(libraryTimer.current);
+    libraryTimer.current = setTimeout(() => {
+      libraryTimer.current = null;
+      void takePhoto("library");
+    }, 500);
+  }, [takePhoto]);
+  // Left in the meantime: the picker must not open over another screen.
+  useEffect(
+    () => () => {
+      if (libraryTimer.current !== null) clearTimeout(libraryTimer.current);
+    },
+    [],
+  );
+
+  // Mounted only while open: nothing about the camera — not even asking
+  // whether it is allowed — happens until it is wanted.
+  const cameraModal = ownCamera && cameraOpen ? (
+    <PhotoCamera
+      visible
+      onClose={() => {
+        setCameraOpen(false);
+        // Opened only to take a picture, and none was taken: back to where
+        // the note was started. With a photo already here (Retake), stay.
+        if (photo === null) {
+          if (router.canGoBack()) router.back();
+          else router.replace("/");
+        }
+      }}
+      onPicture={(picture) => {
+        setCameraOpen(false);
+        void readPicture(picture, "camera");
+      }}
+      onChooseFromLibrary={chooseInstead}
+    />
+  ) : null;
 
   /**
    * Offline: keep the words on this phone to be read later
@@ -1388,10 +1450,13 @@ export function CaptureScreen({
     // Just after mount, not inside it: listening is the person's tap
     // carried through, and the screen should be on show when it starts.
     if (door === "voice") queueMicrotask(() => void start());
-    // Photo's own screens come with the Photo slice; until then, today's
-    // choice of camera or library.
-    if (door === "photo") chooseCardSource();
-  }, [door, resumed, waiting, start, chooseCardSource]);
+    // Andy's camera at once (Photo 5c); a build without it asks camera or
+    // album, as before.
+    if (door === "photo") {
+      if (ownCamera) queueMicrotask(() => setCameraOpen(true));
+      else chooseCardSource();
+    }
+  }, [door, resumed, waiting, start, chooseCardSource, ownCamera]);
 
   /** Pause: stop listening, keep the words. */
   const pause = useCallback(() => {
@@ -2275,6 +2340,7 @@ export function CaptureScreen({
           </Pressable>
         </ScrollView>
 
+        {cameraModal}
         {/* The photo full size, to compare a name against. */}
         <Modal
           visible={viewingPhoto}
@@ -2477,6 +2543,7 @@ export function CaptureScreen({
   return (
     <>
       <Stack.Screen options={{ title: "New note" }} />
+      {cameraModal}
       <View style={styles.container}>
         {/*
           One card that holds the whole recording (record-flow.md, "Voice

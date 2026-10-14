@@ -136,8 +136,10 @@ test("should not start listening when capture is opened without a door", async (
   expect(ExpoSpeechRecognitionModule.requestPermissionsAsync).not.toHaveBeenCalled();
 });
 
-test("should ask for the picture through Photo", async () => {
+test("should ask for the picture through Photo, on a build without Andy's camera", async () => {
   server();
+  const real = native.hasNativeModule;
+  jest.spyOn(native, "hasNativeModule").mockImplementation((name) => name !== "ExpoCamera" && real(name));
   const confirm = spyOnConfirm().mockImplementation(() => {});
   await renderRouter("src/app", { initialUrl: "/" });
 
