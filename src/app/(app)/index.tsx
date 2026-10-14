@@ -60,6 +60,12 @@ function EmptyHome() {
 }
 
 /**
+ * A 21pt line of text grows to a 45pt target (WCAG 2.5.8 / STYLE.md's 44pt):
+ * 12 above and below, 8 at the sides where the words already give width.
+ */
+const LINE_ACTION_SLOP = { top: space.md, bottom: space.md, left: space.sm, right: space.sm };
+
+/**
  * Notes kept on this phone while offline, not yet read (`src/lib/outbox.tsx`).
  * Said on home so nothing someone told you seems lost: the note is here, it
  * just has not been read. Online, it opens the oldest one to be read and
@@ -83,6 +89,8 @@ function OutboxLine() {
   return (
     <Pressable
       testID="outbox-line"
+      // One 21pt line of text: grown to a 45pt target, like the lines beside it.
+      hitSlop={LINE_ACTION_SLOP}
       accessibilityRole="button"
       accessibilityLabel={`${count} kept on this phone. Read ${notes.length === 1 ? "it" : "the first"} now`}
       onPress={() =>
@@ -104,12 +112,6 @@ function OutboxLine() {
     </Pressable>
   );
 }
-
-/**
- * A 21pt line of text grows to a 45pt target (WCAG 2.5.8 / STYLE.md's 44pt):
- * 12 above and below, 8 at the sides where the words already give width.
- */
-const LINE_ACTION_SLOP = { top: space.md, bottom: space.md, left: space.sm, right: space.sm };
 
 /**
  * Notes left half-written when iOS closed Andy in the background
@@ -192,7 +194,7 @@ function PendingLine() {
           accessibilityState={{ disabled: syncing }}
           disabled={syncing}
           onPress={() => void sync()}
-          hitSlop={8}
+          hitSlop={LINE_ACTION_SLOP}
         >
           <Text style={styles.outboxAction}>{syncing ? "Syncing…" : "Sync"}</Text>
         </Pressable>
