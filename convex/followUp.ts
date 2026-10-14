@@ -1,8 +1,8 @@
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
-import { action, internalQuery } from "./_generated/server";
-import { MAX_EMAIL_NOTES } from "./emailPrompt";
-import type { EmailDraft, EmailNote } from "./emailPrompt";
+import { action, internalMutation, internalQuery } from "./_generated/server";
+import { MAX_EMAIL_NOTES, followUpStyleValidator } from "./emailPrompt";
+import type { EmailNote, FollowUpDraft } from "./emailPrompt";
 import { rememberedFacts } from "./embeddingModel";
 import { countFactNotes, followUpRefusal } from "./followUpScope";
 import { getAuthenticatedUser } from "./users";
@@ -120,6 +120,28 @@ export const notesForFollowUp = internalQuery({
 });
 
 /**
+ * Remember the format and tone just used for this person, so the next draft
+ * opens the same way (`follow-up-tones.md`, Final choice: kept on the server,
+ * on the person's record). Owner-checked like every write; a person who is
+ * gone, or not the caller's, is left alone.
+ */
+export const rememberStyle = internalMutation({
+  args: { profileId: v.string(), style: followUpStyleValidator },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await getAuthenticatedUser(ctx);
+    const profileId = ctx.db.normalizeId("profiles", args.profileId);
+    if (profileId === null) return null;
+    const profile = await ctx.db.get("profiles", profileId);
+    if (profile === null || profile.userId !== user._id) return null;
+    const now = profile.followUpStyle;
+    if (now?.format === args.style.format && now?.tone === args.style.tone) return null;
+    await ctx.db.patch("profiles", profileId, { followUpStyle: args.style });
+    return null;
+  },
+});
+
+/**
  * Draft it.
  *
  * An action because it calls Claude. Identity is resolved before the model is,
@@ -127,16 +149,22 @@ export const notesForFollowUp = internalQuery({
  * same reason, as `extraction.ts` and `search.ts`.
  */
 export const draft = action({
-  args: { profileId: v.string(), today: v.string() },
+  args: {
+    profileId: v.string(),
+    today: v.string(),
+    /** Format and tone; absent with the `followUpTones` switch off. */
+    style: v.optional(followUpStyleValidator),
+  },
   returns: v.object({
     personName: v.string(),
-    subject: v.string(),
+    /** Only for an email; a message has none. */
+    subject: v.optional(v.string()),
     body: v.string(),
   }),
   handler: async (
     ctx,
     args,
-  ): Promise<{ personName: string; subject: string; body: string }> => {
+  ): Promise<{ personName: string; subject?: string; body: string }> => {
     const scope: {
       personName: string;
       entityType: "person" | "animal";
@@ -171,15 +199,29 @@ export const draft = action({
       throw new ConvexError(refusal);
     }
 
-    const written: EmailDraft = await ctx.runAction(internal.email.write, {
+    const written: FollowUpDraft = await ctx.runAction(internal.email.write, {
       personName: scope.personName,
       today: args.today,
       notes: scope.notes,
+      style: args.style,
     });
+
+    // Only once a draft was written: a style that failed is not the one used.
+    if (args.style !== undefined) {
+      try {
+        await ctx.runMutation(internal.followUp.rememberStyle, {
+          profileId: args.profileId,
+          style: args.style,
+        });
+      } catch {
+        // The draft is written and paid for; failing to remember the style
+        // only means the next one opens as it would have anyway.
+      }
+    }
 
     return {
       personName: scope.personName,
-      subject: written.subject,
+      ...(written.subject === undefined ? {} : { subject: written.subject }),
       body: written.body,
     };
   },
