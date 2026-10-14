@@ -418,6 +418,10 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `ai-status-line` | Settings 섹션의 상태 — "You've allowed this." / "Not allowed — …" |
 | `ai-allow-button` | Settings의 Allow — moss pill |
 | `ai-stop-button` | Stop sending — 조용한 ink 글자, 먼저 `ai-stop-alert`로 물음 |
+| `write-about-input` | Write 맨 위 About 한 줄 — Andy가 읽으면 선택(힌트), Save as written이면 필수. 사람 페이지에서는 안 보임 (2026-10-14) |
+| `write-about-suggestions` | "In what you wrote:" + 저장된 이름 칩 (AI 아님, 이름·별명 비교). 탭해야 About이 채워짐 |
+| `save-as-written-button` | Not now 한 사람의 Write 주 버튼 — 읽지 않고 그대로 저장. 같은 이름이 있으면 review의 `name-picker`로 |
+| `read-instead-button` | Save as written 아래 작은 Let Andy read it — 누르면 `ai-permission-sheet` |
 | `ai-section` | Settings → What Andy sends — 허락 상태와 Allow / Stop sending (확인 창 `ai-stop-alert`: "Stop sending?" · Keep sending · Stop sending) |
 
 ### `note-delete-alert`

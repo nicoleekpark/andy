@@ -36,9 +36,10 @@ import { Image } from "expo-image";
 import { PhotoCamera } from "@/components/photo-camera";
 import { hasNativeModule } from "@/lib/native";
 import { useCaptureDrafts, type CaptureDraft } from "@/lib/capture-draft";
-import { useLiveOrCopy } from "@/lib/offline-copy";
+import { useLiveOrCopy, useReadingCopy } from "@/lib/offline-copy";
 import { withNotesView } from "@convex/offlineViews";
-import { useAiGoAhead } from "@/lib/ai-go-ahead";
+import { useAiChoice, useAiGoAhead } from "@/lib/ai-go-ahead";
+import { namesInText } from "@/lib/names-in-text";
 
 /**
  * Voice capture, end to end: speak → transcript → draft → confirm → saved.
@@ -805,6 +806,17 @@ export function CaptureScreen({
    * "What you wrote".
    */
   // A waiting note opens with its words already here, from the first render.
+  /**
+   * Who a written note is about, typed at the top of Write (owner's decision
+   * 2026-10-14, reopening #165): the person first, the words below. Optional
+   * while Andy reads — it goes along as a hint — and required for Save as
+   * written, where nothing else will work out who it is. From somebody's page
+   * the route says who, and this stays empty.
+   */
+  const [about, setAbout] = useState(() =>
+    // A note iOS closed mid-way comes back with the name it had at the top.
+    profileId === undefined && resumed?.review === undefined ? (resumed?.aboutName ?? "") : "",
+  );
   const [typing, setTyping] = useState<string | null>(
     () => waiting?.text ?? resumed?.words ?? (door === "write" ? "" : null),
   );
@@ -909,7 +921,8 @@ export function CaptureScreen({
       id: draftId,
       today: draftDayRef.current,
       profileId,
-      aboutName: aboutName ?? draft?.primary.name ?? undefined,
+      aboutName:
+        aboutName ?? draft?.primary.name ?? (about.trim() === "" ? undefined : about.trim()),
       source,
       // The editor's words even under review: "Discard and start over"
       // returns to them.
@@ -948,6 +961,7 @@ export function CaptureScreen({
     source,
     profileId,
     aboutName,
+    about,
     keepDraft,
     dropDraft,
     draftId,
@@ -1043,7 +1057,13 @@ export function CaptureScreen({
           today,
           // From a person's page the route says who; from a photo, the name
           // read off it (and checked) does.
-          aboutName: aboutName ?? (photoAbout.trim() === "" ? undefined : photoAbout.trim()),
+          aboutName:
+            aboutName ??
+            (about.trim() !== ""
+              ? about.trim()
+              : photoAbout.trim() === ""
+                ? undefined
+                : photoAbout.trim()),
         });
         setDraft(result);
         setExtracted(result);
@@ -1066,7 +1086,7 @@ export function CaptureScreen({
         setPhase(keepDraft ? "review" : "idle");
       }
     },
-    [extract, aboutName, photoAbout, goAhead],
+    [extract, aboutName, about, photoAbout, goAhead],
   );
 
   /**
@@ -1602,15 +1622,25 @@ export function CaptureScreen({
    */
   const transcriptEdited = transcript.trim() !== readTranscript.trim();
 
-  const commit = useCallback(async () => {
-    if (draft === null) {
+  const commit = useCallback(async (written?: { draft: Draft; transcript: string }) => {
+    // From review: the draft on screen. From Write, saved as written: a draft
+    // of the person alone, built here — nothing was read, so nothing else is
+    // in it, and nothing was asked on the way, so failure returns to Write.
+    const toSave = written?.draft ?? draft;
+    if (toSave === null) {
       return;
     }
+    const words = written?.transcript ?? transcript;
+    const names = written === undefined ? namesInDraft : [toSave.primary.name.trim()];
+    const declared =
+      written === undefined
+        ? subjectDeclared
+        : aboutName !== undefined && matchKey(aboutName) === matchKey(toSave.primary.name);
     setPhase("saving");
     setError(null);
     try {
       const saved = await saveCapture({
-        transcript,
+        transcript: words,
         // A waiting note is filed under the day it was kept, not today (the
         // server checks it is believable).
         keptAt: keptAtRef.current,
@@ -1618,11 +1648,11 @@ export function CaptureScreen({
         // field must not fill their profile behind the user's back.
         draft:
           subjectKept === null
-            ? draft
+            ? toSave
             : {
-                ...draft,
+                ...toSave,
                 primary: {
-                  ...draft.primary,
+                  ...toSave.primary,
                   relationshipContext: null,
                   firstMetDate: null,
                 },
@@ -1663,10 +1693,10 @@ export function CaptureScreen({
               id,
             ]),
           );
-          if (subjectDeclared && scoped) {
+          if (declared && scoped) {
             byKey.set(matchKey(aboutName ?? ""), scoped.profile._id);
           }
-          return namesInDraft.flatMap((name) =>
+          return names.flatMap((name) =>
             byKey.has(matchKey(name))
               ? [{ name, profileId: byKey.get(matchKey(name)) ?? null }]
               : [],
@@ -1676,6 +1706,8 @@ export function CaptureScreen({
 
       // Andy has it for good now; the phone's copy can go.
       if (linkedRef.current !== undefined) doneWaiting(linkedRef.current);
+      // Saved: leaving is not discarding, so Write's question must not ask.
+      leavingOnPurposeRef.current = true;
 
       // Never `push`: the capture is finished, and backing into a draft that
       // has already been written would invite saving it twice.
@@ -1701,7 +1733,7 @@ export function CaptureScreen({
       router.replace(`/profile/${saved.profileId}`);
     } catch (e) {
       setError(userMessage(e, "Andy couldn't save that one. Try again."));
-      setPhase("review");
+      setPhase(written === undefined ? "review" : "idle");
     }
   }, [
     draft,
@@ -1731,6 +1763,59 @@ export function CaptureScreen({
     }
     void commit();
   }, [draft, commit]);
+
+  /**
+   * Save as written — for someone who said Not now (`pre-submission-privacy.md`,
+   * option A, 2b). Nothing is read: the note is the words as typed, filed under
+   * the person named at the top. When nobody else answers to that name, or the
+   * note began on that person's page, it saves straight away; when somebody
+   * already does, it goes to review, whose question settles which one — the
+   * same question, and the same refusal to guess, as a note Andy read.
+   */
+  const aiChoice = useAiChoice();
+  const asWritten = aiChoice === "declined";
+  const typedAbout = aboutName === undefined ? about.trim() : "";
+  const aboutCheck = useQuery(
+    api.profiles.resolveNames,
+    asWritten && typedAbout !== "" ? { names: [typedAbout] } : "skip",
+  );
+  const readingCopy = useReadingCopy();
+  const suggestions = useMemo(
+    () =>
+      asWritten && aboutName === undefined && typedAbout === "" && typing !== null
+        ? namesInText(typing, readingCopy?.profiles ?? [])
+        : [],
+    [asWritten, aboutName, typedAbout, typing, readingCopy],
+  );
+  const whoAbout = aboutName ?? typedAbout;
+  /** Known once the name has been checked; a declared subject needs no check. */
+  const aboutSettled = aboutName !== undefined || aboutCheck !== undefined;
+  const saveAsWritten = useCallback(() => {
+    const words = (typing ?? "").trim();
+    if (words === "" || whoAbout === "" || !aboutSettled) return;
+    const written: Draft = {
+      primary: {
+        name: whoAbout,
+        entityType: "person",
+        relationshipContext: null,
+        tags: [],
+        firstMetDate: null,
+        keyFacts: [],
+      },
+      mentions: [],
+    };
+    const someoneAnswers =
+      aboutName === undefined && (aboutCheck?.[0]?.candidates.length ?? 0) > 0;
+    if (someoneAnswers) {
+      setTranscript(words);
+      setReadTranscript(words);
+      setDraft(written);
+      setExtracted(written);
+      setPhase("review");
+      return;
+    }
+    void commit({ draft: written, transcript: words });
+  }, [typing, whoAbout, aboutSettled, aboutName, aboutCheck, commit]);
 
   /** Edit one field of the draft's primary person. */
   const editPrimary = useCallback((patch: Partial<Draft["primary"]>) => {
@@ -2430,6 +2515,44 @@ export function CaptureScreen({
             nothing but the line above says they can be changed (2026-09-29,
             chosen from six mockups).
           */}
+          {aboutName === undefined ? (
+            // The person first, the words below (owner's decision 2026-10-14).
+            // Optional while Andy reads — a hint it takes along — and needed
+            // for Save as written, where nothing else will say who it is.
+            <View style={styles.aboutLine}>
+              <Text style={styles.fieldLabel}>About</Text>
+              <TextInput
+                value={about}
+                onChangeText={setAbout}
+                style={styles.aboutInput}
+                placeholder={asWritten ? "Who is this about?" : "Who is this about? (optional)"}
+                placeholderTextColor={colors.placeholder}
+                accessibilityLabel="About"
+                autoCapitalize="words"
+                autoCorrect={false}
+                editable={!busy}
+                testID="write-about-input"
+              />
+            </View>
+          ) : null}
+          {suggestions.length > 0 ? (
+            // People already kept whose name is in the words — compared, not
+            // read — offered, never chosen: "May" may be a month.
+            <View style={styles.suggestions} testID="write-about-suggestions">
+              <Text style={styles.quiet}>In what you wrote:</Text>
+              {suggestions.map((name) => (
+                <Pressable
+                  key={name}
+                  accessibilityRole="button"
+                  accessibilityLabel={`About ${name}`}
+                  onPress={() => setAbout(name)}
+                  style={styles.suggestion}
+                >
+                  <Text style={styles.suggestionLabel}>{name}</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
           {heard ? <Text style={styles.fieldLabel}>What you said</Text> : null}
           {!heard && aboutName !== undefined ? (
             // From someone's page: the note is about them, said once, quietly.
@@ -2504,6 +2627,41 @@ export function CaptureScreen({
             >
               <Text style={styles.primaryLabel}>Keep this note</Text>
             </Pressable>
+          ) : asWritten ? (
+            // Someone who said Not now: the words are kept as written, and
+            // Andy's reading stays one small tap away — asked again only if
+            // they reach for it.
+            <>
+              <Text style={[styles.quiet, styles.offlineHint]} testID="save-as-written-line">
+                {whoAbout === ""
+                  ? "Choose who it's about to save it as written."
+                  : "Andy won't read this. It's kept as you wrote it."}
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Save as written"
+                accessibilityState={{ busy: phase === "saving" }}
+                onPress={saveAsWritten}
+                disabled={empty || busy || overLimit || whoAbout === "" || !aboutSettled}
+                style={[
+                  styles.primaryButton,
+                  (empty || busy || overLimit || whoAbout === "" || !aboutSettled) && styles.disabled,
+                ]}
+              >
+                <Text style={styles.primaryLabel}>
+                  {phase === "saving" ? "Saving…" : "Save as written"}
+                </Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Let Andy read it"
+                onPress={() => void runExtraction(typing)}
+                disabled={empty || busy || overLimit}
+                style={styles.readInstead}
+              >
+                <Text style={styles.readInsteadLabel}>Let Andy read it</Text>
+              </Pressable>
+            </>
           ) : (
             <Pressable
               accessibilityRole="button"
@@ -3010,6 +3168,35 @@ const styles = StyleSheet.create({
   // The field's only visible edge: `edge`, 3:1 (WCAG 1.4.11), and a whole point wide.
   writeAbout: { color: colors.ink, fontSize: textSize.md, opacity: textOpacity.quiet },
   writeAboutName: { fontWeight: "600" },
+  aboutLine: { gap: space.xs, marginBottom: space.md },
+  // One line, underlined like every field here (`typedNote`, review's `input`).
+  aboutInput: {
+    color: colors.ink,
+    // The body's size (`typedNote`, 18), so the two read as one note.
+    fontSize: textSize.xxl,
+    minHeight: size.touch,
+    paddingVertical: space.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.edge,
+  },
+  suggestions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: space.sm,
+    marginBottom: space.md,
+  },
+  suggestion: {
+    minHeight: size.touch,
+    justifyContent: "center",
+    paddingHorizontal: space.lg,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.moss,
+  },
+  suggestionLabel: { color: colors.moss, fontSize: textSize.base },
+  readInstead: { minHeight: size.touch, alignItems: "center", justifyContent: "center" },
+  readInsteadLabel: { color: colors.moss, fontSize: textSize.base },
   // Plex Mono, like every number Andy keeps in a column (STYLE.md).
   writeCount: {
     color: colors.ink,
