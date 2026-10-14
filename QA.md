@@ -869,6 +869,8 @@ WCAG 1.4.11: a control whose outline is all that marks it out needs 3:1
 | 31.9 | Largest Dynamic Type | The field and Cancel still fit; + stays a circle; nothing overlaps the last row | ⬜ |
 | 31.11 | On an iPhone with a home indicator (no Home button), look at the bottom | The field sits **above** the home indicator line, never under it | ⬜ |
 | 31.12 | VoiceOver on, swipe through home from the top | The list, then **Find a name or a word**, then **New note** (the +) — though + is drawn above the field | ⬜ |
+| 31.13 | With a note kept offline (online again) and a change waiting: tap just above or below **Read it now** and **Sync** | Each still answers — their targets reach about a finger's height, not only the line of text (were ~37pt) | ⬜ |
+| 31.14 | With two of those lines showing (e.g. a half-written note and Sync), tap in the gap **between** them | Only the nearer one answers — never the other line's action | ⬜ |
 | 31.10 | A new account with no people | No field — only + and "No one yet — tap + to remember your first person." | ⬜ |
 
 ## 32. New note: the orbit (capture-doors.md, Final choice)

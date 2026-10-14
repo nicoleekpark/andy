@@ -253,3 +253,33 @@ test("should keep + a circle that a fallback word can widen, never a fixed width
   expect(style.minWidth).toBe(72);
 });
 
+
+test("should make the waiting-notes line and Sync at least 44pt tall to touch", async () => {
+  files().set(
+    "file:///documents/outbox/notes.json",
+    JSON.stringify([{ id: "o1", ownerId: "user_default", keptAt: 1, today: "2026-10-14", text: "x", kind: "typed" }]),
+  );
+  files().set(
+    "file:///documents/pending/changes.json",
+    JSON.stringify({
+      ownerId: "user_default",
+      changes: [{ id: "c1", kind: "removeNote", noteId: "n1", base: { keyFacts: [] }, madeAt: 1 }],
+    }),
+  );
+  server();
+  await renderRouter("src/app", { initialUrl: "/" });
+
+  // Each is one 21pt line; the rest has to come from hitSlop (device QA, build 4).
+  for (const id of ["outbox-line", "pending-line-sync"]) {
+    const { top, bottom } = screen.getByTestId(id).props.hitSlop as { top: number; bottom: number };
+    expect(21 + top + bottom).toBeGreaterThanOrEqual(44);
+  }
+  // And the gap between lines is the two targets' reach together, so a tap
+  // between them never lands on the wrong one.
+  const gap = StyleSheet.flatten(screen.getByTestId("pending-line").props.style).marginBottom as number;
+  const { bottom } = screen.getByTestId("outbox-line").props.hitSlop as { bottom: number };
+  const { top } = screen.getByTestId("pending-line-sync").props.hitSlop as { top: number };
+  expect(gap).toBeGreaterThanOrEqual(top + bottom);
+  files().delete("file:///documents/outbox/notes.json");
+  files().delete("file:///documents/pending/changes.json");
+});
