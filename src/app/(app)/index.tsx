@@ -449,8 +449,10 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  outboxLine: { color: colors.ink, fontSize: 14, opacity: textOpacity.quiet, lineHeight: 21, marginBottom: space.lg },
-  outboxRow: { flexDirection: "row", flexWrap: "wrap", columnGap: space.xs, marginBottom: space.lg },
+  // `space.xl` between lines: each line's target reaches `space.md` above and
+  // below it (LINE_ACTION_SLOP), so two neighbours' targets meet, never overlap.
+  outboxLine: { color: colors.ink, fontSize: 14, opacity: textOpacity.quiet, lineHeight: 21, marginBottom: space.xl },
+  outboxRow: { flexDirection: "row", flexWrap: "wrap", columnGap: space.xs, marginBottom: space.xl },
   outboxText: { color: colors.ink, fontSize: 14, opacity: textOpacity.quiet, lineHeight: 21 },
   outboxAction: { color: colors.moss, fontSize: 14, lineHeight: 21 },
   container: { flex: 1, backgroundColor: colors.paper, padding: 24, gap: 16 },

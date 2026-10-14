@@ -274,6 +274,12 @@ test("should make the waiting-notes line and Sync at least 44pt tall to touch", 
     const { top, bottom } = screen.getByTestId(id).props.hitSlop as { top: number; bottom: number };
     expect(21 + top + bottom).toBeGreaterThanOrEqual(44);
   }
+  // And the gap between lines is the two targets' reach together, so a tap
+  // between them never lands on the wrong one.
+  const gap = StyleSheet.flatten(screen.getByTestId("pending-line").props.style).marginBottom as number;
+  const { bottom } = screen.getByTestId("outbox-line").props.hitSlop as { bottom: number };
+  const { top } = screen.getByTestId("pending-line-sync").props.hitSlop as { top: number };
+  expect(gap).toBeGreaterThanOrEqual(top + bottom);
   files().delete("file:///documents/outbox/notes.json");
   files().delete("file:///documents/pending/changes.json");
 });
