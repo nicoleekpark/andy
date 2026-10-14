@@ -14,6 +14,7 @@ import {
   buildUserMessage,
   normalizeCardName,
 } from "./extractionPrompt";
+import { aiNotEnforced } from "../test-support/ai-permission";
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -77,7 +78,7 @@ afterEach(() => {
 });
 
 test("should refuse and never call the Anthropic SDK when the caller is signed out", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
 
   await expect(
     t.action(api.extraction.fromTranscript, {
@@ -90,7 +91,7 @@ test("should refuse and never call the Anthropic SDK when the caller is signed o
 });
 
 test("should refuse and never call the Anthropic SDK when text is empty or whitespace-only", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const asAlice = t.withIdentity(IDENTITY);
 
   await expect(
@@ -101,7 +102,7 @@ test("should refuse and never call the Anthropic SDK when text is empty or white
 });
 
 test("should refuse and never call the Anthropic SDK when text is longer than MAX_TRANSCRIPT_CHARS", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const asAlice = t.withIdentity(IDENTITY);
 
   const tooLong = "a".repeat(MAX_TRANSCRIPT_CHARS + 1);
@@ -114,7 +115,7 @@ test("should refuse and never call the Anthropic SDK when text is longer than MA
 });
 
 test("should accept a transcript exactly at MAX_TRANSCRIPT_CHARS and call the Anthropic SDK", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const asAlice = t.withIdentity(IDENTITY);
 
   const draft = {
@@ -148,7 +149,7 @@ test("should accept a transcript exactly at MAX_TRANSCRIPT_CHARS and call the An
 test("should throw a ConvexError and never call the Anthropic SDK when ANTHROPIC_API_KEY is not set", async () => {
   vi.stubEnv("ANTHROPIC_API_KEY", "");
 
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const asAlice = t.withIdentity(IDENTITY);
 
   await expect(
@@ -162,7 +163,7 @@ test("should throw a ConvexError and never call the Anthropic SDK when ANTHROPIC
 });
 
 test("should surface an AuthenticationError from the Anthropic SDK as a ConvexError, not the raw SDK error", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const asAlice = t.withIdentity(IDENTITY);
 
   createMessage.mockRejectedValueOnce(
@@ -184,7 +185,7 @@ test("should surface an AuthenticationError from the Anthropic SDK as a ConvexEr
 });
 
 test("should surface a RateLimitError from the Anthropic SDK as a ConvexError, not the raw SDK error", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const asAlice = t.withIdentity(IDENTITY);
 
   createMessage.mockRejectedValueOnce(
@@ -206,7 +207,7 @@ test("should surface a RateLimitError from the Anthropic SDK as a ConvexError, n
 });
 
 test("should surface an APIConnectionError from the Anthropic SDK as a ConvexError, not the raw SDK error", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const asAlice = t.withIdentity(IDENTITY);
 
   createMessage.mockRejectedValueOnce(
@@ -223,7 +224,7 @@ test("should surface an APIConnectionError from the Anthropic SDK as a ConvexErr
 });
 
 test("should return a parsed draft with mentions and nullable fields intact when the response is well-formed", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const asAlice = t.withIdentity(IDENTITY);
 
   const draft = {
@@ -261,7 +262,7 @@ test("should return a parsed draft with mentions and nullable fields intact when
 });
 
 test("should offer no animal for review: a pet in passing is dropped, and the subject is a person", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const asAlice = t.withIdentity(IDENTITY);
 
   // The QA finding: "a second dog called Kiln" came back as a mention and the
@@ -301,7 +302,7 @@ test("should offer no animal for review: a pet in passing is dropped, and the su
 });
 
 test("should file a business card's subject as a person and drop an animal it mentions", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const asAlice = t.withIdentity(IDENTITY);
 
   createMessage.mockResolvedValueOnce(
@@ -339,7 +340,7 @@ test("should file a business card's subject as a person and drop an animal it me
 });
 
 test("should throw a ConvexError instead of a JSON parse crash when stop_reason is refusal", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const asAlice = t.withIdentity(IDENTITY);
 
   createMessage.mockResolvedValueOnce(
@@ -352,7 +353,7 @@ test("should throw a ConvexError instead of a JSON parse crash when stop_reason 
 });
 
 test("should throw a ConvexError instead of a JSON parse crash when stop_reason is max_tokens", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const asAlice = t.withIdentity(IDENTITY);
 
   createMessage.mockResolvedValueOnce(
@@ -371,7 +372,7 @@ test("should throw a ConvexError instead of a JSON parse crash when stop_reason 
 });
 
 test("should throw a ConvexError instead of a crash when the response has no text block", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const asAlice = t.withIdentity(IDENTITY);
 
   createMessage.mockResolvedValueOnce(
@@ -384,7 +385,7 @@ test("should throw a ConvexError instead of a crash when the response has no tex
 });
 
 test("should throw a ConvexError when the response text block is not parseable JSON", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const asAlice = t.withIdentity(IDENTITY);
 
   createMessage.mockResolvedValueOnce(
@@ -522,7 +523,7 @@ test("should keep a profile name inside the boundary the prompt draws around dat
 });
 
 test("should refuse a subject longer than a name can be", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const asAlice = t.withIdentity(IDENTITY);
 
   // Same reasoning as the transcript ceiling: a client-supplied string on a
@@ -550,7 +551,7 @@ test("should leave an ordinary name untouched", () => {
 });
 
 test("should forward the caller's subject to the model", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const asAlice = t.withIdentity(IDENTITY);
 
   createMessage.mockResolvedValueOnce(
@@ -599,7 +600,7 @@ test("should forward the caller's subject to the model", async () => {
 // shared rather than merely parallel — is what these cover.
 
 test("should refuse and never call the Anthropic SDK when the caller is signed out", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
 
   await expect(
     t.action(api.extraction.fromBusinessCard, {
@@ -612,7 +613,7 @@ test("should refuse and never call the Anthropic SDK when the caller is signed o
 });
 
 test("should refuse and never call the Anthropic SDK when imageBase64 is empty", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const asAlice = t.withIdentity(IDENTITY);
 
   await expect(
@@ -626,7 +627,7 @@ test("should refuse and never call the Anthropic SDK when imageBase64 is empty",
 });
 
 test("should refuse and never call the Anthropic SDK when imageBase64 is longer than MAX_IMAGE_CHARS", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const asAlice = t.withIdentity(IDENTITY);
 
   const tooLarge = "a".repeat(MAX_IMAGE_CHARS + 1);
@@ -642,7 +643,7 @@ test("should refuse and never call the Anthropic SDK when imageBase64 is longer 
 });
 
 test("should return the parsed draft and cardText intact when the response is well-formed", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const asAlice = t.withIdentity(IDENTITY);
 
   const cardDraft = {
@@ -679,7 +680,7 @@ test("should return the parsed draft and cardText intact when the response is we
 });
 
 test("should send the photo as an image content block with type base64 and the given media type, not a text block", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const asAlice = t.withIdentity(IDENTITY);
 
   const cardDraft = {
@@ -730,7 +731,7 @@ test("should send the photo as an image content block with type base64 and the g
 });
 
 test("should surface a RateLimitError from the business card path as a ConvexError, the same translation fromTranscript gets", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const asAlice = t.withIdentity(IDENTITY);
 
   createMessage.mockRejectedValueOnce(
@@ -789,7 +790,7 @@ test("should recase a name the card printed in capitals, and leave every other n
 });
 
 test("should return a business card name recased when Claude ignored the prompt's own capitalisation rule", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const asAlice = t.withIdentity(IDENTITY);
 
   const cardDraft = {
@@ -838,7 +839,7 @@ function photoAnswer(answer: unknown) {
 }
 
 test("should refuse a photo from someone signed out, and never call the Anthropic SDK", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
 
   await expect(
     t.action(api.extraction.fromPhoto, { imageBase64: "ZmFrZQ==", mediaType: "image/jpeg" }),
@@ -847,7 +848,7 @@ test("should refuse a photo from someone signed out, and never call the Anthropi
 });
 
 test("should refuse an empty or oversized photo before calling anything", async () => {
-  const asAlice = convexTest(schema, modules).withIdentity(IDENTITY);
+  const asAlice = (await aiNotEnforced(convexTest(schema, modules))).withIdentity(IDENTITY);
 
   await expect(
     asAlice.action(api.extraction.fromPhoto, { imageBase64: "", mediaType: "image/jpeg" }),
@@ -862,7 +863,7 @@ test("should refuse an empty or oversized photo before calling anything", async 
 });
 
 test("should return whose page it is and the words, exactly as written, from the photo it was sent", async () => {
-  const asAlice = convexTest(schema, modules).withIdentity(IDENTITY);
+  const asAlice = (await aiNotEnforced(convexTest(schema, modules))).withIdentity(IDENTITY);
   photoAnswer({ about: "Priya", text: "coffee at Tartine\nask Marcus?\n" });
 
   const words = await asAlice.action(api.extraction.fromPhoto, {
@@ -880,7 +881,7 @@ test("should return whose page it is and the words, exactly as written, from the
 });
 
 test("should undo a card's capitals in the name, and drop a name it cannot trust", async () => {
-  const asAlice = convexTest(schema, modules).withIdentity(IDENTITY);
+  const asAlice = (await aiNotEnforced(convexTest(schema, modules))).withIdentity(IDENTITY);
 
   photoAnswer({ about: "SARAH CHEN", text: "Developer Relations" });
   expect((await asAlice.action(api.extraction.fromPhoto, { imageBase64: "eA==", mediaType: "image/jpeg" })).about).toBe(

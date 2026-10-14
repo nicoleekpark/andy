@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
+import { mayUseAi } from "./aiPermission";
 import {
   internalAction,
   internalMutation,
@@ -187,9 +188,19 @@ export const notesForEmbedding = internalQuery({
   ),
   handler: async (ctx, args) => {
     const out: { noteId: Id<"notes">; text: string }[] = [];
+    // Per owner, once: a page of notes is usually one person's.
+    const allowed = new Map<Id<"users">, boolean>();
     for (const noteId of args.noteIds) {
       const note = await ctx.db.get("notes", noteId);
       if (note === null) continue;
+      // Never sent to OpenAI without the owner's go-ahead (`aiPermission.ts`).
+      // Skipped, not refused: the note keeps the vector it had, and saying yes
+      // re-embeds everything.
+      if (!allowed.has(note.userId)) {
+        const owner = await ctx.db.get("users", note.userId);
+        allowed.set(note.userId, owner !== null && (await mayUseAi(ctx, owner)));
+      }
+      if (!allowed.get(note.userId)) continue;
       out.push({ noteId, text: embeddingTextFor(note) });
     }
     return out;

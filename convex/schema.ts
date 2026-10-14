@@ -21,6 +21,12 @@ export default defineSchema({
     tokenIdentifier: v.string(),
     name: v.optional(v.string()),
     email: v.optional(v.string()),
+    /**
+     * When the person said yes to Andy sending what they write to Anthropic
+     * and OpenAI (App Review 5.1.2(i); `convex/aiPermission.ts`). Absent: not
+     * asked yet, or withdrawn. Additive; goes with the account.
+     */
+    aiAllowedAt: v.optional(v.number()),
   }).index("by_token", ["tokenIdentifier"]),
 
   profiles: defineTable({
