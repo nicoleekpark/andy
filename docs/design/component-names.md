@@ -405,6 +405,21 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `draft-regenerate-button` | Write another — 다시 쓰기 |
 | `draft-footnote` | Andy는 보내지 않는다는 안내 |
 
+### `ai-permission-sheet`
+
+| Name | 설명 |
+|---|---|
+| `ai-permission-sheet` | AI로 보내기 전에 묻는 시트 — 첫 실행(잠금 해제 후 한 번)과, Not now 뒤에는 읽기·사진·Ask·초안을 누를 때마다. 아래로 밀면 Not now (pre-submission-privacy.md, A) |
+| `ai-permission-allow` | Allow — moss pill. 서버에 저장 (`users.aiAllowedAt`) |
+| `ai-permission-not-now` | Not now — moss 글자. 아무것도 보내지 않음 |
+| `ai-permission-sheet-title` | Before Andy reads your notes |
+| `ai-permission-sheet-body` | 누구에게(Anthropic, OpenAI), 왜, 학습 안 함, 캘린더 이름은 폰에 |
+| `ai-permission-sheet-footnote` | Not now면 어떻게 되는지 + Settings에서 바꿀 수 있음 |
+| `ai-status-line` | Settings 섹션의 상태 — "You've allowed this." / "Not allowed — …" |
+| `ai-allow-button` | Settings의 Allow — moss pill |
+| `ai-stop-button` | Stop sending — 조용한 ink 글자, 먼저 `ai-stop-alert`로 물음 |
+| `ai-section` | Settings → What Andy sends — 허락 상태와 Allow / Stop sending (확인 창 `ai-stop-alert`: "Stop sending?" · Keep sending · Stop sending) |
+
 ### `note-delete-alert`
 
 | Capture | State | 설명 |

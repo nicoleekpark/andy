@@ -906,6 +906,24 @@ WCAG 1.4.11: a control whose outline is all that marks it out needs 3:1
 | 33.10 | Largest Dynamic Type | The words under the three controls wrap rather than overlap; the circles stay the same size | ⬜ |
 | 33.11 | VoiceOver, while listening | The words, the time, then Start over, Pause, Done | ⬜ |
 
+## 35. Asking before Andy sends anything (pre-submission-privacy.md, A)
+
+Needs the switch **on**: on a dev build against the dev deployment (no `aiPermission` row there), or in production only after build 6 is on every phone and the row is deleted.
+
+| # | Do this | Expect | |
+|---|---|---|---|
+| 35.1 | Sign in, unlock | **Before Andy reads your notes** slides up once: who (Anthropic, OpenAI), why, *don't train on them*, calendar stays on the phone; **Allow** and **Not now** | ⬜ |
+| 35.2 | **Not now**, then send Andy to the background and back | Not asked again by itself (once per launch). Home works; people and notes all show | ⬜ |
+| 35.3 | + → Write, type, **Let Andy read it** | The sheet again. **Not now**: your words stay, nothing read. **Allow**: it reads at once | ⬜ |
+| 35.4 | Same from **Photo**, **Ask**, and **Draft a follow-up** | Each asks first; Not now sends nothing (the photo is dropped, not read) | ⬜ |
+| 35.5 | Swipe the sheet down | Same as **Not now** | ⬜ |
+| 35.6 | With the sheet up, switch away and come back (app lock on) | Only the `lock` screen while locked; the sheet is back after unlocking | ⬜ |
+| 35.7 | Wi-Fi off, **Allow** | One line: *"Andy couldn't save that…"*; the sheet stays | ⬜ |
+| 35.8 | Settings → **What Andy sends** | Before: *Not allowed…* and **Allow**. After: *You've allowed this.* and **Stop sending** → *Stop sending?* → Keep sending / Stop sending | ⬜ |
+| 35.9 | Allow on one phone with the sheet open on another | The other sheet closes by itself | ⬜ |
+| 35.10 | Largest Dynamic Type; VoiceOver | The sheet scrolls, buttons stay reachable; VoiceOver reads the title as a heading, then the paragraphs, Allow, Not now | ⬜ |
+| 35.11 | Switch off (production today) | No sheet, no Settings section — Andy works exactly as build 5 | ⬜ |
+
 ## Simulator pass, 2026-09-30 (Claude, while the developer was away)
 
 **How it was run.** iPhone 17 Pro simulator, the dev build of commit `47f3837`

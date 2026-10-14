@@ -9,7 +9,13 @@ import { api } from "@convex/_generated/api";
  */
 export type Feature =
   /** The calendar briefing card, reading the calendar, and its reminders. */
-  "calendarBriefing";
+  | "calendarBriefing"
+  /**
+   * Asking for the go-ahead before anything reaches an AI service
+   * (`convex/aiPermission.ts`). Switched off in production until a build that
+   * asks is on every phone; the server reads the same row.
+   */
+  | "aiPermission";
 
 /**
  * Whether a feature is on.
@@ -22,7 +28,17 @@ export type Feature =
  * stop when the answer lands (`useBriefing` cancels its reminders).
  */
 export function useFeature(feature: Feature): boolean {
+  return useFeatureState(feature) ?? true;
+}
+
+/**
+ * The same answer, but `undefined` until the server has given one — for
+ * something that must not *start* on a guess, like a question put to the
+ * person the moment the app opens.
+ */
+export function useFeatureState(feature: Feature): boolean | undefined {
   const off: unknown = useQuery(api.featureFlags.switchedOff, {});
-  // Anything but a list of keys is "not told": on.
-  return !(Array.isArray(off) && off.includes(feature));
+  // Anything but a list of keys is "not told".
+  if (!Array.isArray(off)) return undefined;
+  return !off.includes(feature);
 }

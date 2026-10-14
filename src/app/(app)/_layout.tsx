@@ -11,6 +11,7 @@ import { colors } from "@/constants/theme";
 import { LockedContext } from "@/lib/lock-context";
 import { OutboxProvider } from "@/lib/outbox";
 import { OfflineCopyProvider } from "@/lib/offline-copy";
+import { AiGoAheadProvider } from "@/lib/ai-go-ahead";
 import { PendingProvider } from "@/lib/pending-changes";
 import { useOffline } from "@/lib/connection";
 import { forgetOnThisPhone, outboxStore } from "@/lib/on-phone";
@@ -186,6 +187,8 @@ export default function AppLayout() {
       <OutboxProvider ownerId={userId!} store={outboxStore}>
       <PendingProvider ownerId={userId!}>
       <OfflineCopyProvider ownerId={userId!}>
+      {/* Asks before anything reaches an AI service, and only while unlocked. */}
+      <AiGoAheadProvider active={unlocked}>
         <View style={styles.fill}>
           <View
             style={styles.fill}
@@ -234,6 +237,7 @@ export default function AppLayout() {
             <View style={styles.cover} testID="lock-cover" />
           ) : null}
         </View>
+      </AiGoAheadProvider>
       </OfflineCopyProvider>
       </PendingProvider>
       </OutboxProvider>
