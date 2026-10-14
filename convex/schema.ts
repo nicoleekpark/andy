@@ -27,6 +27,12 @@ export default defineSchema({
      * asked yet, or withdrawn. Additive; goes with the account.
      */
     aiAllowedAt: v.optional(v.number()),
+    /**
+     * When the person said Not now (or stopped sending). Remembered so Andy
+     * never asks again by itself — only when they reach for something that
+     * needs it. Cleared by a yes. Additive; goes with the account.
+     */
+    aiDeclinedAt: v.optional(v.number()),
   }).index("by_token", ["tokenIdentifier"]),
 
   profiles: defineTable({

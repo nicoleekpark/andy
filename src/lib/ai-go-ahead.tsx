@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "convex/react";
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@convex/_generated/api";
 import { AiPermissionSheet } from "@/components/ai-permission-sheet";
 import { useFeatureState } from "@/lib/feature-flags";
@@ -11,8 +11,11 @@ import { userMessage } from "@/lib/user-message";
  * 5.1.2(i)). The server is the guard (`convex/aiPermission.ts`); this is the
  * asking.
  *
- * Asked once when Andy opens, and again at the moment it matters — Let Andy
- * read it, a photo, Ask, a follow-up — for as long as the answer is "not now".
+ * Never asked by itself. Asked only when the person reaches for something
+ * that needs reading — Let Andy read it, a photo, Ask, a follow-up — which is
+ * the moment the question makes sense. Not now is remembered on the server
+ * (`aiDeclinedAt`), so a person who said no writes and saves as written and is
+ * not asked again unless they reach for one of those themselves.
  * Every place that is about to send something calls `useAiGoAhead()` first and
  * goes on only if it resolves true.
  */
@@ -20,29 +23,56 @@ import { userMessage } from "@/lib/user-message";
 /** Resolves true to go on; false when the person chose Not now. */
 type GoAhead = () => Promise<boolean>;
 
-const GoAheadContext = createContext<GoAhead>(async () => true);
+/**
+ * Where this person stands: `off` while the switch is off (nothing is asked),
+ * `unknown` while loading or offline, then `unasked`, `declined` or `allowed`.
+ * A screen uses it to choose its main button — Save as written for someone who
+ * said no — never to decide whether something may be sent; that is the server.
+ */
+export type AiChoice = "off" | "unknown" | "unasked" | "declined" | "allowed";
+
+const GoAheadContext = createContext<{ goAhead: GoAhead; choice: AiChoice }>({
+  goAhead: async () => true,
+  choice: "off",
+});
 
 /** Ask, if Andy has to, before sending anything to an AI service. */
 export function useAiGoAhead(): GoAhead {
-  return useContext(GoAheadContext);
+  return useContext(GoAheadContext).goAhead;
+}
+
+/** This person's answer so far (see `AiChoice`). */
+export function useAiChoice(): AiChoice {
+  return useContext(GoAheadContext).choice;
 }
 
 export function AiGoAheadProvider({
   active,
   children,
 }: {
-  /** In the app and unlocked: the only time the question may appear by itself. */
+  /** In the app and unlocked: the only time the question may be on screen. */
   active: boolean;
   children: React.ReactNode;
 }) {
   const asking = useFeatureState("aiPermission");
   const user = useQuery(api.users.current, {});
   const allow = useMutation(api.aiPermission.allow);
+  const decline = useMutation(api.aiPermission.decline);
   // Needed only when the switch is known to be on and the user row is known
   // to say no. Not known yet — loading, offline — is not a reason to ask: the
   // server refuses anything it has to, in words that say where to go.
   const needed =
     asking === true && user !== undefined && user !== null && user.aiAllowedAt === undefined;
+  const choice: AiChoice =
+    asking === false
+      ? "off"
+      : asking === undefined || user === undefined || user === null
+        ? "unknown"
+        : user.aiAllowedAt !== undefined
+          ? "allowed"
+          : user.aiDeclinedAt !== undefined
+            ? "declined"
+            : "unasked";
 
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -67,15 +97,6 @@ export function AiGoAheadProvider({
     });
   }, [needed]);
 
-  // Once per run of the app, when it first can: a person who said Not now is
-  // asked again where it matters, not every time Andy comes to the front.
-  const askedAtOpen = useRef(false);
-  useEffect(() => {
-    if (!active || !needed || askedAtOpen.current) return;
-    askedAtOpen.current = true;
-    queueMicrotask(() => setOpen(true));
-  }, [active, needed]);
-
   // Answered somewhere else — another phone, Settings — or the switch went
   // off: nobody is left to ask, so whoever was waiting goes on.
   useEffect(() => {
@@ -95,15 +116,25 @@ export function AiGoAheadProvider({
     }
   }, [allow, settle]);
 
+  const onNotNow = useCallback(() => {
+    // Remembered, so nothing offers the question again by itself. Not waited
+    // on: the answer is no either way, and a failure only means being asked
+    // once more next time.
+    decline({}).catch(() => {});
+    settle(false);
+  }, [decline, settle]);
+
+  const value = useMemo(() => ({ goAhead, choice }), [goAhead, choice]);
+
   return (
-    <GoAheadContext.Provider value={goAhead}>
+    <GoAheadContext.Provider value={value}>
       {children}
       {open && active ? (
         <AiPermissionSheet
           saving={saving}
           error={error}
           onAllow={() => void onAllow()}
-          onNotNow={() => settle(false)}
+          onNotNow={onNotNow}
         />
       ) : null}
     </GoAheadContext.Provider>

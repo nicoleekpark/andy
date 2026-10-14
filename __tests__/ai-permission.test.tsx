@@ -14,7 +14,7 @@ import { pressConfirmButton } from "../test-support/dialog";
  */
 
 const WRITE_BODY = /^Write (or paste )?what you want to remember/;
-const SHEET_TITLE = "Before Andy reads your notes";
+const SHEET_TITLE = "Let Andy read your notes?";
 
 jest.mock("expo-camera", () => {
   const React = jest.requireActual<typeof import("react")>("react");
@@ -70,6 +70,7 @@ type Server = {
 function server({ switchedOff = [], allowedAt }: Server = {}) {
   const allow = jest.fn(async () => null);
   const withdraw = jest.fn(async () => null);
+  const decline = jest.fn(async () => null);
   const extract = jest.fn(async () => ({ name: "Nina", keyFacts: [], mentions: [] }));
   const readPhoto = jest.fn(async () => ({ about: "Nina", text: "coffee" }));
   const recall = jest.fn(async () => ({ query: "q", answer: "", results: [] }));
@@ -92,7 +93,11 @@ function server({ switchedOff = [], allowedAt }: Server = {}) {
   );
   answerByName(
     useMutation,
-    { [nameOf(api.aiPermission.allow)]: allow, [nameOf(api.aiPermission.withdraw)]: withdraw },
+    {
+      [nameOf(api.aiPermission.allow)]: allow,
+      [nameOf(api.aiPermission.withdraw)]: withdraw,
+      [nameOf(api.aiPermission.decline)]: decline,
+    },
     quietCall,
   );
   answerByName(
@@ -105,7 +110,7 @@ function server({ switchedOff = [], allowedAt }: Server = {}) {
     },
     quietCall,
   );
-  return { allow, withdraw, extract, readPhoto, recall, draft };
+  return { allow, withdraw, decline, extract, readPhoto, recall, draft };
 }
 
 async function open(url = "/") {
@@ -121,10 +126,11 @@ async function press(name: string) {
   });
 }
 
-/** Answer the sheet Andy put up when it opened, so a test starts from home. */
-async function notNowAtOpen() {
-  await waitFor(() => expect(screen.getByText(SHEET_TITLE)).toBeTruthy());
-  await press("Not now");
+/** Andy never asks by itself: given every chance to appear, the sheet does not. */
+async function expectNoSheet() {
+  await expect(
+    waitFor(() => expect(screen.getByText(SHEET_TITLE)).toBeTruthy(), { timeout: 500 }),
+  ).rejects.toThrow();
 }
 
 async function askAndy(question: string) {
@@ -147,22 +153,40 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
-test("should ask once when Andy opens, and remember a yes on the server", async () => {
-  const { allow } = server();
+test("should never ask by itself when Andy opens", async () => {
+  server();
   await open();
 
-  await waitFor(() => expect(screen.getByText(SHEET_TITLE)).toBeTruthy());
-  expect(screen.getByText(/Anthropic \(Claude\)/)).toBeTruthy();
+  await expectNoSheet();
+});
+
+test("should ask at the first thing that reads, and remember a yes on the server", async () => {
+  const { allow, recall } = server();
+  await open();
+
+  await askAndy("who moved to Berlin");
+  expect(screen.getByText(SHEET_TITLE)).toBeTruthy();
+  expect(screen.getByText(/delete it within 30 days/)).toBeTruthy();
   await press("Allow");
 
   expect(allow).toHaveBeenCalledTimes(1);
   expect(screen.queryByText(SHEET_TITLE)).toBeNull();
+  await waitFor(() => expect(recall).toHaveBeenCalledTimes(1));
+});
+
+test("should remember Not now on the server, so nothing asks again by itself", async () => {
+  const { decline } = server();
+  await open();
+
+  await askAndy("who moved to Berlin");
+  await press("Not now");
+
+  expect(decline).toHaveBeenCalledTimes(1);
 });
 
 test("should ask again at Ask after Not now, and send nothing until allowed", async () => {
   const { recall, allow } = server();
   await open();
-  await notNowAtOpen();
 
   await askAndy("who moved to Berlin");
   expect(screen.getByText(SHEET_TITLE)).toBeTruthy();
@@ -180,7 +204,6 @@ test("should ask again at Ask after Not now, and send nothing until allowed", as
 test("should keep written words and read nothing after Not now", async () => {
   const { extract } = server();
   await open();
-  await notNowAtOpen();
   await act(async () => {
     router.push("/capture?door=write");
   });
@@ -199,7 +222,6 @@ test("should keep written words and read nothing after Not now", async () => {
 test("should not send a photo to be read after Not now", async () => {
   const { readPhoto } = server();
   const result = await open();
-  await notNowAtOpen();
   await act(async () => {
     router.push("/capture?door=photo");
   });
@@ -218,7 +240,6 @@ test("should not send a photo to be read after Not now", async () => {
 test("should send once, however many times it is pressed while the question is up", async () => {
   const { recall } = server();
   await open();
-  await notNowAtOpen();
   await act(async () => {
     router.push("/search");
   });
@@ -239,7 +260,6 @@ test("should send once, however many times it is pressed while the question is u
 test("should draft nothing after Not now, and ask again on the next tap", async () => {
   const { draft } = server();
   await open("/profile/profile-1");
-  await notNowAtOpen();
 
   await press("Draft a follow-up");
   await press("Not now");
@@ -270,8 +290,8 @@ test("should never ask with the switch off, as production runs until build 6", a
   await waitFor(() => expect(recall).toHaveBeenCalledTimes(1));
 });
 
-test("should not ask at open before the switch has been read", async () => {
-  server({ switchedOff: undefined });
+test("should not ask on a guess while the switch is still unknown — the server decides", async () => {
+  const { recall } = server();
   // Everything else answered — the user row included — so only the switch is unknown.
   answerByName(
     useQuery,
@@ -281,21 +301,19 @@ test("should not ask at open before the switch has been read", async () => {
       [nameOf(api.people.search)]: { people: [], mentions: [] },
       "profiles:people": [],
     },
-    () => undefined,
+    () => PERSON,
   );
   await open();
-  // Given every chance to appear — the same wait the tests above use to find
-  // it — and it does not.
-  await expect(
-    waitFor(() => expect(screen.getByText(SHEET_TITLE)).toBeTruthy(), { timeout: 500 }),
-  ).rejects.toThrow();
+
+  await askAndy("who moved to Berlin");
+
   expect(screen.queryByText(SHEET_TITLE)).toBeNull();
+  await waitFor(() => expect(recall).toHaveBeenCalledTimes(1));
 });
 
 test("should say in Settings that nothing is allowed, and allow from there", async () => {
   const { allow } = server();
   await open("/settings");
-  await notNowAtOpen();
 
   expect(screen.getByTestId("ai-section")).toBeTruthy();
   expect(screen.getByText(/Not allowed/)).toBeTruthy();

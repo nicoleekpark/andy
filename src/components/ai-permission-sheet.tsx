@@ -1,15 +1,46 @@
+import { SymbolView, type SFSymbol } from "expo-symbols";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { colors, disabledOpacity, fonts, radius, size, space, textOpacity, textSize } from "@/constants/theme";
+import {
+  colors,
+  disabledOpacity,
+  fonts,
+  radius,
+  size,
+  space,
+  textOpacity,
+  textSize,
+} from "@/constants/theme";
 
 /**
  * `ai-permission-sheet`: what Andy sends, to whom and why, and the person's
  * answer (`docs/design/decisions/pre-submission-privacy.md`, option A). Asked
- * before anything is sent, as App Review 5.1.2(i) requires — never after.
+ * before anything is sent, as App Review 5.1.2(i) requires — never after, and
+ * never by itself: only when the person reaches for something that reads.
  *
- * A sheet rather than a screen in the stack: it is a question, answered in
- * place, and Not now leaves the person exactly where they were. Swiping it
- * away is Not now. Shown only while Andy is unlocked (`AiGoAheadProvider`).
+ * Drawn the way Apple asks before Siri sends anything to ChatGPT: a few rows,
+ * one idea each, then one way forward and a plain Not now. Swiping it away is
+ * Not now. Shown only while Andy is unlocked (`AiGoAheadProvider`).
  */
+
+/** One idea per row: what Andy does, who receives it, what stays here. */
+const ROWS: { symbol: SFSymbol; title: string; body: string }[] = [
+  {
+    symbol: "doc.text.magnifyingglass",
+    title: "Reads what you write",
+    body: "Pulls out who it's about and what to remember, and finds it again when you ask.",
+  },
+  {
+    symbol: "arrow.left.arrow.right",
+    title: "Anthropic and OpenAI",
+    body: "Read it only to do this for you. They don't train on it, and delete it within 30 days.",
+  },
+  {
+    symbol: "lock",
+    title: "Stays yours",
+    body: "Calendar names never leave this phone. Andy never sends anything to the people you write about.",
+  },
+];
+
 export function AiPermissionSheet({
   saving,
   error,
@@ -25,19 +56,26 @@ export function AiPermissionSheet({
     <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={onNotNow}>
       <ScrollView style={styles.fill} contentContainerStyle={styles.content} testID="ai-permission-sheet">
         <Text style={styles.title} accessibilityRole="header" testID="ai-permission-sheet-title">
-          Before Andy reads your notes
+          Let Andy read your notes?
         </Text>
-        <Text style={styles.body}>
-          To turn what you say, write or photograph into notes, and to find them again when you
-          ask, Andy sends the words — and photos you choose — to two services:{" "}
-          <Text style={styles.strong}>Anthropic (Claude)</Text> reads them, and{" "}
-          <Text style={styles.strong}>OpenAI</Text> makes them searchable.
-        </Text>
-        <Text style={styles.body}>They use them only to do this for you, and don&apos;t train on them.</Text>
-        <Text style={styles.body}>
-          Calendar names never leave this phone. Andy never sends anything to the people you write
-          about.
-        </Text>
+
+        {ROWS.map((row) => (
+          <View key={row.title} style={styles.row} accessible>
+            <SymbolView
+              name={row.symbol}
+              size={size.icon}
+              tintColor={colors.ink}
+              style={styles.symbol}
+              // Decorative: the title and line beside it say it all, so a
+              // build without symbols needs no word in its place.
+              fallback={null}
+            />
+            <View style={styles.rowText}>
+              <Text style={styles.rowTitle}>{row.title}</Text>
+              <Text style={styles.rowBody}>{row.body}</Text>
+            </View>
+          </View>
+        ))}
 
         {error !== null ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -65,9 +103,8 @@ export function AiPermissionSheet({
           </Pressable>
         </View>
         <Text style={styles.footnote} testID="ai-permission-sheet-footnote">
-          Not now: notes you keep stay on this phone and in your account, but Andy won&apos;t read
-          them, answer questions or draft follow-ups until you allow it. You can change this in
-          Settings.
+          Not now: Andy won&apos;t read, answer questions or draft follow-ups, and won&apos;t ask
+          again unless you reach for one of them. You can change this in Settings.
         </Text>
       </ScrollView>
     </Modal>
@@ -76,12 +113,15 @@ export function AiPermissionSheet({
 
 const styles = StyleSheet.create({
   fill: { flex: 1, backgroundColor: colors.paper },
-  content: { padding: space.xl, paddingTop: space.xxxl, gap: space.lg },
+  content: { padding: space.xl, paddingTop: space.xxxl, gap: space.xl },
   title: { color: colors.ink, fontFamily: fonts.display, fontSize: textSize.xxl },
-  body: { color: colors.ink, fontSize: textSize.base },
-  strong: { fontWeight: "600" },
+  row: { flexDirection: "row", gap: space.lg, alignItems: "flex-start" },
+  symbol: { width: size.icon, height: size.icon, marginTop: space.xs },
+  rowText: { flex: 1, gap: space.xs },
+  rowTitle: { color: colors.ink, fontSize: textSize.base, fontWeight: "600" },
+  rowBody: { color: colors.ink, fontSize: textSize.base },
   error: { color: colors.alert, fontSize: textSize.base },
-  actions: { gap: space.sm, marginTop: space.sm },
+  actions: { gap: space.sm },
   allow: {
     minHeight: size.touch,
     justifyContent: "center",

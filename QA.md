@@ -912,17 +912,18 @@ Needs the switch **on**: on a dev build against the dev deployment (no `aiPermis
 
 | # | Do this | Expect | |
 |---|---|---|---|
-| 35.1 | Sign in, unlock | **Before Andy reads your notes** slides up once: who (Anthropic, OpenAI), why, *don't train on them*, calendar stays on the phone; **Allow** and **Not now** | ⬜ |
-| 35.2 | **Not now**, then send Andy to the background and back | Not asked again by itself (once per launch). Home works; people and notes all show | ⬜ |
-| 35.3 | + → Write, type, **Let Andy read it** | The sheet again. **Not now**: your words stay, nothing read. **Allow**: it reads at once | ⬜ |
-| 35.4 | Same from **Photo**, **Ask**, and **Draft a follow-up** | Each asks first; Not now sends nothing (the photo is dropped, not read) | ⬜ |
-| 35.5 | Swipe the sheet down | Same as **Not now** | ⬜ |
-| 35.6 | With the sheet up, switch away and come back (app lock on) | Only the `lock` screen while locked; the sheet is back after unlocking | ⬜ |
-| 35.7 | Wi-Fi off, **Allow** | One line: *"Andy couldn't save that…"*; the sheet stays | ⬜ |
-| 35.8 | Settings → **What Andy sends** | Before: *Not allowed…* and **Allow**. After: *You've allowed this.* and **Stop sending** → *Stop sending?* → Keep sending / Stop sending | ⬜ |
-| 35.9 | Allow on one phone with the sheet open on another | The other sheet closes by itself | ⬜ |
-| 35.10 | Largest Dynamic Type; VoiceOver | The sheet scrolls, buttons stay reachable; VoiceOver reads the title as a heading, then the paragraphs, Allow, Not now | ⬜ |
-| 35.11 | Switch off (production today) | No sheet, no Settings section — Andy works exactly as build 5 | ⬜ |
+| 35.1 | Sign in, unlock | **Nothing is asked.** Home as usual | ⬜ |
+| 35.2 | + → Write, type, **Let Andy read it** | **Let Andy read your notes?** slides up: three rows (reads what you write · Anthropic and OpenAI — *don't train on it, delete it within 30 days* · stays yours), **Allow**, **Not now** | ⬜ |
+| 35.3 | **Allow** | It reads at once. Settings → What Andy sends says *You've allowed this.* | ⬜ |
+| 35.4 | Fresh account: **Not now** at 35.2 | Words stay, nothing read. Force-quit and reopen, write another note: **no sheet appears by itself** | ⬜ |
+| 35.5 | After 35.4, tap **Let Andy read it**, **Photo**, **Ask** or **Draft a follow-up** | Each asks — you reached for it — and Not now sends nothing (the photo is dropped, not read) | ⬜ |
+| 35.6 | Swipe the sheet down | Same as **Not now** | ⬜ |
+| 35.7 | With the sheet up, switch away and come back (app lock on) | Only the `lock` screen while locked; the sheet is back after unlocking | ⬜ |
+| 35.8 | Wi-Fi off, **Allow** | One line: *"Andy couldn't save that…"*; the sheet stays | ⬜ |
+| 35.9 | Settings → **What Andy sends** | Before: *Not allowed…* and **Allow**. After: *You've allowed this.* and **Stop sending** → *Stop sending?* → Keep sending / Stop sending. Stopping counts as Not now (no sheet by itself afterwards) | ⬜ |
+| 35.10 | Not now on one phone, then use another phone on the same account | The other phone does not ask by itself either (remembered on the server) | ⬜ |
+| 35.11 | Largest Dynamic Type; VoiceOver | The sheet scrolls, rows wrap, buttons reachable; VoiceOver reads the title as a heading, each row as one item, then Allow, Not now | ⬜ |
+| 35.12 | Switch off (production today) | No sheet, no Settings section — Andy works exactly as build 5 | ⬜ |
 
 ## Simulator pass, 2026-09-30 (Claude, while the developer was away)
 
