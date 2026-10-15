@@ -21,6 +21,7 @@ import { NOTHING_KEPT_OFFLINE, useNothingKeptOffline, useOnline } from "@/lib/of
 import { useNameSearch } from "@/lib/use-name-search";
 import { NameResults } from "@/components/name-results";
 import { OfflineCopyLine } from "@/components/offline-copy-line";
+import { useAiGoAhead } from "@/lib/ai-go-ahead";
 
 /**
  * Ask Andy — recall across every note, not only the ones filed under a name.
@@ -62,6 +63,7 @@ const ASK_TIMEOUT_MS = 30_000;
 
 export default function SearchScreen() {
   const recall = useAction(api.search.recall);
+  const goAhead = useAiGoAhead();
 
   // `?q=`: what was typed into home's search field, handed over so nothing
   // is typed twice (`home-actions.md` R9). Never asked on arrival — asking
@@ -110,6 +112,8 @@ export default function SearchScreen() {
     // `useAction` wired to `onChangeText` would turn one question into ten of
     // them — the realistic way this feature becomes expensive.
     if (!ready) return;
+    // The question goes to OpenAI and the notes it finds to Anthropic.
+    if (!(await goAhead())) return;
 
     setBusy(true);
     setError(null);

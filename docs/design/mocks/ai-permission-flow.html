@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--
+  Storyboard: asking before Andy sends anything to an AI service
+  (pre-submission-privacy.md, option A). Before and after. An HTML approximation of native
+  screens for explaining the change, not production code. Example people only.
+-->
+<title>Asking first</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500&family=IBM+Plex+Mono&display=swap">
+<style>
+:root{--page:#EDEBE4;--page-ink:#2A2622;--quiet:#6F6A62;--rule:#CFCAC0;--paper:#E8E6DE;--ink:#2A2622;--line:#B8B3A8;--moss:#5C6B4F;
+  --serif:"Lora",Georgia,serif;--mono:"IBM Plex Mono",ui-monospace,monospace;--sans:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--page:#1E1C19;--page-ink:#ECE8E0;--quiet:#A39D93;--rule:#3A3631;color-scheme:dark}}
+:root[data-theme="dark"]{--page:#1E1C19;--page-ink:#ECE8E0;--quiet:#A39D93;--rule:#3A3631;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--page-ink);font-family:var(--sans);padding:0 20px}
+.wrap{max-width:900px;margin:0 auto;padding-block:40px 64px;display:grid;gap:28px}
+h1{font-family:var(--serif);font-weight:500;margin:0;font-size:clamp(26px,4vw,36px)}
+p{color:var(--quiet);margin:6px 0 0;max-width:68ch}
+.pair{display:flex;flex-wrap:wrap;gap:20px}
+.col{flex:1 1 300px;display:grid;gap:8px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.before .eyebrow{color:#9F4C3B}.after .eyebrow{color:var(--moss)}
+.phone{background:var(--paper);color:var(--ink);border:1px solid var(--rule);border-radius:22px;padding:16px}
+.row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--rule)}
+.row:last-child{border-bottom:none}
+.av{flex:0 0 40px;height:40px;border-radius:50%;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:15px;overflow:hidden;background:var(--paper)}
+.av.photo{background:linear-gradient(135deg,#b79c7e,#7a6a58);border-color:transparent}
+.t{min-width:0;flex:1}
+.name{font-family:var(--serif);font-size:18px}
+.fact{font-size:14px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta{font-family:var(--mono);font-size:12px;opacity:.7}
+.cap{font-size:13px;color:var(--quiet)}
+.label{font-size:12px;letter-spacing:.05em;text-transform:uppercase;opacity:.7}
+.lrow{display:flex;gap:8px;align-items:baseline;margin-top:14px}
+.mark{font-size:12px;opacity:.7}
+.rec{font-size:14px;line-height:21px;opacity:.7;border-left:1px solid var(--line);padding-left:10px;margin-top:6px}
+.inp{font-size:16px;border-bottom:1px solid #857E6D;padding:8px 0;margin-top:6px}
+.hint{font-size:12px;opacity:.7;margin-top:6px}
+.f{font-size:16px;margin-top:6px}
+.btn{display:block;text-align:center;border-radius:999px;padding:12px;font-size:15px;margin-top:10px}
+.btn.fill{background:var(--moss);color:#fff;font-weight:600}
+.btn.text{color:var(--moss)}
+.title{font-family:var(--serif);font-size:20px;margin-top:6px}
+.p{font-size:15px;margin-top:10px}
+.small{font-size:13px;opacity:.7;margin-top:10px}
+.step{font-family:var(--mono);font-size:12px;opacity:.7;margin:14px 0 2px}
+mark{background:#E6D9A8;color:inherit}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Asking first</h1>
+  <p>App Review 5.1.2(i) requires permission <i>before</i> anything personal goes to a third-party AI. Andy sent notes to Anthropic and OpenAI on the first read and asked nothing. Now it asks the first time you reach for something that reads, never by itself, remembers a Not now, and the answer can be changed in Settings. The server refuses anything sent without it.</p>
+</header>
+<div class="pair">
+  <div class="col before"><div class="eyebrow">Before</div>
+    <div class="phone">
+      <div class="step">sign in → home</div>
+      <div class="f">Straight to home.</div>
+      <div class="step">Let Andy read it</div>
+      <div class="f">The words go to Anthropic at once.</div>
+    </div>
+    <div class="cap">Disclosed only on the privacy page — a link is not permission.</div>
+  </div>
+  <div class="col after"><div class="eyebrow">After</div>
+    <div class="phone">
+      <div class="step">sign in → home: nothing asked</div>
+      <div class="step">+ → Write → Let Andy read it</div>
+      <div class="title">Let Andy read your notes?</div>
+      <div class="p"><b>Reads what you write</b><br>Pulls out who it's about and what to remember, and finds it again when you ask.</div>
+      <div class="p"><b>Anthropic and OpenAI</b><br>Read it only to do this for you. They don't train on it, and delete it within 30 days.</div>
+      <div class="p"><b>Stays yours</b><br>Calendar names never leave this phone. Andy never sends anything to the people you write about.</div>
+      <span class="btn fill">Allow</span><span class="btn text">Not now</span>
+      <div class="small">Not now is remembered: Andy won't ask again by itself, only when you reach for something that reads.</div>
+<div class="step">Settings</div>
+      <div class="label">What Andy sends</div>
+      <div class="f">… You've allowed this.</div>
+      <span class="btn text" style="text-align:left;color:inherit;opacity:.7">Stop sending</span>
+    </div>
+    <div class="cap">Not now leaves you where you were; Let Andy read it, Photo, Ask and Draft a follow-up ask again. Behind the <code>aiPermission</code> switch — off in production until build 6.</div>
+  </div>
+</div>
+</div>
+</body>
+</html>

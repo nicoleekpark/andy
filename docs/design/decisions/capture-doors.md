@@ -823,6 +823,7 @@ Owner, 2026-10-13.
   - Backing out of a door returns to `home` (or the page) with the orbit closed.
 - **Superseded by the decisions above**, so the implementing PR follows these, not the older text in this document:
   - Write from home has **no** "About who?" field and the cursor is in the body (the orbit section said the cursor starts in `about-field`); the subject is found by extraction, as before.
+  - **Revised 2026-10-14 (owner, after `pre-submission-privacy.md` option A):** Write now opens with a one-line **About** at the top (`write-about-input`), the body below as prose. Optional while Andy reads — it goes to extraction as the `aboutName` hint; required for **Save as written**, the way someone who said Not now keeps a note (nothing read, filed under that person, the same name questions as review). From a person's page it is already declared and not shown. The cursor still starts in the body. The same line sits above **What you said** on the voice check (*Is this what you said?*), which shares this editor — so a spoken note can be saved as written too. Mockup: `docs/design/mocks/save-as-written-flow.html`.
   - Write has **no** `ClipboardPasteButton` (R7 and the orbit section §4).
   - Photo has **no** Retake / Use photo step after the shutter, and no static corner frame is required (orbit section §5); its hint is "A card, a page of notes, or a screenshot."
   - The words step is `photo-words` with the name split out, replacing `record--picture`'s "What the picture said".

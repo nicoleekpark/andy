@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { copiedStore, fingerprintOf } from "@/lib/on-phone";
 import { ConfirmHost, useConfirm } from "@/components/confirm-dialog";
-import { colors, fonts, textOpacity } from "../constants/theme";
+import { colors, fonts, radius, size, space, textOpacity, textSize } from "../constants/theme";
 import { useLocked } from "../lib/lock-context";
 import { hasNativeModule } from "../lib/native";
 
@@ -87,9 +87,26 @@ function copiedMessage(what: "body" | "both"): string {
 
 export type Draft = {
   personName: string;
+  /** Empty for a message, which has none. */
   subject: string;
   body: string;
 };
+
+/** A follow-up's format and tone (`follow-up-tones.md`). */
+export type DraftStyle = {
+  format: "message" | "email";
+  tone: "friendly" | "professional" | "brief";
+};
+
+const FORMATS: { value: DraftStyle["format"]; label: string }[] = [
+  { value: "message", label: "Message" },
+  { value: "email", label: "Email" },
+];
+const TONES: { value: DraftStyle["tone"]; label: string }[] = [
+  { value: "friendly", label: "Friendly" },
+  { value: "professional", label: "Professional" },
+  { value: "brief", label: "Brief" },
+];
 
 type Props = {
   /**
@@ -103,6 +120,15 @@ type Props = {
   onClose: () => void;
   /** Ask Claude for a different draft from the same notes. Costs a call. */
   onRewrite: () => void;
+  /**
+   * The format and tone of the text shown, or `null` with the
+   * `followUpTones` switch off — then no picker, no chips, today's email.
+   */
+  style?: DraftStyle | null;
+  /** Another format or tone: free if already written in this sheet, else a call. */
+  onChooseStyle?: (style: DraftStyle) => void;
+  /** Online: the picker and chips can write. Offline they wait (rule 9). */
+  canWrite?: boolean;
   rewriting: boolean;
   /** A failed rewrite, shown without throwing away what is on screen. */
   error: string | null;
@@ -112,9 +138,14 @@ export function DraftSheet({
   draft,
   onClose,
   onRewrite,
+  style = null,
+  onChooseStyle = () => {},
+  canWrite = true,
   rewriting,
   error,
 }: Props) {
+  /** A message has no subject: nothing to show, edit or copy (rule 8). */
+  const message = style?.format === "message";
   const locked = useLocked();
   const confirm = useConfirm();
   const [subject, setSubject] = useState(draft.subject);
@@ -171,27 +202,38 @@ export function DraftSheet({
     [body, subject],
   );
 
-  const rewrite = useCallback(() => {
-    if (!edited) {
-      onRewrite();
-      return;
-    }
-    // Asked only when there is something to lose, the same rule the capture
-    // screen follows when the transcript and the facts disagree: the ordinary
-    // path stays one tap, and the question exists because there is no wrong
-    // answer, only two a person has to pick between.
-    confirm(
-      "Replace what you wrote?",
-      "Andy will write a new draft from the same notes. Your edits go with the old one.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Write another",
-          onPress: onRewrite,
-        },
-      ],
-    );
-  }, [confirm, edited, onRewrite]);
+  /**
+   * Run `then`, asking first when there are edits to lose (rule 5): the
+   * ordinary path stays one tap, and the question exists because there is no
+   * wrong answer, only two a person has to pick between. "Keep my edits"
+   * changes nothing, the chosen chip included.
+   */
+  const unlessEdited = useCallback(
+    (then: () => void) => {
+      if (!edited) {
+        then();
+        return;
+      }
+      confirm("Write another?", "Your edits to this draft will be replaced.", [
+        { text: "Write another", onPress: then },
+        { text: "Keep my edits", style: "cancel" },
+      ]);
+    },
+    [confirm, edited],
+  );
+  const rewrite = useCallback(() => unlessEdited(onRewrite), [unlessEdited, onRewrite]);
+  /** Tapping what is already chosen does nothing — no call (rule 4). */
+  const choose = useCallback(
+    (next: DraftStyle) => {
+      if (style === null || (next.format === style.format && next.tone === style.tone)) return;
+      unlessEdited(() => onChooseStyle(next));
+    },
+    [style, unlessEdited, onChooseStyle],
+  );
+  // While writing, or with no connection, nothing here can start a call (rules 7, 9).
+  const choosing = style !== null && !rewriting && canWrite;
+  /** "Write another" waits while writing, and offline once there is a style to write in. */
+  const waiting = rewriting || (style !== null && !canWrite);
 
   return (
     <Modal
@@ -240,22 +282,84 @@ export function DraftSheet({
           keyboardShouldPersistTaps="handled"
           automaticallyAdjustKeyboardInsets
         >
+          {style !== null ? (
+            <View style={styles.styleRows}>
+              <View
+                style={styles.formatPicker}
+                accessibilityRole="radiogroup"
+                accessibilityLabel="Format"
+                testID="draft-format-picker"
+              >
+                {FORMATS.map((format) => {
+                  const selected = style.format === format.value;
+                  return (
+                    <Pressable
+                      key={format.value}
+                      accessibilityRole="radio"
+                      accessibilityLabel={format.label}
+                      accessibilityHint="Writes a new draft."
+                      // `disabled` is derived by Pressable from the prop; only `selected` is said here.
+                      accessibilityState={{ selected }}
+                      disabled={!choosing}
+                      onPress={() => choose({ format: format.value, tone: style.tone })}
+                      style={[styles.formatOption, selected && styles.formatOptionOn, !choosing && styles.disabled]}
+                      testID={`draft-format-option--${format.value}`}
+                    >
+                      <Text style={[styles.optionLabel, selected && styles.optionLabelOn]}>{format.label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <View style={styles.chips} accessibilityRole="radiogroup" accessibilityLabel="Tone">
+                {TONES.map((tone) => {
+                  const selected = style.tone === tone.value;
+                  return (
+                    <Pressable
+                      key={tone.value}
+                      accessibilityRole="radio"
+                      accessibilityLabel={tone.label}
+                      accessibilityHint="Writes a new draft."
+                      // `disabled` is derived by Pressable from the prop; only `selected` is said here.
+                      accessibilityState={{ selected }}
+                      disabled={!choosing}
+                      onPress={() => choose({ format: style.format, tone: tone.value })}
+                      style={[styles.chip, selected && styles.chipOn, !choosing && styles.disabled]}
+                      testID={`draft-tone-chip--${tone.value}`}
+                    >
+                      <Text style={[styles.optionLabel, selected && styles.optionLabelOn]}>{tone.label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          ) : null}
+
           {error !== null ? <Text style={styles.error}>{error}</Text> : null}
 
-          <Text style={styles.label}>Subject</Text>
-          <TextInput
-            accessibilityLabel="Subject"
-            value={subject}
-            onChangeText={(next) => {
-              setSubject(next);
-              forgetTheLastCopy();
-            }}
-            style={styles.subject}
-          />
+          {message ? null : (
+            <>
+              <Text style={styles.label}>Subject</Text>
+              <TextInput
+                accessibilityLabel="Subject"
+                value={subject}
+                // Like the message: typing into a draft about to be replaced would be lost.
+                editable={!rewriting}
+                onChangeText={(next) => {
+                  setSubject(next);
+                  forgetTheLastCopy();
+                }}
+                style={styles.subject}
+              />
+            </>
+          )}
 
           <Text style={styles.label}>Message</Text>
           <TextInput
             accessibilityLabel="Message"
+            // While another draft is being written, said where it will land.
+            placeholder={rewriting ? "Writing…" : undefined}
+            placeholderTextColor={colors.placeholder}
+            editable={!rewriting}
             value={body}
             onChangeText={(next) => {
               setBody(next);
@@ -302,22 +406,24 @@ export function DraftSheet({
             >
               <Text style={styles.actionLabel}>Copy message</Text>
             </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Copy the subject and message"
-              onPress={() => copy("both")}
-              style={styles.action}
-            >
-              <Text style={styles.actionLabel}>Copy with subject</Text>
-            </Pressable>
+            {message ? null : (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Copy the subject and message"
+                onPress={() => copy("both")}
+                style={styles.action}
+              >
+                <Text style={styles.actionLabel}>Copy with subject</Text>
+              </Pressable>
+            )}
           </View>
 
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Write another draft"
             onPress={rewrite}
-            disabled={rewriting}
-            style={[styles.rewrite, rewriting && styles.disabled]}
+            disabled={waiting}
+            style={[styles.rewrite, waiting && styles.disabled]}
           >
             <Text style={styles.rewriteLabel}>
               {rewriting ? "Writing…" : "Write another"}
@@ -329,8 +435,8 @@ export function DraftSheet({
           </Text>
         </ScrollView>
         {/*
-          iOS draws this sheet above the whole app, so "Replace what you
-          wrote?" has to be drawn in here, or it would open behind the sheet.
+          iOS draws this sheet above the whole app, so "Write another?" has to
+          be drawn in here, or it would open behind the sheet.
         */}
         <ConfirmHost inModal />
       </View>
@@ -397,6 +503,34 @@ const styles = StyleSheet.create({
   rewrite: { alignItems: "center", paddingVertical: 14 },
   rewriteLabel: { color: colors.moss, fontSize: 15 },
   disabled: { opacity: 0.5 },
+  styleRows: { gap: space.md, marginBottom: space.sm },
+  // A segmented pair: its only edge is `edge` (3:1, WCAG 1.4.11).
+  formatPicker: {
+    flexDirection: "row",
+    borderWidth: 1,
+    borderColor: colors.edge,
+    borderRadius: radius.control,
+    overflow: "hidden",
+  },
+  formatOption: {
+    flex: 1,
+    minHeight: size.touch,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  formatOptionOn: { backgroundColor: colors.moss },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
+  chip: {
+    minHeight: size.touch,
+    paddingHorizontal: space.lg,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.edge,
+    justifyContent: "center",
+  },
+  chipOn: { backgroundColor: colors.moss, borderColor: colors.moss },
+  optionLabel: { color: colors.ink, fontSize: textSize.base },
+  optionLabelOn: { color: colors.paper },
   footnote: {
     color: colors.ink,
     fontSize: 13,

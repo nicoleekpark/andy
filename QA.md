@@ -672,7 +672,7 @@ their rows.
 | 21.14 | Open the iOS app switcher while Andy is open, and look at Andy's card | **Write down what the card shows.** Not changed by the 2026-10-06 fix: the lock reacts to *background*, not *inactive* (see `useAppLock`), so the card may show the screen you were on. If it does, file it as its own item | ⬜ |
 | 21.15 | Open a delete confirmation — `note-delete-alert` (a note's **Edit** → **Delete this note**), **Delete this person**, or **Delete account** in Settings — switch away and come back **without** answering it | While locked, **only** the `lock` screen shows: no question, no name, no buttons. After unlocking, the same `confirm-dialog` is **still open**, and Cancel / Delete work. Before the fix (#51) the iOS alert sat over the lock screen, tappable. Unit-tested in jest; that iOS draws nothing of its own on top is device-only. Since part 2, **every** question Andy asks works this way: Sign out, Remove this photo, Read it again, You changed what you wrote, Scan a business card, Replace what you wrote, and the Sync questions. `Alert.alert` is refused by lint | ⬜ — was ❌ simulator, 2026-10-07 |
 | 21.15a | Settings → Accessibility → Display & Text Size → **Larger Text** at the largest size. Open **Delete this person** for someone with notes | The whole `confirm-dialog` fits on screen: the message **scrolls** inside the card, and **Delete** and **Cancel** stay visible below it | ⬜ |
-| 21.15b | Open the follow-up `draft` sheet, edit the message, tap **Write another draft** | **Replace what you wrote?** appears **on the sheet**, in front of it — not behind it. Then switch away and come back: only the `lock` screen; after unlocking, the sheet and the question are both back | ⬜ |
+| 21.15b | Open the follow-up `draft` sheet, edit the message, tap **Write another draft** | **Write another?** appears **on the sheet**, in front of it — not behind it. Then switch away and come back: only the `lock` screen; after unlocking, the sheet and the question are both back | ⬜ |
 | 21.15c | Make a change offline, have it changed on another device, come back online and tap **Sync** | **Changed somewhere else** is Andy's own card with **Keep theirs** and **Keep mine** (both green, no red), and no Cancel: one of the two has to be chosen | ⬜ |
 
 
@@ -905,6 +905,60 @@ WCAG 1.4.11: a control whose outline is all that marks it out needs 3:1
 | 33.9 | Reduce Motion on | Nothing on this screen moves except the time | ⬜ |
 | 33.10 | Largest Dynamic Type | The words under the three controls wrap rather than overlap; the circles stay the same size | ⬜ |
 | 33.11 | VoiceOver, while listening | The words, the time, then Start over, Pause, Done | ⬜ |
+
+## 34. Follow-up formats and tones (follow-up-tones.md, Final choice)
+
+| # | Do this | Expect | |
+|---|---|---|---|
+| 34.1 | A person you have never drafted to → **Draft a follow-up** | The sheet opens with **Message** and **Friendly** chosen; no Subject field and no **Copy with subject** | ⬜ |
+| 34.2 | Tap **Email** | *Writing…* in the message, chips dimmed, then an email with a subject; **Copy with subject** is back | ⬜ |
+| 34.3 | Tap **Brief**, then **Friendly** again | Brief writes a new, shorter one; going back to Friendly shows the earlier email at once (no *Writing…*) | ⬜ |
+| 34.4 | Close the sheet, reopen it for the same person | Opens as the last format and tone you chose (Email + Friendly here) — kept on the person, so it also shows on another device signed in to the same account | ⬜ |
+| 34.5 | Edit the message, tap another tone → **Keep my edits** | Your words stay; the chosen chip does not move | ⬜ |
+| 34.6 | Same, → **Write another** | A new draft replaces your edits | ⬜ |
+| 34.7 | With a draft open, turn Wi-Fi off | Format, chips and **Write another draft** go dim and do nothing; the draft stays | ⬜ |
+| 34.8 | A Korean person's notes, each tone | Name + 님 every time, never 반말 | ⬜ |
+| 34.9 | Dashboard: insert `featureFlags` `{ key: "followUpTones", enabled: false }`, reopen a sheet | No picker, no chips: an email with a subject, as before. Delete the row afterwards | ⬜ |
+| 34.10 | Largest Dynamic Type; VoiceOver | Chips wrap rather than clip; VoiceOver reads "Format", Message, selected… then "Tone", Friendly, selected, "Writes a new draft." | ⬜ |
+
+## 35. Asking before Andy sends anything (pre-submission-privacy.md, A)
+
+Needs the switch **on**: on a dev build against the dev deployment (no `aiPermission` row there), or in production only after build 6 is on every phone and the row is deleted.
+
+| # | Do this | Expect | |
+|---|---|---|---|
+| 35.1 | Sign in, unlock | **Nothing is asked.** Home as usual | ⬜ |
+| 35.2 | + → Write, type, **Let Andy read it** | **Let Andy read your notes?** slides up: three rows (reads what you write · Anthropic and OpenAI — *don't train on it, delete it within 30 days* · stays yours), **Allow**, **Not now** | ⬜ |
+| 35.3 | **Allow** | It reads at once. Settings → What Andy sends says *You've allowed this.* | ⬜ |
+| 35.4 | Fresh account: **Not now** at 35.2 | Words stay, nothing read. Force-quit and reopen, write another note: **no sheet appears by itself** | ⬜ |
+| 35.5 | After 35.4, tap **Let Andy read it**, **Photo**, **Ask** or **Draft a follow-up** | Each asks — you reached for it — and Not now sends nothing (the photo is dropped, not read) | ⬜ |
+| 35.6 | Swipe the sheet down | Same as **Not now** | ⬜ |
+| 35.7 | With the sheet up, switch away and come back (app lock on) | Only the `lock` screen while locked; the sheet is back after unlocking | ⬜ |
+| 35.8 | Wi-Fi off, **Allow** | One line: *"Andy couldn't save that…"*; the sheet stays | ⬜ |
+| 35.9 | Settings → **What Andy sends** | Before: *Not allowed…* and **Allow**. After: *You've allowed this.* and **Stop sending** → *Stop sending?* → Keep sending / Stop sending. Stopping counts as Not now (no sheet by itself afterwards) | ⬜ |
+| 35.10 | Not now on one phone, then use another phone on the same account | The other phone does not ask by itself either (remembered on the server) | ⬜ |
+| 35.11 | Largest Dynamic Type; VoiceOver | The sheet scrolls, rows wrap, buttons reachable; VoiceOver reads the title as a heading, each row as one item, then Allow, Not now | ⬜ |
+| 35.12 | Switch off (production today) | No sheet, no Settings section — Andy works exactly as build 5 | ⬜ |
+
+## 36. Save as written (pre-submission-privacy.md, A · 2b)
+
+Needs the switch on (dev, or production after build 6) and an account that has said **Not now** (35.4).
+
+| # | Do this | Expect | |
+|---|---|---|---|
+| 36.1 | + → Write | **About** line at the top (*"Who is this about?"*), the body below, cursor in the body | ⬜ |
+| 36.2 | Write a note, leave About empty | *"Choose who it's about to save it as written."* and **Save as written** greyed; **Let Andy read it** small underneath | ⬜ |
+| 36.3 | About: a new name → **Save as written** | Saved at once, no check screen; the new person's page opens with the note. Nothing read (no facts) | ⬜ |
+| 36.4 | From Priya's page → Add a note → Write → **Save as written** | No About line (the page says who); saved to that Priya, no question | ⬜ |
+| 36.5 | Two people called Priya; About *Priya* → **Save as written** | The check screen asks **Which Priya?**; **Remember this** waits until one is picked; saved only to the one picked | ⬜ |
+| 36.6 | Write *"Priya's daughter…"* with About empty | *In what you wrote:* **Priya** offered under About; About stays empty until tapped | ⬜ |
+| 36.7 | Type About and words, swipe Andy away, reopen | Home offers the note; **Continue** brings back both the words and the name at the top | ⬜ |
+| 36.8 | Tap the small **Let Andy read it** | The sheet asks (you reached for it); **Allow** reads it as usual | ⬜ |
+| 36.9 | Account that allowed: About *Nina* → Let Andy read it | The check screen files it under Nina (the name went along as a hint) | ⬜ |
+| 36.10 | Largest Dynamic Type; VoiceOver | About, suggestions and both buttons reachable; VoiceOver reads "About", the suggestion as "About Priya" | ⬜ |
+| 36.10a | Said Not now: + → **Voice**, speak, **Done** | *Is this what you said?* has the **About** line above the words, and **Save as written** — a spoken note is kept as heard, nothing read | ⬜ |
+| 36.11 | Offline, said Not now: write, **Keep this note**; back online, home → **Read it now** | Offline it is kept as before. Read it now asks first (you reached for it); **Not now** → the words with **Save as written**, and saving clears it from home | ⬜ |
+| 36.12 | Settings → **Privacy policy**, and the sheet's **Privacy policy** | Both open the policy page in Safari (after Pages is enabled: `nicoleekpark.github.io/andy/privacy/`). Settings shows it with the switch off too | ⬜ |
 
 ## Simulator pass, 2026-09-30 (Claude, while the developer was away)
 

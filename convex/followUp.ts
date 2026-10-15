@@ -6,6 +6,7 @@ import type { EmailNote, FollowUpDraft } from "./emailPrompt";
 import { rememberedFacts } from "./embeddingModel";
 import { countFactNotes, followUpRefusal } from "./followUpScope";
 import { getAuthenticatedUser } from "./users";
+import { requireAiAllowed } from "./aiPermission";
 
 /**
  * A follow-up email, drafted from what you already wrote down.
@@ -165,6 +166,8 @@ export const draft = action({
     ctx,
     args,
   ): Promise<{ personName: string; subject?: string; body: string }> => {
+    // Before reading anything: this person's notes go to Anthropic.
+    await requireAiAllowed(ctx);
     const scope: {
       personName: string;
       entityType: "person" | "animal";
