@@ -11,6 +11,22 @@ decision 3.
 Never on the listing: *track, profile, data, database, contacts, leads, CRM,
 manage relationships, never forget a face, know everything about.*
 
+## Hard gates, checked immediately before `eas submit`
+
+These are not things to do "sometime after build 6". Check each one on the day,
+against the live system (app-store-reviewer, 2026-10-15):
+
+1. **The production `aiPermission` row is gone.** Check with
+   `npx convex data featureFlags --prod`. If it is still there, the reviewer
+   tests a build where Andy sends notes without ever asking, which is exactly
+   the 5.1.2(i) gap the permission sheet closes.
+2. **The policy and support pages load.** GitHub Pages is on, both URLs open,
+   and the policy's dates are filled in.
+3. **Clerk is the production instance** (`pk_live` in the EAS `production`
+   environment).
+4. **Every line of the description holds** (the table below), and the App
+   Privacy answers match the code.
+
 ## Fields
 
 | Field | Limit | Copy | Length |
