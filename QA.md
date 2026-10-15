@@ -906,6 +906,25 @@ WCAG 1.4.11: a control whose outline is all that marks it out needs 3:1
 | 33.10 | Largest Dynamic Type | The words under the three controls wrap rather than overlap; the circles stay the same size | ⬜ |
 | 33.11 | VoiceOver, while listening | The words, the time, then Start over, Pause, Done | ⬜ |
 
+## 35. Asking before Andy sends anything (pre-submission-privacy.md, A)
+
+Needs the switch **on**: on a dev build against the dev deployment (no `aiPermission` row there), or in production only after build 6 is on every phone and the row is deleted.
+
+| # | Do this | Expect | |
+|---|---|---|---|
+| 35.1 | Sign in, unlock | **Nothing is asked.** Home as usual | ⬜ |
+| 35.2 | + → Write, type, **Let Andy read it** | **Let Andy read your notes?** slides up: three rows (reads what you write · Anthropic and OpenAI — *don't train on it, delete it within 30 days* · stays yours), **Allow**, **Not now** | ⬜ |
+| 35.3 | **Allow** | It reads at once. Settings → What Andy sends says *You've allowed this.* | ⬜ |
+| 35.4 | Fresh account: **Not now** at 35.2 | Words stay, nothing read. Force-quit and reopen, write another note: **no sheet appears by itself** | ⬜ |
+| 35.5 | After 35.4, tap **Let Andy read it**, **Photo**, **Ask** or **Draft a follow-up** | Each asks — you reached for it — and Not now sends nothing (the photo is dropped, not read) | ⬜ |
+| 35.6 | Swipe the sheet down | Same as **Not now** | ⬜ |
+| 35.7 | With the sheet up, switch away and come back (app lock on) | Only the `lock` screen while locked; the sheet is back after unlocking | ⬜ |
+| 35.8 | Wi-Fi off, **Allow** | One line: *"Andy couldn't save that…"*; the sheet stays | ⬜ |
+| 35.9 | Settings → **What Andy sends** | Before: *Not allowed…* and **Allow**. After: *You've allowed this.* and **Stop sending** → *Stop sending?* → Keep sending / Stop sending. Stopping counts as Not now (no sheet by itself afterwards) | ⬜ |
+| 35.10 | Not now on one phone, then use another phone on the same account | The other phone does not ask by itself either (remembered on the server) | ⬜ |
+| 35.11 | Largest Dynamic Type; VoiceOver | The sheet scrolls, rows wrap, buttons reachable; VoiceOver reads the title as a heading, each row as one item, then Allow, Not now | ⬜ |
+| 35.12 | Switch off (production today) | No sheet, no Settings section — Andy works exactly as build 5 | ⬜ |
+
 ## Simulator pass, 2026-09-30 (Claude, while the developer was away)
 
 **How it was run.** iPhone 17 Pro simulator, the dev build of commit `47f3837`

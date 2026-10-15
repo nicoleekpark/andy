@@ -246,3 +246,44 @@ test("should still refuse a signed-out caller, switch on or off", async () => {
   await expect(t.mutation(api.aiPermission.allow, {})).rejects.toThrow("You're signed out");
   expect(createMessage).not.toHaveBeenCalled();
 });
+
+test("should remember a Not now, and forget it on a yes", async () => {
+  const t = convexTest(schema, modules);
+  await seed(t);
+  const asAlice = t.withIdentity(ALICE);
+
+  await asAlice.mutation(api.aiPermission.decline, {});
+  const declined = await asAlice.query(api.users.current, {});
+  expect(declined?.aiDeclinedAt).toEqual(expect.any(Number));
+  expect(declined?.aiAllowedAt).toBeUndefined();
+  // A no is not a yes: still refused.
+  await expect(
+    asAlice.action(api.extraction.fromTranscript, { text: "Met Priya.", today: "2026-10-14" }),
+  ).rejects.toThrow(AI_NOT_ALLOWED);
+
+  await asAlice.mutation(api.aiPermission.allow, {});
+  const allowed = await asAlice.query(api.users.current, {});
+  expect(allowed?.aiAllowedAt).toEqual(expect.any(Number));
+  expect(allowed?.aiDeclinedAt).toBeUndefined();
+});
+
+test("should not let a stray Not now undo a yes, and count stopping as a no", async () => {
+  const t = convexTest(schema, modules);
+  await seed(t);
+  const asAlice = t.withIdentity(ALICE);
+  await asAlice.mutation(api.aiPermission.allow, {});
+  await drainScheduled(t);
+
+  await asAlice.mutation(api.aiPermission.decline, {});
+  expect((await asAlice.query(api.users.current, {}))?.aiAllowedAt).toEqual(expect.any(Number));
+
+  await asAlice.mutation(api.aiPermission.withdraw, {});
+  const stopped = await asAlice.query(api.users.current, {});
+  expect(stopped?.aiAllowedAt).toBeUndefined();
+  expect(stopped?.aiDeclinedAt).toEqual(expect.any(Number));
+});
+
+test("should refuse a signed-out Not now", async () => {
+  const t = convexTest(schema, modules);
+  await expect(t.mutation(api.aiPermission.decline, {})).rejects.toThrow("You're signed out");
+});

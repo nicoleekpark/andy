@@ -24,6 +24,7 @@ import { colors, fonts, radius, textOpacity } from "@/constants/theme";
 import { formatDate, localToday } from "@/lib/dates";
 import { sourceLabel } from "@/lib/note-source";
 import { userMessage } from "@/lib/user-message";
+import { useAiGoAhead } from "@/lib/ai-go-ahead";
 
 /**
  * A person, and everything recorded about them, newest first.
@@ -87,6 +88,7 @@ export default function ProfileScreen() {
   }, [result, online]);
 
   const requestDraft = useAction(api.followUp.draft);
+  const goAhead = useAiGoAhead();
   /**
    * The draft on screen and which attempt produced it, or `null` when the
    * sheet is closed.
@@ -266,6 +268,11 @@ export default function ProfileScreen() {
   const draftFollowUp = useCallback(async () => {
     if (inFlight.current) return;
     inFlight.current = true;
+    // This person's notes go to Anthropic: asked first, if it must be.
+    if (!(await goAhead())) {
+      inFlight.current = false;
+      return;
+    }
     setDrafting(true);
     setError(null);
     try {
@@ -304,7 +311,7 @@ export default function ProfileScreen() {
       inFlight.current = false;
       setDrafting(false);
     }
-  }, [requestDraft, id]);
+  }, [requestDraft, id, goAhead]);
   const toggleTranscript = useCallback((noteId: string) => {
     setOpenTranscripts((open) =>
       open.includes(noteId)

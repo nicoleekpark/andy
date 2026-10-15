@@ -99,7 +99,7 @@ export const allow = mutation({
   handler: async (ctx) => {
     const user = await getAuthenticatedUser(ctx);
     if (user.aiAllowedAt !== undefined) return null;
-    await ctx.db.patch("users", user._id, { aiAllowedAt: Date.now() });
+    await ctx.db.patch("users", user._id, { aiAllowedAt: Date.now(), aiDeclinedAt: undefined });
     await ctx.scheduler.runAfter(0, internal.aiPermission.catchUp, {
       userId: user._id,
       cursor: null,
@@ -118,7 +118,25 @@ export const withdraw = mutation({
   handler: async (ctx) => {
     const user = await getAuthenticatedUser(ctx);
     if (user.aiAllowedAt === undefined) return null;
-    await ctx.db.patch("users", user._id, { aiAllowedAt: undefined });
+    // Stopping is a no, remembered like Not now.
+    await ctx.db.patch("users", user._id, { aiAllowedAt: undefined, aiDeclinedAt: Date.now() });
+    return null;
+  },
+});
+
+/**
+ * Not now. Remembered so the app stops offering the question by itself: from
+ * here on the person writes and saves as written, and is asked only when they
+ * reach for something that needs reading. A no to someone who already said
+ * yes changes nothing — that is `withdraw`, which asks first.
+ */
+export const decline = mutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    const user = await getAuthenticatedUser(ctx);
+    if (user.aiAllowedAt !== undefined || user.aiDeclinedAt !== undefined) return null;
+    await ctx.db.patch("users", user._id, { aiDeclinedAt: Date.now() });
     return null;
   },
 });

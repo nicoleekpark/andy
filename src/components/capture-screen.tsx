@@ -38,6 +38,7 @@ import { hasNativeModule } from "@/lib/native";
 import { useCaptureDrafts, type CaptureDraft } from "@/lib/capture-draft";
 import { useLiveOrCopy } from "@/lib/offline-copy";
 import { withNotesView } from "@convex/offlineViews";
+import { useAiGoAhead } from "@/lib/ai-go-ahead";
 
 /**
  * Voice capture, end to end: speak → transcript → draft → confirm → saved.
@@ -477,6 +478,7 @@ export function CaptureScreen({
     keptAtRef.current = undefined;
   }, []);
   const readPhoto = useAction(api.extraction.fromPhoto);
+  const goAhead = useAiGoAhead();
   /**
    * The picture being turned into a note (`capture-doors.md`, Final choice:
    * the Photo screens): shown small above its words so a name can be checked
@@ -1026,6 +1028,9 @@ export function CaptureScreen({
      * away the one it was asked to replace.
      */
     async (spoken: string, keepDraft = false) => {
+      // Asked first, if it must be: nothing is sent before the go-ahead, and
+      // Not now leaves the words where they are.
+      if (!(await goAhead())) return;
       // The day the words were said, when that was not today — a waiting note
       // read later still means *its* "yesterday", re-reads included.
       const today = saidOnRef.current ?? localToday();
@@ -1061,7 +1066,7 @@ export function CaptureScreen({
         setPhase(keepDraft ? "review" : "idle");
       }
     },
-    [extract, aboutName, photoAbout],
+    [extract, aboutName, photoAbout, goAhead],
   );
 
   /**
@@ -1083,6 +1088,17 @@ export function CaptureScreen({
   /** A picture, from either camera or the album, read into words. */
   const readPicture = useCallback(
     async (picture: { uri: string; base64: string }, from: "camera" | "library") => {
+      // Before the photo leaves the phone. Not now: it never does, and the
+      // screen goes where closing the camera goes — back where the note was
+      // started, or, on a Retake, to the photo already here. Otherwise this
+      // door would fall through to the voice screen with nothing to retry.
+      if (!(await goAhead())) {
+        if (photo === null) {
+          if (router.canGoBack()) router.back();
+          else router.replace("/");
+        }
+        return;
+      }
       setError(null);
       setPhotoEmpty(false);
       const asset = picture;
@@ -1112,7 +1128,7 @@ export function CaptureScreen({
         setPhase("idle");
       }
     },
-    [readPhoto],
+    [readPhoto, goAhead, photo],
   );
 
   /**
