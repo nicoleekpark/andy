@@ -2,7 +2,7 @@
 
 import { ConvexError, v } from "convex/values";
 import { action } from "./_generated/server";
-import type { ActionCtx } from "./_generated/server";
+import { requireAiAllowed } from "./aiPermission";
 import {
   CARD_SCHEMA,
   CARD_SYSTEM_PROMPT,
@@ -56,19 +56,9 @@ import { askClaude } from "./claude";
  */
 
 
-/**
- * Every function here spends money, so none of them run for a stranger.
- *
- * Typed as the real `ActionCtx` rather than a structural stand-in: a shape this
- * loose would accept a future stub that satisfies the type without being wired
- * to anything, and pass an auth check that checks nothing.
- */
-async function requireSignedIn(ctx: ActionCtx) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (identity === null) {
-    throw new ConvexError("You're signed out. Sign in to continue.");
-  }
-}
+// Every function here spends money and sends what a person wrote to
+// Anthropic, so none of them run for a stranger, nor for someone who has not
+// said yes to that (`requireAiAllowed`, which refuses signed-out callers too).
 
 export const fromTranscript = action({
   args: {
@@ -90,7 +80,7 @@ export const fromTranscript = action({
   },
   returns: draftValidator,
   handler: async (ctx, args) => {
-    await requireSignedIn(ctx);
+    await requireAiAllowed(ctx);
 
     const text = args.text.trim();
     if (text === "") {
@@ -181,7 +171,7 @@ export const fromPhoto = action({
   args: imageArgs,
   returns: photoWordsValidator,
   handler: async (ctx, args): Promise<PhotoWords> => {
-    await requireSignedIn(ctx);
+    await requireAiAllowed(ctx);
     checkImage(args.imageBase64);
 
     const words = (await askClaude({
@@ -216,7 +206,7 @@ export const fromBusinessCard = action({
   args: imageArgs,
   returns: cardDraftValidator,
   handler: async (ctx, args) => {
-    await requireSignedIn(ctx);
+    await requireAiAllowed(ctx);
     checkImage(args.imageBase64);
 
     const card = (await askClaude({

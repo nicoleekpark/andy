@@ -409,6 +409,21 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `draft-replace-alert` | 고친 초안이 있을 때 새로 쓰기 전에 묻는 창 — "Write another?" / "Your edits to this draft will be replaced." · Write another (moss) · Keep my edits. `confirm-dialog`로 그림 |
 | `draft-footnote` | Andy는 보내지 않는다는 안내 |
 
+### `ai-permission-sheet`
+
+| Name | 설명 |
+|---|---|
+| `ai-permission-sheet` | AI로 보내기 전에 묻는 시트 — 저절로는 절대 안 뜸. 읽기·사진·Ask·초안을 **누를 때만**. Not now는 서버에 기억(`aiDeclinedAt`). 아래로 밀면 Not now. Apple의 ChatGPT 시트처럼 아이콘 줄 3개 (pre-submission-privacy.md, A) |
+| `ai-permission-allow` | Allow — moss pill. 서버에 저장 (`users.aiAllowedAt`) |
+| `ai-permission-not-now` | Not now — moss 글자. 아무것도 보내지 않음 |
+| `ai-permission-sheet-title` | Let Andy read your notes? |
+| `ai-permission-row` | 아이콘(SF Symbol, ink, 장식) + 제목 + 한 줄 — Reads what you write · Anthropic and OpenAI · Stays yours |
+| `ai-permission-sheet-footnote` | Not now면 어떻게 되는지(다시 저절로 묻지 않음) + Settings에서 바꿀 수 있음 |
+| `ai-status-line` | Settings 섹션의 상태 — "You've allowed this." / "Not allowed — …" |
+| `ai-allow-button` | Settings의 Allow — moss pill |
+| `ai-stop-button` | Stop sending — 조용한 ink 글자, 먼저 `ai-stop-alert`로 물음 |
+| `ai-section` | Settings → What Andy sends — 허락 상태와 Allow / Stop sending (확인 창 `ai-stop-alert`: "Stop sending?" · Keep sending · Stop sending) |
+
 ### `note-delete-alert`
 
 | Capture | State | 설명 |

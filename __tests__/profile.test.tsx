@@ -459,7 +459,12 @@ describe("follow-up email", () => {
    * (follow-up-tones.test.tsx).
    */
   function answerWith(result: unknown) {
-    answerByName(useQuery, { [nameOf(api.featureFlags.switchedOff)]: ["followUpTones"] }, () => result);
+    answerByName(
+      useQuery,
+      // The AI go-ahead is off too, as in production until build 6.
+      { [nameOf(api.featureFlags.switchedOff)]: ["followUpTones", "aiPermission"] },
+      () => result,
+    );
   }
 
   async function reachProfile() {

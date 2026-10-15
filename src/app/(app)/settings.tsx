@@ -2,6 +2,7 @@ import { useAuth } from "@clerk/expo";
 import { useAction } from "convex/react";
 import { useCallback, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text } from "react-native";
+import { AiSection } from "@/components/ai-section";
 import { CalendarSection } from "@/components/calendar-section";
 import { useConfirm } from "@/components/confirm-dialog";
 import { api } from "@convex/_generated/api";
@@ -101,6 +102,8 @@ export default function SettingsScreen() {
       <ScreenPlaceholder title="Settings" note="Manage your account." />
 
       <CalendarSection />
+
+      <AiSection />
 
       <Pressable
         style={styles.signOut}

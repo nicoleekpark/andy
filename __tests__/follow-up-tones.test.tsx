@@ -87,7 +87,9 @@ beforeEach(() => {
 
 async function openSheet(
   draft: jest.Mock,
-  { result = profileWith(), switchedOff = [] as string[] } = {},
+  // The AI go-ahead is off here, as in production until build 6: these tests
+  // are about tones; asking first has its own (ai-permission.test.tsx).
+  { result = profileWith(), switchedOff = ["aiPermission"] as string[] } = {},
 ) {
   answerByName(useQuery, { [nameOf(api.featureFlags.switchedOff)]: switchedOff }, () => result);
   answerByName(useAction, { [nameOf(api.followUp.draft)]: draft }, quietCall);
@@ -269,7 +271,7 @@ test("should leave the chips waiting while a draft is being written", async () =
 
 test("should show today's email and no picker with the switch off", async () => {
   const draft = writer();
-  await openSheet(draft, { switchedOff: ["followUpTones"] });
+  await openSheet(draft, { switchedOff: ["followUpTones", "aiPermission"] });
 
   expect(draft.mock.calls[0][0]).not.toHaveProperty("style");
   expect(await screen.findByDisplayValue("today's email")).toBeTruthy();
