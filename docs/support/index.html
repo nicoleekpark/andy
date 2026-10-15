@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Published with the privacy policy: the same gate (see docs/privacy/index.html). -->
+<title>Andy Support</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500&family=IBM+Plex+Mono:wght@400&display=swap">
+<style>
+  /* Andy's own paper world (STYLE.md), light only by choice: the app is. */
+  :root {
+    --ink: #2A2622; --paper: #E8E6DE; --moss: #5C6B4F; --brass: #B8935A;
+    --line: #B8B3A8; --soft: #5A544D; --todo: #F3E3B8;
+    --display: "Lora", Georgia, "Times New Roman", serif;
+    --utility: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    --body: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    color-scheme: light;
+  }
+  body { background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.65; padding-inline: 20px; padding-block: 48px 80px; }
+  main { max-width: 680px; margin: 0 auto; }
+  header { border-left: 3px solid var(--brass); padding-left: 18px; margin-bottom: 40px; }
+  .eyebrow { font-family: var(--utility); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--soft); margin: 0 0 6px; }
+  h1 { font-family: var(--display); font-weight: 500; font-size: clamp(30px, 5vw, 40px); line-height: 1.15; margin: 0 0 10px; text-wrap: balance; }
+  .dates { font-family: var(--utility); font-size: 13px; color: var(--soft); margin: 0; font-variant-numeric: tabular-nums; }
+  h2 { font-family: var(--display); font-weight: 500; font-size: 22px; margin: 44px 0 10px; text-wrap: balance; }
+  h3 { font-size: 16px; font-weight: 600; margin: 22px 0 4px; }
+  p { margin: 0 0 12px; }
+  ul { margin: 0 0 12px; padding-left: 20px; }
+  li { margin-bottom: 6px; }
+  a { color: var(--moss); text-underline-offset: 3px; }
+  a:focus-visible { outline: 2px solid var(--moss); outline-offset: 2px; }
+  .promises { border-left: 3px solid var(--brass); padding: 2px 0 2px 18px; margin-bottom: 28px; }
+  .promises h2 { margin-top: 0; font-size: 19px; }
+  .promises ol { margin: 0; padding-left: 20px; }
+  .short { background: #F1EFE8; border: 1px solid var(--line); border-radius: 10px; padding: 18px 22px; }
+  .short h2 { margin-top: 0; font-size: 19px; }
+  .short ul { margin-bottom: 0; }
+  .table-wrap { overflow-x: auto; margin: 8px 0 16px; }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; }
+  th, td { text-align: left; vertical-align: top; padding: 10px 12px 10px 0; border-bottom: 1px solid var(--line); }
+  th { font-family: var(--utility); font-size: 12px; font-weight: 400; letter-spacing: .05em; text-transform: uppercase; color: var(--soft); }
+  td:first-child { font-weight: 600; white-space: nowrap; padding-right: 18px; }
+  .todo { background: var(--todo); padding: 0 4px; border-radius: 3px; font-family: var(--utility); font-size: 14px; }
+  footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 14px; color: var(--soft); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="eyebrow">Andy for iPhone</p>
+    <h1>Support</h1>
+    <p class="dates">Write to <a href="mailto:hello.andyapp@gmail.com">hello.andyapp@gmail.com</a>. A person reads every message.</p>
+  </header>
+
+  <h2>Deleting things</h2>
+  <p><b>A note:</b> open it, tap Edit, then Delete this note. <b>A person:</b> on their page, tap Edit, then Delete at the bottom. Notes that mention them keep the name they were written with, and it stops opening anything. <b>Everything:</b> Settings → Delete account removes every person, note and photo, and your sign-in with it. This cannot be undone.</p>
+
+  <h2>What Andy sends, and asking first</h2>
+  <p>Reading a note, a photo's words, searching by meaning and drafting a follow-up are done by Anthropic (Claude) and OpenAI. Andy asks the first time you reach for one of them, and sends nothing until you allow it. If you choose Not now, you can still save notes as you wrote them, and find people by name or by a word. Change your answer in Settings → What Andy sends. The details are in the <a href="../privacy/">privacy policy</a>.</p>
+
+  <h2>No signal</h2>
+  <p>Everyone and every note can be read offline, and a new note is kept on your iPhone until you are back online. Changes made offline are saved for good when you tap Sync.</p>
+
+  <h2>Before a meeting</h2>
+  <p>Connect your calendar from the card on home, or in Settings → Calendar. Names are matched on your iPhone and never leave it. Reminders show a name, never what you wrote. You can mute them or turn them off in Settings.</p>
+
+  <h2>Locking Andy</h2>
+  <p>If your iPhone has Face ID, Touch ID or a passcode, Andy asks for it each time it comes back to the front.</p>
+
+  <h2>Signing in</h2>
+  <p>Andy uses Sign in with Apple. Signing out removes everything Andy kept on this iPhone; signing back in brings it back from your account.</p>
+
+  <footer>Andy · Eunkyung Park · <a href="mailto:hello.andyapp@gmail.com">hello.andyapp@gmail.com</a> · <a href="../privacy/">Privacy policy</a></footer>
+</main>
+</body>
+</html>
