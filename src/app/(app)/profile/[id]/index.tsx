@@ -18,7 +18,8 @@ import {
 import { DraftSheet } from "../../../../components/draft-sheet";
 import * as FileSystem from "expo-file-system/legacy";
 import { imageContentType } from "../../../../lib/media";
-import type { Draft } from "../../../../components/draft-sheet";
+import type { Draft, DraftStyle } from "../../../../components/draft-sheet";
+import { useFeature } from "@/lib/feature-flags";
 import type { Id } from "@convex/_generated/dataModel";
 import { colors, fonts, radius, textOpacity } from "@/constants/theme";
 import { formatDate, localToday } from "@/lib/dates";
@@ -39,6 +40,11 @@ import { useAiGoAhead } from "@/lib/ai-go-ahead";
  * allows, and only here: notes are genuinely sequential, so a line connecting
  * them carries information rather than decoration.
  */
+/** One cache entry per format and tone. */
+function styleKey(style: DraftStyle): string {
+  return `${style.format}:${style.tone}`;
+}
+
 export default function ProfileScreen() {
   const confirm = useConfirm();
   // useLocalSearchParams, not useGlobalSearchParams: this only re-renders while
@@ -103,9 +109,19 @@ export default function ProfileScreen() {
    * held only because both setters happened to sit next to each other. Putting
    * them in one object is what makes it structural.
    */
-  const [attempt, setAttempt] = useState<{ id: number; draft: Draft } | null>(
-    null,
-  );
+  const [attempt, setAttempt] = useState<{
+    id: number;
+    draft: Draft;
+    /** The format and tone of the text shown; null with the switch off. */
+    style: DraftStyle | null;
+    /**
+     * Drafts already written in this sheet, by style, so going back to one
+     * costs nothing (`follow-up-tones.md` rule 6). Memory only: dropped when
+     * the sheet closes, never kept on the phone.
+     */
+    written: Record<string, Draft>;
+  } | null>(null);
+  const tones = useFeature("followUpTones");
   const [drafting, setDrafting] = useState(false);
   /**
    * A latch, not a second copy of `drafting`.
@@ -265,53 +281,85 @@ export default function ProfileScreen() {
    * Also the rewrite: `DraftSheet` calls this again for "Write another", which
    * is why the sheet is keyed on an attempt counter rather than on the text.
    */
-  const draftFollowUp = useCallback(async () => {
-    if (inFlight.current) return;
-    inFlight.current = true;
-    // This person's notes go to Anthropic: asked first, if it must be.
-    if (!(await goAhead())) {
-      inFlight.current = false;
-      return;
-    }
-    setDrafting(true);
-    setError(null);
-    try {
-      const written = await requestDraft({
-        profileId: id,
-        // The device's date, not the server's. A follow-up that says "September"
-        // to somebody for whom it is already October reads as inattentive, and
-        // the deployment has no idea what day it is where the user is.
-        today: localToday(),
-      });
+  const draftFollowUp = useCallback(
+    async (wanted?: DraftStyle | null) => {
+      if (inFlight.current) return;
+      // A new sheet opens the way this person's last follow-up was written,
+      // or Message + Friendly the first time (`follow-up-tones.md`, Final
+      // choice); with the switch off, today's email and no style at all.
+      const style: DraftStyle | null = !tones
+        ? null
+        : (wanted ?? result?.profile.followUpStyle ?? { format: "message", tone: "friendly" });
+      inFlight.current = true;
+      // This person's notes go to Anthropic: asked first, if it must be.
+      if (!(await goAhead())) {
+        inFlight.current = false;
+        return;
+      }
+      setDrafting(true);
+      setError(null);
+      try {
+        const written = await requestDraft({
+          profileId: id,
+          // The device's date, not the server's. A follow-up that says "September"
+          // to somebody for whom it is already October reads as inattentive, and
+          // the deployment has no idea what day it is where the user is.
+          today: localToday(),
+          ...(style === null ? {} : { style }),
+        });
+        const draft: Draft = { ...written, subject: written.subject ?? "" };
 
-      // Counted rather than compared. A rewrite can legitimately come back
-      // identical, and the sheet has to reset its fields either way — so the
-      // thing that changes is the attempt, not the text.
-      setAttempt((previous) => ({
-        id: (previous?.id ?? 0) + 1,
-        // Sent with no style, the server writes today's email, subject and
-        // all; the format and tone choice comes with the sheet's own change.
-        draft: { ...written, subject: written.subject ?? "" },
-      }));
-    } catch (thrown) {
-      // Inline, not an alert. Every other error in this app is an inline line
-      // in `colors.alert`; every dialog in it is a confirmation or a choice,
-      // never a report. Nothing has navigated anywhere on either failure path,
-      // so they are still looking at this screen — with the actions bar pinned
-      // outside the scroll view, or the sheet open in front of it, so the line
-      // is visible in both.
-      //
-      // The server's own words when they were written for a person; "Andy
-      // doesn't remember anything about them yet" is the common one. Never the
-      // raw error.
-      setError(
-        userMessage(thrown, "Andy couldn't reach that just now. Try again."),
-      );
-    } finally {
-      inFlight.current = false;
-      setDrafting(false);
-    }
-  }, [requestDraft, id, goAhead]);
+        // Counted rather than compared. A rewrite can legitimately come back
+        // identical, and the sheet has to reset its fields either way — so the
+        // thing that changes is the attempt, not the text.
+        setAttempt((previous) => ({
+          id: (previous?.id ?? 0) + 1,
+          draft,
+          style,
+          written: { ...(previous?.written ?? {}), ...(style === null ? {} : { [styleKey(style)]: draft }) },
+        }));
+      } catch (thrown) {
+        // Inline, not an alert. Every other error in this app is an inline line
+        // in `colors.alert`; every dialog in it is a confirmation or a choice,
+        // never a report. Nothing has navigated anywhere on either failure path,
+        // so they are still looking at this screen — with the actions bar pinned
+        // outside the scroll view, or the sheet open in front of it, so the line
+        // is visible in both. The text and the chosen tone shown stay as they
+        // were (rule 10).
+        //
+        // The server's own words when they were written for a person; "Andy
+        // doesn't remember anything about them yet" is the common one. Never the
+        // raw error.
+        setError(
+          userMessage(thrown, "Andy couldn't reach that just now. Try again."),
+        );
+      } finally {
+        inFlight.current = false;
+        setDrafting(false);
+      }
+    },
+    [requestDraft, id, tones, result, goAhead],
+  );
+
+  /**
+   * Another format or tone, from the sheet: one already written in this sheet
+   * comes back at no cost; otherwise it is written (one call).
+   */
+  const chooseStyle = useCallback(
+    (style: DraftStyle) => {
+      // A call still running would land on top of the draft brought back.
+      if (inFlight.current) return;
+      const cached = attempt?.written[styleKey(style)];
+      if (cached !== undefined) {
+        setAttempt((previous) =>
+          previous === null ? previous : { ...previous, id: previous.id + 1, draft: cached, style },
+        );
+        return;
+      }
+      void draftFollowUp(style);
+    },
+    [attempt, draftFollowUp],
+  );
   const toggleTranscript = useCallback((noteId: string) => {
     setOpenTranscripts((open) =>
       open.includes(noteId)
@@ -637,7 +685,7 @@ export default function ProfileScreen() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Draft a follow-up"
-                  onPress={draftFollowUp}
+                  onPress={() => void draftFollowUp()}
                   // No explicit `accessibilityState`: `Pressable` derives it
                   // from this prop. Saying it twice meant the test read the
                   // copy and passed with the real one deleted.
@@ -686,11 +734,14 @@ export default function ProfileScreen() {
       <DraftSheet
         key={attempt.id}
         draft={attempt.draft}
+        style={attempt.style}
+        onChooseStyle={chooseStyle}
+        canWrite={online}
         onClose={() => {
           setAttempt(null);
           setError(null);
         }}
-        onRewrite={draftFollowUp}
+        onRewrite={() => void draftFollowUp(attempt.style)}
         rewriting={drafting}
         error={error}
       />

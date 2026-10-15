@@ -672,7 +672,7 @@ their rows.
 | 21.14 | Open the iOS app switcher while Andy is open, and look at Andy's card | **Write down what the card shows.** Not changed by the 2026-10-06 fix: the lock reacts to *background*, not *inactive* (see `useAppLock`), so the card may show the screen you were on. If it does, file it as its own item | ⬜ |
 | 21.15 | Open a delete confirmation — `note-delete-alert` (a note's **Edit** → **Delete this note**), **Delete this person**, or **Delete account** in Settings — switch away and come back **without** answering it | While locked, **only** the `lock` screen shows: no question, no name, no buttons. After unlocking, the same `confirm-dialog` is **still open**, and Cancel / Delete work. Before the fix (#51) the iOS alert sat over the lock screen, tappable. Unit-tested in jest; that iOS draws nothing of its own on top is device-only. Since part 2, **every** question Andy asks works this way: Sign out, Remove this photo, Read it again, You changed what you wrote, Scan a business card, Replace what you wrote, and the Sync questions. `Alert.alert` is refused by lint | ⬜ — was ❌ simulator, 2026-10-07 |
 | 21.15a | Settings → Accessibility → Display & Text Size → **Larger Text** at the largest size. Open **Delete this person** for someone with notes | The whole `confirm-dialog` fits on screen: the message **scrolls** inside the card, and **Delete** and **Cancel** stay visible below it | ⬜ |
-| 21.15b | Open the follow-up `draft` sheet, edit the message, tap **Write another draft** | **Replace what you wrote?** appears **on the sheet**, in front of it — not behind it. Then switch away and come back: only the `lock` screen; after unlocking, the sheet and the question are both back | ⬜ |
+| 21.15b | Open the follow-up `draft` sheet, edit the message, tap **Write another draft** | **Write another?** appears **on the sheet**, in front of it — not behind it. Then switch away and come back: only the `lock` screen; after unlocking, the sheet and the question are both back | ⬜ |
 | 21.15c | Make a change offline, have it changed on another device, come back online and tap **Sync** | **Changed somewhere else** is Andy's own card with **Keep theirs** and **Keep mine** (both green, no red), and no Cancel: one of the two has to be chosen | ⬜ |
 
 
@@ -905,6 +905,21 @@ WCAG 1.4.11: a control whose outline is all that marks it out needs 3:1
 | 33.9 | Reduce Motion on | Nothing on this screen moves except the time | ⬜ |
 | 33.10 | Largest Dynamic Type | The words under the three controls wrap rather than overlap; the circles stay the same size | ⬜ |
 | 33.11 | VoiceOver, while listening | The words, the time, then Start over, Pause, Done | ⬜ |
+
+## 34. Follow-up formats and tones (follow-up-tones.md, Final choice)
+
+| # | Do this | Expect | |
+|---|---|---|---|
+| 34.1 | A person you have never drafted to → **Draft a follow-up** | The sheet opens with **Message** and **Friendly** chosen; no Subject field and no **Copy with subject** | ⬜ |
+| 34.2 | Tap **Email** | *Writing…* in the message, chips dimmed, then an email with a subject; **Copy with subject** is back | ⬜ |
+| 34.3 | Tap **Brief**, then **Friendly** again | Brief writes a new, shorter one; going back to Friendly shows the earlier email at once (no *Writing…*) | ⬜ |
+| 34.4 | Close the sheet, reopen it for the same person | Opens as the last format and tone you chose (Email + Friendly here) — kept on the person, so it also shows on another device signed in to the same account | ⬜ |
+| 34.5 | Edit the message, tap another tone → **Keep my edits** | Your words stay; the chosen chip does not move | ⬜ |
+| 34.6 | Same, → **Write another** | A new draft replaces your edits | ⬜ |
+| 34.7 | With a draft open, turn Wi-Fi off | Format, chips and **Write another draft** go dim and do nothing; the draft stays | ⬜ |
+| 34.8 | A Korean person's notes, each tone | Name + 님 every time, never 반말 | ⬜ |
+| 34.9 | Dashboard: insert `featureFlags` `{ key: "followUpTones", enabled: false }`, reopen a sheet | No picker, no chips: an email with a subject, as before. Delete the row afterwards | ⬜ |
+| 34.10 | Largest Dynamic Type; VoiceOver | Chips wrap rather than clip; VoiceOver reads "Format", Message, selected… then "Tone", Friendly, selected, "Writes a new draft." | ⬜ |
 
 ## 35. Asking before Andy sends anything (pre-submission-privacy.md, A)
 

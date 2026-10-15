@@ -11,6 +11,11 @@ export type Feature =
   /** The calendar briefing card, reading the calendar, and its reminders. */
   | "calendarBriefing"
   /**
+   * The follow-up's format and tone choice (`follow-up-tones.md`). Off: the
+   * sheet writes today's email, with no picker and no chips.
+   */
+  | "followUpTones"
+  /**
    * Asking for the go-ahead before anything reaches an AI service
    * (`convex/aiPermission.ts`). Switched off in production until a build that
    * asks is on every phone; the server reads the same row.

@@ -403,6 +403,10 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `copy-message-button` | 본문만 복사 |
 | `copy-with-subject-button` | 제목 포함 복사 |
 | `draft-regenerate-button` | Write another — 다시 쓰기 |
+| `draft-format-picker` | 형식 고르기 — Message · Email (VoiceOver 그룹 "Format"). Message면 `draft-email-subject-field`와 `copy-with-subject-button`이 숨음 (follow-up-tones.md) |
+| `draft-format-option` | 형식 하나 — 고르면 새 초안을 씀. 이미 고른 걸 다시 누르면 아무것도 안 함 |
+| `draft-tone-chip` | 말투 칩 — Friendly · Professional · Brief (VoiceOver 그룹 "Tone", 힌트 "Writes a new draft."). 고른 칩은 `draft-tone-chip--selected`. 쓰는 중이거나 오프라인이면 기다림 |
+| `draft-replace-alert` | 고친 초안이 있을 때 새로 쓰기 전에 묻는 창 — "Write another?" / "Your edits to this draft will be replaced." · Write another (moss) · Keep my edits. `confirm-dialog`로 그림 |
 | `draft-footnote` | Andy는 보내지 않는다는 안내 |
 
 ### `ai-permission-sheet`
