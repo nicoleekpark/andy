@@ -1,5 +1,7 @@
 # Before App Store submission: AI permission, promise 1, App Privacy
 
+*Korean: [pre-submission-privacy.ko.md](pre-submission-privacy.ko.md). Edit both together.*
+
 Status: **decided and built** (owner, 2026-10-14; see Final choice at the end). Drafted the night before as options.
 TestFlight is not blocked by any of it; App Review is.
 
@@ -183,12 +185,17 @@ Connect at submission and re-check against the code then.
   shows the seller.
 - **The policy** is `docs/privacy/index.html`, linked from Settings and the
   sheet (`src/constants/links.ts`).
+- **Launch market: the US only** (owner, 2026-10-15). The policy is judged
+  against US rules. Korea (PIPA) and the EU (GDPR) would first need a
+  cross-border transfer section: recipient, country, items, purpose, and
+  retention. In App Store Connect → Pricing and Availability, choose the
+  United States only.
 
 **Order from here.**
 1. `npx convex deploy` to production. The switch row is already in.
 2. Build 6.
 3. Once build 6 is on every phone: delete the production `aiPermission`
    row, enable GitHub Pages (`main` → `/docs`), and set the policy's dates.
-4. In App Store Connect: the privacy policy URL, the contact, and the App
-   Privacy answers.
+4. In App Store Connect: the privacy policy URL, the contact, the App
+   Privacy answers, and availability set to the United States.
 
