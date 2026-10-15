@@ -18,9 +18,26 @@ export function Pill({ label, onPress }: { label: string; onPress: () => void })
 }
 
 /** A reversible choice: `moss` text. */
-export function Secondary({ label, onPress }: { label: string; onPress: () => void }) {
+export function Secondary({
+  label,
+  onPress,
+  role = "button",
+  testID,
+}: {
+  label: string;
+  onPress: () => void;
+  /** `link` when it opens a page outside Andy (the privacy policy). */
+  role?: "button" | "link";
+  testID?: string;
+}) {
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={styles.textButton}>
+    <Pressable
+      accessibilityRole={role}
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={styles.textButton}
+      testID={testID}
+    >
       <Text style={styles.secondaryLabel}>{label}</Text>
     </Pressable>
   );
