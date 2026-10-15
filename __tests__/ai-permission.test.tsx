@@ -340,3 +340,30 @@ test("should show nothing in Settings with the switch off", async () => {
 
   expect(screen.queryByTestId("ai-section")).toBeNull();
 });
+
+test("should open the privacy policy from Settings, even with the switch off", async () => {
+  const { Linking } = jest.requireActual<typeof import("react-native")>("react-native");
+  const opened = jest.spyOn(Linking, "openURL").mockResolvedValue(true);
+  server({ switchedOff: ["aiPermission"] });
+  await open("/settings");
+
+  await act(async () => {
+    fireEvent.press(screen.getByRole("link", { name: "Privacy policy" }));
+  });
+
+  expect(opened).toHaveBeenCalledWith("https://nicoleekpark.github.io/andy/privacy/");
+});
+
+test("should open the privacy policy from the sheet", async () => {
+  const { Linking } = jest.requireActual<typeof import("react-native")>("react-native");
+  const opened = jest.spyOn(Linking, "openURL").mockResolvedValue(true);
+  server();
+  await open();
+  await askAndy("who moved to Berlin");
+
+  await act(async () => {
+    fireEvent.press(screen.getByRole("link", { name: "Privacy policy" }));
+  });
+
+  expect(opened).toHaveBeenCalledWith("https://nicoleekpark.github.io/andy/privacy/");
+});

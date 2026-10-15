@@ -265,7 +265,7 @@ belong on a screen.
 policy, the store listing, the README, onboarding). Only list what the code
 already guarantees; a promise is added after the code keeps it, never before.
 
-1. **Only you.** Your notes are never shared, sold or shown to anyone.
+1. **Only you.** Your notes are never sold or shown to anyone. Andy sends them only to the services that read them for you. *(Reworded 2026-10-14, `pre-submission-privacy.md` decision 2a: "never shared" was not true of the AI services that read notes — and those are now asked about first, `ai-permission-sheet`.)*
 2. **Andy never reaches out.** It doesn't message anyone. Drafts stay with you.
 3. **Quiet on the lock screen.** Reminders show a name, never what you wrote.
 4. **No ads, no tracking.** Not now, not later.

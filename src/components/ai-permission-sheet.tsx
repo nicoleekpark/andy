@@ -1,5 +1,7 @@
 import { SymbolView, type SFSymbol } from "expo-symbols";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Secondary } from "@/components/section-buttons";
+import { PRIVACY_POLICY_URL } from "@/constants/links";
 import {
   colors,
   disabledOpacity,
@@ -76,6 +78,14 @@ export function AiPermissionSheet({
             </View>
           </View>
         ))}
+
+        {/* As Apple's sheet links "About ChatGPT Extension & Privacy" above its buttons. */}
+        <Secondary
+          label="Privacy policy"
+          role="link"
+          onPress={() => void Linking.openURL(PRIVACY_POLICY_URL)}
+          testID="ai-permission-policy-link"
+        />
 
         {error !== null ? <Text style={styles.error}>{error}</Text> : null}
 

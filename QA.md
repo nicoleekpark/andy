@@ -943,6 +943,7 @@ Needs the switch on (dev, or production after build 6) and an account that has s
 | 36.10 | Largest Dynamic Type; VoiceOver | About, suggestions and both buttons reachable; VoiceOver reads "About", the suggestion as "About Priya" | ⬜ |
 | 36.10a | Said Not now: + → **Voice**, speak, **Done** | *Is this what you said?* has the **About** line above the words, and **Save as written** — a spoken note is kept as heard, nothing read | ⬜ |
 | 36.11 | Offline, said Not now: write, **Keep this note**; back online, home → **Read it now** | Offline it is kept as before. Read it now asks first (you reached for it); **Not now** → the words with **Save as written**, and saving clears it from home | ⬜ |
+| 36.12 | Settings → **Privacy policy**, and the sheet's **Privacy policy** | Both open the policy page in Safari (after Pages is enabled: `nicoleekpark.github.io/andy/privacy/`). Settings shows it with the switch off too | ⬜ |
 
 ## Simulator pass, 2026-09-30 (Claude, while the developer was away)
 

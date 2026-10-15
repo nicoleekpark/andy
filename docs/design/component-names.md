@@ -414,6 +414,7 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `ai-permission-not-now` | Not now — moss 글자. 아무것도 보내지 않음 |
 | `ai-permission-sheet-title` | Let Andy read your notes? |
 | `ai-permission-row` | 아이콘(SF Symbol, ink, 장식) + 제목 + 한 줄 — Reads what you write · Anthropic and OpenAI · Stays yours |
+| `ai-permission-policy-link` | Privacy policy — 행 아래, 버튼 위 (Apple의 "About … & Privacy" 자리). 개인정보 페이지를 엶 |
 | `ai-permission-sheet-footnote` | Not now면 어떻게 되는지(다시 저절로 묻지 않음) + Settings에서 바꿀 수 있음 |
 | `ai-status-line` | Settings 섹션의 상태 — "You've allowed this." / "Not allowed — …" |
 | `ai-allow-button` | Settings의 Allow — moss pill |
@@ -422,6 +423,7 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `write-about-suggestions` | "In what you wrote:" + 저장된 이름 칩 (AI 아님, 이름·별명 비교). 탭해야 About이 채워짐 |
 | `save-as-written-button` | Not now 한 사람의 Write 주 버튼 — 읽지 않고 그대로 저장. 같은 이름이 있으면 review의 `name-picker`로 |
 | `read-instead-button` | Save as written 아래 작은 Let Andy read it — 누르면 `ai-permission-sheet` |
+| `settings-privacy-link` | Settings의 Privacy policy — 스위치와 상관없이 항상 보임 (App Review 5.1.1(i)) |
 | `ai-section` | Settings → What Andy sends — 허락 상태와 Allow / Stop sending (확인 창 `ai-stop-alert`: "Stop sending?" · Keep sending · Stop sending) |
 
 ### `note-delete-alert`
