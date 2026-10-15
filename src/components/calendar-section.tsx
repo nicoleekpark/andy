@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { AppState, Linking, Pressable, StyleSheet, Text, View } from "react-native";
-import { colors, radius, space, textOpacity, textSize } from "@/constants/theme";
+import { colors, size, space, textOpacity, textSize } from "@/constants/theme";
 import { askForCalendar, calendarAccess, type CalendarAccess } from "@/lib/calendar";
 import { setCalendarSetting, useCalendarSetting } from "@/lib/calendar-setting";
 import { useFeature } from "@/lib/feature-flags";
+import { Pill, Quiet, Secondary, sectionStyles } from "@/components/section-buttons";
 import {
   askForNotifications,
   notificationAccess,
@@ -21,9 +22,6 @@ import {
  * rare way out ("remove completely"). It all works offline (R22): the setting,
  * both permissions and the matching are on the phone.
  */
-
-/** A tap target: 44pt, the WCAG/HIG minimum. No spacing token is 44. */
-const TARGET = 44;
 
 type Permissions = {
   calendar: CalendarAccess["state"];
@@ -84,14 +82,14 @@ export function CalendarSection() {
   const on = setting.mode !== "off";
 
   return (
-    <View style={styles.section} testID="calendar-section">
-      <Text style={styles.label} accessibilityRole="header">
+    <View style={sectionStyles.section} testID="calendar-section">
+      <Text style={sectionStyles.label} accessibilityRole="header">
         Calendar
       </Text>
 
       {permissions.calendar === "undetermined" ? (
         <>
-          <Text style={styles.status}>
+          <Text style={sectionStyles.status}>
             Before a meeting, Andy shows what you wrote about whoever you&apos;re
             meeting. It reads your calendar on this phone — nothing leaves it,
             and nothing is added.
@@ -100,7 +98,7 @@ export function CalendarSection() {
         </>
       ) : permissions.calendar === "denied" ? (
         <>
-          <Text style={styles.status}>
+          <Text style={sectionStyles.status}>
             Calendar access is off for Andy. To turn it on, choose Full Access
             under Calendars.
           </Text>
@@ -110,7 +108,7 @@ export function CalendarSection() {
         <>
           {muted ? (
             <View style={styles.mutedLine}>
-              <Text style={styles.status}>Muted until tomorrow · </Text>
+              <Text style={sectionStyles.status}>Muted until tomorrow · </Text>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Turn back on"
@@ -124,7 +122,7 @@ export function CalendarSection() {
 
           {on ? (
             <>
-              <Text style={styles.status}>On — Andy reads your calendar on this phone.</Text>
+              <Text style={sectionStyles.status}>On — Andy reads your calendar on this phone.</Text>
               <Secondary
                 label="Turn off in Andy"
                 onPress={() => setCalendarSetting({ mode: "off" })}
@@ -132,7 +130,7 @@ export function CalendarSection() {
             </>
           ) : (
             <>
-              <Text style={styles.status}>
+              <Text style={sectionStyles.status}>
                 Off — Andy isn&apos;t reading your calendar, and no reminders are set.
               </Text>
               <Pill label="Connect calendar" onPress={() => void connect()} />
@@ -150,7 +148,7 @@ export function CalendarSection() {
             <View style={styles.reminders} testID="reminders-row">
               {permissions.alerts === "undetermined" ? (
                 <>
-                  <Text style={styles.status}>
+                  <Text style={sectionStyles.status}>
                     Andy can remind you 10 minutes before a meeting, and ask
                     afterwards what&apos;s new.
                   </Text>
@@ -160,13 +158,13 @@ export function CalendarSection() {
                   />
                 </>
               ) : permissions.alerts === "granted" ? (
-                <Text style={styles.status}>
+                <Text style={sectionStyles.status}>
                   Reminders on — 10 minutes before, and a nudge after. They show
                   a name, never what you wrote.
                 </Text>
               ) : (
                 <>
-                  <Text style={styles.status}>Notifications are off for Andy.</Text>
+                  <Text style={sectionStyles.status}>Notifications are off for Andy.</Text>
                   <Quiet label="Open iPhone Settings" onPress={openIphoneSettings} />
                 </>
               )}
@@ -178,68 +176,16 @@ export function CalendarSection() {
   );
 }
 
-/** The one way forward: a filled `moss` pill. */
-function Pill({ label, onPress }: { label: string; onPress: () => void }) {
-  return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={styles.pill}>
-      <Text style={styles.pillLabel}>{label}</Text>
-    </Pressable>
-  );
-}
-
-/** A reversible choice: `moss` text. */
-function Secondary({ label, onPress }: { label: string; onPress: () => void }) {
-  return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={styles.textButton}>
-      <Text style={styles.secondaryLabel}>{label}</Text>
-    </Pressable>
-  );
-}
-
-/** The rare way out: quiet `ink` text. */
-function Quiet({ label, onPress }: { label: string; onPress: () => void }) {
-  return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={styles.textButton}>
-      <Text style={styles.quietLabel}>{label}</Text>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
-  section: {
-    marginHorizontal: space.xl,
-    paddingVertical: space.xl,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.line,
-    gap: space.sm,
-  },
-  label: {
-    color: colors.ink,
-    fontSize: textSize.sm,
-    opacity: textOpacity.quiet,
-    textTransform: "uppercase",
-  },
-  status: { color: colors.ink, fontSize: textSize.base },
   mutedLine: { flexDirection: "row", flexWrap: "wrap", alignItems: "center" },
-  inline: { minHeight: TARGET, justifyContent: "center" },
+  inline: { minHeight: size.touch, justifyContent: "center" },
   removeLine: {
     color: colors.ink,
     fontSize: textSize.sm,
     opacity: textOpacity.quiet,
     marginTop: space.sm,
   },
-  pill: {
-    alignSelf: "flex-start",
-    minHeight: TARGET,
-    justifyContent: "center",
-    paddingHorizontal: space.lg,
-    borderRadius: radius.pill,
-    backgroundColor: colors.moss,
-  },
-  pillLabel: { color: colors.paper, fontSize: textSize.base },
-  textButton: { alignSelf: "flex-start", minHeight: TARGET, justifyContent: "center" },
   secondaryLabel: { color: colors.moss, fontSize: textSize.base },
-  quietLabel: { color: colors.ink, fontSize: textSize.base, opacity: textOpacity.quiet },
   reminders: {
     marginTop: space.lg,
     paddingTop: space.lg,

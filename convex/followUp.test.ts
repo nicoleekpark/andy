@@ -15,6 +15,7 @@ import {
   requestBlock,
 } from "./emailPrompt";
 import schema from "./schema";
+import { aiNotEnforced } from "../test-support/ai-permission";
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -103,7 +104,7 @@ async function seed(t: ReturnType<typeof convexTest>) {
 // ---------------------------------------------------------------------------
 
 test("should send only this person's own notes, never one that merely mentions them", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const { amy, john } = await seed(t);
 
   const forAmy = await t
@@ -121,7 +122,7 @@ test("should send only this person's own notes, never one that merely mentions t
 });
 
 test("should drop a note with nothing endorsed on it rather than falling back to its raw text", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const { userId, amy } = await seed(t);
   await t.run(async (ctx) =>
     ctx.db.insert("notes", {
@@ -219,7 +220,7 @@ test("should put the person's name inside the boundary, since a name is typed by
 // ---------------------------------------------------------------------------
 
 test("should say a mentioned-only person is mentioned only, not that nothing is written down", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const { john } = await seed(t);
 
   // Reported from the device. John exists *because* Amy's note names him, so
@@ -237,7 +238,7 @@ test("should say a mentioned-only person is mentioned only, not that nothing is 
 });
 
 test("should refuse a person nobody has written or said anything about", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const { userId } = await seed(t);
   const stranger = await t.run(async (ctx) =>
     ctx.db.insert("profiles", {
@@ -261,7 +262,7 @@ test("should refuse a person nobody has written or said anything about", async (
 });
 
 test("should name the facts as what is missing when the notes exist but carry none", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const { userId } = await seed(t);
   const emily = await t.run(async (ctx) => {
     const id = await ctx.db.insert("profiles", {
@@ -295,7 +296,7 @@ test("should name the facts as what is missing when the notes exist but carry no
 });
 
 test("should refuse an animal even though no screen offers the button", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const { userId } = await seed(t);
   const biscuit = await t.run(async (ctx) => {
     const id = await ctx.db.insert("profiles", {
@@ -329,7 +330,7 @@ test("should refuse an animal even though no screen offers the button", async ()
 });
 
 test("should refuse another user's person behind the same message as one that does not exist", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const { amy } = await seed(t);
   await t.withIdentity(BOB).mutation(api.users.ensureUser, {});
 
@@ -343,7 +344,7 @@ test("should refuse another user's person behind the same message as one that do
 });
 
 test("should hide a malformed id behind the same message as one that is not yours", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   await seed(t);
 
   // `normalizeId` returns null for a string that is not an id of that table at
@@ -361,7 +362,7 @@ test("should hide a malformed id behind the same message as one that is not your
 });
 
 test("should refuse a signed-out caller before spending anything", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const { amy } = await seed(t);
 
   await expect(
@@ -375,7 +376,7 @@ test("should refuse a signed-out caller before spending anything", async () => {
 // ---------------------------------------------------------------------------
 
 test("should return a subject and body, and the name to address it to", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const { amy } = await seed(t);
   createMessage.mockResolvedValueOnce(
     claudeSays({
@@ -405,7 +406,7 @@ test("should return a subject and body, and the name to address it to", async ()
 });
 
 test("should cut an over-long subject as well as an over-long body", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const { amy } = await seed(t);
   createMessage.mockResolvedValueOnce(
     claudeSays({
@@ -430,7 +431,7 @@ test("should cut an over-long subject as well as an over-long body", async () =>
 });
 
 test("should refuse rather than crash when Claude returns a body of the wrong shape", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   createMessage.mockResolvedValueOnce(claudeSays({ subject: "only a subject" }));
 
   await expect(
@@ -444,7 +445,7 @@ test("should refuse rather than crash when Claude returns a body of the wrong sh
 });
 
 test("should hand the newest notes over and stop at the ceiling", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const { userId, amy } = await seed(t);
   await t.run(async (ctx) => {
     for (let i = 0; i < 20; i += 1) {
@@ -506,7 +507,7 @@ test("should refuse a style that is not in the table, before anything is sent", 
 });
 
 test("should refuse an unknown tone at the public door and never call Claude", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const { amy } = await seed(t);
 
   await expect(
@@ -520,7 +521,7 @@ test("should refuse an unknown tone at the public door and never call Claude", a
 });
 
 test("should write a message as a body alone — no subject asked for or returned — and remember the style", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const { amy } = await seed(t);
   createMessage.mockResolvedValueOnce(claudeSays({ body: "Amy, how is the Berlin move coming along?" }));
 
@@ -540,7 +541,7 @@ test("should write a message as a body alone — no subject asked for or returne
 });
 
 test("should write an email with a subject in the chosen tone", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const { amy } = await seed(t);
   createMessage.mockResolvedValueOnce(claudeSays({ subject: "Berlin", body: "Amy,\nHow is the move going?" }));
 
@@ -556,7 +557,7 @@ test("should write an email with a subject in the chosen tone", async () => {
 });
 
 test("should write today's email, with today's prompt and no request block, when no style is sent", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const { amy } = await seed(t);
   createMessage.mockResolvedValueOnce(claudeSays({ subject: "Berlin", body: "Hi Amy" }));
 
@@ -570,7 +571,7 @@ test("should write today's email, with today's prompt and no request block, when
 });
 
 test("should not remember a style when the draft failed", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const { amy } = await seed(t);
   createMessage.mockResolvedValueOnce(claudeSays({ nothing: true }));
 
@@ -586,7 +587,7 @@ test("should not remember a style when the draft failed", async () => {
 });
 
 test("should not let anyone set the style on somebody else's person", async () => {
-  const t = convexTest(schema, modules);
+  const t = await aiNotEnforced(convexTest(schema, modules));
   const { amy } = await seed(t);
   await t.withIdentity(BOB).mutation(api.users.ensureUser, {});
 

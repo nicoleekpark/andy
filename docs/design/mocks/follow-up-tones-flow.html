@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--
+  Storyboard: follow-up formats and tones (follow-up-tones.md, 6b, the sheet).
+  Before and after. An HTML approximation of native
+  screens for explaining the change, not production code. Example people only.
+-->
+<title>Follow-up tones</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500&family=IBM+Plex+Mono&display=swap">
+<style>
+:root{--page:#EDEBE4;--page-ink:#2A2622;--quiet:#6F6A62;--rule:#CFCAC0;--paper:#E8E6DE;--ink:#2A2622;--line:#B8B3A8;--moss:#5C6B4F;
+  --serif:"Lora",Georgia,serif;--mono:"IBM Plex Mono",ui-monospace,monospace;--sans:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--page:#1E1C19;--page-ink:#ECE8E0;--quiet:#A39D93;--rule:#3A3631;color-scheme:dark}}
+:root[data-theme="dark"]{--page:#1E1C19;--page-ink:#ECE8E0;--quiet:#A39D93;--rule:#3A3631;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--page-ink);font-family:var(--sans);padding:0 20px}
+.wrap{max-width:900px;margin:0 auto;padding-block:40px 64px;display:grid;gap:28px}
+h1{font-family:var(--serif);font-weight:500;margin:0;font-size:clamp(26px,4vw,36px)}
+p{color:var(--quiet);margin:6px 0 0;max-width:68ch}
+.pair{display:flex;flex-wrap:wrap;gap:20px}
+.col{flex:1 1 300px;display:grid;gap:8px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.before .eyebrow{color:#9F4C3B}.after .eyebrow{color:var(--moss)}
+.phone{background:var(--paper);color:var(--ink);border:1px solid var(--rule);border-radius:22px;padding:16px}
+.row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--rule)}
+.row:last-child{border-bottom:none}
+.av{flex:0 0 40px;height:40px;border-radius:50%;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:15px;overflow:hidden;background:var(--paper)}
+.av.photo{background:linear-gradient(135deg,#b79c7e,#7a6a58);border-color:transparent}
+.t{min-width:0;flex:1}
+.name{font-family:var(--serif);font-size:18px}
+.fact{font-size:14px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta{font-family:var(--mono);font-size:12px;opacity:.7}
+.cap{font-size:13px;color:var(--quiet)}
+.label{font-size:12px;letter-spacing:.05em;text-transform:uppercase;opacity:.7}
+.lrow{display:flex;gap:8px;align-items:baseline;margin-top:14px}
+.mark{font-size:12px;opacity:.7}
+.rec{font-size:14px;line-height:21px;opacity:.7;border-left:1px solid var(--line);padding-left:10px;margin-top:6px}
+.inp{font-size:16px;border-bottom:1px solid #857E6D;padding:8px 0;margin-top:6px}
+.hint{font-size:12px;opacity:.7;margin-top:6px}
+.f{font-size:16px;margin-top:6px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.chip{font-size:14px;border:1px solid var(--line);border-radius:999px;padding:10px 14px}
+.chip.on{background:var(--moss);border-color:var(--moss);color:#fff}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:8px}
+.seg span{flex:1;text-align:center;padding:10px 0;font-size:14px}
+.seg .on{background:var(--moss);color:#fff}
+.btn{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:10px 14px;font-size:14px;margin:12px 8px 0 0}
+.title{font-family:var(--serif);font-size:20px}
+.step{font-family:var(--mono);font-size:12px;opacity:.7;margin:14px 0 2px}
+mark{background:#E6D9A8;color:inherit}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Follow-up tones</h1>
+  <p>The follow-up sheet only wrote an email, in one voice. Now it opens as a <b>Message</b> (no subject) in a <b>Friendly</b> tone, or the way you last wrote to this person. Choose <b>Email</b> or another tone and Andy writes a new draft. Going back to one already written in this sheet costs nothing.</p>
+</header>
+<div class="pair">
+  <div class="col before"><div class="eyebrow">Before</div>
+    <div class="phone">
+      <div class="title">Follow-up to Nina</div>
+      <div class="lrow"><span class="label">Subject</span></div>
+      <div class="inp">How's Berlin?</div>
+      <div class="lrow"><span class="label">Message</span></div>
+      <div class="f">Hi Nina, hope the move to Berlin is going smoothly…</div>
+      <div><span class="btn">Copy the message</span><span class="btn">Copy with subject</span></div>
+      <div><span class="btn">Write another</span></div>
+    </div>
+    <div class="cap">Always an email with a subject, even when it goes out as a text or KakaoTalk.</div>
+  </div>
+  <div class="col after"><div class="eyebrow">After</div>
+    <div class="phone">
+      <div class="title">Follow-up to Nina</div>
+      <div class="seg"><span class="on">Message</span><span>Email</span></div>
+      <div class="chips"><span class="chip on">Friendly</span><span class="chip">Professional</span><span class="chip">Brief</span></div>
+      <div class="lrow"><span class="label">Message</span></div>
+      <div class="f">Hi Nina! How's Berlin treating you so far?</div>
+      <div><span class="btn">Copy the message</span></div>
+      <div><span class="btn">Write another</span></div>
+      <div class="step">tap Brief after editing</div>
+      <div class="f"><b>Write another?</b><br><span class="cap">Your edits to this draft will be replaced.</span></div>
+      <div><span class="btn">Write another</span><span class="btn">Keep my edits</span></div>
+      <div class="step">offline</div>
+      <div class="cap">Format and tone wait (dimmed) until there is a connection; the draft on screen stays.</div>
+    </div>
+    <div class="cap">Message hides the subject and "Copy with subject". The chosen format and tone are kept on the person's record, so the next sheet opens the same way. Tapping what is already chosen does nothing. With the <code>followUpTones</code> switch off, the sheet is the Before.</div>
+  </div>
+</div>
+</div>
+</body>
+</html>

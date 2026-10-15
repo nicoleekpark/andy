@@ -94,6 +94,10 @@ Added 2026-10-08, the same way (`src/constants/theme.ts`):
 - **Icons are Apple's SF Symbols, through `expo-symbols`, and nothing else** (decided 2026-10-12). No icon font or drawn icon set: a system symbol already matches the iOS chrome around it. (This is not the drawn, branded set the Briefing card's *quiet icon* would have needed — see below; that one is still not chosen.) Drawn at a fixed `size`, so it does not grow with Dynamic Type; its 44pt target and VoiceOver label carry it instead. Always `ink` (or the control's own token), always with a VoiceOver label, always with a worded `fallback` for a build without symbols. First use: the Settings gear on home (`settings-button`).
 - **`textOpacity`**: **secondary 0.8 · quiet 0.7**. Dimmed `ink` text never goes
   below 0.7, the lowest that still passes WCAG AA on `paper` (5.0:1).
+- **`disabledOpacity`**: **0.5** — a control that cannot be pressed right now.
+  Below the text floor on purpose (WCAG exempts disabled controls); never for
+  text someone needs to read. Existing `opacity: 0.5` literals move onto it as
+  their files are touched.
 - **`colors.scrim`**: the dim behind a dialog, `ink` at 42%.
 
 ## Signature Element — spend the one risk here
@@ -261,7 +265,7 @@ belong on a screen.
 policy, the store listing, the README, onboarding). Only list what the code
 already guarantees; a promise is added after the code keeps it, never before.
 
-1. **Only you.** Your notes are never shared, sold or shown to anyone.
+1. **Only you.** Your notes are never sold or shown to anyone. Andy sends them only to the services that read them for you. *(Reworded 2026-10-14, `pre-submission-privacy.md` decision 2a: "never shared" was not true of the AI services that read notes — and those are now asked about first, `ai-permission-sheet`.)*
 2. **Andy never reaches out.** It doesn't message anyone. Drafts stay with you.
 3. **Quiet on the lock screen.** Reminders show a name, never what you wrote.
 4. **No ads, no tracking.** Not now, not later.

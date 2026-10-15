@@ -403,7 +403,32 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `copy-message-button` | 본문만 복사 |
 | `copy-with-subject-button` | 제목 포함 복사 |
 | `draft-regenerate-button` | Write another — 다시 쓰기 |
+| `draft-format-picker` | 형식 고르기 — Message · Email (VoiceOver 그룹 "Format"). Message면 `draft-email-subject-field`와 `copy-with-subject-button`이 숨음 (follow-up-tones.md) |
+| `draft-format-option` | 형식 하나 — 고르면 새 초안을 씀. 이미 고른 걸 다시 누르면 아무것도 안 함 |
+| `draft-tone-chip` | 말투 칩 — Friendly · Professional · Brief (VoiceOver 그룹 "Tone", 힌트 "Writes a new draft."). 고른 칩은 `draft-tone-chip--selected`. 쓰는 중이거나 오프라인이면 기다림 |
+| `draft-replace-alert` | 고친 초안이 있을 때 새로 쓰기 전에 묻는 창 — "Write another?" / "Your edits to this draft will be replaced." · Write another (moss) · Keep my edits. `confirm-dialog`로 그림 |
 | `draft-footnote` | Andy는 보내지 않는다는 안내 |
+
+### `ai-permission-sheet`
+
+| Name | 설명 |
+|---|---|
+| `ai-permission-sheet` | AI로 보내기 전에 묻는 시트 — 저절로는 절대 안 뜸. 읽기·사진·Ask·초안을 **누를 때만**. Not now는 서버에 기억(`aiDeclinedAt`). 아래로 밀면 Not now. Apple의 ChatGPT 시트처럼 아이콘 줄 3개 (pre-submission-privacy.md, A) |
+| `ai-permission-allow` | Allow — moss pill. 서버에 저장 (`users.aiAllowedAt`) |
+| `ai-permission-not-now` | Not now — moss 글자. 아무것도 보내지 않음 |
+| `ai-permission-sheet-title` | Let Andy read your notes? |
+| `ai-permission-row` | 아이콘(SF Symbol, ink, 장식) + 제목 + 한 줄 — Reads what you write · Anthropic and OpenAI · Stays yours |
+| `ai-permission-policy-link` | Privacy policy — 행 아래, 버튼 위 (Apple의 "About … & Privacy" 자리). 개인정보 페이지를 엶 |
+| `ai-permission-sheet-footnote` | Not now면 어떻게 되는지(다시 저절로 묻지 않음) + Settings에서 바꿀 수 있음 |
+| `ai-status-line` | Settings 섹션의 상태 — "You've allowed this." / "Not allowed — …" |
+| `ai-allow-button` | Settings의 Allow — moss pill |
+| `ai-stop-button` | Stop sending — 조용한 ink 글자, 먼저 `ai-stop-alert`로 물음 |
+| `write-about-input` | Write 맨 위 About 한 줄 — Andy가 읽으면 선택(힌트), Save as written이면 필수. 사람 페이지에서는 안 보임 (2026-10-14) |
+| `write-about-suggestions` | "In what you wrote:" + 저장된 이름 칩 (AI 아님, 이름·별명 비교). 탭해야 About이 채워짐 |
+| `save-as-written-button` | Not now 한 사람의 Write 주 버튼 — 읽지 않고 그대로 저장. 같은 이름이 있으면 review의 `name-picker`로 |
+| `read-instead-button` | Save as written 아래 작은 Let Andy read it — 누르면 `ai-permission-sheet` |
+| `settings-privacy-link` | Settings의 Privacy policy — 스위치와 상관없이 항상 보임 (App Review 5.1.1(i)) |
+| `ai-section` | Settings → What Andy sends — 허락 상태와 Allow / Stop sending (확인 창 `ai-stop-alert`: "Stop sending?" · Keep sending · Stop sending) |
 
 ### `note-delete-alert`
 

@@ -6,6 +6,7 @@ import { action, internalQuery } from "./_generated/server";
 import { embedQuery } from "./embeddings";
 import { MAX_ANSWER_NOTES, MAX_QUESTION_CHARS, aboutLabels } from "./answerPrompt";
 import { getAuthenticatedUser } from "./users";
+import { requireAiAllowed } from "./aiPermission";
 
 /**
  * Recall — finding a note by what it was about, not by what it was called.
@@ -271,6 +272,8 @@ export const recall = action({
       internal.search.callerUserId,
       {},
     );
+    // The question goes to OpenAI and the notes it finds to Anthropic.
+    await requireAiAllowed(ctx);
 
     const vector = await embedQuery(query);
 

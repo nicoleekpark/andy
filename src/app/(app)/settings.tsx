@@ -1,7 +1,10 @@
 import { useAuth } from "@clerk/expo";
 import { useAction } from "convex/react";
 import { useCallback, useRef, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text } from "react-native";
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { AiSection } from "@/components/ai-section";
+import { Secondary, sectionStyles } from "@/components/section-buttons";
+import { PRIVACY_POLICY_URL } from "@/constants/links";
 import { CalendarSection } from "@/components/calendar-section";
 import { useConfirm } from "@/components/confirm-dialog";
 import { api } from "@convex/_generated/api";
@@ -101,6 +104,21 @@ export default function SettingsScreen() {
       <ScreenPlaceholder title="Settings" note="Manage your account." />
 
       <CalendarSection />
+
+      <AiSection />
+
+      {/*
+        Always here, switch or no switch: App Review 5.1.1(i) wants the policy
+        reachable inside the app, not only from the store listing.
+      */}
+      <View style={sectionStyles.section}>
+        <Secondary
+          label="Privacy policy"
+          role="link"
+          onPress={() => void Linking.openURL(PRIVACY_POLICY_URL)}
+          testID="settings-privacy-link"
+        />
+      </View>
 
       <Pressable
         style={styles.signOut}

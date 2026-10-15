@@ -143,3 +143,10 @@ export const textOpacity = {
   secondary: 0.8,
   quiet: 0.7,
 } as const;
+
+/**
+ * A control that cannot be pressed right now (saving, waiting, offline). Below
+ * the text floor on purpose: WCAG exempts disabled controls, and the dimming
+ * is what says so. Never for text someone needs to read.
+ */
+export const disabledOpacity = 0.5;
