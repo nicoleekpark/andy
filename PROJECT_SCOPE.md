@@ -127,6 +127,14 @@ Risk       : iOS cannot auto-surface caller profiles during a real cellular
     (`convex codegen` does **not** apply it — only `convex dev`/`deploy`
     does). Neither produced an error. Ask for evidence that names the
     thing, not a value that merely coexists with it.
+13. **V1 launches in the US App Store only (owner, 2026-10-15).** The
+    privacy policy (`docs/privacy/index.html`) is written against US rules:
+    App Review 5.1.x, COPPA (not for under-13s), and CCPA thresholds Andy is
+    far below. Korea (PIPA) and the EU (GDPR) each require a cross-border
+    transfer section first (recipient, country, items, purpose, retention),
+    because Anthropic, OpenAI, Convex and Clerk are all in the US. Set
+    availability to the United States in App Store Connect; widening it is a
+    policy change before it is a checkbox.
 
 ### Precedent — this trade-off is standard, not a shortcut unique to us
 
@@ -155,6 +163,7 @@ Researched directly rather than assumed:
 - [ ] Realtime sync across the user's own devices
 - [ ] **iPad support, free** — don't restrict device family in `app.json`; the iPhone UI runs in scaled/compatibility mode on iPad automatically. No dedicated iPad layout in V1, but full functionality.
 - [ ] **Offline notes — added 2026-10-07 after device QA.** At a convention there is often no signal, and that is exactly when someone tells you something worth remembering. With no connection, a recorded, typed (and later, card) note is **kept on this phone, word for word**, and home says how many are waiting. Back online, Andy reads them by itself; each then waits for one tap of "Remember this" in the usual check step, because names clash most where you meet the most people. Kept in Andy's own app storage, tagged with the account that wrote it, and removed when you sign out (asked first) or delete your account — not when a session merely expires, and never shown to another account. **Reading offline (decided 2026-10-07, later the same day):** a copy of everyone and every note is kept on the phone under the same rules and refreshed whenever online, so people, notes and finding someone by name **or by a word in what you kept about them** (tags, details, how you know them, a note's own words — added 2026-10-08, online too) all work with no connection (saying how fresh the copy is). Asking in your own words and drafting a follow-up need Claude, so they say they need a connection. **Changing things offline (decided 2026-10-08):** edits and deletes are kept on the phone, shown at once, and saved for good when the person presses **Sync** online; anything changed elsewhere in the meantime is asked about, never silently overwritten — notes and people alike. **Still later:** photos offline. Built in slices (`dev-reports/qa-device-build-4.dev.md` → PR plan).
+- [ ] **Asking before AI reads anything — added 2026-10-14 (owner, `docs/design/decisions/pre-submission-privacy.md`; App Review 5.1.2(i) requires explicit permission before personal data goes to a third-party AI).** Never asked by itself: the first time someone reaches for something that reads (Let Andy read it, a photo, Ask, a follow-up), a sheet says what is sent, to Anthropic and OpenAI, and why. They don't train on it, and delete it within 30 days. **Allow** or **Not now**. Not now is remembered on the server and never re-asked unless they reach for one of those again; the server refuses every AI call until Allow. **A no still keeps notes:** Write opens with a one-line **About** (who it's about, then the words as prose), and **Save as written** files the words under that person with nothing read, asking which one when the name is shared. Settings → What Andy sends allows or stops it; the privacy policy is linked from Settings and the sheet. Behind the `aiPermission` switch, off in production until build 6 is on every phone. Built in #175–#178.
 
 ### Should Have
 
@@ -496,3 +505,4 @@ _Rewritten on day 4. The original table is preserved in `dev-reports/day-04.dev.
 - App Store privacy review for contacts + microphone + **calendar + photos** access — write precise, honest usage-description strings (see `app-store-reviewer` subagent)
 - Calendar attendee/title name-matching quality — test with your actual messy real calendar early (Day 6), not synthetic data
 - Mention-graph extraction quality — Claude needs to reliably distinguish "this note is about person A" vs "this note mentions person B in passing"; validate on real voice transcripts before trusting it, not just clean typed text
+- **What the AI services keep (added 2026-10-14).** Anthropic and OpenAI do not train on API data and delete it within 30 days, with exceptions for misuse investigation and law. "They don't keep it at all" would need zero-data-retention agreements with both, which go through each company's sales team. Revisit after launch, before the copy promises more.
