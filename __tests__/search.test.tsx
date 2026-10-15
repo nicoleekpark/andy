@@ -626,6 +626,24 @@ describe("search screen", () => {
     ).toBeLessThan(rendered.indexOf("Marcus"));
   });
 
+  test("should not show the last answer above a second question while it is being answered", async () => {
+    recall.mockResolvedValueOnce({
+      query: "who runs a climbing gym",
+      answer: "Marcus runs a climbing gym in Oakland.",
+      results: [buildResult({ used: true })],
+    });
+    await renderSearch();
+    await ask("who runs a climbing gym");
+    expect(screen.getByText("Marcus runs a climbing gym in Oakland.")).toBeTruthy();
+
+    // The second answer is still on its way (QA 15.10, moved here from QA.md).
+    recall.mockImplementationOnce(() => new Promise(() => {}));
+    await ask("who moved to Berlin");
+
+    // The first answer under the second question reads as its answer.
+    expect(screen.queryByText("Marcus runs a climbing gym in Oakland.")).toBeNull();
+  });
+
   test("should not claim the notes below are marked when the answer used none of them", async () => {
     recall.mockResolvedValue({
       query: "anything",
