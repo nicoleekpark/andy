@@ -63,6 +63,8 @@ export function AiGoAheadProvider({
   // server refuses anything it has to, in words that say where to go.
   const needed =
     asking === true && user !== undefined && user !== null && user.aiAllowedAt === undefined;
+  /** Not now on this phone, before (or without) the server hearing it. */
+  const [declinedHere, setDeclinedHere] = useState(false);
   const choice: AiChoice =
     asking === false
       ? "off"
@@ -70,7 +72,7 @@ export function AiGoAheadProvider({
         ? "unknown"
         : user.aiAllowedAt !== undefined
           ? "allowed"
-          : user.aiDeclinedAt !== undefined
+          : declinedHere || user.aiDeclinedAt !== undefined
             ? "declined"
             : "unasked";
 
@@ -121,6 +123,7 @@ export function AiGoAheadProvider({
     // on: the answer is no either way, and a failure only means being asked
     // once more next time.
     decline({}).catch(() => {});
+    setDeclinedHere(true);
     settle(false);
   }, [decline, settle]);
 

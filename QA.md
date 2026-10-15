@@ -925,6 +925,25 @@ Needs the switch **on**: on a dev build against the dev deployment (no `aiPermis
 | 35.11 | Largest Dynamic Type; VoiceOver | The sheet scrolls, rows wrap, buttons reachable; VoiceOver reads the title as a heading, each row as one item, then Allow, Not now | ⬜ |
 | 35.12 | Switch off (production today) | No sheet, no Settings section — Andy works exactly as build 5 | ⬜ |
 
+## 36. Save as written (pre-submission-privacy.md, A · 2b)
+
+Needs the switch on (dev, or production after build 6) and an account that has said **Not now** (35.4).
+
+| # | Do this | Expect | |
+|---|---|---|---|
+| 36.1 | + → Write | **About** line at the top (*"Who is this about?"*), the body below, cursor in the body | ⬜ |
+| 36.2 | Write a note, leave About empty | *"Choose who it's about to save it as written."* and **Save as written** greyed; **Let Andy read it** small underneath | ⬜ |
+| 36.3 | About: a new name → **Save as written** | Saved at once, no check screen; the new person's page opens with the note. Nothing read (no facts) | ⬜ |
+| 36.4 | From Priya's page → Add a note → Write → **Save as written** | No About line (the page says who); saved to that Priya, no question | ⬜ |
+| 36.5 | Two people called Priya; About *Priya* → **Save as written** | The check screen asks **Which Priya?**; **Remember this** waits until one is picked; saved only to the one picked | ⬜ |
+| 36.6 | Write *"Priya's daughter…"* with About empty | *In what you wrote:* **Priya** offered under About; About stays empty until tapped | ⬜ |
+| 36.7 | Type About and words, swipe Andy away, reopen | Home offers the note; **Continue** brings back both the words and the name at the top | ⬜ |
+| 36.8 | Tap the small **Let Andy read it** | The sheet asks (you reached for it); **Allow** reads it as usual | ⬜ |
+| 36.9 | Account that allowed: About *Nina* → Let Andy read it | The check screen files it under Nina (the name went along as a hint) | ⬜ |
+| 36.10 | Largest Dynamic Type; VoiceOver | About, suggestions and both buttons reachable; VoiceOver reads "About", the suggestion as "About Priya" | ⬜ |
+| 36.10a | Said Not now: + → **Voice**, speak, **Done** | *Is this what you said?* has the **About** line above the words, and **Save as written** — a spoken note is kept as heard, nothing read | ⬜ |
+| 36.11 | Offline, said Not now: write, **Keep this note**; back online, home → **Read it now** | Offline it is kept as before. Read it now asks first (you reached for it); **Not now** → the words with **Save as written**, and saving clears it from home | ⬜ |
+
 ## Simulator pass, 2026-09-30 (Claude, while the developer was away)
 
 **How it was run.** iPhone 17 Pro simulator, the dev build of commit `47f3837`

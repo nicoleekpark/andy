@@ -103,8 +103,8 @@ export function AiPermissionSheet({
           </Pressable>
         </View>
         <Text style={styles.footnote} testID="ai-permission-sheet-footnote">
-          Not now: Andy won&apos;t read, answer questions or draft follow-ups, and won&apos;t ask
-          again unless you reach for one of them. You can change this in Settings.
+          Not now: you can still write notes and save them as you wrote them. Andy won&apos;t ask
+          again unless you reach for something it reads. You can change this in Settings.
         </Text>
       </ScrollView>
     </Modal>
