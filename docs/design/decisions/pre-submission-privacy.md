@@ -1,6 +1,6 @@
 # Before App Store submission: AI permission, promise 1, App Privacy
 
-Status: **options for the owner**, drafted 2026-10-14 overnight. Nothing here is built.
+Status: **decided and built** (owner, 2026-10-14; see Final choice at the end). Drafted the night before as options.
 TestFlight is not blocked by any of it; App Review is.
 
 ## Why this exists
@@ -133,3 +133,62 @@ which Apple does not count as tracking.
    and Settings → What Andy sends (`code-reviewer`, `design-system-auditor`).
 3. Promise 1 in all four places, plus the privacy page sentence and email.
    Docs only.
+
+## Final choice
+
+Owner, 2026-10-14. Built in #175, #176, #177 and #178 (all merged).
+
+**Decision 1: A, revised after comparing with Apple's ChatGPT flow.**
+- **Never asked by itself.** There is no question at launch. The sheet
+  appears only when someone reaches for something that reads: Let Andy read
+  it, a photo, Ask, Draft a follow-up.
+- **Not now is remembered on the server** (`users.aiDeclinedAt`), so a no
+  is never asked again unless the person reaches for one of those
+  themselves. Allow clears it; Stop sending sets it.
+- **The server is the guard.** `requireAiAllowed` runs in every AI action
+  and the embedding job skips the notes of anyone who has not said yes. It
+  reads only `aiAllowedAt`, so a no never grants anything.
+- **The sheet is drawn the way Apple's is.** *"Let Andy read your notes?"*
+  with three rows:
+  - Reads what you write
+  - Anthropic and OpenAI: *"Read it only to do this for you. They don't
+    train on it, and delete it within 30 days."* (checked against both API
+    policies; "don't save" would need zero-data-retention agreements, a
+    task for after launch)
+  - Stays yours
+
+  Then the Privacy policy link, Allow and Not now.
+- **Save as written** is how a no still keeps notes, because App Review
+  expects the core features to work without AI.
+  - Write opens with a one-line **About**, which reopens #165.
+  - Someone who said no gets Save as written as the main button, with
+    nothing read.
+  - When a kept person already answers to the name, review asks which one,
+    exactly as for a read note.
+- **Settings → What Andy sends** allows or stops it, and **Privacy policy**
+  is always there.
+- Everything sits behind the `aiPermission` switch. Production has the row
+  off until build 6 is on every phone, so builds 4 and 5 are untouched.
+
+**Decision 2: a.** *"Only you. Your notes are never sold or shown to anyone.
+Andy sends them only to the services that read them for you."* It is in
+STYLE.md and the policy.
+
+**Decision 3: the draft answers above stand.** Fill them in App Store
+Connect at submission and re-check against the code then.
+
+**Also decided.**
+- **Contact:** `hello.andyapp@gmail.com`, a dedicated inbox (option B).
+- **Developer named on the policy:** Eunkyung Park, as App Store Connect
+  shows the seller.
+- **The policy** is `docs/privacy/index.html`, linked from Settings and the
+  sheet (`src/constants/links.ts`).
+
+**Order from here.**
+1. `npx convex deploy` to production. The switch row is already in.
+2. Build 6.
+3. Once build 6 is on every phone: delete the production `aiPermission`
+   row, enable GitHub Pages (`main` → `/docs`), and set the policy's dates.
+4. In App Store Connect: the privacy policy URL, the contact, and the App
+   Privacy answers.
+
