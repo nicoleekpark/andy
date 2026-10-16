@@ -40,6 +40,7 @@ import { useLiveOrCopy, useReadingCopy } from "@/lib/offline-copy";
 import { withNotesView } from "@convex/offlineViews";
 import { useAiChoice, useAiGoAhead } from "@/lib/ai-go-ahead";
 import { namesInText } from "@/lib/names-in-text";
+import { useKeepAwakeWhile } from "@/lib/keep-awake";
 
 /**
  * Voice capture, end to end: speak → transcript → draft → confirm → saved.
@@ -1845,6 +1846,17 @@ export function CaptureScreen({
 
   const listening = phase === "listening";
   const busy = phase === "extracting" || phase === "saving";
+  // Live: recording, or Andy reading what was just said. The phone must not
+  // lock in the middle of either (device QA B5-1). Paused is not live — the
+  // words are kept, and a locked phone loses nothing. A finished recording
+  // leaves `phase` at "listening" with its words on the editor (`typing`), so
+  // recording is listening *before* the words land there.
+  useKeepAwakeWhile(
+    ((phase === "starting" || phase === "listening") && typing === null) ||
+      phase === "extracting" ||
+      phase === "saving",
+    "capture",
+  );
 
   // `extracting` is in here so a re-read keeps the review screen up rather than
   // dropping back to the recording view, where the transcript on show would be
