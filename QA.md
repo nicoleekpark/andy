@@ -892,6 +892,7 @@ WCAG 1.4.11: a control whose outline is all that marks it out needs 3:1
 | 33.9 | Reduce Motion on | Nothing on this screen moves except the time | ⬜ |
 | 33.10 | Largest Dynamic Type | The words under the three controls wrap rather than overlap; the circles stay the same size | ⬜ |
 | 33.11 | VoiceOver, while listening | The words, the time, then Start over, Pause, Done | ⬜ |
+| 33.14 | Set Auto-Lock to 30 seconds (Settings → Display & Brightness). + → Voice, talk for a minute without touching the phone | The screen **stays on** and the recording keeps going. Then tap **Done** and leave the phone on *Is this what you said?*: that screen dims and locks as usual (device QA B5-1) | ⬜ |
 
 ## 34. Follow-up formats and tones (follow-up-tones.md, Final choice)
 
