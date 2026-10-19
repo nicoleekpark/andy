@@ -9,12 +9,7 @@ type Instance = ReturnType<typeof screen.getByLabelText>;
  * one the field is in.
  */
 export function scrollViewAround(label: string): Instance | null {
-  let node = screen.getByLabelText(label).parent;
-  while (node !== null) {
-    if (node.type === "RCTScrollView") return node;
-    node = node.parent;
-  }
-  return null;
+  return scrollViewAroundNode(screen.getByLabelText(label));
 }
 
 /**
@@ -33,7 +28,21 @@ const EXPECTED = {
  * lets it be dragged away, and keeps taps on buttons (device QA build 4 #28).
  */
 export function scrollsAboveKeyboard(label: string): boolean {
-  const scroll = scrollViewAround(label);
+  return scrollsLikeAForm(scrollViewAround(label));
+}
+
+/** The scroll view any element sits in — for parts with no label (a hint). */
+export function scrollViewAroundNode(start: Instance): Instance | null {
+  let node = start.parent;
+  while (node !== null) {
+    if (node.type === "RCTScrollView") return node;
+    node = node.parent;
+  }
+  return null;
+}
+
+/** Whether a scroll view says what a form's must (`EXPECTED`). */
+export function scrollsLikeAForm(scroll: Instance | null): boolean {
   return (
     scroll !== null &&
     Object.entries(EXPECTED).every(

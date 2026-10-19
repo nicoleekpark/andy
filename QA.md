@@ -351,6 +351,8 @@ reach: a real screen, a real keyboard, and a real transcript at its real length.
 | 14.8 | Ask, then immediately watch the space below the field | A spinner while it runs, replaced by results. No flash of the invitation in between |
 | 14.9 | Ask something several notes half-match (e.g. "who is moving") when the answer cites one or two | "N other notes came up" lists only notes at least as close as the ones the answer used — not a page of unrelated ones (device QA #38). **Watch for the opposite:** a note you know is relevant but that matched less closely is now not listed at all. If that happens, note the question and the note; the rule may need loosening | ⬜ |
 | 14.10 | With **two people called Priya** (different "how you know them"), each with a note about coffee: ask "coffee with priya" | The answer **tells them apart** — e.g. "You had coffee with Priya (friend)… Priya (colleague) also…" — and never speaks of one Priya combining both notes (device QA #47). With no "how you know them" on either, it says "person 1" / "person 2" | ⬜ |
+| 14.11 | Open Ask, tap the field (keyboard up) | The two hint paragraphs sit **just under the field**, above the keyboard — never hidden behind it (device QA B5-4) | ⬜ |
+| 14.12 | With the keyboard up: drag down on the empty part of the screen; then tap the field again and tap an empty spot | Either way the keyboard **goes down** without leaving the screen. Press **Ask**: the keyboard goes down and the answer has the screen; dragging the results also puts it away (device QA B5-3) | ⬜ |
 
 ## 15. Ask Andy's written answer
 

@@ -3,7 +3,9 @@ import { useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Keyboard,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -12,7 +14,7 @@ import {
 import { useAction } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "@convex/_generated/api";
-import { colors, fonts, space, textOpacity } from "@/constants/theme";
+import { colors, fonts, space, textOpacity, textSize } from "@/constants/theme";
 import { formatDate } from "@/lib/dates";
 import { userMessage } from "@/lib/user-message";
 import { othersWorthShowing } from "@/lib/ask-results";
@@ -22,6 +24,7 @@ import { useNameSearch } from "@/lib/use-name-search";
 import { NameResults } from "@/components/name-results";
 import { OfflineCopyLine } from "@/components/offline-copy-line";
 import { useAiGoAhead } from "@/lib/ai-go-ahead";
+import { FORM_SCROLL } from "@/lib/form-scroll";
 
 /**
  * Ask Andy — recall across every note, not only the ones filed under a name.
@@ -112,6 +115,9 @@ export default function SearchScreen() {
     // `useAction` wired to `onChangeText` would turn one question into ten of
     // them — the realistic way this feature becomes expensive.
     if (!ready) return;
+    // The question is asked: the keyboard goes, so the answer has the screen
+    // (device QA B5-3 — it stayed up until the screen was left).
+    Keyboard.dismiss();
     // The question goes to OpenAI and the notes it finds to Anthropic.
     if (!(await goAhead())) return;
 
@@ -150,6 +156,26 @@ export default function SearchScreen() {
     }
   }
 
+  /** What sits between the field and the answer, whichever scroll view holds it. */
+  const aboveResults = (
+    <>
+      {error !== null && <Text style={styles.error}>{error}</Text>}
+      {!online ? (
+        <Text testID="ask-offline-hint" style={styles.offlineHint}>
+          {nothingKept
+            ? NOTHING_KEPT_OFFLINE
+            : "You're offline. Asking in your own words needs a connection — finding someone by name still works."}
+        </Text>
+      ) : null}
+      <OfflineCopyLine takenAt={takenAt} />
+      {/*
+        Above the asked-for answer, always. These cost nothing and are
+        already right; the answer below costs a call and arrives later.
+      */}
+      <NameResults results={byName} />
+    </>
+  );
+
   return (
     <>
       <Stack.Screen options={{ title: "Ask Andy" }} />
@@ -181,61 +207,64 @@ export default function SearchScreen() {
           </Pressable>
         </View>
 
-        {error !== null && <Text style={styles.error}>{error}</Text>}
-        {!online ? (
-          <Text testID="ask-offline-hint" style={styles.offlineHint}>
-            {nothingKept
-              ? NOTHING_KEPT_OFFLINE
-              : "You're offline. Asking in your own words needs a connection — finding someone by name still works."}
-          </Text>
-        ) : null}
-        <OfflineCopyLine takenAt={takenAt} />
-
         {/*
-          Above the asked-for answer, always. These cost nothing and are
-          already right; the answer below costs a call and arrives later.
+          Everything under the field scrolls like a form (FORM_SCROLL): it
+          makes room for the keyboard, a drag puts the keyboard away, and so
+          does a tap on anything that is not a control (device QA B5-3/B5-4 —
+          the keyboard stayed up until the screen was left, and the hint sat
+          behind it). Only the list of results is its own scroll view, below.
         */}
-        <NameResults results={byName} />
-
-        {/*
-          Not while offline: the hint above already says the answer cannot
-          come, and a spinner under it would say the opposite (device QA #44).
-        */}
-        {busy && online ? (
-          <View style={styles.centred}>
-            <ActivityIndicator
-              color={colors.moss}
-              // Labelled so it can be found — an unlabelled spinner is a branch
-              // no test can reach, which is the same as an untested one.
-              accessibilityLabel="Searching"
-            />
-          </View>
-        ) : results === null ? (
-          // Only when nothing has happened yet. Rendering this *under* an error
-          // would have the screen apologise and then act as though the question
-          // was never asked.
-          error === null ? (
-            <View style={styles.centred}>
-              {/* Two paragraphs: what to type, then what Andy reads (owner, 2026-10-12). */}
-              <View style={styles.hint}>
-                <Text style={styles.quiet}>
-                  Type a name, or ask in your own words — like “who just
-                  started a new job?”
-                </Text>
-                <Text style={styles.quiet} testID="ask-hint-detail">
-                  Andy looks through all your notes, even where someone only
-                  came up in passing. It can only answer from what you&apos;ve
-                  told it.
-                </Text>
+        {(busy && online) || results === null ? (
+          <ScrollView
+            style={styles.below}
+            contentContainerStyle={styles.belowContent}
+            {...FORM_SCROLL}
+            testID="ask-below"
+          >
+            {aboveResults}
+            {/*
+              Not while offline: the hint above already says the answer cannot
+              come, and a spinner under it would say the opposite (device QA #44).
+            */}
+            {busy && online ? (
+              <View style={styles.hintBlock}>
+                <ActivityIndicator
+                  color={colors.moss}
+                  // Labelled so it can be found — an unlabelled spinner is a branch
+                  // no test can reach, which is the same as an untested one.
+                  accessibilityLabel="Searching"
+                />
               </View>
-            </View>
-          ) : null
+            ) : error === null ? (
+              // Only when nothing has happened yet. Rendering this *under* an
+              // error would have the screen apologise and then act as though
+              // the question was never asked. Just under the field rather than
+              // centred, so the keyboard never covers it (B5-4).
+              <View style={styles.hintBlock}>
+                {/* Two paragraphs: what to type, then what Andy reads (owner, 2026-10-12). */}
+                <View style={styles.hint}>
+                  <Text style={styles.quiet}>
+                    Type a name, or ask in your own words — like “who just
+                    started a new job?”
+                  </Text>
+                  <Text style={styles.quiet} testID="ask-hint-detail">
+                    Andy looks through all your notes, even where someone only
+                    came up in passing. It can only answer from what you&apos;ve
+                    told it.
+                  </Text>
+                </View>
+              </View>
+            ) : null}
+          </ScrollView>
         ) : (
+          <>
+          {aboveResults}
           <FlatList
             data={shown}
             keyExtractor={(item) => item.noteId}
             contentContainerStyle={styles.list}
-            keyboardShouldPersistTaps="handled"
+            // The same as above: a drag, or a tap off a control, puts the keyboard away.
+            {...FORM_SCROLL}
             ListHeaderComponent={
               answer.trim() === "" ? null : (
                 <View style={styles.answer} testID="answer">
@@ -284,6 +313,7 @@ export default function SearchScreen() {
             }
             renderItem={({ item }) => <ResultCard result={item} />}
           />
+          </>
         )}
       </View>
     </>
@@ -466,10 +496,13 @@ const styles = StyleSheet.create({
   mentionGone: { color: colors.ink, opacity: 0.75 },
 
   centred: { flex: 1, justifyContent: "center", alignItems: "center" },
+  below: { flex: 1 },
+  belowContent: { gap: space.lg, paddingBottom: space.xl },
+  hintBlock: { alignItems: "center", paddingTop: space.xl },
   hint: { gap: space.sm },
   quiet: {
     color: colors.ink,
-    fontSize: 15,
+    fontSize: textSize.base,
     opacity: textOpacity.quiet,
     lineHeight: 22,
     textAlign: "center",
