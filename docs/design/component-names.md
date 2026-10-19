@@ -336,19 +336,19 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 
 | Capture | State | 설명 |
 |---|---|---|
-| S10 | `ask--empty` | Ask — 아직 아무것도 안 씀 |
-| S10b | `ask--name-match` | Ask — 쓴 글자가 이름과 맞음, 프로필 목록 |
-| S10b2 | `ask--name-match` | Ask — 이름이 여럿 + 다른 노트에 나온 곳 |
-| S10c | `ask--answer` | Ask — 답과 근거 노트 |
+| S10 | `ask--empty` | Advanced search (2026-10-19까지 Ask Andy, device QA B5-2) — 아직 아무것도 안 씀 |
+| S10b | `ask--name-match` | Advanced search — 쓴 글자가 이름과 맞음, 프로필 목록 |
+| S10b2 | `ask--name-match` | Advanced search — 이름이 여럿 + 다른 노트에 나온 곳 |
+| S10c | `ask--answer` | Advanced search — 답과 근거 노트 |
 
 | Name | 설명 |
 |---|---|
 | `ask-field` | 질문 칸 — placeholder "Who are you thinking of?" |
-| `ask-submit-button--disabled` | Ask — 비어 있으면 비활성 |
-| `ask-hint` | 무엇을 물을 수 있는지 안내 — 첫 문단: "Type a name, or ask in your own words — like “who just started a new job?”" |
+| `ask-submit-button--disabled` | Search — 비어 있으면 비활성 |
+| `ask-hint` | 무엇을 물을 수 있는지 안내 — 첫 문단: "Type a name, or describe your memory — like “who just started a new job?”" (device QA B5-5) |
 | `ask-hint-detail` | 둘째 문단: 모든 노트를 본다는 것, 그리고 말한 것으로만 답한다는 것 — 입력칸 바로 아래, 키보드에 가려지지 않음; 빈 곳 탭이나 아래로 끌기로 키보드 내림 (device QA B5-3/B5-4, 2026-10-16) |
-| `ask-offline-hint` | 오프라인일 때 — 자연어 질문은 연결이 필요하고 이름 찾기는 된다는 안내 (Ask 버튼 비활성) |
-| `ask-submit-button` | Ask |
+| `ask-offline-hint` | 오프라인일 때 — "Advanced search needs a connection. Names and words still work." (Search 버튼 비활성) |
+| `ask-submit-button` | Search (예전 Ask) |
 | `profile-results-label` | PEOPLE — 이름이 맞는 프로필들 |
 | `profile-result` | 프로필 하나 (탭하면 프로필) |
 | `profile-result-meta` | 관계 · 노트 수 |

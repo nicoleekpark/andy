@@ -341,8 +341,8 @@ reach: a real screen, a real keyboard, and a real transcript at its real length.
 
 | # | Do this | Expect |
 |---|---|---|
-| 14.1 | Home → `Advanced search` | The search screen. The field reads `Who are you thinking of?` **in full** — a truncated placeholder means the Ask button has taken too much of the row |
-| 14.2 | Type a question, press the keyboard's **return** key (not the Ask button) | It searches. `onSubmitEditing` is a separate path from the button and only one of them is unit-tested |
+| 14.1 | Home → `Advanced search` | The search screen. The field reads `Who are you thinking of?` **in full** — a truncated placeholder means the Search button has taken too much of the row |
+| 14.2 | Type a question, press the keyboard's **return** key (not the Search button) | It searches. `onSubmitEditing` is a separate path from the button and only one of them is unit-tested |
 | 14.2a | Ask a question, and **while it is still answering** turn Wi-Fi off | The spinner stops at once and the offline line shows instead. With Wi-Fi on but the answer never arriving (e.g. a dead venue network), after **30 seconds**: "Andy didn't hear back in time. Try again." — never an endless spinner (device QA #44) | ⬜ |
 | 14.3 | Type slowly and watch the Convex logs (`npm run db` → Logs) | **One** `search:recall` call, on submit. One per keystroke is the way this feature becomes expensive |
 | 14.4 | Ask something that matches a long voice note | The transcript is clipped at four lines. One long note must not push every other result off the screen |
@@ -353,10 +353,11 @@ reach: a real screen, a real keyboard, and a real transcript at its real length.
 | 14.9 | Ask something several notes half-match (e.g. "who is moving") when the answer cites one or two | "N other notes came up" lists only notes at least as close as the ones the answer used — not a page of unrelated ones (device QA #38). **Watch for the opposite:** a note you know is relevant but that matched less closely is now not listed at all. If that happens, note the question and the note; the rule may need loosening | ⬜ |
 | 14.10 | With **two people called Priya** (different "how you know them"), each with a note about coffee: ask "coffee with priya" | The answer **tells them apart** — e.g. "You had coffee with Priya (friend)… Priya (colleague) also…" — and never speaks of one Priya combining both notes (device QA #47). With no "how you know them" on either, it says "person 1" / "person 2" | ⬜ |
 | 14.11 | Open Ask, tap the field (keyboard up) | The two hint paragraphs sit **just under the field**, above the keyboard — never hidden behind it (device QA B5-4) | ⬜ |
-| 14.12 | With the keyboard up: drag down on the empty part of the screen; then tap the field again and tap an empty spot | Either way the keyboard **goes down** without leaving the screen. Press **Ask**: the keyboard goes down and the answer has the screen; dragging the results also puts it away (device QA B5-3) | ⬜ |
+| 14.12 | With the keyboard up: drag down on the empty part of the screen; then tap the field again and tap an empty spot | Either way the keyboard **goes down** without leaving the screen. Press **Search**: the keyboard goes down and the answer has the screen; dragging the results also puts it away (device QA B5-3) | ⬜ |
 | 14.13 | Record a note whose words include something that does **not** become a fact (e.g. "Friday we're going for drinks with the team"). Ask "who did I plan to grab drinks with" | That person comes up, and the answer can say so. After the one-time re-index, older notes behave the same (device QA B5-6) | ⬜ |
 | 14.14 | Correct a fact from "puppy" to "kitten" but leave the words saying puppy; ask "who has a kitten" | The answer says **kitten**, never puppy: the checked fact wins over the recorded words | ⬜ |
 | 14.15 | Home with nothing typed; then open the screen | The line above the field reads **Advanced search**; the screen's title is **Advanced search**, its button **Search**, and the hint *Type a name, or describe your memory — like…*. Offline: *Advanced search needs a connection…* (device QA B5-2, B5-5) | ⬜ |
+| 14.16 | Largest Dynamic Type (Settings → Accessibility → Larger Text, all the way), open Advanced search | The **Search** button and the field share the row; the field still shows *Who are you thinking of?* readably — the button is wider than "Ask" was | ⬜ |
 
 ## 15. Advanced search's written answer
 
@@ -598,7 +599,7 @@ name only one person answers to.
 ## 20. Finding a person by name
 
 Typing a name matches the people you keep **immediately and for free** — it is a
-query over your own rows, not a paid call. The Ask button is still the paid
+query over your own rows, not a paid call. The Search button is still the paid
 half; both live in one box, in cost order, because day 4 decided "one screen,
 not two … two boxes would make the user guess which one to ask".
 
@@ -621,7 +622,7 @@ this replaces could not answer `oneill` for `O'Neill`, or `선희` for `지선�
 | 20.14 | A name nobody has | No People section at all — not an empty box | ✅ — simulator, 2026-09-30: "zzqx" → no People section |
 | 20.16 | Search a name that exists **only as a mention** (e.g. 어머니, 민호) | The row says **"only mentioned, in N notes"**, not "0 notes". Andy invents somebody the moment a note says a name, and this is the line that makes a wrongly-invented one visible — "Park's housewarming party" once became a person called "Parks" | ✅ — simulator, 2026-09-30: "Marcus · only mentioned, in 1 note" |
 | 20.17 | Compare that row to somebody you have written about | Theirs says "N notes". The two are different kinds of person and the list has to say which | ✅ — simulator, 2026-09-30 |
-| 20.15 | Type a name, then press **Ask** | Both: the people stay above, the written answer arrives below. The cheap half never waits for the paid one | ⬜ |
+| 20.15 | Type a name, then press **Search** | Both: the people stay above, the written answer arrives below. The cheap half never waits for the paid one | ⬜ |
 
 ---
 
@@ -852,13 +853,13 @@ WCAG 1.4.11: a control whose outline is all that marks it out needs 3:1
 | # | Do this | Expect | |
 |---|---|---|---|
 | 31.1 | Open home with a few people | At the very bottom an opaque bar with a thin line on top, the **Find a name or a word** field in it, and the round green **+** sitting half over that line. The last row and the A–Z letters are never hidden under it (scroll to the end) | ⬜ |
-| 31.2 | Tap the field | The keyboard comes up and the bar **rises with it**, above the keyboard. + steps aside; **Cancel** appears; above the field, green **Ask Andy in your own words** | ⬜ |
+| 31.2 | Tap the field | The keyboard comes up and the bar **rises with it**, above the keyboard. + steps aside; **Cancel** appears; above the field, green **Advanced search** | ⬜ |
 | 31.3 | Type "pri" | Home becomes the matches (Priya…), no letters, no briefing; the row reads **Advanced search: “pri”**. Drag the results → the keyboard goes down | ⬜ |
 | 31.4 | Tap **Advanced search: “pri”** | Advanced search opens with "pri" already in its field, **not** asked yet (no spinner) | ⬜ |
 | 31.5 | Type a word in a note ("greyhound") | The person whose note says it shows, with the line it is in | ⬜ |
 | 31.6 | Type "zzz" | *No one matches “zzz”.* | ⬜ |
 | 31.7 | **Cancel** | The field empties, the keyboard goes, + and the full list come back | ⬜ |
-| 31.8 | Wi-Fi off, tap the field and type a name | Matches still show; instead of the Ask row: *"Asking needs a connection. Names and words still work."* | ⬜ |
+| 31.8 | Wi-Fi off, tap the field and type a name | Matches still show; instead of the Advanced search row: *"Advanced search needs a connection. Names and words still work."* | ⬜ |
 | 31.9 | Largest Dynamic Type | The field and Cancel still fit; + stays a circle; nothing overlaps the last row | ⬜ |
 | 31.11 | On an iPhone with a home indicator (no Home button), look at the bottom | The field sits **above** the home indicator line, never under it | ⬜ |
 | 31.12 | VoiceOver on, swipe through home from the top | The list, then **Find a name or a word**, then **New note** (the +) — though + is drawn above the field | ⬜ |
@@ -925,7 +926,7 @@ Needs the switch **on**: on a dev build against the dev deployment (no `aiPermis
 | 35.2 | + → Write, type, **Let Andy read it** | **Let Andy read your notes?** slides up: three rows (reads what you write · Anthropic and OpenAI — *don't train on it, delete it within 30 days* · stays yours), **Allow**, **Not now** | ⬜ |
 | 35.3 | **Allow** | It reads at once. Settings → What Andy sends says *You've allowed this.* | ⬜ |
 | 35.4 | Fresh account: **Not now** at 35.2 | Words stay, nothing read. Force-quit and reopen, write another note: **no sheet appears by itself** | ⬜ |
-| 35.5 | After 35.4, tap **Let Andy read it**, **Photo**, **Ask** or **Draft a follow-up** | Each asks — you reached for it — and Not now sends nothing (the photo is dropped, not read) | ⬜ |
+| 35.5 | After 35.4, tap **Let Andy read it**, **Photo**, **Advanced search** or **Draft a follow-up** | Each asks — you reached for it — and Not now sends nothing (the photo is dropped, not read) | ⬜ |
 | 35.6 | Swipe the sheet down | Same as **Not now** | ⬜ |
 | 35.7 | With the sheet up, switch away and come back (app lock on) | Only the `lock` screen while locked; the sheet is back after unlocking | ⬜ |
 | 35.8 | Wi-Fi off, **Allow** | One line: *"Andy couldn't save that…"*; the sheet stays | ⬜ |
@@ -1039,7 +1040,7 @@ nothing afterwards.
 - A pet named in a note ("a second dog called Kiln") was offered as **"New person"** under Also came up.
 - "Andy" in the capture screen's Who-or-what reads "Person / Animal"; the profile editor reads "person / animal".
 - "Add a name" (aliases) adds an empty field without focusing it.
-- Ask is enabled for punctuation-only input ("!!!").
+- Search (Advanced search) is enabled for punctuation-only input ("!!!").
 
 **Simulator quirk, not a bug:** synthetic clicks occasionally landed on the Expo
 dev-menu gear (top left, dev builds only) instead of the back button under it.

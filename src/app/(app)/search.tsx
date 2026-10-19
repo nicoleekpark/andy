@@ -165,7 +165,7 @@ export default function SearchScreen() {
         <Text testID="ask-offline-hint" style={styles.offlineHint}>
           {nothingKept
             ? NOTHING_KEPT_OFFLINE
-            : "You're offline. Advanced search needs a connection — finding someone by name still works."}
+            : "Advanced search needs a connection. Names and words still work."}
         </Text>
       ) : null}
       <OfflineCopyLine takenAt={takenAt} />
@@ -185,7 +185,7 @@ export default function SearchScreen() {
           <TextInput
             accessibilityLabel="Advanced search"
             style={styles.input}
-            // Short enough to survive the Ask button taking half the row.
+            // Short enough to survive the Search button taking its share of the row.
             // The longer explanation lives in the empty state below, where it has
             // the full width and nothing to compete with.
             placeholder="Who are you thinking of?"

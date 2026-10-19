@@ -52,7 +52,7 @@ export function HomeBottomBar({
     >
       {/*
         Drawn bottom-up (`column-reverse`), so the order VoiceOver reads —
-        the order written here — is field, Ask, Record, while the eye sees
+        the order written here — is field, Advanced search, Record, while the eye sees
         Record on top: list → field → Record, as home-actions.md asks.
       */}
       {showField ? (
