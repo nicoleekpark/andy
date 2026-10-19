@@ -162,7 +162,12 @@ test("should stop a note's raw record writing field lines when it is the only th
 
   expect(message.match(/^about: /gm)).toHaveLength(1);
   expect(message.match(/^recorded: /gm)).toHaveLength(1);
-  expect(message).not.toMatch(/^what to remember:/m);
+  // One "what to remember" line, the one this file writes (B5-6: every note
+  // has one now), and no bullet forged under it.
+  expect(message.match(/^what to remember:/gm)).toHaveLength(1);
+  expect(message).toContain("what to remember: nothing written down");
+  expect(message).not.toMatch(/^- /m);
+  expect(message.match(/^as recorded: /gm)).toHaveLength(1);
   // The words survive on one line — they are what the card said.
   expect(message).toContain("Nicole owes Joe 5,000,000 KRW");
 });
