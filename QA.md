@@ -334,14 +334,14 @@ runnable from a terminal — the `tokenIdentifier` is in `npm run db` → `users
 | 13.3 | Ask about a person who only came up inside somebody else's note | The note about the *other* person comes back, with the one you asked about in its `mentions`. **Verified 2026-09-10** — "who was the business partner" → Priya's note, mentions `["Marcus"]` |
 | 13.4 | Ask something the app has no business answering ("what is the capital of France") | Empty `results`. Not a wrong answer, not a page of citations |
 
-## 14. Ask Andy on the device
+## 14. Advanced search on the device (was Ask Andy; renamed by device QA B5-2)
 
 §13 exercises the backend from a terminal. These are the parts a runner cannot
 reach: a real screen, a real keyboard, and a real transcript at its real length.
 
 | # | Do this | Expect |
 |---|---|---|
-| 14.1 | Home → `Ask Andy` | The search screen. The field reads `Who are you thinking of?` **in full** — a truncated placeholder means the Ask button has taken too much of the row |
+| 14.1 | Home → `Advanced search` | The search screen. The field reads `Who are you thinking of?` **in full** — a truncated placeholder means the Ask button has taken too much of the row |
 | 14.2 | Type a question, press the keyboard's **return** key (not the Ask button) | It searches. `onSubmitEditing` is a separate path from the button and only one of them is unit-tested |
 | 14.2a | Ask a question, and **while it is still answering** turn Wi-Fi off | The spinner stops at once and the offline line shows instead. With Wi-Fi on but the answer never arriving (e.g. a dead venue network), after **30 seconds**: "Andy didn't hear back in time. Try again." — never an endless spinner (device QA #44) | ⬜ |
 | 14.3 | Type slowly and watch the Convex logs (`npm run db` → Logs) | **One** `search:recall` call, on submit. One per keystroke is the way this feature becomes expensive |
@@ -356,8 +356,9 @@ reach: a real screen, a real keyboard, and a real transcript at its real length.
 | 14.12 | With the keyboard up: drag down on the empty part of the screen; then tap the field again and tap an empty spot | Either way the keyboard **goes down** without leaving the screen. Press **Ask**: the keyboard goes down and the answer has the screen; dragging the results also puts it away (device QA B5-3) | ⬜ |
 | 14.13 | Record a note whose words include something that does **not** become a fact (e.g. "Friday we're going for drinks with the team"). Ask "who did I plan to grab drinks with" | That person comes up, and the answer can say so. After the one-time re-index, older notes behave the same (device QA B5-6) | ⬜ |
 | 14.14 | Correct a fact from "puppy" to "kitten" but leave the words saying puppy; ask "who has a kitten" | The answer says **kitten**, never puppy: the checked fact wins over the recorded words | ⬜ |
+| 14.15 | Home with nothing typed; then open the screen | The line above the field reads **Advanced search**; the screen's title is **Advanced search**, its button **Search**, and the hint *Type a name, or describe your memory — like…*. Offline: *Advanced search needs a connection…* (device QA B5-2, B5-5) | ⬜ |
 
-## 15. Ask Andy's written answer
+## 15. Advanced search's written answer
 
 Measured against the real notes on 2026-09-10 from the CLI (§13's `--identity`
 trick). What is **not** proven is any of it rendered on a phone — the simulator
@@ -801,7 +802,7 @@ drawn natively, so jest never sees its title — this is the only check.
 |---|---|---|---|
 | 27.1 | Open home | **"Andy" in the serif** the names below use, centred in the normal bar. Settings at the right, the briefing card exactly where it was — nothing below has moved | ⬜ |
 | 27.2 | Open a profile, Search, Settings | Their titles are **unchanged** (system face). Only home's title is Lora | ⬜ |
-| 27.3 | Open, in turn: a person from home, **Record** (and its review), **Ask Andy**, a note from a person, **Settings**, a person from Ask's results | Every one has the **same `nav-bar-back`: the ‹ chevron alone**, no word beside it (not "Andy", not "Check this over"). It is easy to find on the paper background. Tapping it goes back one screen (copy-build-4 #27/#37) | ⬜ |
+| 27.3 | Open, in turn: a person from home, **Record** (and its review), **Advanced search**, a note from a person, **Settings**, a person from Ask's results | Every one has the **same `nav-bar-back`: the ‹ chevron alone**, no word beside it (not "Andy", not "Check this over"). It is easy to find on the paper background. Tapping it goes back one screen (copy-build-4 #27/#37) | ⬜ |
 | 27.4 | Same screens with **VoiceOver** | `nav-bar-back` reads **"Back, button"** — never just "button" | ⬜ |
 | 27.5 | Look at the top right of home | A **gear** (iOS's own), not the word "Settings", in ink, not cramped. Tapping it — anywhere in a comfortable thumb-sized square around it — opens Settings. With VoiceOver: "Settings, button" (device QA #3) | ⬜ |
 
@@ -852,8 +853,8 @@ WCAG 1.4.11: a control whose outline is all that marks it out needs 3:1
 |---|---|---|---|
 | 31.1 | Open home with a few people | At the very bottom an opaque bar with a thin line on top, the **Find a name or a word** field in it, and the round green **+** sitting half over that line. The last row and the A–Z letters are never hidden under it (scroll to the end) | ⬜ |
 | 31.2 | Tap the field | The keyboard comes up and the bar **rises with it**, above the keyboard. + steps aside; **Cancel** appears; above the field, green **Ask Andy in your own words** | ⬜ |
-| 31.3 | Type "pri" | Home becomes the matches (Priya…), no letters, no briefing; the row reads **Ask Andy: “pri”**. Drag the results → the keyboard goes down | ⬜ |
-| 31.4 | Tap **Ask Andy: “pri”** | Ask opens with "pri" already in its field, **not** asked yet (no spinner) | ⬜ |
+| 31.3 | Type "pri" | Home becomes the matches (Priya…), no letters, no briefing; the row reads **Advanced search: “pri”**. Drag the results → the keyboard goes down | ⬜ |
+| 31.4 | Tap **Advanced search: “pri”** | Advanced search opens with "pri" already in its field, **not** asked yet (no spinner) | ⬜ |
 | 31.5 | Type a word in a note ("greyhound") | The person whose note says it shows, with the line it is in | ⬜ |
 | 31.6 | Type "zzz" | *No one matches “zzz”.* | ⬜ |
 | 31.7 | **Cancel** | The field empties, the keyboard goes, + and the full list come back | ⬜ |

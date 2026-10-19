@@ -27,7 +27,8 @@ import { useAiGoAhead } from "@/lib/ai-go-ahead";
 import { FORM_SCROLL } from "@/lib/form-scroll";
 
 /**
- * Ask Andy — recall across every note, not only the ones filed under a name.
+ * Advanced search (was "Ask Andy" until device QA B5-2) — recall across
+ * every note, not only the ones filed under a name.
  *
  * This replaces the placeholder that has stood here since day 1. It is not a
  * `useQuery` screen and cannot be: `ctx.vectorSearch` runs only in an action, so
@@ -164,7 +165,7 @@ export default function SearchScreen() {
         <Text testID="ask-offline-hint" style={styles.offlineHint}>
           {nothingKept
             ? NOTHING_KEPT_OFFLINE
-            : "You're offline. Asking in your own words needs a connection — finding someone by name still works."}
+            : "You're offline. Advanced search needs a connection — finding someone by name still works."}
         </Text>
       ) : null}
       <OfflineCopyLine takenAt={takenAt} />
@@ -178,11 +179,11 @@ export default function SearchScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: "Ask Andy" }} />
+      <Stack.Screen options={{ title: "Advanced search" }} />
       <View style={styles.container}>
         <View style={styles.askRow}>
           <TextInput
-            accessibilityLabel="Ask Andy"
+            accessibilityLabel="Advanced search"
             style={styles.input}
             // Short enough to survive the Ask button taking half the row.
             // The longer explanation lives in the empty state below, where it has
@@ -197,13 +198,13 @@ export default function SearchScreen() {
           />
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Ask"
+            accessibilityLabel="Search"
             accessibilityState={{ disabled: !ready }}
             onPress={ask}
             disabled={!ready}
             style={[styles.ask, !ready && styles.askDisabled]}
           >
-            <Text style={styles.askLabel}>Ask</Text>
+            <Text style={styles.askLabel}>Search</Text>
           </Pressable>
         </View>
 
@@ -244,7 +245,7 @@ export default function SearchScreen() {
                 {/* Two paragraphs: what to type, then what Andy reads (owner, 2026-10-12). */}
                 <View style={styles.hint}>
                   <Text style={styles.quiet}>
-                    Type a name, or ask in your own words — like “who just
+                    Type a name, or describe your memory — like “who just
                     started a new job?”
                   </Text>
                   <Text style={styles.quiet} testID="ask-hint-detail">

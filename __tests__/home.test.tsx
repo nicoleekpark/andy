@@ -318,7 +318,7 @@ describe("home screen", () => {
       fireEvent(screen.getByTestId("home-search-field"), "focus");
     });
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Ask Andy in your own words" }));
+      fireEvent.press(screen.getByRole("button", { name: "Advanced search" }));
     });
 
     expect(router.getPathname()).toBe("/search");

@@ -82,14 +82,14 @@ async function renderSearch() {
  */
 async function type(question: string) {
   await act(async () => {
-    fireEvent.changeText(screen.getByLabelText("Ask Andy"), question);
+    fireEvent.changeText(screen.getByLabelText("Advanced search"), question);
   });
 }
 
 async function ask(question: string) {
   await type(question);
   await act(async () => {
-    fireEvent.press(screen.getByLabelText("Ask"));
+    fireEvent.press(screen.getByLabelText("Search"));
   });
 }
 
@@ -310,7 +310,7 @@ describe("search screen", () => {
   test("should invite a question rather than apologise for having no results yet", async () => {
     await renderSearch();
 
-    expect(screen.getByText(/Type a name, or ask in your own words/)).toBeTruthy();
+    expect(screen.getByText(/Type a name, or describe your memory/)).toBeTruthy();
     // Its own paragraph, and the limit stays said: Andy answers only from
     // what you told it, so "nothing saved about that" reads as expected.
     expect(screen.getByTestId("ask-hint-detail").props.children).toMatch(
@@ -329,7 +329,7 @@ describe("search screen", () => {
     // un-awaited `changeText` leaves the field empty and "nothing was searched"
     // becomes true because nothing happened at all. That is how it was written
     // the first time.
-    expect(screen.getByLabelText("Ask Andy").props.value).toBe(
+    expect(screen.getByLabelText("Advanced search").props.value).toBe(
       "who runs a climbing gym",
     );
     // Every question is a paid embedding call. A `useAction` wired to
@@ -346,9 +346,9 @@ describe("search screen", () => {
     // and the early return in `ask()` — and deleting either one alone left this
     // test green when it only checked that nothing was called. Naming the
     // mechanism is what makes each of them load-bearing.
-    expect(screen.getByLabelText("Ask Andy").props.value).toBe("   ");
+    expect(screen.getByLabelText("Advanced search").props.value).toBe("   ");
     expect(
-      screen.getByLabelText("Ask").props.accessibilityState.disabled,
+      screen.getByLabelText("Search").props.accessibilityState.disabled,
     ).toBe(true);
     expect(recall).not.toHaveBeenCalled();
   });
@@ -368,7 +368,7 @@ describe("search screen", () => {
     await ask("who runs a climbing gym");
     expect(screen.getByLabelText("Searching")).toBeTruthy();
     // And not the invitation, which would read as though nothing was asked.
-    expect(screen.queryByText(/Type a name, or ask in your own words/)).toBeNull();
+    expect(screen.queryByText(/Type a name, or describe your memory/)).toBeNull();
 
     await act(async () => {
       release({
@@ -819,7 +819,7 @@ describe("search screen", () => {
     ).toBeTruthy();
     // And not the untouched-state invitation, which would read as though the
     // question had never been asked.
-    expect(screen.queryByText(/Type a name, or ask in your own words/)).toBeNull();
+    expect(screen.queryByText(/Type a name, or describe your memory/)).toBeNull();
   });
 
   test("should show the server's own words when it refuses, since they were written for a person", async () => {
@@ -860,7 +860,7 @@ describe("search screen", () => {
     );
     // The invitation says nothing has happened yet. Printed under an apology it
     // makes the screen contradict itself.
-    expect(screen.queryByText(/Type a name, or ask in your own words/)).toBeNull();
+    expect(screen.queryByText(/Type a name, or describe your memory/)).toBeNull();
   });
 
   test("should clear a previous refusal once a later question succeeds", async () => {

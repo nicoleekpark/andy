@@ -160,7 +160,7 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `home-search-field` | "Find a name or a word" — 홈 목록을 그 자리에서 거름 (무료·오프라인, Ask와 같은 이름 검색). 사람이 없으면 안 보임 |
 | `home-search-clear` | 검색칸 안 오른쪽 ⓧ — 글자를 지움 (키보드는 그대로). 44pt 영역 |
 | `home-search-cancel` | 검색칸 옆 초록 **Cancel** — 지우고 키보드 내림, Record가 돌아옴 |
-| `home-ask-row` | 검색칸 위 초록 줄 — `Ask Andy: “…”` (비었으면 "Ask Andy in your own words"). 누르면 Ask에 그 글이 들어간 채 열림 (바로 묻지 않음). 오프라인: "Asking needs a connection. Names and words still work." (`home-ask-offline`) |
+| `home-ask-row` | 검색칸 위 초록 줄 — `Advanced search: “…”` (비었으면 "Advanced search"; 2026-10-19 Ask Andy에서 바뀜, device QA B5-2). 누르면 Advanced search에 그 글이 들어간 채 열림 (바로 묻지 않음). 오프라인: "Advanced search needs a connection. Names and words still work." (`home-ask-offline`) |
 | `home-search-results` | 검색 중 목록 자리 — People / Came up in (`name-results`, Ask와 같은 줄). 없으면 `No one matches “…”.` |
 
 ### `record`

@@ -12,7 +12,8 @@ import { colors, radius, size, space, textOpacity, textSize } from "@/constants/
  * search field; the round + (new note) sits across the bar's top edge like a
  * shutter, and opens the orbit of doors. The field filters home's list in place — free, instant and
  * offline — and never asks Claude on its own (R3): asking is a separate,
- * labelled row, "Ask Andy: “…”", that hands what was typed to Ask (R9).
+ * labelled row, "Advanced search: “…”" (was "Ask Andy", device QA B5-2),
+ * that hands what was typed to the search screen (R9).
  *
  * While the field is in use + steps aside (R8), and Cancel or clearing
  * the field brings it back. The query lives in the screen's memory only, never
@@ -117,7 +118,7 @@ export function HomeBottomBar({
           <Pressable
             accessibilityRole="button"
             // The words on screen, so Voice Control can say them (WCAG 2.5.3).
-            accessibilityLabel={trimmed === "" ? "Ask Andy in your own words" : `Ask Andy: ${trimmed}`}
+            accessibilityLabel={trimmed === "" ? "Advanced search" : `Advanced search: ${trimmed}`}
             onPress={() =>
               router.push(trimmed === "" ? "/search" : { pathname: "/search", params: { q: trimmed } })
             }
@@ -125,13 +126,13 @@ export function HomeBottomBar({
             testID="home-ask-row"
           >
             <Text style={styles.askLabel} numberOfLines={2}>
-              {trimmed === "" ? "Ask Andy in your own words" : `Ask Andy: “${trimmed}”`}
+              {trimmed === "" ? "Advanced search" : `Advanced search: “${trimmed}”`}
             </Text>
           </Pressable>
         ) : (
           // R5: unavailable, and said in words, never a dead control.
           <Text style={styles.askOffline} testID="home-ask-offline">
-            Asking needs a connection. Names and words still work.
+            Advanced search needs a connection. Names and words still work.
           </Text>
         )
       ) : null}
