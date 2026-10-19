@@ -1,4 +1,5 @@
 import { Stack, router, useNavigation } from "expo-router";
+import { usePreventRemove } from "expo-router/react-navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AccessibilityInfo,
@@ -1007,32 +1008,42 @@ export function CaptureScreen({
     (source === "manual" || source === "photo") &&
     typing.trim() !== "" &&
     !(draft !== null && (phase === "review" || phase === "saving" || phase === "extracting"));
+  // Asking before words are thrown away has to happen *before* iOS takes the
+  // screen down. A plain `beforeRemove` listener only hears about the header
+  // back button and the swipe after the native stack has already popped: on a
+  // device the question appeared over home, and Cancel had nothing left to
+  // cancel (device QA B5-7). `usePreventRemove` tells the native stack too
+  // (`preventNativeDismiss`), so back and the swipe wait for the answer.
+  usePreventRemove(writtenUnread, ({ data }) => {
+    // Leaving on purpose (saved, kept on the phone, or Discard already
+    // answered) or a note opened from the outbox (it stays kept whatever is
+    // pressed): nothing to ask, so go.
+    if (leavingOnPurposeRef.current || linkedRef.current !== undefined) {
+      putDraftAway();
+      navigation.dispatch(data.action);
+      return;
+    }
+    confirm("Discard this note?", "What you wrote will be cleared.", [
+      {
+        text: "Discard",
+        style: "destructive",
+        onPress: () => {
+          leavingOnPurposeRef.current = true;
+          putDraftAway();
+          navigation.dispatch(data.action);
+        },
+      },
+      // Cancel: stay, with every word where it was (the intent all along).
+      { text: "Cancel", style: "cancel" },
+    ]);
+  });
+  // Nothing to ask about: leaving puts the kept draft away, as before.
   useEffect(
     () =>
-      navigation.addListener("beforeRemove", (event) => {
-        // Not for a note opened from the outbox: it stays kept on the phone
-        // whatever is pressed, so there is nothing to discard.
-        if (writtenUnread && linkedRef.current === undefined && !leavingOnPurposeRef.current) {
-          event.preventDefault();
-          confirm("Discard this note?", "What you wrote will be cleared.", [
-            {
-              text: "Discard",
-              style: "destructive",
-              onPress: () => {
-                leavingOnPurposeRef.current = true;
-                // Here, not left to the next `beforeRemove`: the action a
-                // listener stopped is not announced again when re-sent.
-                putDraftAway();
-                navigation.dispatch(event.data.action);
-              },
-            },
-            { text: "Cancel", style: "cancel" },
-          ]);
-          return;
-        }
-        putDraftAway();
+      navigation.addListener("beforeRemove", () => {
+        if (!writtenUnread) putDraftAway();
       }),
-    [navigation, putDraftAway, writtenUnread, confirm],
+    [navigation, putDraftAway, writtenUnread],
   );
 
   const runExtraction = useCallback(

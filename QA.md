@@ -193,6 +193,7 @@ live here rather than in §7 because that is the screen they happen on.
 | 8.6 | Type something, then go back (chevron **and** the swipe) | *"Discard this note?"* — **Cancel** stays with the words; **Discard** leaves and nothing is offered on home | ⬜ |
 | 8.7 | Paste a very long text (over 11,000 characters) | A count appears at the bottom right ("11,240 / 12,000"); over 12,000 it turns red, *"That note is longer than Andy can take in one go. Try splitting it into two."* shows, and Read is off | ⬜ |
 | 8.8 | Wi-Fi off, Write, type, **Keep this note** | Back on home with no question; home says the note is kept | ⬜ |
+| 8.9 | + → Write, type a few words, tap **‹** (back) — then do it again with the **edge swipe** | **Discard this note?** appears **while you are still on Write**, not over home. **Cancel**: you stay on the note, every word there. **Discard**: back to home, nothing kept (device QA B5-7) | ⬜ |
 
 ## 9. Photo: cards, notes, screenshots (capture-doors.md, Final choice: the Photo screens)
 
