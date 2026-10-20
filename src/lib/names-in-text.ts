@@ -1,5 +1,5 @@
 import { namesFoundIn } from "@convex/calendarNames";
-import { matchKey } from "@convex/naming";
+import { matchKey, namesOf } from "@convex/naming";
 
 /**
  * The people already kept whose name appears in what was written — offered as
@@ -26,7 +26,8 @@ export function namesInText(
   // many people share it: which one is asked afterwards, as it always is.
   const nameOf = new Map<string, string>();
   for (const person of people) {
-    for (const spelling of [person.name, ...(person.aliases ?? [])]) {
+    // Every name they answer to, the first name of a full one included (B5-8).
+    for (const spelling of namesOf(person)) {
       const key = matchKey(spelling);
       if (key.length >= SHORTEST && !nameOf.has(key)) nameOf.set(key, person.name);
     }

@@ -42,3 +42,9 @@ test("should not suggest a shorter name the text only says as part of a longer o
     "Priya Shah",
   ]);
 });
+
+test("should suggest a full name from its first name in the words (B5-8)", () => {
+  expect(namesInText("Barbara came by the studio", [{ name: "Barbara Apple" }])).toEqual(["Barbara Apple"]);
+  // Never from the surname alone.
+  expect(namesInText("bought an apple", [{ name: "Barbara Apple" }])).toEqual([]);
+});

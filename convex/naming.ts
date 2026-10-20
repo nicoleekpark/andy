@@ -50,7 +50,47 @@ export function namesOf(profile: {
   name: string;
   aliases?: string[];
 }): string[] {
-  return [profile.name, ...(profile.aliases ?? [])];
+  const given = givenName(profile.name);
+  const names = [profile.name, ...(profile.aliases ?? [])];
+  // Derived, never stored (owner, 2026-10-19, device QA B5-8): "Barbara
+  // Apple" answers to "Barbara" because of her name, not because a row says
+  // so — so renaming her to "Barbary Appley" moves it with her, and there is
+  // no copy for anyone to delete as a duplicate. Added only when it is not
+  // already one of her names.
+  return given !== null && !names.some((name) => matchKey(name) === matchKey(given))
+    ? [...names, given]
+    : names;
+}
+
+/** Words that come before a name rather than being one. */
+const HONORIFICS = new Set(["mr", "mrs", "ms", "mx", "miss", "dr", "prof", "sir", "madam"]);
+
+/**
+ * The first name inside a full one — "Barbara" from "Barbara Apple" — or
+ * `null` when there is none to take.
+ *
+ * The first word only, never the last (owner, 2026-10-19): a surname is too
+ * often an ordinary word ("Apple", "Young", "Park") to match on by itself, in
+ * a calendar title above all; a person known by their surname gets it as an
+ * alias by hand. Nothing for a one-word name — which is every Korean name
+ * written without a space, so 지선 and 지선희 stay two names apart, the rule
+ * the calendar matcher has kept since day 7. Not an honorific ("Dr. Kim" is
+ * not Dr) and not an initial ("J. Smith" is not J).
+ */
+export function givenName(name: string): string | null {
+  const lettersOf = (word: string) => word.replace(/[^\p{L}]/gu, "").toLocaleLowerCase();
+  // Past any honorifics in front ("Sir John Smith" → John), and only when a
+  // further word follows: "Dr. Kim" is a surname with a title, not a first name.
+  const words = name
+    .trim()
+    .split(/\s+/)
+    .filter((word) => word !== "");
+  let at = 0;
+  while (at < words.length && HONORIFICS.has(lettersOf(words[at] ?? ""))) at += 1;
+  const first = words[at];
+  if (first === undefined || at + 1 >= words.length) return null;
+  if (lettersOf(first).length < 2) return null;
+  return first;
 }
 
 /**

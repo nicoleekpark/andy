@@ -455,4 +455,27 @@ describe("edit profile screen", () => {
     await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
     expect(updateProfile.mock.calls[0]?.[0].aliases).toEqual(["Al", "Cy"]);
   });
+
+  test("should say which first name Andy also knows them by, and follow the name as it changes (B5-8)", async () => {
+    await editWith({ name: "Barbara Apple" });
+
+    expect(screen.getByTestId("name-also-known")).toHaveTextContent("Andy also knows them as “Barbara”.");
+    await act(async () => {
+      fireEvent.changeText(screen.getByLabelText("Name"), "Barbary Appley");
+    });
+    expect(screen.getByTestId("name-also-known")).toHaveTextContent("Andy also knows them as “Barbary”.");
+    // Not a line in Also known as: nothing there to delete as a duplicate.
+    expect(screen.queryByDisplayValue("Barbary")).toBeNull();
+    await act(async () => {
+      fireEvent.changeText(screen.getByLabelText("Name"), "Marcus");
+    });
+    expect(screen.queryByTestId("name-also-known")).toBeNull();
+  });
+
+  test("should not say the first name twice when it is already one of their names", async () => {
+    await editWith({ name: "Barbara Apple", aliases: ["Barbara"] });
+
+    expect(screen.queryByTestId("name-also-known")).toBeNull();
+    expect(screen.getByDisplayValue("Barbara")).toBeTruthy();
+  });
 });

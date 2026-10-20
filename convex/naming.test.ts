@@ -1,5 +1,12 @@
 import { expect, test } from "vitest";
-import { candidatesForSpokenName, compareNamesForList, listLetterOf, namesOverlap } from "./naming";
+import {
+  candidatesForSpokenName,
+  compareNamesForList,
+  givenName,
+  listLetterOf,
+  namesOf,
+  namesOverlap,
+} from "./naming";
 
 // ---------------------------------------------------------------------------
 // namesOverlap
@@ -71,9 +78,11 @@ function kept(...names: string[]): Person[] {
 }
 
 test("should find every person a short name could mean", () => {
-  const owned = kept("Maisie", "Maisie H", "Maisie Park", "Priya");
-  const found = candidatesForSpokenName(owned, "Maisie").map((p) => p.name);
-  expect(found).toEqual(["Maisie", "Maisie H", "Maisie Park"]);
+  // Two words spoken, so the derived first name (B5-8) cannot reach these:
+  // they are found only by the whole-word overlap this test is about.
+  const owned = kept("Maisie H", "Maisie H Park", "Maisie H Lee", "Priya");
+  const found = candidatesForSpokenName(owned, "Maisie H").map((p) => p.name);
+  expect(found).toEqual(["Maisie H", "Maisie H Lee", "Maisie H Park"]);
 });
 
 test("should put the exact match first", () => {
@@ -83,9 +92,10 @@ test("should put the exact match first", () => {
 });
 
 test("should order each tier alphabetically, so the list does not depend on storage order", () => {
-  const owned = kept("Maisie Park", "Maisie H");
-  const found = candidatesForSpokenName(owned, "Maisie").map((p) => p.name);
-  expect(found).toEqual(["Maisie H", "Maisie Park"]);
+  // The overlap tier, kept out of the first-name path as above.
+  const owned = kept("Maisie H Park", "Maisie H Lee");
+  const found = candidatesForSpokenName(owned, "Maisie H").map((p) => p.name);
+  expect(found).toEqual(["Maisie H Lee", "Maisie H Park"]);
 });
 
 test("should keep the exact tier ahead of the overlap tier, even against the alphabet", () => {
@@ -95,12 +105,14 @@ test("should keep the exact tier ahead of the overlap tier, even against the alp
   // match reached through an ALIAS, whose own name sorts *after* the overlap
   // match's name. If the exact tier were not actually checked first, plain
   // alphabetical order would put "Maisie Park" ahead of "Zed" instead.
+  // A first name now counts as exact (B5-8), so the overlap here runs the
+  // other way: the spoken name is the longer one.
   const owned: Person[] = [
-    { name: "Maisie Park" },
-    { name: "Zed", aliases: ["Maisie"] },
+    { name: "Maisie" },
+    { name: "Zed", aliases: ["Maisie H"] },
   ];
-  const found = candidatesForSpokenName(owned, "Maisie").map((p) => p.name);
-  expect(found).toEqual(["Zed", "Maisie Park"]);
+  const found = candidatesForSpokenName(owned, "Maisie H").map((p) => p.name);
+  expect(found).toEqual(["Zed", "Maisie"]);
 });
 
 test("should find a fuller name from a name kept only as an alias", () => {
@@ -184,4 +196,37 @@ test("should keep every name under one letter together, with # last, in the list
 
   // Grouped (no letter reappears after another) and in index order.
   expect(letters).toEqual(["A", "B", "E", "E", "Z", "#", "#"]);
+});
+
+
+// ---------------------------------------------------------------------------
+// The first name inside a full one (device QA B5-8, owner 2026-10-19)
+// ---------------------------------------------------------------------------
+
+test("should answer to the first name of a full name, derived and never stored", () => {
+  expect(givenName("Barbara Apple")).toBe("Barbara");
+  expect(namesOf({ name: "Barbara Apple" })).toEqual(["Barbara Apple", "Barbara"]);
+  // Renamed, and the first name moves with the name — there is no copy to update.
+  expect(namesOf({ name: "Barbary Appley" })).toEqual(["Barbary Appley", "Barbary"]);
+  // Not repeated when an alias already says it.
+  expect(namesOf({ name: "Barbara Apple", aliases: ["barbara"] })).toEqual(["Barbara Apple", "barbara"]);
+});
+
+test("should never take a surname, a one-word name, an honorific or an initial", () => {
+  expect(namesOf({ name: "Barbara Apple" })).not.toContain("Apple");
+  expect(givenName("지선희")).toBeNull();
+  expect(givenName("Marcus")).toBeNull();
+  expect(givenName("Dr. Kim")).toBeNull();
+  expect(givenName("J. Smith")).toBeNull();
+  expect(givenName("  Nicole   Park ")).toBe("Nicole");
+  // An honorific is skipped when a full name follows it, not the whole name.
+  expect(givenName("Sir John Smith")).toBe("John");
+});
+
+test("should put a full name in the exact tier for its first name", () => {
+  const owned: Person[] = [{ name: "Barbara Apple" }, { name: "Barbara" }];
+  expect(candidatesForSpokenName(owned, "Barbara").map((p) => p.name)).toEqual([
+    "Barbara",
+    "Barbara Apple",
+  ]);
 });
