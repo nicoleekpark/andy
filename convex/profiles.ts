@@ -3,8 +3,15 @@ import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { removeOrphanedAutoCreated } from "./cleanup";
 import { MAX_NAME_CHARS } from "./extractionPrompt";
-import { candidatesForSpokenName, cleanAliases, matchKey, mergeTags } from "./naming";
-import { possessiveBases } from "./possessive";
+import {
+  candidatesForSpokenName,
+  cleanAliases,
+  MAX_ALIASES,
+  matchKey,
+  mergeTags,
+  nameUpdateFor,
+} from "./naming";
+import { nameToFileUnder, possessiveBases } from "./possessive";
 import { peopleView, withNotesView, withoutEmbedding } from "./offlineViews";
 import schema from "./schema";
 import { getAuthenticatedUser } from "./users";
@@ -307,7 +314,7 @@ export const updateProfile = mutation({
     }
 
     const aliases = cleanAliases(name, args.aliases);
-    if (aliases.length > MAX_TAGS) {
+    if (aliases.length > MAX_ALIASES) {
       throw new ConvexError("That is more names than Andy can keep for one person.");
     }
     if (aliases.some((alias) => alias.length > MAX_NAME_CHARS)) {
@@ -374,6 +381,12 @@ export const resolveNames = query({
           entityType: v.union(v.literal("person"), v.literal("animal")),
           noteCount: v.number(),
           lastNoteAt: v.union(v.number(), v.null()),
+          /**
+           * What saving could change about this person's name if the note is
+           * filed against them — `nameUpdateFor`. The screen offers it as an
+           * unticked box; `saveCapture` re-derives it rather than trusting it.
+           */
+          nameUpdate: v.union(v.literal("rename"), v.literal("alias"), v.null()),
         }),
       ),
     }),
@@ -460,6 +473,11 @@ export const resolveNames = query({
           entityType: profile.entityType,
           noteCount: stats.get(profile._id)?.noteCount ?? 0,
           lastNoteAt: stats.get(profile._id)?.lastNoteAt ?? null,
+          // Never for a possessive guess: "Parks" reaching "Park" is grammar,
+          // not another name she goes by.
+          nameUpdate: viaPossessive
+            ? null
+            : nameUpdateFor(profile, nameToFileUnder(raw.trim())),
         })),
       });
     }

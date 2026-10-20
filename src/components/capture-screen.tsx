@@ -741,7 +741,9 @@ export function CaptureScreen({
       return null;
     }
     if (subjectDeclared && scoped) {
-      return { name: scoped.profile.name };
+      // Declared by walking to their page: the name on the draft is theirs,
+      // so there is nothing to offer about it.
+      return { profileId: scoped.profile._id, name: scoped.profile.name, nameUpdate: null };
     }
     // Read the way `commit` builds what it sends — folded, last answer wins —
     // so the screen cannot show one answer while the save sends another.
@@ -754,8 +756,41 @@ export function CaptureScreen({
     const chosen = fateOf(draft.primary.name)?.find(
       (candidate) => candidate.profileId === answer,
     );
-    return chosen === undefined ? null : { name: chosen.name };
+    return chosen === undefined
+      ? null
+      : { profileId: chosen.profileId, name: chosen.name, nameUpdate: chosen.nameUpdate };
   }, [draft, subjectDeclared, scoped, resolutions, fateOf]);
+
+  /**
+   * Whether "Update Barbara's name to Barbara Apple" — or "Add … as another
+   * name" — is ticked (device QA B5-8, part 2, option A).
+   *
+   * Held as the offer it was ticked for, not as a boolean: choosing somebody
+   * else, or correcting the name, is a different offer, and a tick carried
+   * across to it would rename a person nobody ticked for. Unticked by default
+   * — saying "Barbara Apple" once is as likely a mishearing as her real name.
+   */
+  const [nameChangeTicked, setNameChangeTicked] = useState<string | null>(null);
+  const nameOffer =
+    draft === null || subjectKept === null || subjectKept.nameUpdate === null
+      ? null
+      : {
+          kind: subjectKept.nameUpdate,
+          kept: subjectKept.name,
+          // Said twice — on screen and to VoiceOver, as label then hint — so
+          // written once.
+          label:
+            subjectKept.nameUpdate === "rename"
+              ? `Update ${subjectKept.name}’s name to ${draft.primary.name.trim()}`
+              : `Add “${draft.primary.name.trim()}” as another name`,
+          hint:
+            subjectKept.nameUpdate === "rename"
+              ? `Andy will still find them by “${subjectKept.name}”.`
+              : "Andy will know them by it next time.",
+          key: `${subjectKept.profileId}|${subjectKept.nameUpdate}|${matchKey(draft.primary.name)}`,
+        };
+  const nameChange =
+    nameOffer !== null && nameChangeTicked === nameOffer.key ? nameOffer.kind : undefined;
 
   /**
    * The transcript this draft came from, frozen at the moment extraction
@@ -1670,6 +1705,8 @@ export function CaptureScreen({
                 },
               },
         source,
+        // Only from review, where the box was on screen to tick.
+        nameChange: written === undefined ? nameChange : undefined,
         // Answers for names the draft still contains — `null` included, since
         // "none of them" is a decision and not silence.
         //
@@ -1759,6 +1796,7 @@ export function CaptureScreen({
     scoped,
     aboutName,
     subjectKept,
+    nameChange,
     doneWaiting,
   ]);
 
@@ -1946,6 +1984,27 @@ export function CaptureScreen({
                 />
               );
             })()}
+            {nameOffer === null ? null : (
+              <Pressable
+                accessibilityRole="checkbox"
+                accessibilityLabel={nameOffer.label}
+                accessibilityHint={nameOffer.hint}
+                accessibilityState={{ checked: nameChange !== undefined }}
+                onPress={() =>
+                  setNameChangeTicked(nameChange === undefined ? nameOffer.key : null)
+                }
+                style={styles.checkRow}
+                testID="review-name-change"
+              >
+                <View style={[styles.checkBox, nameChange !== undefined && styles.checkBoxOn]}>
+                  {nameChange !== undefined ? <Text style={styles.checkMark}>✓</Text> : null}
+                </View>
+                <View style={styles.checkWords}>
+                  <Text style={styles.checkLabel}>{nameOffer.label}</Text>
+                  <Text style={styles.quiet}>{nameOffer.hint}</Text>
+                </View>
+              </Pressable>
+            )}
           </Field>
 
           {/*
@@ -3249,7 +3308,9 @@ const styles = StyleSheet.create({
   editorSpacer: { flexGrow: 1 },
 
   // 44pt tall whatever the label: the box alone is 22, under the target size.
-  checkRow: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 44 },
+  checkRow: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: size.touch },
+  // The box's words, when a quieter second line explains the first.
+  checkWords: { flex: 1, gap: space.xs },
   checkBox: {
     width: 22,
     height: 22,
@@ -3261,8 +3322,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   checkBoxOn: { backgroundColor: colors.moss, borderColor: colors.moss },
-  checkMark: { color: colors.paper, fontSize: 14, fontWeight: "600" },
-  checkLabel: { color: colors.ink, fontSize: 15 },
+  checkMark: { color: colors.paper, fontSize: textSize.md, fontWeight: "600" },
+  checkLabel: { color: colors.ink, fontSize: textSize.base },
 
   remove: { paddingHorizontal: 10, paddingVertical: 8 },
   removeLabel: { color: colors.ink, fontSize: 18, opacity: textOpacity.quiet },

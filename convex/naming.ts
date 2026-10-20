@@ -151,6 +151,69 @@ export function namesOverlap(a: string, b: string): boolean {
 }
 
 /**
+ * How many other names one person can carry — the same ceiling tags have, and
+ * for the same reason: past it, it is a filing system, not a person. Shared
+ * so editing a profile and saving a note cannot disagree about it.
+ */
+export const MAX_ALIASES = 24;
+
+/**
+ * What a note could teach Andy about a kept person's name, when the note
+ * called them something they do not already answer to (device QA B5-8, part
+ * 2, option A): `"rename"` when what was said is a longer form of the name they
+ * are filed under — "Barbara Apple" for a kept "Barbara" — and `"alias"` for
+ * anything else they were chosen for — "Barbara Apple" for a kept "Barbara
+ * Apple Smith". `null` when there is nothing to learn.
+ *
+ * One function, because the screen that offers the change and the mutation
+ * that makes it have to agree on which change it is: the server re-derives it
+ * rather than trusting what the screen sent, so a stale screen cannot rename
+ * somebody in a way nobody saw offered.
+ *
+ * Never automatic — the caller only ever asks. Saying "Barbara Apple" once is
+ * not proof that is her name: a mishearing is just as likely.
+ */
+export function nameUpdateFor(
+  kept: { name: string; aliases?: string[] },
+  spoken: string,
+): "rename" | "alias" | null {
+  const said = spoken.trim();
+  if (said === "") return null;
+  if (namesOf(kept).some((name) => matchKey(name) === matchKey(said))) return null;
+  return namesOverlap(kept.name, said) &&
+    nameWords(said).length > nameWords(kept.name).length
+    ? "rename"
+    : "alias";
+}
+
+/**
+ * The name and aliases a person has after `nameUpdateFor`'s change is made.
+ *
+ * A rename keeps the old name as an alias — notes and calendar titles written
+ * with it must keep reaching her — unless she already answers to it without
+ * one: "Barbara" renamed to "Barbara Apple" still answers to "Barbara" through
+ * `givenName`, and a stored copy would be the duplicate B5-8 set out to avoid.
+ */
+export function withNameUpdate(
+  kept: { name: string; aliases?: string[] },
+  spoken: string,
+  update: "rename" | "alias",
+): { name: string; aliases: string[] } {
+  const said = spoken.trim();
+  const aliases = kept.aliases ?? [];
+  if (update === "alias") {
+    return { name: kept.name, aliases: cleanAliases(kept.name, [...aliases, said]) };
+  }
+  const covered = namesOf({ name: said, aliases }).some(
+    (name) => matchKey(name) === matchKey(kept.name),
+  );
+  return {
+    name: said,
+    aliases: cleanAliases(said, covered ? aliases : [...aliases, kept.name]),
+  };
+}
+
+/**
  * Everyone a spoken name could mean, among the people already kept.
  *
  * Exact matches first, then the ones reached only through the overlap above —
