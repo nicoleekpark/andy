@@ -331,7 +331,7 @@ describe("edit profile screen", () => {
     await result;
 
     await act(async () => {
-      fireEvent.press(screen.getByRole("button", { name: "Add another name" }));
+      fireEvent.press(screen.getByRole("button", { name: "Add a name" }));
     });
     // The new line opens with the keyboard up, rather than waiting for a
     // second tap on a blank field.
@@ -347,5 +347,112 @@ describe("edit profile screen", () => {
     expect(updateProfile.mock.calls[0]?.[0].aliases).toEqual(["Em"]);
     // Everything else still goes with it, the way every other field does.
     expect(updateProfile.mock.calls[0]?.[0].tags).toEqual(["cleaning"]);
+  });
+
+  /** Device QA B5-9: a line can be taken out, Contacts-style (⊖, then Delete). */
+  async function editWith(over: Record<string, unknown>) {
+    (useQuery as jest.Mock).mockReturnValue(profile(over));
+    const updateProfile = jest.fn(async (_args: Args) => null);
+    mockUpdateProfile(updateProfile);
+    const result = renderRouter("src/app", { initialUrl: "/profile/contact-1/edit" });
+    await result;
+    return updateProfile;
+  }
+
+  async function press(name: string) {
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name }));
+    });
+  }
+
+  test("should take a name out only on the second tap: ⊖, then Delete (B5-9)", async () => {
+    const updateProfile = await editWith({ name: "Barbara", aliases: ["Babs", "Barb"] });
+    // No Delete until ⊖ asks for it.
+    expect(screen.queryByRole("button", { name: "Delete the name Babs" })).toBeNull();
+
+    await press("Remove the name Babs");
+    // One tap only shows Delete; nothing is gone yet.
+    expect(screen.getByDisplayValue("Babs")).toBeTruthy();
+    await press("Delete the name Babs");
+
+    expect(screen.queryByDisplayValue("Babs")).toBeNull();
+    expect(screen.getByDisplayValue("Barb")).toBeTruthy();
+    await press("Save changes");
+    await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
+    expect(updateProfile.mock.calls[0]?.[0].aliases).toEqual(["Barb"]);
+  });
+
+  test("should change its mind about Delete when the line is touched again", async () => {
+    await editWith({ aliases: ["Babs"] });
+
+    await press("Remove the name Babs");
+    expect(screen.getByRole("button", { name: "Delete the name Babs" })).toBeTruthy();
+    await act(async () => {
+      fireEvent(screen.getByDisplayValue("Babs"), "focus");
+    });
+
+    expect(screen.queryByRole("button", { name: "Delete the name Babs" })).toBeNull();
+    expect(screen.getByDisplayValue("Babs")).toBeTruthy();
+  });
+
+  test("should take a tag out the same way", async () => {
+    const updateProfile = await editWith({ tags: ["cleaning", "book club"] });
+
+    await press("Remove the tag cleaning");
+    await press("Delete the tag cleaning");
+
+    expect(screen.queryByDisplayValue("cleaning")).toBeNull();
+    await press("Save changes");
+    await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
+    expect(updateProfile.mock.calls[0]?.[0].tags).toEqual(["book club"]);
+  });
+
+  test("should take away a line left empty, the moment it is left", async () => {
+    await editWith({ aliases: [] });
+
+    await press("Add a name");
+    expect(screen.getByLabelText("Other name 1")).toBeTruthy();
+    await act(async () => {
+      fireEvent(screen.getByLabelText("Other name 1"), "focus");
+    });
+    await act(async () => {
+      fireEvent(screen.getByLabelText("Other name 1"), "blur");
+    });
+
+    expect(screen.queryByLabelText("Other name 1")).toBeNull();
+  });
+
+  test("should keep a name cleared by mistake until Save, never take it on one touch", async () => {
+    const updateProfile = await editWith({ aliases: ["Babs"] });
+    const field = () => screen.getByLabelText("Other name 1");
+
+    await act(async () => {
+      fireEvent(field(), "focus");
+    });
+    await act(async () => {
+      fireEvent.changeText(field(), "");
+    });
+    await act(async () => {
+      fireEvent(field(), "blur");
+    });
+
+    // Still a line, still there to type back into.
+    expect(field()).toBeTruthy();
+    // Saved empty, the server drops it — the save is the decision.
+    await press("Save changes");
+    await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
+  });
+
+  test("should take out a line in the middle and leave the others as they were", async () => {
+    const updateProfile = await editWith({ aliases: ["Al", "Bo", "Cy"] });
+
+    await press("Remove the name Bo");
+    await press("Delete the name Bo");
+
+    expect(screen.getByLabelText("Other name 1").props.value).toBe("Al");
+    expect(screen.getByLabelText("Other name 2").props.value).toBe("Cy");
+    await press("Save changes");
+    await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
+    expect(updateProfile.mock.calls[0]?.[0].aliases).toEqual(["Al", "Cy"]);
   });
 });

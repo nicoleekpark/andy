@@ -299,11 +299,12 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `name-field` | NAME |
 | `name-field-hint` | 새 노트가 이 이름으로 연결된다는 안내 |
 | `aliases-label` | ALSO KNOWN AS — 다른 이름들 |
-| `aliases-add-button` | Add a name |
+| `aliases-add-button` | ⊕ Add a name (device QA B5-9: 앞에 초록 ⊕) |
+| `removable-line` | 별명·태그 한 줄 — 앞에 빨간 ⊖(`removable-line-minus`, VoiceOver "Remove the name Babs"), 누르면 오른쪽에 빨간 **Delete**(`removable-line-delete`, "Delete the name Babs"), 두 번째로 눌러야 지워짐. 줄을 다시 누르면 취소. 비운 채로 떠나면 줄이 사라짐. 저장해야 확정 (Apple 연락처 방식, B5-9, 2026-10-19) |
 | `relationship-field` | HOW YOU KNOW THEM |
 | `first-met-field` | FIRST MET 날짜 |
 | `tags-label` | TAGS |
-| `tags-add-button` | Add a tag |
+| `tags-add-button` | ⊕ Add a tag (B5-9) — 태그 줄도 `removable-line` |
 | `profile-save-button` | Save changes |
 | `profile-delete-button` | Delete + 이름 (확인 창) |
 | `edit-offline-hint` | 오프라인일 때 — 바꾼 것은 Sync할 때까지 이 폰에 보관된다는 안내 |

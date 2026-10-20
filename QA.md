@@ -916,6 +916,20 @@ WCAG 1.4.11: a control whose outline is all that marks it out needs 3:1
 | 34.9 | Dashboard: insert `featureFlags` `{ key: "followUpTones", enabled: false }`, reopen a sheet | No picker, no chips: an email with a subject, as before. Delete the row afterwards | ⬜ |
 | 34.10 | Largest Dynamic Type; VoiceOver | Chips wrap rather than clip; VoiceOver reads "Format", Message, selected… then "Tone", Friendly, selected, "Writes a new draft." | ⬜ |
 
+## 37. Removing a name or a tag (device QA B5-9, option A)
+
+| # | Do this | Expect | |
+|---|---|---|---|
+| 37.1 | A person with two other names → Edit | Each name has a red **⊖** in front; **⊕ Add a name** below. Tags the same, with **⊕ Add a tag** | ⬜ |
+| 37.2 | Tap ⊖ before one name | It turns a quarter and a red **Delete** appears at the end of that line; the name is still there | ⬜ |
+| 37.3 | Tap **Delete** | The line is gone at once. **Cancel** (back without saving) brings it back; **Save changes** keeps it gone | ⬜ |
+| 37.4 | ⊖, then tap the name's text instead of Delete | Delete goes away; nothing removed | ⬜ |
+| 37.5 | **⊕ Add a name**, then tap somewhere else without typing | The empty line disappears by itself | ⬜ |
+| 37.9 | Clear an existing name by deleting its letters, then tap elsewhere | The empty line **stays** (a mistake can be typed back); **Save** drops it, **back without saving** brings the name back | ⬜ |
+| 37.6 | VoiceOver on a line | "Remove the name Babs", then after a double-tap "Delete the name Babs"; **Add a name** reads as it shows | ⬜ |
+| 37.7 | Largest Dynamic Type | ⊖, the name and Delete stay on one line or wrap without overlapping; every control still 44pt | ⬜ |
+| 37.8 | **⊕ Add a name**, leave it empty with the cursor in it, then tap its **⊖** | The empty line simply goes (leaving it empty removes it) — no Delete step, since there is nothing to lose | ⬜ |
+
 ## 35. Asking before Andy sends anything (pre-submission-privacy.md, A)
 
 Needs the switch **on**: on a dev build against the dev deployment (no `aiPermission` row there), or in production only after build 6 is on every phone and the row is deleted.
@@ -1039,7 +1053,7 @@ nothing afterwards.
 - People sharing a name are indistinguishable in lists: two rows read "Marcus · 1 note".
 - A pet named in a note ("a second dog called Kiln") was offered as **"New person"** under Also came up.
 - "Andy" in the capture screen's Who-or-what reads "Person / Animal"; the profile editor reads "person / animal".
-- "Add a name" (aliases) adds an empty field without focusing it.
+- "Add a name" (aliases) adds an empty field without focusing it. *(B5-9, 2026-10-19: now ⊕ Add a name; an empty line left behind removes itself.)*
 - Search (Advanced search) is enabled for punctuation-only input ("!!!").
 
 **Simulator quirk, not a bug:** synthetic clicks occasionally landed on the Expo
