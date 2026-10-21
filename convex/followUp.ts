@@ -1,7 +1,12 @@
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import { action, internalMutation, internalQuery } from "./_generated/server";
-import { MAX_EMAIL_NOTES, followUpStyleValidator } from "./emailPrompt";
+import {
+  EARLIER_NOTES_WINDOW_DAYS,
+  MAX_EMAIL_NOTES,
+  NOTES_SCANNED,
+  followUpStyleValidator,
+} from "./emailPrompt";
 import type { EmailNote, FollowUpDraft } from "./emailPrompt";
 import { rememberedFacts } from "./embeddingModel";
 import { countFactNotes, followUpRefusal } from "./followUpScope";
@@ -88,7 +93,7 @@ export const notesForFollowUp = internalQuery({
         q.eq("userId", user._id).eq("profileId", profileId),
       )
       .order("desc")
-      .take(MAX_EMAIL_NOTES);
+      .take(NOTES_SCANNED);
 
     // Read separately from the notes above, and only far enough to answer
     // "does anybody else's note name them". The distinction matters because a
@@ -102,20 +107,38 @@ export const notesForFollowUp = internalQuery({
       )
       .take(1);
 
+    // A note with nothing endorsed on it is dropped rather than falling back
+    // to its raw text — its raw wording is the unreviewed kind, which is
+    // exactly what carries other people in it.
+    const endorsed = notes
+      .map((note) => ({ createdAt: note.createdAt, facts: rememberedFacts(note.keyFacts) }))
+      .filter((note) => note.facts.length > 0);
+    // The newest leads; the rest only from the year before it, and few
+    // (follow-up-redesign.md, D2). Newest first is the order the prompt's
+    // "Time" rules read them in.
+    const anchor = endorsed[0];
+    const chosen =
+      anchor === undefined
+        ? []
+        : [
+            anchor,
+            ...endorsed
+              .slice(1)
+              .filter(
+                (note) =>
+                  anchor.createdAt - note.createdAt <= EARLIER_NOTES_WINDOW_DAYS * 86_400_000,
+              ),
+          ].slice(0, MAX_EMAIL_NOTES);
+
     return {
       personName: profile.name,
       entityType: profile.entityType,
       ownNoteCount: notes.length,
       hasMentions: mentions.length > 0,
-      notes: notes
-        .map((note) => ({
-          recordedOn: new Date(note.createdAt).toISOString().slice(0, 10),
-          facts: rememberedFacts(note.keyFacts),
-        }))
-        // A note with nothing endorsed on it is dropped rather than falling
-        // back to its raw text — its raw wording is the unreviewed kind, which
-        // is exactly what carries other people in it.
-        .filter((note) => note.facts.length > 0),
+      notes: chosen.map((note) => ({
+        recordedOn: new Date(note.createdAt).toISOString().slice(0, 10),
+        facts: note.facts,
+      })),
     };
   },
 });
