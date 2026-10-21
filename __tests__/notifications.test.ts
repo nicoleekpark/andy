@@ -171,7 +171,7 @@ test("should ask about the person by name after the meeting", () => {
     meeting({ people: [{ profileId: "p1", name: "Marcus" }] }),
   );
 
-  expect(text.title).toBe("How was Marcus?");
+  expect(text.title).toBe("Anything to remember about Marcus?");
 });
 
 test("should carry who it is about, so the nudge can open their capture screen", async () => {

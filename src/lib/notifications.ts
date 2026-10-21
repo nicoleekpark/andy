@@ -145,9 +145,14 @@ export function briefingText(subject: BriefingSubject): {
  * Names the first person only, where the briefing names everybody. That is a
  * decision rather than an oversight: the briefing answers "who is this with",
  * which is all of them, and the nudge opens **one** capture screen, which can
- * only be scoped to one person. Asking "how was Judy, Marcus?" and then
+ * only be scoped to one person. Asking about "Judy and Marcus" and then
  * filing the answer under Judy alone would be the notification promising
  * something the screen behind it does not do.
+ *
+ * "Anything to remember about Priya?", not "How was Priya?" (owner,
+ * 2026-10-21): the old line asked the user to rate a person, and a note is
+ * wider than what they said — what you noticed, what you promised. It also
+ * pairs with the nameless "Anything to remember?".
  */
 export function nudgeText(subject: BriefingSubject): {
   title: string;
@@ -155,7 +160,7 @@ export function nudgeText(subject: BriefingSubject): {
 } {
   const first = subject.people[0]?.name;
   return {
-    title: first === undefined ? "Anything to remember?" : `How was ${first}?`,
+    title: first === undefined ? "Anything to remember?" : `Anything to remember about ${first}?`,
     body: "Tap to add what you want to remember.",
   };
 }

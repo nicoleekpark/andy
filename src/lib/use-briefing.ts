@@ -298,7 +298,7 @@ export function useBriefing(
       // Every refresh cancels this app's reminders and schedules them again
       // from this read, and EventKit only returns a meeting still running at
       // `from` — so a read starting now left out one that ended five minutes
-      // ago, and opening Andy then took away its "How was …?" for good
+      // ago, and opening Andy then took away its "Anything to remember about …?" for good
       // (device QA #39). The card is unaffected: it shows only what has not
       // started.
       const events = await readUpcoming(
