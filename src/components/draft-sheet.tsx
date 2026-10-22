@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { copiedStore, fingerprintOf } from "@/lib/on-phone";
 import { ConfirmHost, useConfirm } from "@/components/confirm-dialog";
-import { colors, fonts, radius, size, space, textOpacity, textSize } from "../constants/theme";
+import { colors, disabledOpacity, fonts, radius, size, space, textOpacity, textSize } from "../constants/theme";
 import { useLocked } from "../lib/lock-context";
 import { hasNativeModule } from "../lib/native";
 
@@ -98,11 +98,12 @@ export type DraftStyle = {
   tone: "friendly" | "professional" | "brief";
 };
 
-const FORMATS: { value: DraftStyle["format"]; label: string }[] = [
+/** Shared with Write to's compose step, so the two lists cannot drift. */
+export const FORMATS: { value: DraftStyle["format"]; label: string }[] = [
   { value: "message", label: "Message" },
   { value: "email", label: "Email" },
 ];
-const TONES: { value: DraftStyle["tone"]; label: string }[] = [
+export const TONES: { value: DraftStyle["tone"]; label: string }[] = [
   { value: "friendly", label: "Friendly" },
   { value: "professional", label: "Professional" },
   { value: "brief", label: "Brief" },
@@ -134,20 +135,60 @@ type Props = {
   error: string | null;
 };
 
-export function DraftSheet({
-  draft,
-  onClose,
-  onRewrite,
-  style = null,
-  onChooseStyle = () => {},
-  canWrite = true,
-  rewriting,
-  error,
-}: Props) {
-  /** A message has no subject: nothing to show, edit or copy (rule 8). */
-  const message = style?.format === "message";
+/** What the draft panel adds inside Write to's own sheet (follow-up-redesign.md). */
+type PanelExtras = {
+  /** Header title; "Follow-up to {name}" by default. */
+  title?: string;
+  /** "‹ Edit" back to what the draft was written from; absent, no back. */
+  onBack?: () => void;
+  /** `draft-intent-line`: what Andy did. Never copied. */
+  intent?: string;
+  /** `draft-sources-line`: what it was written from. Never copied. */
+  sources?: string;
+};
+
+/**
+ * The follow-up draft, in its own sheet — the path before Write to, kept
+ * whole for the `writeTo` switch off.
+ */
+export function DraftSheet(props: Props) {
   const locked = useLocked();
+  // Held out here, not in the panel: a hidden native modal unmounts what is
+  // inside it, and the lock hides this one — edits have to survive that.
+  const fields = useDraftFields(props.draft);
+  return (
+    <Modal
+      // Hidden, not unmounted, while the app lock is up: a native modal sits
+      // above the lock's cover, so leaving it visible would show the draft to
+      // whoever is holding a locked phone. The text survives — this component
+      // stays mounted — and the sheet comes back on unlock.
+      visible={!locked}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={props.onClose}
+    >
+      <DraftPanel {...props} fields={fields} />
+    </Modal>
+  );
+}
+
+/** The draft's editable fields and copy state, kept above any modal. */
+export type DraftFields = ReturnType<typeof useDraftFields>;
+
+/**
+ * The fields a draft is edited in, for the component that owns the sheet.
+ *
+ * Starts from `draft`; a new draft object (a rewrite, even an identical one)
+ * resets them, which is what keying the panel used to do — but the panel now
+ * lives inside a modal that the app lock hides, and a hidden modal unmounts its
+ * children, so the state has to live above it.
+ */
+export function useDraftFields(draft: Draft) {
+  // Asked from out here too: a question belongs to whoever asked it, and the
+  // panel is unmounted while the lock hides the sheet — the question must
+  // outlive that and be handed to the app's own host.
   const confirm = useConfirm();
+  const [shown, setShown] = useState(draft);
   const [subject, setSubject] = useState(draft.subject);
   const [body, setBody] = useState(draft.body);
   /**
@@ -160,6 +201,41 @@ export function DraftSheet({
   const [copied, setCopied] = useState<"body" | "both" | null>(null);
   /** A copy that could not happen — see `putOnClipboard`. */
   const [failed, setFailed] = useState(false);
+  if (shown !== draft) {
+    // React's documented way to reset state when a prop changes: during render.
+    setShown(draft);
+    setSubject(draft.subject);
+    setBody(draft.body);
+    setCopied(null);
+    setFailed(false);
+  }
+  return { subject, setSubject, body, setBody, copied, setCopied, failed, setFailed, confirm };
+}
+
+/**
+ * The draft itself, without a sheet around it: `DraftSheet` wraps it in one,
+ * and Write to shows it inside its own sheet after the compose step — one
+ * sheet throughout, since presenting a second over a closing first is a race
+ * iOS can lose.
+ */
+export function DraftPanel({
+  draft,
+  onClose,
+  onRewrite,
+  style = null,
+  onChooseStyle = () => {},
+  canWrite = true,
+  rewriting,
+  error,
+  title,
+  onBack,
+  intent,
+  sources,
+  fields,
+}: Props & PanelExtras & { fields: DraftFields }) {
+  /** A message has no subject: nothing to show, edit or copy (rule 8). */
+  const message = style?.format === "message";
+  const { subject, setSubject, body, setBody, copied, setCopied, failed, setFailed, confirm } = fields;
 
   const edited = subject !== draft.subject || body !== draft.body;
 
@@ -174,7 +250,7 @@ export function DraftSheet({
   const forgetTheLastCopy = useCallback(() => {
     setCopied(null);
     setFailed(false);
-  }, []);
+  }, [setCopied, setFailed]);
 
   const copy = useCallback(
     async (what: "body" | "both") => {
@@ -199,7 +275,7 @@ export function DraftSheet({
       // confirms nothing to the person least able to check the clipboard.
       AccessibilityInfo.announceForAccessibility(copiedMessage(what));
     },
-    [body, subject],
+    [body, subject, setCopied, setFailed],
   );
 
   /**
@@ -236,19 +312,20 @@ export function DraftSheet({
   const waiting = rewriting || (style !== null && !canWrite);
 
   return (
-    <Modal
-      // Hidden, not unmounted, while the app lock is up: a native modal sits
-      // above the lock's cover, so leaving it visible would show the draft to
-      // whoever is holding a locked phone. The text survives — this component
-      // stays mounted — and the sheet comes back on unlock.
-      visible={!locked}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
       <View style={styles.fill}>
         <View style={styles.header}>
-          <Text style={styles.title}>Follow-up to {draft.personName}</Text>
+          {onBack !== undefined ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Back to what to write from"
+              onPress={() => unlessEdited(onBack)}
+              hitSlop={12}
+              testID="draft-back"
+            >
+              <Text style={styles.done}>‹ Edit</Text>
+            </Pressable>
+          ) : null}
+          <Text style={styles.title}>{title ?? `Follow-up to ${draft.personName}`}</Text>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Close the draft"
@@ -371,6 +448,21 @@ export function DraftSheet({
           />
 
           {/*
+            What Andy did, and what from — said under the draft, never part of
+            it: copying takes the fields above, not these.
+          */}
+          {intent !== undefined && intent !== "" ? (
+            <Text testID="draft-intent-line" style={styles.intent}>
+              {intent}
+            </Text>
+          ) : null}
+          {sources !== undefined ? (
+            <Text testID="draft-sources-line" style={styles.sources}>
+              {sources}
+            </Text>
+          ) : null}
+
+          {/*
             Not a toast and not a timer. The line stays until the text changes
             under it, which is the moment it stops being true.
           */}
@@ -440,7 +532,6 @@ export function DraftSheet({
         */}
         <ConfirmHost inModal />
       </View>
-    </Modal>
   );
 }
 
@@ -502,7 +593,7 @@ const styles = StyleSheet.create({
   actionLabel: { color: colors.paper, fontSize: 15 },
   rewrite: { alignItems: "center", paddingVertical: 14 },
   rewriteLabel: { color: colors.moss, fontSize: 15 },
-  disabled: { opacity: 0.5 },
+  disabled: { opacity: disabledOpacity },
   styleRows: { gap: space.md, marginBottom: space.sm },
   // A segmented pair: its only edge is `edge` (3:1, WCAG 1.4.11).
   formatPicker: {
@@ -531,6 +622,17 @@ const styles = StyleSheet.create({
   chipOn: { backgroundColor: colors.moss, borderColor: colors.moss },
   optionLabel: { color: colors.ink, fontSize: textSize.base },
   optionLabelOn: { color: colors.paper },
+  // An aside about the draft, set off by a rule rather than a box.
+  intent: {
+    color: colors.ink,
+    fontSize: textSize.md,
+    lineHeight: 20,
+    borderLeftWidth: 2,
+    borderLeftColor: colors.line,
+    paddingLeft: space.sm,
+    marginTop: space.xs,
+  },
+  sources: { color: colors.ink, fontSize: textSize.sm, opacity: textOpacity.quiet, lineHeight: 18 },
   footnote: {
     color: colors.ink,
     fontSize: 13,

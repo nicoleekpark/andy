@@ -279,7 +279,7 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `note-entry-came-up-label` | ALSO CAME UP — 이 노트에 같이 나온 사람들 제목 |
 | `note-entry-came-up-link` | 같이 나온 프로필 (이름 탭하면 그 프로필로) — 인용문 |
 | `note-entry-source-toggle` | ▸ What you wrote/said — 노트 원문 펼치기 |
-| `follow-up-button` | 후속 메일 초안 만들기 |
+| `follow-up-button` | **Write to {이름}** — Reach out 시트를 엶 (`writeTo` 스위치가 켜졌을 때, follow-up-redesign.md). 꺼지면 예전 "Draft a follow-up" — 후속 메일 초안 만들기 |
 | `add-note-button` | 이 프로필에 노트 추가 — 기록 화면으로 |
 | `profile-photo--empty` | + — 사진 추가 |
 | `profile-meta` | 관계 · first met |
@@ -408,6 +408,22 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `draft-tone-chip` | 말투 칩 — Friendly · Professional · Brief (VoiceOver 그룹 "Tone", 힌트 "Writes a new draft."). 고른 칩은 `draft-tone-chip--selected`. 쓰는 중이거나 오프라인이면 기다림 |
 | `draft-replace-alert` | 고친 초안이 있을 때 새로 쓰기 전에 묻는 창 — "Write another?" / "Your edits to this draft will be replaced." · Write another (moss) · Keep my edits. `confirm-dialog`로 그림 |
 | `draft-footnote` | Andy는 보내지 않는다는 안내 |
+
+### `write-to` (follow-up-redesign.md — Reach out, 2026-10-22)
+
+| Name | 설명 |
+|---|---|
+| `reach-out-compose` | Write to 시트의 첫 화면 — 무엇으로 쓸지. 열어도 호출 없음. 제목 "Reach out to {이름}", 왼쪽 Cancel |
+| `reach-out-note` | "What you know about {이름}" 아래 노트 한 줄 — 체크박스 + 날짜 + 기억할 내용. 최신 노트만 기본 체크. 기억할 내용이 없는 노트는 안 보임. 최대 8개(서버가 한 번에 받는 수) |
+| `reach-out-no-notes` | 노트가 없을 때 "Nothing written about {이름} yet." |
+| `draft-quick-start` | Check in · Congratulate · Follow up on our plan — 누르면 아래 칸을 채움, 쓰지는 않음 (moss 테두리) |
+| `draft-say-field` | 자리표시 "What do you want to say? (optional)" — 직접 쓰는 말, 500자까지 |
+| `reach-out-format-picker` | Message · Email — 처음 쓸 형식만 정함, 호출 없음 (`draft-format-picker`와 달리 새 초안을 쓰지 않음) |
+| `reach-out-tone-chip` | "Tone" 아래 Friendly · Professional · Brief — 처음 쓸 말투만 정함, 호출 없음 |
+| `generate-button` | Write it — 체크한 노트나 쓴 말이 하나라도 있어야 켜짐. 꺼졌을 때 `generate-hint` "Tell Andy what you want to say." (VoiceOver는 버튼의 힌트로 읽음). 쓰는 동안 시트의 모든 입력이 기다림 |
+| `draft-back` | 초안 위 "‹ Edit" — 무엇으로 썼는지로 돌아감, 입력 그대로. 고친 초안이 있으면 `draft-replace-alert`가 먼저 물음 |
+| `draft-intent-line` | 초안 아래 한 줄, 왼쪽 선 — Andy가 한 일 ("Asked about the new job."). 복사 안 됨 |
+| `draft-sources-line` | 그 아래 조용한 한 줄 — "Written from your note of 2026-10-18." / "…notes of … and …" / "Written from what you asked for." 실제로 쓴 것만. 복사 안 됨 |
 
 ### `ai-permission-sheet`
 
