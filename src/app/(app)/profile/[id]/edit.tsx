@@ -1,5 +1,5 @@
 import { Stack, router, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -14,6 +14,7 @@ import { api } from "@convex/_generated/api";
 import { useJustAdded } from "@/lib/use-just-added";
 import { FORM_SCROLL } from "@/lib/form-scroll";
 import { useRowKeys } from "@/lib/use-row-keys";
+import { AddLine, RemovableLine } from "@/components/removable-line";
 import { colors, textOpacity } from "@/constants/theme";
 import { userMessage } from "@/lib/user-message";
 import { NOTHING_KEPT_OFFLINE, useLiveOrCopy, useOnline } from "@/lib/offline-copy";
@@ -71,10 +72,27 @@ export default function EditProfileScreen() {
   const saved: Draft | null =
     result === undefined || result === null ? null : personFields(result.profile);
   const working = edits ?? saved;
-  // Lines are only ever added at the end here (clearing one removes it on
-  // save), so the keys stay with their lines without a removal call.
+  // Removing a line (⊖ then Delete, or leaving it empty, device QA B5-9)
+  // calls removeKey in the same handler that shortens the array, so every
+  // other line keeps its key — and its focus — when one in the middle goes.
   const aliasKeys = useRowKeys(working?.aliases.length ?? 0);
   const tagKeys = useRowKeys(working?.tags.length ?? 0);
+  /** The line whose ⊖ was tapped, so its Delete is showing (device QA B5-9). */
+  const [armed, setArmed] = useState<string | null>(null);
+  /** The line that was empty when it took focus, if any (see its onBlur). */
+  const emptyWhenTouched = useRef<string | null>(null);
+  function removeAlias(index: number) {
+    if (working === null) return;
+    aliasKeys.removeKey(index);
+    setArmed(null);
+    edit({ aliases: working.aliases.filter((_, i) => i !== index) });
+  }
+  function removeTag(index: number) {
+    if (working === null) return;
+    tagKeys.removeKey(index);
+    setArmed(null);
+    edit({ tags: working.tags.filter((_, i) => i !== index) });
+  }
 
   function edit(patch: Partial<Draft>) {
     if (working === null) {
@@ -227,44 +245,62 @@ export default function EditProfileScreen() {
 
         <View style={styles.field}>
           <Text style={styles.fieldLabel}>Also known as</Text>
-          {working.aliases.map((alias, index) => (
-            <TextInput
-              key={aliasKeys.keys[index]}
-              value={alias}
-              onChangeText={(value) =>
-                edit({
-                  aliases: working.aliases.map((a, i) =>
-                    i === index ? value : a,
-                  ),
-                })
-              }
-              style={styles.input}
-              {...focusProps(`alias-${index}`)}
-              accessibilityLabel={`Other name ${index + 1}`}
-            />
-          ))}
-          <View style={styles.tagActions}>
-            {/*
-              The other half of matching. Two people sharing a name is settled
-              by asking which; one person answering to several is settled here,
-              once, instead of the same question being asked every time they
-              come up under a name Andy has not been told about.
-            */}
-            <Text style={styles.hint}>
-              Andy will recognise these too. Clearing one removes it.
-            </Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Add another name"
-              onPress={() => {
-                markAdded(`alias-${working.aliases.length}`);
-                edit({ aliases: [...working.aliases, ""] });
-              }}
-              hitSlop={8}
-            >
-              <Text style={styles.addTag}>Add a name</Text>
-            </Pressable>
-          </View>
+          {working.aliases.map((alias, index) => {
+            const line = `alias-${aliasKeys.keys[index]}`;
+            return (
+              <RemovableLine
+                key={aliasKeys.keys[index]}
+                what={alias.trim() === "" ? "this name" : `the name ${alias.trim()}`}
+                armed={armed === line}
+                onArm={() => setArmed(armed === line ? null : line)}
+                onRemove={() => removeAlias(index)}
+              >
+                <TextInput
+                  value={alias}
+                  onChangeText={(value) =>
+                    edit({
+                      aliases: working.aliases.map((a, i) =>
+                        i === index ? value : a,
+                      ),
+                    })
+                  }
+                  // Touching the line again changes your mind about Delete;
+                  // leaving it empty takes it away (device QA B5-9).
+                  onBlur={() => {
+                    // Only a line that was empty when it was touched — one just
+                    // added and never written in. A name cleared by mistake
+                    // stays until Save, so nothing is lost to one stray touch
+                    // (the same promise as ⊖ then Delete).
+                    if (alias.trim() === "" && emptyWhenTouched.current === `alias-${index}`) {
+                      removeAlias(index);
+                    }
+                  }}
+                  style={styles.input}
+                  autoFocus={focusProps(`alias-${index}`).autoFocus}
+                  onFocus={() => {
+                    focusProps(`alias-${index}`).onFocus();
+                    setArmed(null);
+                    emptyWhenTouched.current = alias.trim() === "" ? `alias-${index}` : null;
+                  }}
+                  accessibilityLabel={`Other name ${index + 1}`}
+                />
+              </RemovableLine>
+            );
+          })}
+          {/*
+            The other half of matching. Two people sharing a name is settled
+            by asking which; one person answering to several is settled here,
+            once, instead of the same question being asked every time they
+            come up under a name Andy has not been told about.
+          */}
+          <AddLine
+            label="Add a name"
+            onPress={() => {
+              markAdded(`alias-${working.aliases.length}`);
+              edit({ aliases: [...working.aliases, ""] });
+            }}
+          />
+          <Text style={styles.hint}>Andy will recognise these too. An empty line is removed when you save.</Text>
         </View>
 
         {/*
@@ -302,37 +338,54 @@ export default function EditProfileScreen() {
 
         <View style={styles.field}>
           <Text style={styles.fieldLabel}>Tags</Text>
-          {working.tags.map((tag, index) => (
-            <TextInput
-              key={tagKeys.keys[index]}
-              value={tag}
-              onChangeText={(value) =>
-                edit({
-                  tags: working.tags.map((t, i) => (i === index ? value : t)),
-                })
-              }
-              style={styles.input}
-              {...focusProps(`tag-${index}`)}
-              accessibilityLabel={`Tag ${index + 1}`}
-            />
-          ))}
-          <View style={styles.tagActions}>
-            <Text style={styles.hint}>Clearing a tag removes it.</Text>
-            {/* Without this a profile can only ever gain tags from an
-                extraction, which makes the field read-only in practice for
-                anybody who types their notes. */}
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Add a tag"
-              onPress={() => {
-                markAdded(`tag-${working.tags.length}`);
-                edit({ tags: [...working.tags, ""] });
-              }}
-              hitSlop={8}
-            >
-              <Text style={styles.addTag}>Add a tag</Text>
-            </Pressable>
-          </View>
+          {working.tags.map((tag, index) => {
+            const line = `tag-${tagKeys.keys[index]}`;
+            return (
+              <RemovableLine
+                key={tagKeys.keys[index]}
+                what={tag.trim() === "" ? "this tag" : `the tag ${tag.trim()}`}
+                armed={armed === line}
+                onArm={() => setArmed(armed === line ? null : line)}
+                onRemove={() => removeTag(index)}
+              >
+                <TextInput
+                  value={tag}
+                  onChangeText={(value) =>
+                    edit({
+                      tags: working.tags.map((t, i) => (i === index ? value : t)),
+                    })
+                  }
+                  onBlur={() => {
+                    // Only a line that was empty when it was touched — one just
+                    // added and never written in. A name cleared by mistake
+                    // stays until Save, so nothing is lost to one stray touch
+                    // (the same promise as ⊖ then Delete).
+                    if (tag.trim() === "" && emptyWhenTouched.current === `tag-${index}`) {
+                      removeTag(index);
+                    }
+                  }}
+                  style={styles.input}
+                  autoFocus={focusProps(`tag-${index}`).autoFocus}
+                  onFocus={() => {
+                    focusProps(`tag-${index}`).onFocus();
+                    setArmed(null);
+                    emptyWhenTouched.current = tag.trim() === "" ? `tag-${index}` : null;
+                  }}
+                  accessibilityLabel={`Tag ${index + 1}`}
+                />
+              </RemovableLine>
+            );
+          })}
+          {/* Without this a profile can only ever gain tags from an
+              extraction, which makes the field read-only in practice for
+              anybody who types their notes. */}
+          <AddLine
+            label="Add a tag"
+            onPress={() => {
+              markAdded(`tag-${working.tags.length}`);
+              edit({ tags: [...working.tags, ""] });
+            }}
+          />
         </View>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -395,13 +448,6 @@ const styles = StyleSheet.create({
   quiet: { color: colors.ink, fontSize: 15, opacity: textOpacity.quiet, lineHeight: 22 },
   error: { color: colors.alert, fontSize: 14, lineHeight: 21 },
 
-  tagActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  addTag: { color: colors.moss, fontSize: 13 },
 
   save: {
     backgroundColor: colors.moss,

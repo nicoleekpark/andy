@@ -27,6 +27,10 @@ recording indicator (decided 2026-10-12, `record-flow.md`): while a voice note i
 being listened to, the centre Pause control's ring and glyph are `alert` — the
 universal "this is recording" signal. Never the only sign: the running timer and
 the glyph's shape say it too, and paused, the control goes back to `edge`/`ink`.
+And taking one line out of a list on a person's edit screen (decided 2026-10-19,
+device QA B5-9, option A, Apple Contacts style): the ⊖ before an alias or a tag
+and the **Delete** it reveals are `alert` — a removal, the same kind of control
+as deleting a note, one field smaller (`removable-line`).
 
 **Accessibility (decided 2026-10-08): every pairing must meet WCAG 2.2 AA.**
 Text 4.5:1 (3:1 at 18pt, or 14pt bold), the edges of controls and meaningful
