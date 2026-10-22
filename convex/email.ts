@@ -11,12 +11,17 @@ import {
   FOLLOW_UP_SYSTEM_PROMPT,
   MAX_EMAIL_BODY_CHARS,
   MAX_EMAIL_SUBJECT_CHARS,
+  MAX_INTENT_CHARS,
   MESSAGE_SCHEMA,
+  REACH_OUT_EMAIL_SCHEMA,
+  REACH_OUT_MESSAGE_SCHEMA,
+  REACH_OUT_SYSTEM_PROMPT,
   buildEmailMessage,
   followUpDraftValidator,
   followUpStyleValidator,
 } from "./emailPrompt";
 import type { FollowUpDraft } from "./emailPrompt";
+import { singleLineValue } from "./promptBoundary";
 
 /**
  * Writing the follow-up email.
@@ -45,23 +50,70 @@ export const write = internalAction({
      * prompt, for a client with the `followUpTones` switch off.
      */
     style: v.optional(followUpStyleValidator),
+    /**
+     * Reach out: the sender's own words ("" for none). Present means Reach out
+     * — its prompt, numbered notes, and an intent and used notes back.
+     */
+    instruction: v.optional(v.string()),
   },
   returns: followUpDraftValidator,
   handler: async (_ctx, args): Promise<FollowUpDraft> => {
     const message = args.style?.format === "message";
+    const reachOut = args.instruction !== undefined;
+    const schema = reachOut
+      ? message
+        ? REACH_OUT_MESSAGE_SCHEMA
+        : REACH_OUT_EMAIL_SCHEMA
+      : message
+        ? MESSAGE_SCHEMA
+        : EMAIL_SCHEMA;
+    const system = reachOut
+      ? REACH_OUT_SYSTEM_PROMPT
+      : args.style === undefined
+        ? EMAIL_SYSTEM_PROMPT
+        : FOLLOW_UP_SYSTEM_PROMPT;
     const result = (await askClaude({
       model: EMAIL_MODEL,
       maxTokens: EMAIL_MAX_TOKENS,
-      schema: message ? MESSAGE_SCHEMA : EMAIL_SCHEMA,
-      system: args.style === undefined ? EMAIL_SYSTEM_PROMPT : FOLLOW_UP_SYSTEM_PROMPT,
+      schema,
+      system,
       content: [
         {
           type: "text",
-          text: buildEmailMessage(args.personName, args.today, args.notes, args.style),
+          text: buildEmailMessage(
+            args.personName,
+            args.today,
+            args.notes,
+            args.style,
+            reachOut ? { instruction: args.instruction ?? "" } : undefined,
+          ),
         },
       ],
       label: "Follow-up email",
-    })) as { subject?: unknown; body?: unknown };
+    })) as { subject?: unknown; body?: unknown; intent?: unknown; usedNotes?: unknown };
+
+    // Reach out's two extra lines. Shaped here, never trusted: the intent is
+    // one line and short; used notes are indexes into what was actually sent,
+    // turned back into their dates, anything else dropped.
+    const extra = reachOut
+      ? {
+          intent:
+            typeof result.intent === "string"
+              ? singleLineValue(result.intent).slice(0, MAX_INTENT_CHARS)
+              : "",
+          // Looked up, so anything that is not an index of a note sent —
+          // 7, -1, 0.5, a string — finds nothing and is dropped.
+          usedNotes: Array.isArray(result.usedNotes)
+            ? [
+                ...new Set(
+                  (result.usedNotes as unknown[])
+                    .map((i) => (typeof i === "number" ? args.notes[i]?.recordedOn : undefined))
+                    .filter((day): day is string => typeof day === "string"),
+                ),
+              ]
+            : [],
+        }
+      : {};
 
     // `returns` validates after the handler has already read the result, so a
     // response missing a field becomes a raw TypeError and a generic client
@@ -74,9 +126,10 @@ export const write = internalAction({
     }
 
     if (message) {
-      return { body: result.body.trim().slice(0, MAX_EMAIL_BODY_CHARS) };
+      return { body: result.body.trim().slice(0, MAX_EMAIL_BODY_CHARS), ...extra };
     }
     return {
+      ...extra,
       // Capped for the same reason the body is:  is 1024, so
       // a misbehaving response can put thousands of characters here and
       // reintroduce the silent truncation the body cap exists to prevent.
