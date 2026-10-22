@@ -908,6 +908,27 @@ WCAG 1.4.11: a control whose outline is all that marks it out needs 3:1
 | 34.9 | Dashboard: insert `featureFlags` `{ key: "followUpTones", enabled: false }`, reopen a sheet | No picker, no chips: an email with a subject, as before. Delete the row afterwards | ⬜ |
 | 34.10 | Largest Dynamic Type; VoiceOver | Chips wrap rather than clip; VoiceOver reads "Format", Message, selected… then "Tone", Friendly, selected, "Writes a new draft." | ⬜ |
 
+## 40. Write to → Reach out (follow-up-redesign.md, decision 4)
+
+Needs the `writeTo` switch on (no row = on). Reply (paste, screenshot) and refining come in later slices.
+
+| # | Do this | Expect | |
+|---|---|---|---|
+| 40.1 | Open someone with notes | The button reads **Write to {name}** (not "Draft a follow-up") | ⬜ |
+| 40.2 | Tap it | **Reach out to {name}** opens on what to write from. Nothing is written yet (no "Writing…"). Only the newest note with saved details is ticked; a note with nothing under What to remember is not listed | ⬜ |
+| 40.3 | Untick it and leave the field empty | **Write it** is greyed; *Tell Andy what you want to say.* under it | ⬜ |
+| 40.4 | Tap **Check in** | The field fills with "Check in". Nothing is written until **Write it** | ⬜ |
+| 40.5 | Tick a note, type *check in if she's free this weekend. concise, warm, not burdening*, **Professional**, **Write it** | A draft that does what you asked. Under it, a line saying what Andy did, and *Written from your note of …* naming only the notes it used (or *Written from what you asked for.*) | ⬜ |
+| 40.6 | A plan in the ticked note whose date has passed | The draft asks how it went, never wishes luck (#195) | ⬜ |
+| 40.7 | Tap another tone on the draft | A new draft from the same notes and words | ⬜ |
+| 40.8 | **‹ Edit** | Back to what to write from, everything as you left it | ⬜ |
+| 40.9 | Copy message | Only the draft — not the two lines under it | ⬜ |
+| 40.10 | Someone with no notes (only mentioned, or all notes deleted) | **Write to** is still offered; the notes area says *Nothing written about … yet.*; with words typed, a draft is written | ⬜ |
+| 40.11 | Fresh account that hasn't allowed AI: **Write it** | *Let Andy read your notes?* first; Not now sends nothing | ⬜ |
+| 40.12 | Edit the draft, lock the phone, unlock | The draft and your edits are still there | ⬜ |
+| 40.13 | Switch off: insert `{ key: "writeTo", enabled: false }` | The old **Draft a follow-up** sheet, unchanged | ⬜ |
+| 40.14 | Largest Dynamic Type; VoiceOver | Rows wrap; notes read as checkboxes (checked / not checked); Write it reads as dimmed when off | ⬜ |
+
 ## 35. Asking before Andy sends anything (pre-submission-privacy.md, A)
 
 Needs the switch **on**: on a dev build against the dev deployment (no `aiPermission` row there), or in production only after build 6 is on every phone and the row is deleted.

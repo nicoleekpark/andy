@@ -258,7 +258,8 @@ test("should send once, however many times it is pressed while the question is u
 });
 
 test("should draft nothing after Not now, and ask again on the next tap", async () => {
-  const { draft } = server();
+  // The follow-up sheet as before; Write to's own asking is in write-to.test.tsx.
+  const { draft } = server({ switchedOff: ["writeTo"] });
   await open("/profile/profile-1");
 
   await press("Draft a follow-up");

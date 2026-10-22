@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 import { View } from "react-native";
 import { ConfirmHost, ConfirmProvider } from "../src/components/confirm-dialog";
 import { DraftSheet } from "../src/components/draft-sheet";
+import { WriteToSheet } from "../src/components/write-to-sheet";
 import { LockedContext } from "../src/lib/lock-context";
 
 /**
@@ -93,4 +94,35 @@ test("should hand an open question back to the app while the sheet hides under t
   await screen.rerender(sheet(false));
   expect(screen.getAllByTestId("confirm-dialog")).toHaveLength(1);
   expect(insideSheet(screen.getByTestId("confirm-dialog"))).toBe(true);
+});
+
+test("should keep Write to's draft edits through the lock, the same as the sheet before it", async () => {
+  const writeTo = (locked: boolean) => (
+    <LockedContext.Provider value={locked}>
+      <ConfirmProvider>
+        <WriteToSheet
+          personName="Rowan"
+          notes={[]}
+          inputs={{ noteIds: [], instruction: "say hi", style: { format: "email", tone: "friendly" } }}
+          onChangeInputs={jest.fn()}
+          written={{ draft, intent: "Said hi.", sources: "Written from what you asked for." }}
+          onWrite={jest.fn()}
+          onBack={jest.fn()}
+          onChooseStyle={jest.fn()}
+          onClose={jest.fn()}
+          writing={false}
+          canWrite
+          error={null}
+        />
+      </ConfirmProvider>
+    </LockedContext.Provider>
+  );
+  const { rerender } = await render(writeTo(false));
+  await fireEvent.changeText(screen.getByLabelText("Subject"), "Coffee next week?");
+
+  await rerender(writeTo(true));
+  expect(screen.queryByText("Reach out to Rowan")).toBeNull();
+
+  await rerender(writeTo(false));
+  expect(screen.getByLabelText("Subject").props.value).toBe("Coffee next week?");
 });
