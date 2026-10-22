@@ -39,7 +39,7 @@ import { useNameSearch } from "@/lib/use-name-search";
  * Finding someone is the bottom bar's field (`home-bottom-bar.tsx`): it filters
  * this list in place by name or word, free and offline, with the same search
  * Ask uses. Asking a question in words costs a call, so it is never what typing
- * does — only the labelled "Ask Andy: “…”" row spends one (`home-actions.md`).
+ * does — only the labelled "Advanced search: “…”" row spends one (`home-actions.md`).
  */
 /**
  * Nobody kept yet. The loop draws itself the first time this appears in a run

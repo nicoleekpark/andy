@@ -138,10 +138,10 @@ async function askAndy(question: string) {
     router.push("/search");
   });
   await act(async () => {
-    fireEvent.changeText(screen.getByLabelText("Ask Andy"), question);
+    fireEvent.changeText(screen.getByLabelText("Advanced search"), question);
   });
   await act(async () => {
-    fireEvent.press(screen.getByLabelText("Ask"));
+    fireEvent.press(screen.getByLabelText("Search"));
   });
 }
 
@@ -194,7 +194,7 @@ test("should ask again at Ask after Not now, and send nothing until allowed", as
   expect(recall).not.toHaveBeenCalled();
 
   await act(async () => {
-    fireEvent.press(screen.getByLabelText("Ask"));
+    fireEvent.press(screen.getByLabelText("Search"));
   });
   await press("Allow");
   expect(allow).toHaveBeenCalledTimes(1);
@@ -244,13 +244,13 @@ test("should send once, however many times it is pressed while the question is u
     router.push("/search");
   });
   await act(async () => {
-    fireEvent.changeText(screen.getByLabelText("Ask Andy"), "who moved to Berlin");
+    fireEvent.changeText(screen.getByLabelText("Advanced search"), "who moved to Berlin");
   });
 
   // Two presses land before the sheet is answered.
   await act(async () => {
-    fireEvent.press(screen.getByLabelText("Ask"));
-    fireEvent.press(screen.getByLabelText("Ask"));
+    fireEvent.press(screen.getByLabelText("Search"));
+    fireEvent.press(screen.getByLabelText("Search"));
   });
   await press("Allow");
 

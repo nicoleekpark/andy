@@ -51,7 +51,7 @@ against the live system (app-store-reviewer, 2026-10-15):
 > WHAT ANDY DOES
 > • Notes in a few seconds: speak, write, or photograph a card, a page of notes or a screenshot.
 > • One page per person: what to remember, newest first, and who else came up.
-> • Ask in your own words: "who just started a new job?" Andy answers from your notes, and shows which ones.
+> • Advanced search: describe what you remember, like "who just started a new job?" Andy answers from your notes, and shows which ones.
 > • Before you meet: with your calendar connected, Andy shows who you are about to see and what they told you, and reminds you afterwards to add what's new. Calendar names are matched on your iPhone and never leave it.
 > • A follow-up, drafted: a short message or email from what you know, to edit and send yourself.
 > • Works with no signal: read everyone and every note offline, and keep new notes on your iPhone until you're back online.
@@ -73,7 +73,7 @@ Length: about 1,900 characters. Check each line against the code on submission d
 | Line | Holds while |
 |---|---|
 | "or take a photo of their card or a page of notes" | Photo door (#167–#169) |
-| "and shows which ones" | Ask cites its sources (Ask Andy, day 5) |
+| "and shows which ones" | Advanced search cites its sources (day 5) |
 | "Calendar names … never leave it" | On-phone matching (#127) **and build 4 retired** |
 | "Asked first …" | **The production `aiPermission` row is deleted.** Before that it is untrue (the same gate as the policy) |
 | "they delete it within 30 days" | Anthropic and OpenAI API terms, re-read on the day |
@@ -87,7 +87,7 @@ written about someone (STYLE.md). Use example people only.
 1. **Walk in remembering.** The Briefing card before a coffee.
 2. **Say it, and it's kept.** The voice screen mid-note.
 3. **One page for each person.** A person's page.
-4. **Ask in your own words.** Ask Andy answering with its sources.
+4. **Describe what you remember.** Advanced search answering with its sources.
 5. **A follow-up, ready to send.** The draft sheet in Message + Friendly.
 6. **Only you.** The five promises on paper.
 

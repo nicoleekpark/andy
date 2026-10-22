@@ -173,7 +173,7 @@ describe("reading offline", () => {
 
       await renderRouter("src/app", { initialUrl: "/search" });
       await act(async () => {
-        fireEvent.changeText(screen.getByLabelText("Ask Andy"), "row");
+        fireEvent.changeText(screen.getByLabelText("Advanced search"), "row");
       });
       await act(async () => {
         jest.advanceTimersByTime(1_000);
@@ -181,7 +181,7 @@ describe("reading offline", () => {
 
       expect(screen.getByRole("button", { name: "Open Rowan" })).toBeTruthy();
       expect(screen.getByTestId("ask-offline-hint")).toBeTruthy();
-      expect(screen.getByRole("button", { name: "Ask" }).props.accessibilityState).toEqual(
+      expect(screen.getByRole("button", { name: "Search" }).props.accessibilityState).toEqual(
         expect.objectContaining({ disabled: true }),
       );
     } finally {
@@ -262,7 +262,7 @@ describe("reading offline", () => {
 
       await renderRouter("src/app", { initialUrl: "/search" });
       await act(async () => {
-        fireEvent.changeText(screen.getByLabelText("Ask Andy"), "greyhound");
+        fireEvent.changeText(screen.getByLabelText("Advanced search"), "greyhound");
       });
       await act(async () => {
         jest.advanceTimersByTime(1_000);

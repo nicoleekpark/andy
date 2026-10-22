@@ -117,11 +117,11 @@ test("should hand the words to Ask, which waits for a tap before asking", async 
 
   await type("who moved to Lisbon");
   await act(async () => {
-    fireEvent.press(screen.getByRole("button", { name: "Ask Andy: who moved to Lisbon" }));
+    fireEvent.press(screen.getByRole("button", { name: "Advanced search: who moved to Lisbon" }));
   });
 
   expect(result.getPathname()).toBe("/search");
-  expect(screen.getByLabelText("Ask Andy").props.value).toBe("who moved to Lisbon");
+  expect(screen.getByLabelText("Advanced search").props.value).toBe("who moved to Lisbon");
   expect(recall).not.toHaveBeenCalled();
 });
 
@@ -134,11 +134,11 @@ test("should offer Ask in your own words while the field is empty and in use", a
     fireEvent(screen.getByTestId("home-search-field"), "focus");
   });
   await act(async () => {
-    fireEvent.press(screen.getByRole("button", { name: "Ask Andy in your own words" }));
+    fireEvent.press(screen.getByRole("button", { name: "Advanced search" }));
   });
 
   expect(result.getPathname()).toBe("/search");
-  expect(screen.getByLabelText("Ask Andy").props.value).toBe("");
+  expect(screen.getByLabelText("Advanced search").props.value).toBe("");
 });
 
 test("should step + aside while searching, and bring it back on Cancel", async () => {
@@ -186,7 +186,7 @@ test("should still find people offline from the phone's copy, and say asking nee
   await type("greyhound");
 
   await waitFor(() => expect(screen.getByRole("button", { name: "Open Nina" })).toBeTruthy());
-  expect(screen.getByText("Asking needs a connection. Names and words still work.")).toBeTruthy();
+  expect(screen.getByText("Advanced search needs a connection. Names and words still work.")).toBeTruthy();
   expect(screen.queryByTestId("home-ask-row")).toBeNull();
   files().delete(COPY);
   online(true);
@@ -210,7 +210,7 @@ test("should empty the field with Clear, and keep it in use", async () => {
   });
 
   expect(screen.getByTestId("home-search-field").props.value).toBe("");
-  expect(screen.getByRole("button", { name: "Ask Andy in your own words" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Advanced search" })).toBeTruthy();
 });
 
 test("should be read list, then field, then + — though + is drawn on top", async () => {
