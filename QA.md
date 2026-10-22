@@ -354,6 +354,8 @@ reach: a real screen, a real keyboard, and a real transcript at its real length.
 | 14.10 | With **two people called Priya** (different "how you know them"), each with a note about coffee: ask "coffee with priya" | The answer **tells them apart** — e.g. "You had coffee with Priya (friend)… Priya (colleague) also…" — and never speaks of one Priya combining both notes (device QA #47). With no "how you know them" on either, it says "person 1" / "person 2" | ⬜ |
 | 14.11 | Open Ask, tap the field (keyboard up) | The two hint paragraphs sit **just under the field**, above the keyboard — never hidden behind it (device QA B5-4) | ⬜ |
 | 14.12 | With the keyboard up: drag down on the empty part of the screen; then tap the field again and tap an empty spot | Either way the keyboard **goes down** without leaving the screen. Press **Ask**: the keyboard goes down and the answer has the screen; dragging the results also puts it away (device QA B5-3) | ⬜ |
+| 14.13 | Record a note whose words include something that does **not** become a fact (e.g. "Friday we're going for drinks with the team"). Ask "who did I plan to grab drinks with" | That person comes up, and the answer can say so. After the one-time re-index, older notes behave the same (device QA B5-6) | ⬜ |
+| 14.14 | Correct a fact from "puppy" to "kitten" but leave the words saying puppy; ask "who has a kitten" | The answer says **kitten**, never puppy: the checked fact wins over the recorded words | ⬜ |
 
 ## 15. Ask Andy's written answer
 

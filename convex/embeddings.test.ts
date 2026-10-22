@@ -115,18 +115,19 @@ async function seedNote(
 // What gets embedded
 // ---------------------------------------------------------------------------
 
-test("should embed the facts and not the transcript, so a correction actually takes effect", () => {
-  // The bug this exists to stop, found by using the app: a note was corrected
-  // from "puppy" to "kitten" and searching "puppy" still found it, because the
-  // transcript still said puppy and the transcript was in the vector. The app
-  // was contradicting the user's own edit.
+test("should search what was said as well as the facts, facts first (B5-6)", () => {
+  // Device QA, build 5: Brian's words said "friday we're gonna go get drinks
+  // with the team", none of it became a fact, and "who did I plan to grab
+  // drinks with" found nothing. Since #160 the words can be corrected, so they
+  // are searched too; facts lead so a cut keeps what was checked.
   const composed = embeddingTextFor({
-    text: "park just got a puppy called biscuit",
-    keyFacts: ["Just got a kitten called Biscuit"],
+    text: "tomorrow night, friday we're gonna go get drinks with the team",
+    keyFacts: ["Works with Brian on the design team"],
   });
 
-  expect(composed).toBe("Just got a kitten called Biscuit");
-  expect(composed).not.toContain("puppy");
+  expect(composed).toBe(
+    "Works with Brian on the design team\n\ntomorrow night, friday we're gonna go get drinks with the team",
+  );
 });
 
 test("should keep every fact, not just the first, since they are all things to remember", () => {
@@ -138,8 +139,8 @@ test("should keep every fact, not just the first, since they are all things to r
     ],
   });
 
-  expect(composed).toBe(
-    "Moving to Seattle in October 2026\nStarting a new job at a robotics startup",
+  expect(composed).toMatch(
+    /^Moving to Seattle in October 2026\nStarting a new job at a robotics startup\n\n/,
   );
 });
 
@@ -405,11 +406,9 @@ test("should give a note saved through the capture path a vector without the use
   const stored = await t.run(async (ctx) => ctx.db.get("notes", noteId));
   expect(stored?.embedding).toEqual(vectorFor(5));
   const body = JSON.parse(fetchMock.mock.calls[0][1].body);
-  expect(body.input[0]).toBe("Moving to Seattle in October 2026");
-  // The transcript is not sent. Asserting its absence, not just the facts'
-  // presence — the old version of this test checked only that the combined
-  // string matched, which would have passed for either contract.
-  expect(body.input[0]).not.toContain("Priya is moving to Seattle next month");
+  // The checked fact first, then the words as said (B5-6).
+  expect(body.input[0]).toMatch(/^Moving to Seattle in October 2026\n\n/);
+  expect(body.input[0]).toContain("Priya is moving to Seattle next month");
 });
 
 test("should re-embed a note after a correction, so a fixed fact reaches search and not only the screen", async () => {

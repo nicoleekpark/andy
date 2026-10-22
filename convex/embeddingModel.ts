@@ -70,29 +70,23 @@ export const MAX_EMBEDDING_CHARS = 8_000;
  * identical way, or the new vector lands in a different part of the space than
  * every vector it will be compared against.
  *
- * **The facts are what is searched. The transcript is not.**
+ * **The facts and the words are both searched** (owner, 2026-10-19, device QA
+ * B5-6). Facts first, so a note cut to the budget keeps what was checked.
  *
- * It was both, until using it showed why that is wrong. Correct a note from
- * "puppy" to "kitten" and searching "puppy" still found it — because the
- * transcript still said puppy, and the transcript was in the vector. That is the
- * app contradicting the user's own correction, and no amount of ranking fixes
- * it: the old wording is simply still in there.
+ * It used to be the facts alone, for a reason that held then: correct a fact
+ * from "puppy" to "kitten" and the transcript, which could not be edited,
+ * still said puppy — so searching "puppy" found the note against the user's
+ * own correction. Since #160 the words themselves can be corrected, which
+ * removed that reason, and the cost of facts-only had become the bigger one:
+ * Brian's note said "friday we're gonna go get drinks with the team", none of
+ * it became a fact, and "who did I plan to grab drinks with" found nothing.
+ * Circumstance that was said but never written down as a fact is exactly what
+ * people search for later.
  *
- * Day 2 already named these as two different truths — `text` is what the
- * recogniser heard, `keyFacts` is what the user read back and endorsed. Searching
- * the endorsed one is the only version where editing a note means anything.
- *
- * The cost is real and worth stating rather than hiding: circumstance that was
- * said but never written down as a fact stops being findable. "오늘 지선 만났는데
- * 민호네 집들이서 봤어" has facts about her job and her cats; "민호네 집들이"
- * lives only in the transcript, and searching for the housewarming will now miss
- * it. That is the trade — search what you curated, not everything you said.
- *
- * **The fallback exists so nothing goes invisible.** A note can have no facts at
- * all: extraction sometimes finds none, and `updateNote` lets every fact be
- * blanked. With facts-only and no fallback such a note would be unsearchable for
- * ever, silently, which is a worse failure than an imprecise match. So when there
- * are no facts, the transcript is used — it is the only text the note has.
+ * What remains of the old problem — a fact corrected while the words were
+ * left alone — is handled where it can be: the answer is told that "what to
+ * remember" is the correction and wins (`answerPrompt.ts`), and fixing the
+ * words too fixes the search.
  *
  * **The subject's own name is deliberately not prepended.** Looking a person up
  * by name is `people.search`'s job (`convex/peopleSearch.ts`), a better tool for
@@ -119,6 +113,9 @@ export function embeddingTextFor(note: {
   keyFacts?: string[];
 }): string {
   const facts = rememberedFacts(note.keyFacts);
-  const source = facts.length > 0 ? facts.join("\n") : note.text;
-  return source.slice(0, MAX_EMBEDDING_CHARS);
+  const words = note.text.trim();
+  return [facts.join("\n"), words]
+    .filter((part) => part !== "")
+    .join("\n\n")
+    .slice(0, MAX_EMBEDDING_CHARS);
 }

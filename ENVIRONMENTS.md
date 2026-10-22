@@ -54,7 +54,7 @@ Set up on 2026-10-01, for the designer and QA TestFlight hand-off. Its history i
 
   It is always wrapped by `convex/promptBoundary.ts`.
 - **OpenAI** receives:
-  - a note's facts, or its text when it has no facts
+  - a note's facts and its recorded words together (since 2026-10-19, device QA B5-6)
   - search questions
 
 ---
