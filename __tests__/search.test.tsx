@@ -6,6 +6,7 @@ import { getFunctionName } from "convex/server";
 import { renderRouter } from "expo-router/testing-library";
 import { api } from "@convex/_generated/api";
 import { answerByName, nameOf, quietCall } from "../test-support/convex-mocks";
+import { scrollViewAroundNode, scrollsLikeAForm } from "../test-support/keyboard";
 
 /**
  * src/app/(app)/search.tsx is the first screen in this app driven by an action
@@ -642,6 +643,31 @@ describe("search screen", () => {
 
     // The first answer under the second question reads as its answer.
     expect(screen.queryByText("Marcus runs a climbing gym in Oakland.")).toBeNull();
+  });
+
+  test("should keep the hint where the keyboard can be put away and cannot cover it (B5-3, B5-4)", async () => {
+    await renderSearch();
+
+    // Under the field in a view that makes room for the keyboard and lets a
+    // drag or a tap off a control put it away — not centred behind it.
+    const scroll = scrollViewAroundNode(screen.getByTestId("ask-hint-detail"));
+    expect(scrollsLikeAForm(scroll)).toBe(true);
+  });
+
+  test("should put the keyboard away once a question is asked, so the answer has the screen (B5-3)", async () => {
+    const { Keyboard } = jest.requireActual<typeof import("react-native")>("react-native");
+    const dismiss = jest.spyOn(Keyboard, "dismiss");
+    recall.mockResolvedValueOnce({ query: "marcus", answer: "", results: [buildResult()] });
+    await renderSearch();
+
+    await ask("marcus");
+
+    expect(dismiss).toHaveBeenCalled();
+    // And the list of results lets it be dragged away too.
+    await waitFor(() => expect(screen.getByText("Marcus")).toBeTruthy());
+    const list = scrollViewAroundNode(screen.getByText("Marcus"));
+    expect(list?.props.keyboardDismissMode).toBe("interactive");
+    dismiss.mockRestore();
   });
 
   test("should not claim the notes below are marked when the answer used none of them", async () => {

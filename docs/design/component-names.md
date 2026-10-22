@@ -346,7 +346,7 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `ask-field` | 질문 칸 — placeholder "Who are you thinking of?" |
 | `ask-submit-button--disabled` | Ask — 비어 있으면 비활성 |
 | `ask-hint` | 무엇을 물을 수 있는지 안내 — 첫 문단: "Type a name, or ask in your own words — like “who just started a new job?”" |
-| `ask-hint-detail` | 둘째 문단: 모든 노트를 본다는 것, 그리고 말한 것으로만 답한다는 것 |
+| `ask-hint-detail` | 둘째 문단: 모든 노트를 본다는 것, 그리고 말한 것으로만 답한다는 것 — 입력칸 바로 아래, 키보드에 가려지지 않음; 빈 곳 탭이나 아래로 끌기로 키보드 내림 (device QA B5-3/B5-4, 2026-10-16) |
 | `ask-offline-hint` | 오프라인일 때 — 자연어 질문은 연결이 필요하고 이름 찾기는 된다는 안내 (Ask 버튼 비활성) |
 | `ask-submit-button` | Ask |
 | `profile-results-label` | PEOPLE — 이름이 맞는 프로필들 |
