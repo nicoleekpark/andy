@@ -43,7 +43,7 @@ and its fix PR names both.
 
 | ID | Where | Finding | Type | Cause (from the code) | Status | PR | Device | Notes |
 |---|---|---|---|---|---|---|---|---|
-| B5-1 | `record` | The phone locked while recording; the app closed and the recording was cut off. Andy should stay awake while something is live (audio etc.) | bug | Nothing keeps the screen on while recording, so iOS auto-locks and stops speech recognition | ⬜ | | ⬜ | Fix: keep awake while recording and while Andy is reading (no decision needed) |
+| B5-1 | `record` | The phone locked while recording; the app closed and the recording was cut off. Andy should stay awake while something is live (audio etc.) | bug | Nothing keeps the screen on while recording, so iOS auto-locks and stops speech recognition | 🔧 | #183 | ⬜ | Screen stays on while recording and while Andy reads; released right after. QA 33.14 |
 | B5-2 | `home-bottom-bar` Ask row | "Ask Andy in your own words" is not clear enough. Change it to "Advanced search" | copy | `src/components/home-bottom-bar.tsx:120,128` | ❓ | | ⬜ | Only this row, or the whole `ask` screen too (its title "Ask Andy", the settings, the docs)? |
 | B5-3 | `ask` | Once the keyboard is up, it doesn't go down unless you leave the screen and come back | bug | `src/app/(app)/search.tsx` | ⬜ | | ⬜ | |
 | B5-4 | `ask` | "Type a name, or ask in your own words — like …" is hidden behind the keyboard once it is up | bug | `src/app/(app)/search.tsx:222` | ⬜ | | ⬜ | |
