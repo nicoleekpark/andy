@@ -121,3 +121,26 @@ test("should name everyone who answers to a shared name, in the picker's order",
     { name: "Amy", key: "jo", count: 2, profileIds: ["p-amy", "p-zed"] },
   ]);
 });
+
+test("should brief a full name from its first name in a title, with no alias written down (B5-8)", () => {
+  // Owner, 2026-10-19: "Barbara" is how people say "Barbara Apple"; the first
+  // name is derived from the name, so nobody has to keep it as an alias.
+  const barbara = person("p-barbara", "Barbara Apple");
+  const [matched] = matchEventsIn([barbara], [], [event({ title: "Coffee with Barbara" })]);
+  expect(matched?.people.map((p) => p.profileId)).toEqual(["p-barbara"]);
+});
+
+test("should never brief a surname alone from a title", () => {
+  const barbara = person("p-barbara", "Barbara Apple");
+  const [matched] = matchEventsIn([barbara], [], [event({ title: "Apple keynote" })]);
+  expect(matched?.people ?? []).toEqual([]);
+  expect(matched?.ambiguous ?? []).toEqual([]);
+});
+
+test("should ask, not guess, when two full names share the first name in a title", () => {
+  const apple = person("p-apple", "Barbara Apple");
+  const kim = person("p-kim", "Barbara Kim");
+  const [matched] = matchEventsIn([apple, kim], [], [event({ title: "Coffee with Barbara" })]);
+  expect(matched?.people ?? []).toEqual([]);
+  expect(matched?.ambiguous.length).toBe(1);
+});

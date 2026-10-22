@@ -15,6 +15,7 @@ import { useJustAdded } from "@/lib/use-just-added";
 import { FORM_SCROLL } from "@/lib/form-scroll";
 import { useRowKeys } from "@/lib/use-row-keys";
 import { AddLine, RemovableLine } from "@/components/removable-line";
+import { givenName, matchKey } from "@convex/naming";
 import { colors, textOpacity } from "@/constants/theme";
 import { userMessage } from "@/lib/user-message";
 import { NOTHING_KEPT_OFFLINE, useLiveOrCopy, useOnline } from "@/lib/offline-copy";
@@ -77,6 +78,16 @@ export default function EditProfileScreen() {
   // other line keeps its key — and its focus — when one in the middle goes.
   const aliasKeys = useRowKeys(working?.aliases.length ?? 0);
   const tagKeys = useRowKeys(working?.tags.length ?? 0);
+  /**
+   * The first name Andy derives from theirs (B5-8) — unless it is already one
+   * of the names below, where saying it twice would look like the duplicate
+   * the derivation exists to avoid.
+   */
+  const given = working === null ? null : givenName(working.name);
+  const alsoKnownAs =
+    given !== null && !working!.aliases.some((alias) => matchKey(alias) === matchKey(given))
+      ? given
+      : null;
   /** The line whose ⊖ was tapped, so its Delete is showing (device QA B5-9). */
   const [armed, setArmed] = useState<string | null>(null);
   /** The line that was empty when it took focus, if any (see its onBlur). */
@@ -241,6 +252,12 @@ export default function EditProfileScreen() {
             Andy files a new note under the name it hears, so this is what the
             next one has to match.
           </Text>
+          {alsoKnownAs !== null ? (
+            // Derived from the name, never stored, nothing to edit (B5-8).
+            <Text style={styles.hint} testID="name-also-known">
+              Andy also knows them as “{alsoKnownAs}”.
+            </Text>
+          ) : null}
         </View>
 
         <View style={styles.field}>

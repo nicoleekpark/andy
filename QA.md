@@ -930,6 +930,17 @@ WCAG 1.4.11: a control whose outline is all that marks it out needs 3:1
 | 37.7 | Largest Dynamic Type | ⊖, the name and Delete stay on one line or wrap without overlapping; every control still 44pt | ⬜ |
 | 37.8 | **⊕ Add a name**, leave it empty with the cursor in it, then tap its **⊖** | The empty line simply goes (leaving it empty removes it) — no Delete step, since there is nothing to lose | ⬜ |
 
+## 38. A first name counts (device QA B5-8, part 1)
+
+| # | Do this | Expect | |
+|---|---|---|---|
+| 38.1 | Keep **Barbara Apple** (no other names). Calendar: an event titled *Coffee with Barbara* | The briefing card shows Barbara Apple — no alias needed | ⬜ |
+| 38.2 | Same, with a second person **Barbara Kim** | The card asks **Which Barbara?** rather than guessing | ⬜ |
+| 38.3 | An event titled *Apple keynote* | No briefing for Barbara Apple: a surname alone never matches | ⬜ |
+| 38.4 | Record "Barbara came by…" | The check screen offers Barbara Apple as *This Barbara?* | ⬜ |
+| 38.5 | Edit Barbara Apple | Under the name: *Andy also knows them as "Barbara".* Change the name to Barbary Appley — the line says "Barbary" at once. Nothing new appears under Also known as | ⬜ |
+| 38.6 | Keep **지선희** and record "지선이…" | Not offered as 지선희 — a Korean name without a space has no first name to take | ⬜ |
+
 ## 35. Asking before Andy sends anything (pre-submission-privacy.md, A)
 
 Needs the switch **on**: on a dev build against the dev deployment (no `aiPermission` row there), or in production only after build 6 is on every phone and the row is deleted.

@@ -298,6 +298,7 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 |---|---|
 | `name-field` | NAME |
 | `name-field-hint` | 새 노트가 이 이름으로 연결된다는 안내 |
+| `name-also-known` | 이름 칸 아래 — "Andy also knows them as “Barbara”." 이름의 첫 단어, 저장 안 하고 계산, 편집 불가. 성은 안 씀, 띄어쓰기 없는 이름엔 없음 (B5-8, 2026-10-19) |
 | `aliases-label` | ALSO KNOWN AS — 다른 이름들 |
 | `aliases-add-button` | ⊕ Add a name (device QA B5-9: 앞에 초록 ⊕) |
 | `removable-line` | 별명·태그 한 줄 — 앞에 빨간 ⊖(`removable-line-minus`, VoiceOver "Remove the name Babs"), 누르면 오른쪽에 빨간 **Delete**(`removable-line-delete`, "Delete the name Babs"), 두 번째로 눌러야 지워짐. 줄을 다시 누르면 취소. 비운 채로 떠나면 줄이 사라짐. 저장해야 확정 (Apple 연락처 방식, B5-9, 2026-10-19) |
