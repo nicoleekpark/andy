@@ -104,7 +104,7 @@ Screen: `draft`, opened by `follow-up-button` on `profile--person`. New part nam
 
 | Part | String |
 |---|---|
-| `write-door-reply` / `write-door-reach-out` | Reply: They wrote to you. · Reach out: You're writing first. |
+| `write-door-reply` / `write-door-reach-out` | Reply: Answer a message Mara sent you · Reach out: Start a new message to Mara (owner, 2026-10-22: "They wrote to you" read as vague) |
 | `reply-paste-button` | Paste what they sent (Apple's control; its label is Apple's own) |
 | `reply-screenshot-button` | Use a screenshot |
 | `reply-disclosure` **(new)** | Andy sends this to Anthropic to write your reply, and doesn't keep it. |
@@ -170,7 +170,7 @@ Mock: `docs/design/mocks/follow-up-redesign-flow.html` — every screen and stat
 
 **Screens**
 
-1. **Door** — `follow-up-button` ("Write to Priya", per Open call 1) opens a choice between `write-door-reply` ("Reply — They wrote to you.") and `write-door-reach-out` ("Reach out — You're writing first."), drawn as two plain grouped rows (a chevron each), not boxed cards.
+1. **Door** — `follow-up-button` ("Write to Priya", per Open call 1) opens a choice between `write-door-reply` ("Reply — Answer a message Mara sent you") and `write-door-reach-out` ("Reach out — Start a new message to Mara"), drawn as two plain grouped rows (a chevron each), not boxed cards.
 2. **Reply** (one screen) — empty, it offers exactly `reply-paste-button`, `reply-screenshot-button` and `reply-disclosure`, nothing else (**pattern 2**). Once there's a message: `reply-their-message` sits first as a quoted block, collapsed (**pattern 1**); directly under it, `draft-quick-start` chips (Say yes · Decline warmly · Suggest another time · Thank them · Ask a question — fill the field, never send, **pattern 3**); then `draft-say-field`; then `draft-tone-chip` as three one-tap pills, Friendly · Professional · Brief (**pattern 4**); then `reply-notes-chip` ("Your notes about Priya", on by default, decision 11); then `generate-button`, disabled with "Paste or choose what they sent first." until there's a message.
 3. **`reply-screenshot-check`** (reached only from `reply-screenshot-button`, before anything is written) — lead "Check who said what. Tap a name to switch it."; `reply-thread-line`s drawn as a clean two-sided thread, Them left / You right, each with a tappable speaker label and its own edit/remove. "Use this" does **not** jump straight to a draft — it returns to the ordinary Reply composer (step 2's layout exactly: the checked thread standing in for `reply-their-message`, collapsed and tappable to re-open the check screen, then quick starts, say-field, tone, `reply-notes-chip`, `generate-button`), so a screenshot reply gets the same chance to set tone and intent that a paste reply gets. Two calls total for this path (read, then write).
 4. **Reach out** — the same two-state shape as Reply, not a single screen: a **compose** state ("What you know about Priya" standing in for `reply-their-message`, newest note preselected and selectable; Reach-out's own quick starts — Check in · Congratulate · Follow up on our plan — directly above `draft-say-field`, same position as Reply's; `draft-tone-chip`; `generate-button` enabled on defaults alone) and, after Generate, the **same post-Generate state as every other door** (point 5).
