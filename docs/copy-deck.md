@@ -413,7 +413,7 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 | Notifications are off for Andy. | text | `src/components/calendar-section.tsx:169` |  |
 | Coming up | body | `src/lib/notifications.ts:137` |  |
 | Anything to remember? | title | `src/lib/notifications.ts:158` |  |
-| How was {…}? | title | `src/lib/notifications.ts:158` |  |
+| Anything to remember about {…}? | title | `src/lib/notifications.ts:158` |  |
 | Tap to add what you want to remember. | body | `src/lib/notifications.ts:159` |  |
 | Mute the briefing? | text | `src/lib/use-briefing-actions.ts:24` |  |
 | The card leaves home and meeting reminders stay quiet. "For today" ends at midnight, so tomorrow's reminders still come. | text | `src/lib/use-briefing-actions.ts:27` |  |

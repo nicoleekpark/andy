@@ -881,7 +881,7 @@ test("should keep the nudge of a meeting that just ended when Andy is opened bef
   // Device QA #39. EventKit as it behaves: only events still running at the
   // read's start come back. Every refresh cancels and reschedules from that
   // read, so opening Andy five minutes after a meeting ended dropped its
-  // "How was Nina?" — the moment somebody waiting for it would open the app.
+  // "Anything to remember about Nina?" — the moment somebody waiting for it would open the app.
   (calendarMatch.matchEventsIn as jest.Mock).mockRestore();
   const now = Date.now();
   const endedAt = now - 5 * 60_000;

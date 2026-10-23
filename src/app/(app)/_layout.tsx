@@ -115,7 +115,7 @@ export default function AppLayout() {
     }
   }, [isAuthenticated, ensureUser]);
 
-  // The nudge after a meeting ("How was Marcus?") opens that person's capture
+  // The nudge after a meeting ("Anything to remember about Marcus?") opens that person's capture
   // screen — the briefing flow's last step (PROJECT_SCOPE.md). Only once the
   // app is unlocked: subscribed while it is, so a tap that arrived behind the
   // lock screen is picked up the moment Face ID succeeds, and never shows a

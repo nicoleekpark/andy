@@ -22,7 +22,7 @@ import { hasNativeModule } from "../src/lib/native";
 
 /**
  * The briefing flow's last step (PROJECT_SCOPE.md): tapping the nudge after a
- * meeting ("How was Marcus?") opens that person's capture screen. Until this,
+ * meeting ("Anything to remember about Marcus?") opens that person's capture screen. Until this,
  * the nudge carried who it was about and nothing read it (QA 19.5).
  */
 
