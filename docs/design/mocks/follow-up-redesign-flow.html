@@ -1,0 +1,704 @@
+<!--
+  Storyboard: "Write to Priya" — visual redesign pass (2026-10-21), following
+  follow-up-redesign.md decision 11 and follow-up-reference-patterns.md.
+  An HTML approximation of native iOS screens for explaining the flow — a
+  design prototype for discussion, not production code. Example people, notes
+  and messages are fictional fixtures (Priya, 수진), not real users.
+-->
+<title>Write to Priya</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500&family=IBM+Plex+Mono&display=swap">
+<style>
+:root{
+  /* app tokens — src/constants/theme.ts, STYLE.md */
+  --ink:#2A2622; --paper:#E8E6DE; --moss:#5C6B4F; --brass:#B8935A;
+  --line:#B8B3A8; --alert:#9F4C3B; --placeholder:#63605A; --edge:#857E6D;
+  --scrim:rgba(42,38,34,.42);
+  /* page chrome around the phone frames — document-only, not app tokens */
+  --page:#EDEBE4; --page-ink:#2A2622; --quiet:#6F6A62; --rule:#CFCAC0; --panel:#F6F5F0;
+  --serif:"Lora",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Helvetica Neue",Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --page:#1E1C19; --page-ink:#ECE8E0; --quiet:#A39D93; --rule:#3A3631; --panel:#26231F; color-scheme:dark; }
+}
+:root[data-theme="dark"]{ --page:#1E1C19; --page-ink:#ECE8E0; --quiet:#A39D93; --rule:#3A3631; --panel:#26231F; color-scheme:dark; }
+/* The app is light-only (STYLE.md). Only this document's own page chrome —
+   never the phone screens, which stay paper/ink — shifts for dark mode. */
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--page-ink);font-family:var(--sans);padding-inline:20px;line-height:1.45}
+.wrap{max-width:1320px;margin:0 auto;padding-block:36px 72px;display:grid;gap:44px}
+h1{font-family:var(--serif);font-weight:500;font-size:clamp(26px,4vw,36px);margin:0}
+.note{font-family:var(--mono);font-size:11.5px;color:var(--quiet);margin:10px 0 0}
+.lede{color:var(--quiet);max-width:80ch;margin:12px 0 0;font-size:14.5px}
+.opt{display:grid;gap:12px}
+.opt h2{font-family:var(--serif);font-weight:500;font-size:22px;margin:0;display:flex;gap:10px;flex-wrap:wrap;align-items:baseline}
+.opt h2 .k{font-family:var(--mono);font-size:13px;color:var(--brass)}
+.who{color:var(--quiet);margin:0;max-width:86ch;font-size:14px}
+.strip{display:flex;gap:20px;overflow-x:auto;padding-bottom:10px}
+.frame{flex:0 0 300px;display:grid;gap:9px;align-content:start}
+.frame.narrow{flex-basis:220px}
+.num{font-family:var(--mono);font-size:12px;color:var(--quiet)}
+.cap{font-size:12.8px;line-height:1.55}
+.cap code{font-size:12px}
+
+/* phone bezel + screen, 300pt wide */
+.phone{height:580px;border-radius:34px;background:#1a1816;padding:10px}
+.phone.short{height:360px}
+.s{height:100%;border-radius:26px;background:var(--paper);color:var(--ink);overflow:hidden;font-size:12.5px;display:flex;flex-direction:column;position:relative}
+.grabber{width:36px;height:5px;border-radius:999px;background:var(--line);margin:9px auto 0;flex:none}
+.navbar{display:flex;align-items:center;justify-content:space-between;padding:6px 18px 6px;flex:none;min-height:30px}
+.navbar .side{font-size:14px;color:var(--moss);min-width:30px}
+.navbar .back{font-size:19px;color:var(--moss);font-weight:300;min-width:30px}
+.navbar .title{font-size:14.5px;font-weight:600;color:var(--ink);text-align:center;flex:1}
+.homeind{width:108px;height:4px;border-radius:999px;background:var(--ink);opacity:.22;margin:0 auto 8px;flex:none}
+
+.screen{flex:1;display:flex;flex-direction:column;gap:14px;padding:4px 18px 10px;min-height:0;overflow:hidden}
+.screen.center{justify-content:center}
+
+/* uppercase section labels — Lora, per STYLE.md's existing `.label` pattern */
+.seclabel{font-family:var(--serif);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink);opacity:.7}
+
+/* grouped list rows — replaces boxed cards: dividers + spacing, not borders */
+.listgroup{display:flex;flex-direction:column}
+.listrow{display:flex;align-items:center;gap:12px;padding:12px 2px;min-height:44px;border-bottom:1px solid var(--rule)}
+.listrow:last-child{border-bottom:none}
+.listrow .ic{width:20px;text-align:center;color:var(--moss);font-size:15px;flex:none}
+.listrow .tx{flex:1;display:grid;gap:1px}
+.listrow .tx .l1{font-size:12.5px;color:var(--ink)}
+.listrow .tx .l2{font-size:10px;color:var(--ink);opacity:.68}
+.listrow .chev{color:var(--placeholder);font-size:14px;flex:none}
+.listrow .chk{width:16px;text-align:center;color:var(--moss);font-size:13px;flex:none}
+
+.disclosure{font-size:10.3px;color:var(--ink);opacity:.68;line-height:1.5;padding:0 2px}
+
+/* quoted block — their message / the user's own earlier reply */
+.quoted{border-left:2px solid var(--line);padding-left:12px;display:flex;flex-direction:column;gap:3px}
+.quoted .who{font-family:var(--mono);font-size:9.5px;color:var(--placeholder);display:flex;justify-content:space-between}
+.quoted .who .rm{color:var(--placeholder);font-size:12px}
+.quoted .txt{font-size:11.8px;line-height:1.5;color:var(--ink)}
+
+/* notes-you-know rows (reach out) */
+.notelist{display:flex;flex-direction:column}
+.noterow{display:flex;align-items:flex-start;gap:10px;padding:9px 2px;border-bottom:1px solid var(--rule)}
+.noterow:last-child{border-bottom:none}
+.noterow .chk{width:15px;color:var(--moss);font-size:12.5px;margin-top:1px;flex:none}
+.noterow .chk.off{color:var(--line)}
+.noterow .d{font-family:var(--mono);font-size:9px;opacity:.65}
+.noterow .t{font-size:11.5px;color:var(--ink)}
+
+/* tone row — Apple-style, 3 one-tap pills */
+.tonerow{display:flex;gap:8px;flex:none}
+.tonepill{flex:1;text-align:center;padding:9px 0;border-radius:999px;border:1px solid var(--edge);font-size:11px;color:var(--ink)}
+.tonepill.on{background:var(--moss);border-color:var(--moss);color:var(--paper);font-weight:600}
+
+/* quick-start / refine chips — outlined, fill-not-send */
+.chiprow{display:flex;flex-wrap:wrap;gap:6px;flex:none}
+.chip{border:1px solid var(--moss);color:var(--moss);border-radius:999px;padding:6px 11px;font-size:10.3px}
+.chip.on{background:var(--moss);color:var(--paper);font-weight:600}
+
+/* notes chip (reply-notes-chip) */
+.noteschip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--edge);border-radius:999px;padding:6px 10px 6px 12px;font-size:10.3px;color:var(--ink);align-self:flex-start}
+.noteschip .x{color:var(--placeholder);font-size:11px}
+.noteschip.off{border-color:var(--line);color:var(--placeholder)}
+
+/* say-field / refine-field — bottom rule only, like the app's own TextInputs */
+.sayfield{border-bottom:1px solid var(--edge);padding:7px 2px;font-size:11.8px;color:var(--ink);flex:none}
+.sayfield.ph{color:var(--placeholder)}
+
+/* generate / CTA */
+.cta{background:var(--moss);color:var(--paper);text-align:center;padding:13px 0;border-radius:999px;font-size:12.6px;font-weight:600;flex:none}
+.cta.off{opacity:.5}
+.ctahint{font-size:9.6px;color:var(--placeholder);text-align:center;margin-top:-6px}
+
+/* draft */
+.draftbody{font-size:12.3px;line-height:1.62;color:var(--ink)}
+.intentline{font-size:10.4px;color:var(--ink);opacity:.82;border-left:2px solid var(--line);padding-left:7px;margin-top:4px}
+.srcline{font-size:9.7px;color:var(--ink);opacity:.7}
+.vstep{display:flex;align-items:center;justify-content:center;gap:10px;font-family:var(--mono);font-size:10px;color:var(--ink);opacity:.78;flex:none}
+.vstep .ar{color:var(--moss);font-weight:700;font-family:var(--sans);font-size:14px}
+.copybtn{background:var(--moss);color:var(--paper);text-align:center;padding:15px 0;border-radius:999px;font-size:13.6px;font-weight:700;flex:none}
+.copiedline{color:var(--moss);font-size:10.5px;text-align:center;font-weight:600;flex:none}
+.footnote{font-size:9px;color:var(--ink);opacity:.62;text-align:center;margin-top:auto;flex:none}
+.edithint{font-size:9px;color:var(--placeholder);margin-top:-7px;flex:none}
+.caret{display:inline-block;width:1.3px;height:12px;background:var(--moss);vertical-align:middle;margin:0 1px}
+.editedword{text-decoration:underline;text-decoration-color:var(--moss);text-decoration-thickness:1.5px}
+.keyboard{margin-top:auto;background:var(--rule);border-radius:10px 10px 0 0;padding:8px 8px 10px;display:flex;flex-direction:column;gap:5px;flex:none}
+.keyboard .krow{display:flex;gap:4px}
+.keyboard .k{flex:1;height:22px;background:var(--paper);border-radius:4px;opacity:.75}
+.keyboard .k.wide{flex:2.4}
+.offtopic{border-left:2px solid var(--line);padding-left:10px;font-size:10.3px;color:var(--ink);opacity:.86;line-height:1.5}
+.capline{font-size:10.6px;color:var(--ink);opacity:.82;line-height:1.55;flex:none}
+
+/* thread (screenshot check) */
+.thread{display:flex;flex-direction:column;gap:12px}
+.tline{display:flex;flex-direction:column;gap:3px;max-width:84%}
+.tline.them{align-self:flex-start;border-left:2px solid var(--line);padding-left:10px}
+.tline.you{align-self:flex-end;text-align:right;border-right:2px solid var(--moss);padding-right:10px}
+.tline .sp{font-family:var(--mono);font-size:9px;color:var(--moss);display:flex;gap:4px;align-items:center}
+.tline.you .sp{justify-content:flex-end}
+.tline .txt{font-size:11.3px;line-height:1.48;color:var(--ink)}
+
+/* native controls we don't skin: paste button, photo picker */
+.syspicker{background:#000;border-radius:12px;padding:10px;display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.syspicker .ph{height:46px;border-radius:5px;background:#3a3a3d}
+.syspicker .ph.sel{outline:2px solid #1a5fd1;background:#55555c}
+.systop{display:flex;justify-content:space-between;color:#1a5fd1;font-size:11px;margin-bottom:8px}
+.systop .ttl{color:#fff;font-weight:600}
+
+/* ai-permission-sheet */
+.permsheet{display:flex;flex-direction:column;gap:14px;padding:4px 2px 4px}
+.permsheet h3{font-size:15.5px;font-weight:600;color:var(--ink);margin:0}
+.permrow2{display:flex;gap:11px;align-items:flex-start}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ink);flex:none;margin-top:6px}
+.permrow2 b{display:block;font-size:11px}
+.permrow2 .d{font-size:10px;opacity:.78;line-height:1.4}
+.permbtn{background:var(--moss);color:var(--paper);text-align:center;border-radius:999px;padding:12px;font-size:12px;font-weight:600;flex:none}
+.permnot{text-align:center;color:var(--moss);font-size:11px;font-weight:600;flex:none}
+
+.proposed{border-left:2px solid var(--brass);padding-left:10px;font-size:10.8px;display:grid;gap:4px}
+.proposed .tag{font-family:var(--mono);font-size:8.6px;color:var(--brass);letter-spacing:.04em}
+/* brass used here only as the document's own "proposed / not shipped" marker —
+   never inside a simulated app screen, per STYLE.md (brass is the Briefing
+   card's alone inside the signed-in app). */
+
+.tap{outline:2px solid var(--brass);outline-offset:2px}
+/* meta-annotation convention shared with the project's other flow mocks: marks
+   what was just tapped in the storyboard, not an in-app colour choice. */
+
+.panel{background:var(--panel);border:1px solid var(--rule);border-radius:14px;padding:18px 20px}
+.panel h2{font-family:var(--serif);font-weight:500;font-size:19px;margin:0 0 10px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;vertical-align:top;padding:8px 14px 8px 0;border-bottom:1px solid var(--rule)}
+th{font-family:var(--mono);font-size:10.6px;color:var(--quiet);font-weight:400;text-transform:uppercase;letter-spacing:.05em}
+.tw{overflow-x:auto}
+</style>
+
+<div class="wrap">
+
+<header>
+  <h1>Write to Priya</h1>
+  <p class="note">HTML approximation of native iOS screens — a design prototype for discussion, not production code. Example people and messages are fictional fixtures (Priya, 수진), per <code>follow-up-redesign.md</code> (owner decisions, 2026-10-21) and <code>follow-up-reference-patterns.md</code>.</p>
+  <p class="lede">Visual pass, same one flow: Door → Reply (paste or screenshot) or Reach out → shared refine. Built deliberately from ten patterns in Grammarly, Gmail, Apple Writing Tools, Superhuman and Outlook — their message leads, intents sit right under it, tone is three one-tap pills, one draft stays in view and steps through versions in place, and Copy is the one plainly prominent action. No AI sparkle, nothing that reads as Send.</p>
+</header>
+
+<!-- ============================= STRIP 1: DOOR ============================= -->
+<section class="opt">
+  <h2><span class="k">0</span>Before — build 5 today</h2>
+  <p class="who">지금 폰에 있는 흐름. 버튼을 누르면 묻지 않고 바로 이메일을 쓰고, 최근 노트 6개를 같은 무게로 보내서 지난 일·오래된 일을 고르기도 해요.</p>
+  <div class="strip">
+    <div class="frame"><span class="num">0.1 · profile</span>
+      <div class="phone"><div class="s">
+        <div class="screen" style="padding-top:20px">
+          <div class="navbar" style="padding:0"><span></span><span class="title" style="font-family:var(--serif);font-size:19px;font-weight:500">Priya</span><span></span></div>
+          <div class="seclabel">Notes</div>
+          <div class="listgroup">
+            <div class="listrow"><div class="tx"><div class="l1">Oct 18</div><div class="l2">starting at Figma on Nov 3, moving to Brooklyn</div></div></div>
+            <div class="listrow"><div class="tx"><div class="l1">Sep 2</div><div class="l2">training for the Chicago half marathon Oct 12</div></div></div>
+          </div>
+          <div style="flex:1"></div>
+          <div class="cta tap">Draft a follow-up</div>
+        </div>
+      </div></div>
+      <p class="cap">버튼 하나. 받은 메시지에 답하는 길은 없어요.</p>
+    </div>
+    <div class="frame"><span class="num">0.2 · writes at once</span>
+      <div class="phone"><div class="s">
+        <div class="grabber"></div>
+        <div class="navbar"><span class="side"></span><span class="title">Follow-up to Priya</span><span class="side">Done</span></div>
+        <div class="screen"><div style="opacity:.7;font-style:italic;margin-top:12px">Writing…</div></div>
+      </div></div>
+      <p class="cap">열자마자 바로 호출. 톤·형식·하고 싶은 말을 고를 틈이 없어요.</p>
+    </div>
+    <div class="frame"><span class="num">0.3 · the draft</span>
+      <div class="phone"><div class="s">
+        <div class="grabber"></div>
+        <div class="navbar"><span class="side"></span><span class="title">Follow-up to Priya</span><span class="side">Done</span></div>
+        <div class="screen">
+          <div class="seclabel">Subject</div>
+          <div style="margin-bottom:8px">Good luck in Chicago!</div>
+          <div class="seclabel">Email</div>
+          <div style="line-height:1.5">Hi Priya, I hope training is going well — good luck at the Chicago half marathon! Let me know how it goes.</div>
+          <div style="flex:1"></div>
+          <div class="cta">Copy email</div>
+          <div style="text-align:center;color:var(--moss);margin-top:10px;font-weight:600">Write another</div>
+        </div>
+      </div></div>
+      <p class="cap">예시(QA에서 보고된 유형): 이미 지난 마라톤(Oct 12)에 행운을 빌고, 최신 소식(Figma·브루클린)은 빠졌어요. 무엇으로 썼는지도, 고칠 방법도 "Write another"뿐.</p>
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>What changes</h2>
+  <div class="tw"><table>
+    <tr><th></th><th>Before (build 5)</th><th>After</th></tr>
+    <tr><td>Entry</td><td>Draft a follow-up</td><td><b>Write to Priya</b> → Reply or Reach out</td></tr>
+    <tr><td>Answering a message</td><td>Not possible</td><td>Paste it, or a screenshot (checked first) — never kept</td></tr>
+    <tr><td>What it's written from</td><td>Newest 6 notes, equal weight</td><td>Newest note leads, up to 3 from the year before; past plans asked about; over 90 days isn't news</td></tr>
+    <tr><td>Your say</td><td>None</td><td>Tone + your own words + quick-start chips</td></tr>
+    <tr><td>When it writes</td><td>The moment the sheet opens</td><td>Only when you tap Write it</td></tr>
+    <tr><td>Fixing it</td><td>Write another (starts over)</td><td>Refine chips or your own words, up to 10, every version kept; edit by hand</td></tr>
+    <tr><td>Knowing what happened</td><td>Nothing</td><td>"What Andy did" line + "Written from…" line</td></tr>
+  </table></div>
+  <p class="who" style="margin-top:8px">Strips 1–7 below are the new flow.</p>
+</section>
+
+<section class="opt">
+  <h2><span class="k">1</span>Door</h2>
+  <p class="who"><code>follow-up-button</code> opens a choice between <code>write-door-reply</code> and <code>write-door-reach-out</code>.</p>
+  <div class="strip">
+
+    <div class="frame"><span class="num">1.1 · profile</span>
+      <div class="phone"><div class="s">
+        <div class="screen" style="padding-top:20px">
+          <div class="navbar" style="padding:0"><span></span><span class="title" style="font-family:var(--serif);font-size:19px;font-weight:500">Priya</span><span></span></div>
+          <div class="seclabel">Notes</div>
+          <div class="listgroup">
+            <div class="listrow"><div class="tx"><div class="l1">Oct 18</div><div class="l2">starting at Figma on Nov 3, moving to Brooklyn</div></div></div>
+            <div class="listrow"><div class="tx"><div class="l1">Sep 2</div><div class="l2">training for the Chicago half marathon Oct 12</div></div></div>
+          </div>
+          <div style="flex:1"></div>
+          <div class="cta tap">Write to Priya</div>
+        </div>
+      </div></div>
+      <p class="cap"><code>follow-up-button</code>. 추천 이름 "Write to Priya" (Open call 1) — 보내는 것처럼 들리지 않고 두 문 모두를 가림.</p>
+    </div>
+
+    <div class="frame"><span class="num">1.2 · door</span>
+      <div class="phone"><div class="s">
+        <div class="grabber"></div>
+        <div class="navbar"><span class="side">Cancel</span><span class="title">Write to Priya</span><span class="side"></span></div>
+        <div class="screen">
+          <div class="listgroup" style="margin-top:8px">
+            <div class="listrow tap" style="padding:16px 2px"><div class="tx"><div class="l1" style="font-size:14px">Reply</div><div class="l2">Answer a message Priya sent you</div></div><span class="chev">›</span></div>
+            <div class="listrow" style="padding:16px 2px"><div class="tx"><div class="l1" style="font-size:14px">Reach out</div><div class="l2">Start a new message to Priya</div></div><span class="chev">›</span></div>
+          </div>
+        </div>
+      </div></div>
+      <p class="cap">그루버 + 네비게이션 바(Cancel) — 상자 대신 구분선 하나로 두 줄만. 아직 호출 없음.</p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================= STRIP 2: REPLY BY PASTE ============================= -->
+<section class="opt">
+  <h2><span class="k">2</span>Reply, by paste</h2>
+  <p class="who">빈 화면은 한 가지만 보여주고(패턴 2), 메시지가 생기면 그 아래로 말투·할 말·노트가 순서대로 나타나요(패턴 1, 3, 4).</p>
+  <div class="strip">
+
+    <div class="frame"><span class="num">2.1 · empty</span>
+      <div class="phone"><div class="s">
+        <div class="grabber"></div>
+        <div class="navbar"><span class="back">‹</span><span class="title">Reply to Priya</span><span class="side">Done</span></div>
+        <div class="screen">
+          <div class="listgroup" style="margin-top:4px">
+            <div class="listrow tap"><span class="ic">⧉</span><div class="tx"><div class="l1">Paste what they sent</div></div></div>
+            <div class="listrow"><span class="ic">▭</span><div class="tx"><div class="l1">Use a screenshot</div></div></div>
+          </div>
+          <div class="disclosure">Andy sends this to Anthropic to write your reply, and doesn't keep it.</div>
+          <div style="flex:1"></div>
+        </div>
+      </div></div>
+      <p class="cap">패턴 2 그대로: 빈 화면엔 이 둘과 안내문뿐. 말투·할 말·노트는 메시지가 생긴 뒤에만 나타나요 — 전의 "poor" 평가를 받은 화면.</p>
+    </div>
+
+    <div class="frame"><span class="num">2.2 · pasted</span>
+      <div class="phone"><div class="s">
+        <div class="grabber"></div>
+        <div class="navbar"><span class="back">‹</span><span class="title">Reply to Priya</span><span class="side">Done</span></div>
+        <div class="screen">
+          <div class="seclabel">Their message</div>
+          <div class="quoted tap"><div class="who">Priya Shah<span class="rm">×</span></div><div class="txt">Hey! We're finally having people over to see the new place — Sat Nov 8, from 7pm. No gifts, just bring yourself!</div></div>
+          <div class="disclosure">Andy sends this to Anthropic to write your reply, and doesn't keep it.</div>
+          <div class="chiprow"><span class="chip on">Decline warmly</span><span class="chip">Say yes</span><span class="chip">Suggest another time</span><span class="chip">Thank them</span></div>
+          <div class="sayfield">I want to decline warmly, but suggest coffee in December</div>
+          <div class="seclabel">Tone</div>
+          <div class="tonerow"><span class="tonepill on">Friendly</span><span class="tonepill">Professional</span><span class="tonepill">Brief</span></div>
+          <div class="noteschip"><span>Your notes about Priya</span><span class="x">×</span></div>
+          <div style="flex:1"></div>
+          <div class="cta tap">Write it</div>
+        </div>
+      </div></div>
+      <p class="cap">패턴 1(메시지가 맨 위, 접힌 카드) + 패턴 3(의도 칩이 메시지 바로 아래, Grammarly의 "ways to reply") + 패턴 4(말투 세 개, Apple). <code>reply-notes-chip</code>은 기본 켜짐.</p>
+    </div>
+
+    <div class="frame"><span class="num">2.3 · draft</span>
+      <div class="phone"><div class="s">
+        <div class="grabber"></div>
+        <div class="navbar"><span class="back">‹</span><span class="title">Reply to Priya</span><span class="side">Done</span></div>
+        <div class="screen">
+          <div class="quoted" style="opacity:.75"><div class="who">Priya Shah</div><div class="txt" style="font-size:10.6px">Hey! We're finally having people over…</div></div>
+          <div class="draftbody">Hi Priya, thank you so much for thinking of me — I'm so sorry, I won't be able to make it on the 8th. Would you be up for coffee sometime in December instead?</div>
+          <div class="edithint">Tap to edit</div>
+          <div class="vstep">1 of 1</div>
+          <div class="intentline">Declined warmly, and suggested coffee in December.</div>
+          <div class="srcline">Written from their message, with your notes in mind.</div>
+          <div class="copybtn tap">Copy message</div>
+          <div class="chiprow"><span class="chip">Shorter</span><span class="chip">Warmer</span><span class="chip">More formal</span><span class="chip">Less pushy</span><span class="chip">Add a question</span></div>
+          <div class="sayfield ph">Tell Andy what to change</div>
+        </div>
+      </div></div>
+      <p class="cap">패턴 7(한 초안, 그 자리에서 교체) + 패턴 9(복사가 가장 눈에 띄는 동작, 가장 크고 진한 버튼). 커피 제안은 노트가 아니라 지시에서 왔으니 sources line은 "with your notes in mind" — 패턴 10을 뒤집어, 보낸 것을 말함. 초안 글은 어디서나 직접 고칠 수 있지만, "Tap to edit"는 처음 나오는 이 초안에서만 알려줘요.</p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================= STRIP 3: REPLY BY SCREENSHOT ============================= -->
+<section class="opt">
+  <h2><span class="k">3</span>Reply, by screenshot</h2>
+  <p class="who">읽기 전에 확인하는 화면이 깨끗한 대화처럼 보이게(요청대로) — Them은 왼쪽, You는 오른쪽, 이름을 눌러 바꿔요.</p>
+  <div class="strip">
+
+    <div class="frame"><span class="num">3.1 · picker</span>
+      <div class="phone"><div class="s">
+        <div class="screen" style="padding-top:16px">
+          <div class="systop"><span>Cancel</span><span class="ttl">Recents</span><span></span></div>
+          <div class="syspicker"><div class="ph sel"></div><div class="ph"></div><div class="ph"></div><div class="ph"></div><div class="ph"></div><div class="ph"></div><div class="ph"></div><div class="ph"></div><div class="ph"></div></div>
+        </div>
+      </div></div>
+      <p class="cap">iOS의 자체 사진 선택기 — 사진 보관함 권한을 묻지 않고, 한 장만.</p>
+    </div>
+
+    <div class="frame"><span class="num">3.2 · reading</span>
+      <div class="phone"><div class="s">
+        <div class="grabber"></div>
+        <div class="navbar"><span class="back">‹</span><span class="title">Reply to Priya</span><span class="side">Done</span></div>
+        <div class="screen center">
+          <div class="capline" style="text-align:center;font-style:italic;opacity:.68">Reading…</div>
+        </div>
+      </div></div>
+      <p class="cap">첫 번째 호출(~0.5¢) — 이미지를 읽어 줄로 바꿔요. 이미지는 읽은 뒤 바로 삭제.</p>
+    </div>
+
+    <div class="frame"><span class="num">3.3 · check</span>
+      <div class="phone"><div class="s">
+        <div class="grabber"></div>
+        <div class="navbar"><span class="back">‹</span><span class="title">Check who said what</span><span class="side"></span></div>
+        <div class="screen">
+          <div class="capline">Check who said what. Tap a name to switch it.</div>
+          <div class="thread">
+            <div class="tline them"><div class="sp tap">Priya ▾</div><div class="txt">We're finally having people over to see the new place — Sat Nov 8, from 7pm!</div></div>
+            <div class="tline you"><div class="sp">You ▾</div><div class="txt">That sounds amazing, I'll definitely try to make it!</div></div>
+            <div class="tline them"><div class="sp">Priya ▾</div><div class="txt">Let me know either way, no pressure!</div></div>
+          </div>
+          <div style="flex:1"></div>
+          <div class="cta tap">Use this</div>
+        </div>
+      </div></div>
+      <p class="cap"><code>reply-screenshot-check</code>, 메시지 앱처럼: Them은 왼쪽, You는 오른쪽. 가운데 줄은 사용자의 예전 답장 — 대화를 이어가는 방법. 이름(▾)을 누르면 바뀌고, 각 줄은 지우거나 고칠 수 있어요.</p>
+    </div>
+
+    <div class="frame"><span class="num">3.4 · compose</span>
+      <div class="phone"><div class="s">
+        <div class="grabber"></div>
+        <div class="navbar"><span class="back">‹</span><span class="title">Reply to Priya</span><span class="side">Done</span></div>
+        <div class="screen">
+          <div class="seclabel">Their message</div>
+          <div class="quoted tap"><div class="who">Priya · You · Priya<span class="rm">⟲</span></div><div class="txt" style="font-size:10.6px">3 lines, checked</div></div>
+          <div class="disclosure">Andy sends this to Anthropic to write your reply, and doesn't keep it.</div>
+          <div class="chiprow"><span class="chip on">Decline warmly</span><span class="chip">Say yes</span><span class="chip">Suggest another time</span><span class="chip">Thank them</span></div>
+          <div class="sayfield">I want to decline warmly, but suggest coffee in December</div>
+          <div class="seclabel">Tone</div>
+          <div class="tonerow"><span class="tonepill on">Friendly</span><span class="tonepill">Professional</span><span class="tonepill">Brief</span></div>
+          <div class="noteschip"><span>Your notes about Priya</span><span class="x">×</span></div>
+          <div style="flex:1"></div>
+          <div class="cta tap">Write it</div>
+        </div>
+      </div></div>
+      <p class="cap">"Use this" 다음은 2.2(pasted)와 똑같은 모양 — 확인한 스레드가 접힌 인용 블록으로 맨 위에 남고(다시 누르면 check 화면으로), 그 아래로 disclosure·의도 칩·할 말·말투·notes chip·Write it이 그대로.</p>
+    </div>
+
+    <div class="frame"><span class="num">3.5 · draft</span>
+      <div class="phone"><div class="s">
+        <div class="grabber"></div>
+        <div class="navbar"><span class="back">‹</span><span class="title">Reply to Priya</span><span class="side">Done</span></div>
+        <div class="screen">
+          <div class="quoted" style="opacity:.75"><div class="who">Priya · You · Priya</div><div class="txt" style="font-size:10.6px">3 lines, checked</div></div>
+          <div class="draftbody">Hi Priya, I'm so sorry — I know I said I'd try to make it, but I don't think I'll be able to after all. I hope the move to Brooklyn and the new job at Figma are both treating you well! Would you be up for coffee sometime in December instead?</div>
+          <div class="vstep">1 of 1</div>
+          <div class="intentline">Declined, owned the earlier "I'll try", and suggested coffee in December.</div>
+          <div class="srcline">Written from their message and your note of Oct 18.</div>
+          <div class="copybtn tap">Copy message</div>
+          <div class="chiprow"><span class="chip">Shorter</span><span class="chip">Warmer</span><span class="chip">More formal</span><span class="chip">Less pushy</span><span class="chip">Add a question</span></div>
+          <div class="sayfield ph">Tell Andy what to change</div>
+        </div>
+      </div></div>
+      <p class="cap">2.3(draft)와 똑같은 모양 — 초안, 버전 단계, sources line, 가장 눈에 띄는 Copy, refine 칩, "Tell Andy what to change" 입력칸까지 전부. 사용자 자신의 예전 말("I'll try to make it")은 자유롭게 참조해요 — 제3자가 아니라 보내는 사람 자신의 말이라서. 브루클린/Figma는 Oct 18 노트를 실제로 썼으니 sources line에 그대로.</p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================= STRIP 4: REACH OUT ============================= -->
+<section class="opt">
+  <h2><span class="k">4</span>Reach out</h2>
+  <p class="who">같은 구성 레이아웃을 그대로 — 메시지 자리에 "What you know about Priya"가 와요.</p>
+  <div class="strip">
+
+    <div class="frame"><span class="num">4.1 · compose</span>
+      <div class="phone"><div class="s">
+        <div class="grabber"></div>
+        <div class="navbar"><span class="back">‹</span><span class="title">Reach out to Priya</span><span class="side">Done</span></div>
+        <div class="screen">
+          <div class="seclabel">What you know about Priya</div>
+          <div class="notelist">
+            <div class="noterow"><span class="chk">✓</span><div><div class="d">Oct 18</div><div class="t">starting at Figma on Nov 3, moving to Brooklyn</div></div></div>
+            <div class="noterow"><span class="chk off">○</span><div><div class="d">Sep 2</div><div class="t">training for the Chicago half marathon Oct 12</div></div></div>
+          </div>
+          <div class="chiprow"><span class="chip">Check in</span><span class="chip">Congratulate</span><span class="chip">Follow up on our plan</span></div>
+          <div class="sayfield tap">check in if she's free this weekend. concise, warm, not burdening</div>
+          <div class="seclabel">Tone</div>
+          <div class="tonerow"><span class="tonepill on">Friendly</span><span class="tonepill">Professional</span><span class="tonepill">Brief</span></div>
+          <div style="flex:1"></div>
+          <div class="cta tap">Write it</div>
+        </div>
+      </div></div>
+      <p class="cap">Reply와 같은 레이아웃 — 메시지 자리에 "What you know about Priya"(최신 먼저, 고를 수 있음). Reach out만의 의도 칩(Check in · Congratulate · Follow up on our plan)이 할 말 칸 위에. 지시 없이 기본값만으로도 Write it은 바로 눌려요 — 여기선 브리프의 예시 지시를 채워 보여줘요.</p>
+    </div>
+
+    <div class="frame"><span class="num">4.2 · draft</span>
+      <div class="phone"><div class="s">
+        <div class="grabber"></div>
+        <div class="navbar"><span class="back">‹</span><span class="title">Reach out to Priya</span><span class="side">Done</span></div>
+        <div class="screen">
+          <div class="noteschip" style="opacity:.75"><span>Oct 18 note</span></div>
+          <div class="draftbody">Hi Priya — just checking in, are you free this weekend? No worries at all if not!</div>
+          <div class="vstep">1 of 1</div>
+          <div class="intentline">Asked if she's free this weekend, kept it light.</div>
+          <div class="srcline">Written from what you asked for.</div>
+          <div class="copybtn tap">Copy message</div>
+          <div class="chiprow"><span class="chip">Shorter</span><span class="chip">Warmer</span><span class="chip">More formal</span><span class="chip">Less pushy</span><span class="chip">Add a question</span></div>
+          <div class="sayfield ph">Tell Andy what to change</div>
+        </div>
+      </div></div>
+      <p class="cap">2.3(draft)와 똑같은 모양 — 초안, 버전 단계, sources line, 가장 눈에 띄는 Copy, refine 칩, "Tell Andy what to change" 입력칸까지. 만족할 때까지 Reply와 똑같이 다듬을 수 있어요.</p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================= STRIP 5: REFINE (SHARED) ============================= -->
+<section class="opt">
+  <h2><span class="k">5</span>After any draft: refine until it's right</h2>
+  <p class="who">Reply by paste(2.3)든, Reply by screenshot(3.5)든, Reach out(4.2)든 — 초안이 생긴 뒤는 모두 이 한 가지 흐름이에요. Strip 2의 v1(거절+12월 커피)에서 이어서, 칩 → 자유 입력 → 손으로 직접 고치기 → 버전 넘기기 → 10번 한도 → 복사까지 차례로 보여요.</p>
+  <div class="strip">
+
+    <div class="frame"><span class="num">5.1 · refine chip</span>
+      <div class="phone"><div class="s">
+        <div class="grabber"></div>
+        <div class="navbar"><span class="back">‹</span><span class="title">Reply to Priya</span><span class="side">Done</span></div>
+        <div class="screen">
+          <div class="draftbody">Hi Priya, thank you so much for thinking of me — I'm so sorry I can't make it on the 8th! Would coffee sometime in December work instead?</div>
+          <div class="vstep">2 of 2</div>
+          <div class="intentline">Made it warmer.</div>
+          <div class="srcline">Written from their message, with your notes in mind.</div>
+          <div class="copybtn">Copy message</div>
+          <div class="chiprow"><span class="chip">Shorter</span><span class="chip on tap">Warmer</span><span class="chip">More formal</span><span class="chip">Less pushy</span><span class="chip">Add a question</span></div>
+          <div class="sayfield ph">Tell Andy what to change</div>
+        </div>
+      </div></div>
+      <p class="cap">"Warmer"(<code>refine-chip</code>) 한 번 눌러 v2 — 한 번의 호출. 드래프트 전에 손으로 고친 내용이 있으면 다음 refine에 그대로 반영돼요.</p>
+    </div>
+
+    <div class="frame"><span class="num">5.2 · free text</span>
+      <div class="phone"><div class="s">
+        <div class="grabber"></div>
+        <div class="navbar"><span class="back">‹</span><span class="title">Reply to Priya</span><span class="side">Done</span></div>
+        <div class="screen">
+          <div class="draftbody" style="opacity:.6">Hi Priya, thank you so much for thinking of me…</div>
+          <div style="flex:1"></div>
+          <div class="chiprow"><span class="chip">Shorter</span><span class="chip">More formal</span><span class="chip">Less pushy</span><span class="chip">Add a question</span></div>
+          <div class="sayfield tap">mention how much I love the new place from the photos</div>
+          <div class="cta tap">Rewrite</div>
+        </div>
+      </div></div>
+      <p class="cap"><code>refine-field</code>는 칩과 같은 그룹에, 다른 화면이 아니라(패턴 5, Apple의 "Describe your change"). v3로.</p>
+    </div>
+
+    <div class="frame"><span class="num">5.3 · edit by hand</span>
+      <div class="phone"><div class="s">
+        <div class="grabber"></div>
+        <div class="navbar"><span class="back">‹</span><span class="title">Reply to Priya</span><span class="side">Done</span></div>
+        <div class="screen">
+          <div class="draftbody">Hi Priya, thank you so much for thinking of me — I'm so sorry I can't make it on the 8th! Would coffee <span class="editedword">one morning</span> in December<span class="caret"></span> work instead?</div>
+          <div class="vstep" style="opacity:.35">2 of 2</div>
+          <div class="srcline" style="opacity:.4">Written from their message, with your notes in mind.</div>
+          <div class="copybtn" style="opacity:.45">Copy message</div>
+          <div class="keyboard">
+            <div class="krow"><div class="k"></div><div class="k"></div><div class="k"></div><div class="k"></div><div class="k"></div><div class="k"></div><div class="k"></div></div>
+            <div class="krow"><div class="k"></div><div class="k"></div><div class="k"></div><div class="k"></div><div class="k"></div><div class="k"></div></div>
+            <div class="krow"><div class="k wide"></div><div class="k"></div><div class="k"></div><div class="k wide"></div></div>
+          </div>
+        </div>
+      </div></div>
+      <p class="cap">초안 글은 어디서든 직접 고칠 수 있어요 — "sometime" 대신 "one morning"으로. 손으로 고친 내용은 다음 refine에 그대로 반영되고(§2.5), 아직 저장 안 된 고침이 있는 채로 다른 칩·말투·노트를 누르면 <code>draft-replace-alert</code>가 먼저 물어 지켜줘요.</p>
+    </div>
+
+    <div class="frame"><span class="num">5.4 · 2 of 3</span>
+      <div class="phone"><div class="s">
+        <div class="grabber"></div>
+        <div class="navbar"><span class="back">‹</span><span class="title">Reply to Priya</span><span class="side">Done</span></div>
+        <div class="screen">
+          <div class="draftbody">Hi Priya, thank you so much for thinking of me — I'm so sorry I can't make it on the 8th! Would coffee sometime in December work instead?</div>
+          <div class="vstep"><span class="ar tap">‹</span>&nbsp; 2 of 3 &nbsp;<span class="ar">›</span></div>
+          <div class="intentline">Made it warmer.</div>
+          <div class="srcline">Written from their message, with your notes in mind.</div>
+          <div class="copybtn">Copy message</div>
+          <div class="chiprow"><span class="chip">Shorter</span><span class="chip">Warmer</span><span class="chip">More formal</span><span class="chip">Less pushy</span><span class="chip">Add a question</span></div>
+        </div>
+      </div></div>
+      <p class="cap"><code>draft-version-stepper</code> — v3로 간 뒤 v2로 한 걸음 돌아옴. Gmail의 Recreate처럼 지우는 게 아니라, Apple의 화살표처럼 그 자리에서 오가요(패턴 6).</p>
+    </div>
+
+    <div class="frame"><span class="num">5.5 · refine cap</span>
+      <div class="phone"><div class="s">
+        <div class="grabber"></div>
+        <div class="navbar"><span class="back">‹</span><span class="title">Reply to Priya</span><span class="side">Done</span></div>
+        <div class="screen">
+          <div class="draftbody">Hi Priya, so sorry I can't make it on the 8th — would December coffee work instead?</div>
+          <div class="vstep">10 of 10</div>
+          <div class="intentline">Made it shorter.</div>
+          <div class="srcline">Written from their message, with your notes in mind.</div>
+          <div class="copybtn">Copy message</div>
+          <div class="capline">That's 10 changes. <b style="color:var(--moss)">Start over</b> to keep refining. Your versions stay here.</div>
+        </div>
+      </div></div>
+      <p class="cap"><code>draft-refine-cap-line</code>이 칩과 입력칸 자리를 대신해요 — Copy는 그대로 남음. Start over는 Strip 2의 화면으로, 입력은 그대로 채워진 채.</p>
+    </div>
+
+    <div class="frame"><span class="num">5.6 · copied</span>
+      <div class="phone"><div class="s">
+        <div class="grabber"></div>
+        <div class="navbar"><span class="back">‹</span><span class="title">Reply to Priya</span><span class="side">Done</span></div>
+        <div class="screen">
+          <div class="draftbody">Hi Priya, thank you so much for thinking of me — I'm so sorry I can't make it on the 8th! Would coffee sometime in December work instead?</div>
+          <div class="vstep">2 of 3</div>
+          <div class="intentline">Made it warmer.</div>
+          <div class="srcline">Written from their message, with your notes in mind.</div>
+          <div class="copybtn tap">Copy message</div>
+          <div class="copiedline">Message copied</div>
+          <div class="footnote">Nothing is sent by Andy. Copy this into whatever you use.</div>
+        </div>
+      </div></div>
+      <p class="cap">패턴 9 — 가장 눈에 띄는 한 가지 동작(Gmail의 Insert, Apple의 Done과 같은 자리), 복사·보내기가 아니라 언제나 Copy(약속 2).</p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================= STRIP 6: PRIVACY MOMENT ============================= -->
+<section class="opt">
+  <h2><span class="k">6</span>Privacy moment</h2>
+  <p class="who">실제로 쓰이는 <code>ai-permission-sheet</code>와, 아직 리뷰 대기 중인 넓힌 첫 줄.</p>
+  <div class="strip">
+
+    <div class="frame"><span class="num">6.1 · real sheet</span>
+      <div class="phone"><div class="s">
+        <div class="screen" style="justify-content:flex-end;padding:0"></div>
+        <div style="background:var(--paper);border-top-left-radius:20px;border-top-right-radius:20px;box-shadow:0 -6px 18px rgba(0,0,0,.08)">
+          <div class="grabber"></div>
+          <div class="permsheet">
+            <h3>Let Andy read your notes?</h3>
+            <div class="permrow2"><div class="dot"></div><div><b>Reads what you write</b><div class="d">Pulls out who it's about and what to remember, and finds it again when you ask.</div></div></div>
+            <div class="permrow2"><div class="dot"></div><div><b>Anthropic and OpenAI</b><div class="d">Read it only to do this for you. They don't train on it, and delete it within 30 days.</div></div></div>
+            <div class="permrow2"><div class="dot"></div><div><b>Stays yours</b><div class="d">Calendar names never leave this phone. Andy never sends anything to the people you write about.</div></div></div>
+            <div class="permbtn">Allow</div>
+            <div class="permnot">Not now</div>
+          </div>
+          <div class="homeind"></div>
+        </div>
+      </div></div>
+      <p class="cap">오늘 실제로 쓰이는 문구 — 아직 붙여넣기나 스크린샷을 언급하지 않아요. Privacy policy 줄은 여기 없음(Settings에 항상 있음, App Review 5.1.1(i)).</p>
+    </div>
+
+    <div class="frame narrow"><span class="num">6.2 · proposed</span>
+      <div class="phone short"><div class="s">
+        <div class="screen" style="padding-top:20px">
+          <div class="proposed"><span class="tag">PROPOSED — §2.7, app-store-reviewer decides</span>
+          Row 1 widens to: "Pulls out who it's about and what to remember, finds it again when you ask, <b>and reads a message you paste or a screenshot you choose, to help you reply.</b>"</div>
+        </div>
+      </div></div>
+      <p class="cap">§5 복사표. 이미 허락한 사람에게 다시 물을지는 리뷰어의 판단(App Review 5.1.2(i)).</p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================= STRIP 7: EDGE CASES ============================= -->
+<section class="opt">
+  <h2><span class="k">7</span>Edge cases</h2>
+  <p class="who">노트 끄기, 주제 밖 질문, 한국어 초안.</p>
+  <div class="strip">
+
+    <div class="frame"><span class="num">7.1 · notes off</span>
+      <div class="phone"><div class="s">
+        <div class="grabber"></div>
+        <div class="navbar"><span class="back">‹</span><span class="title">Reply to Priya</span><span class="side">Done</span></div>
+        <div class="screen">
+          <div class="quoted" style="opacity:.75"><div class="who">Priya Shah</div><div class="txt" style="font-size:10.6px">Hey! We're finally having people over…</div></div>
+          <div class="noteschip off tap"><span>Notes off for this reply</span></div>
+          <div class="draftbody">Hi Priya, thank you so much for thinking of me — I'm so sorry, I won't be able to make it on the 8th.</div>
+          <div class="vstep">1 of 1</div>
+          <div class="intentline">Declined warmly.</div>
+          <div class="srcline">Written from their message only.</div>
+          <div class="copybtn">Copy message</div>
+        </div>
+      </div></div>
+      <p class="cap"><code>reply-notes-chip</code>를 꺼서(이 세션만) 노트를 전혀 보내지 않아요 — <code>draft-sources-line</code>이 정확히 그렇게 말해요.</p>
+    </div>
+
+    <div class="frame"><span class="num">7.2 · off-topic</span>
+      <div class="phone"><div class="s">
+        <div class="grabber"></div>
+        <div class="navbar"><span class="back">‹</span><span class="title">Reply to Priya</span><span class="side">Done</span></div>
+        <div class="screen">
+          <div class="draftbody" style="opacity:.6">Hi Priya, thank you so much for thinking of me…</div>
+          <div class="offtopic">Andy only writes the message here. To look something up about Priya, use Advanced search.</div>
+          <div style="flex:1"></div>
+          <div class="sayfield tap">what did she say about her new job</div>
+          <div class="cta off">Rewrite</div>
+        </div>
+      </div></div>
+      <p class="cap">질문이지 지시가 아니라서 초안은 그대로예요 — rule 0: 지시 블록만 보내는 사람의 말.</p>
+    </div>
+
+    <div class="frame"><span class="num">7.3 · 존댓말</span>
+      <div class="phone"><div class="s">
+        <div class="grabber"></div>
+        <div class="navbar"><span class="back">‹</span><span class="title">Reply to 수진</span><span class="side">Done</span></div>
+        <div class="screen">
+          <div class="quoted" style="opacity:.75"><div class="who">수진</div><div class="txt" style="font-size:10.6px">저희 드디어 집들이해요! 11/8 토요일 저녁 7시…</div></div>
+          <div class="draftbody">수진님, 초대해주셔서 정말 감사해요! 그날은 아쉽게 어려울 것 같아요. 혹시 12월에 커피 한잔 어떠세요?</div>
+          <div class="vstep">1 of 1</div>
+          <div class="intentline">Declined warmly, and suggested coffee in December.</div>
+          <div class="srcline">Written from their message, with your notes in mind.</div>
+          <div class="copybtn">Copy message</div>
+        </div>
+      </div></div>
+      <p class="cap">화면 글자(제목·칩·sources line)는 영어 그대로 — 초안만 한국어, 항상 존댓말과 이름+님. 영어엔 반말 선택이 없으니 여기도 묻지 않아요(§2.8).</p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================= PATTERNS USED ============================= -->
+<section class="panel">
+  <h2>Patterns used</h2>
+  <div class="tw"><table>
+    <tr><th>Screen</th><th>Adopted</th><th>Avoided</th></tr>
+    <tr><td>Door</td><td>—</td><td>2 (nothing is written before a door is picked, let alone a draft)</td></tr>
+    <tr><td>Reply, empty</td><td>2 — one thing only, before there's a message</td><td>1 (nothing precomputed), 5 (no sparkle, no glow)</td></tr>
+    <tr><td>Reply, pasted (compose)</td><td>1 (message at top, collapsed) · 3 (quick starts directly under it) · 4 (tone, one tap, three named options)</td><td>2 (the entry controls are "Paste"/"Use a screenshot", never "Send")</td></tr>
+    <tr><td>Reply by screenshot</td><td>1, 7 on the check screen (the thread leads, one thread in view) — then the same compose as "Reply, pasted" (1, 3, 4) once "Use this" returns to it</td><td>3 (no voice learned from sent mail — the thread is this reply only, nothing stored)</td></tr>
+    <tr><td>Reach out (compose)</td><td>1 ("What you know about Priya" stands in for the message) · 3 (its own quick starts: Check in · Congratulate · Follow up on our plan) · 4 (tone)</td><td>3 (register comes from tone + the user's own instruction, never an inbox)</td></tr>
+    <tr><td>Refine, after any of the three</td><td>5 (free text beside the chips) · 6 (step in place, never lose one) · 7 (one draft, replaced in place) · 8 (edit it directly, shown as its own frame with the keyboard up) · 9 (Copy, the one plain final action)</td><td>4 (no dropped versions, no rating buttons)</td></tr>
+    <tr><td>Privacy sheet</td><td>10, mirrored — says what Andy is about to read, the same honesty <code>draft-sources-line</code> gives in reverse</td><td>5 (plain dots, no AI iconography; SF Symbols only in the real app)</td></tr>
+    <tr><td>Edge cases</td><td>10 — the sources line never claims more than was actually used or sent</td><td>2 (Copy, never Send, even with notes off or a screenshot thread)</td></tr>
+  </table></div>
+</section>
+
+</div>
