@@ -3,9 +3,11 @@ import {
   candidatesForSpokenName,
   compareNamesForList,
   givenName,
+  nameUpdateFor,
   listLetterOf,
   namesOf,
   namesOverlap,
+  withNameUpdate,
 } from "./naming";
 
 // ---------------------------------------------------------------------------
@@ -229,4 +231,43 @@ test("should put a full name in the exact tier for its first name", () => {
     "Barbara",
     "Barbara Apple",
   ]);
+});
+
+// ---------------------------------------------------------------------------
+// B5-8 part 2 — what a note can teach Andy about a name
+// ---------------------------------------------------------------------------
+
+test("should offer a rename only for a longer form of the name she is filed under", () => {
+  expect(nameUpdateFor({ name: "Barbara" }, "Barbara Apple")).toBe("rename");
+  // A shorter or sideways form is another name, not her real one.
+  expect(nameUpdateFor({ name: "Barbara Apple Smith" }, "Barbara Apple")).toBe("alias");
+  expect(nameUpdateFor({ name: "Maisie H" }, "Maisie Park")).toBe("alias");
+});
+
+test("should offer nothing for a name she already answers to, however it got there", () => {
+  expect(nameUpdateFor({ name: "Barbara Apple" }, "barbara apple")).toBeNull();
+  // Her derived first name.
+  expect(nameUpdateFor({ name: "Barbara Apple" }, "Barbara")).toBeNull();
+  // An alias typed by hand.
+  expect(nameUpdateFor({ name: "Barbara Apple", aliases: ["Babs"] }, " babs ")).toBeNull();
+  expect(nameUpdateFor({ name: "Barbara" }, "  ")).toBeNull();
+});
+
+test("should keep the old name on a rename unless her new name already answers to it", () => {
+  // "Barbara" is covered by the derived first name of "Barbara Apple".
+  expect(withNameUpdate({ name: "Barbara", aliases: ["Babs"] }, "Barbara Apple", "rename")).toEqual({
+    name: "Barbara Apple",
+    aliases: ["Babs"],
+  });
+  // "Dr Kim" has no first name to derive, so the old name stays as an alias.
+  expect(withNameUpdate({ name: "Dr Kim" }, "Dr Kim Minho", "rename")).toEqual({
+    name: "Dr Kim Minho",
+    aliases: ["Dr Kim"],
+  });
+});
+
+test("should add another name without touching the one she is filed under", () => {
+  expect(
+    withNameUpdate({ name: "Barbara Apple Smith", aliases: ["Babs"] }, " Barbara Apple ", "alias"),
+  ).toEqual({ name: "Barbara Apple Smith", aliases: ["Babs", "Barbara Apple"] });
 });

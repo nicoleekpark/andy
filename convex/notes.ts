@@ -3,13 +3,21 @@ import { internal } from "./_generated/api";
 import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { removeOrphanedAutoCreated } from "./cleanup";
-import { candidatesForSpokenName, matchKey, mergeTags } from "./naming";
+import {
+  candidatesForSpokenName,
+  MAX_ALIASES,
+  matchKey,
+  mergeTags,
+  nameUpdateFor,
+  withNameUpdate,
+} from "./naming";
 import { nameToFileUnder, possessiveBases } from "./possessive";
 import { withoutEmbedding } from "./offlineViews";
 import schema from "./schema";
 import { getAuthenticatedUser } from "./users";
 import {
   MAX_DRAFT_CHARS,
+  MAX_NAME_CHARS,
   MAX_TRANSCRIPT_CHARS,
   draftValidator,
 } from "./extractionPrompt";
@@ -102,6 +110,14 @@ export const saveCapture = mutation({
      * is in the past and recent — see `noteDate`.
      */
     keptAt: v.optional(v.number()),
+    /**
+     * The person ticked "Update {name}'s name" (or "Add … as another name")
+     * on review (device QA B5-8, part 2). Only the *kind* of change travels:
+     * what to change it to is the subject's name as written, and whether that
+     * change is still the one on offer is re-derived here by `nameUpdateFor`,
+     * the function that made the offer — so the screen can only say yes to it.
+     */
+    nameChange: v.optional(v.union(v.literal("rename"), v.literal("alias"))),
   },
   returns: v.object({
     profileId: v.id("profiles"),
@@ -347,6 +363,39 @@ export const saveCapture = mutation({
       const merged = mergeTags(existing.tags, primary.tags);
       if (merged.length !== existing.tags.length) {
         patch.tags = merged;
+      }
+
+      if (args.nameChange !== undefined) {
+        // Offered only for a person the name itself reached — never through a
+        // possessive guess — so the same holds here.
+        const spoken = nameToFileUnder(primaryName);
+        const update = byName(primaryName).some((one) => one._id === existing._id)
+          ? nameUpdateFor(existing, spoken)
+          : null;
+        // `null` means there is nothing left to change — she answers to the
+        // name already — so the tick is already true and there is nothing to
+        // refuse. A *different* change than the one ticked is a stale screen.
+        if (update !== null) {
+          if (update !== args.nameChange) {
+            throw new ConvexError(
+              "Andy couldn't update that name. Look at it again and save.",
+            );
+          }
+          const next = withNameUpdate(existing, spoken, update);
+          if (
+            next.name.length > MAX_NAME_CHARS ||
+            next.aliases.some((alias) => alias.length > MAX_NAME_CHARS)
+          ) {
+            throw new ConvexError("That name is longer than Andy can store.");
+          }
+          if (next.aliases.length > MAX_ALIASES) {
+            throw new ConvexError(
+              "That is more names than Andy can keep for one person.",
+            );
+          }
+          patch.name = next.name;
+          patch.aliases = next.aliases;
+        }
       }
 
       if (Object.keys(patch).length > 0) {

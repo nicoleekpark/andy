@@ -257,6 +257,7 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `remember-blocked-reason` | 왜 저장 못 하는지 한 줄 |
 | `discard-button` | Discard and start over |
 | `name-choice--selected` | 고른 카드 (초록) |
+| `name-change-checkbox` | 고른 사람 아래 체크박스 (기본 꺼짐) — "Update Barbara’s name to Barbara Apple" 또는 "Add “…” as another name". 켜고 저장하면 이름을 바꾸거나 별명을 더함. 이미 그 이름으로 찾히거나 소유격 추측이면 없음 (B5-8 part 2, 2026-10-19) |
 | `name-choice-kept-note` | "To change how you know {name} or when you first met, edit their page." — 관계·첫 만남 칸 대신 나옴 |
 | `remember-button` | Remember this — 저장 |
 

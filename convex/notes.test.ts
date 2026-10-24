@@ -1915,3 +1915,127 @@ test("should accept a kept time exactly 30 days old, and not a millisecond older
   expect(noteDate(now - MAX_KEPT_AGE_MS - 1, now)).toBe(now);
   expect(noteDate(now, now)).toBe(now);
 });
+
+// ---------------------------------------------------------------------------
+// B5-8 part 2 — updating a kept person's name from review, only when ticked
+// ---------------------------------------------------------------------------
+
+async function keep(
+  t: ReturnType<typeof convexTest>,
+  name: string,
+  aliases: string[] = [],
+) {
+  const user = await ensureUser(t, ALICE);
+  return t.run((ctx) =>
+    ctx.db.insert("profiles", {
+      userId: user,
+      name,
+      aliases,
+      entityType: "person",
+      tags: [],
+      autoCreated: false,
+    }),
+  );
+}
+
+test("should offer to rename a kept person to the longer name a note used, and never through a possessive", async () => {
+  const t = convexTest(schema, modules);
+  await keep(t, "Barbara");
+  await keep(t, "Park");
+
+  const asked = await t
+    .withIdentity(ALICE)
+    .query(api.profiles.resolveNames, { names: ["Barbara Apple", "Barbara", "Parks"] });
+
+  expect(asked.map((one) => one.candidates.map((c) => c.nameUpdate))).toEqual([
+    ["rename"],
+    [null],
+    // "Parks" reached "Park" only by guessing at grammar.
+    [null],
+  ]);
+});
+
+test("should rename a kept person only when the box was ticked, keeping what she answered to", async () => {
+  const t = convexTest(schema, modules);
+  const barbara = await keep(t, "Barbara", ["Babs"]);
+  const asAlice = t.withIdentity(ALICE);
+  const save = (nameChange?: "rename") =>
+    asAlice.mutation(api.notes.saveCapture, {
+      transcript: "Barbara Apple brought pie.",
+      draft: buildDraft({ primaryName: "Barbara Apple" }),
+      source: "voice",
+      resolutions: [{ name: "Barbara Apple", profileId: barbara }],
+      nameChange,
+    });
+
+  // Unticked — the default — files the note and leaves her name alone.
+  await save();
+  expect(await t.run((ctx) => ctx.db.get(barbara))).toMatchObject({
+    name: "Barbara",
+    aliases: ["Babs"],
+  });
+
+  await save("rename");
+  // "Barbara" is not stored: "Barbara Apple" answers to it by itself.
+  expect(await t.run((ctx) => ctx.db.get(barbara))).toMatchObject({
+    name: "Barbara Apple",
+    aliases: ["Babs"],
+  });
+});
+
+test("should add the name a note used as another name when it is not a longer form", async () => {
+  const t = convexTest(schema, modules);
+  const barbara = await keep(t, "Barbara Apple Smith");
+
+  await t.withIdentity(ALICE).mutation(api.notes.saveCapture, {
+    transcript: "Barbara Apple brought pie.",
+    draft: buildDraft({ primaryName: "Barbara Apple" }),
+    source: "voice",
+    resolutions: [{ name: "Barbara Apple", profileId: barbara }],
+    nameChange: "alias",
+  });
+
+  expect(await t.run((ctx) => ctx.db.get(barbara))).toMatchObject({
+    name: "Barbara Apple Smith",
+    aliases: ["Barbara Apple"],
+  });
+});
+
+test("should refuse a name change that is not the one on offer, and save nothing", async () => {
+  const t = convexTest(schema, modules);
+  const barbara = await keep(t, "Barbara");
+
+  await expect(
+    t.withIdentity(ALICE).mutation(api.notes.saveCapture, {
+      transcript: "Barbara Apple brought pie.",
+      draft: buildDraft({ primaryName: "Barbara Apple" }),
+      source: "voice",
+      resolutions: [{ name: "Barbara Apple", profileId: barbara }],
+      // The offer is a rename; an alias was never shown.
+      nameChange: "alias",
+    }),
+  ).rejects.toThrow(ConvexError);
+
+  await t.run(async (ctx) => {
+    expect(await ctx.db.get(barbara)).toMatchObject({ name: "Barbara", aliases: [] });
+    expect(await ctx.db.query("notes").collect()).toHaveLength(0);
+  });
+});
+
+test("should not turn a possessive into another name, even when asked to", async () => {
+  const t = convexTest(schema, modules);
+  const park = await keep(t, "Park");
+
+  await t.withIdentity(ALICE).mutation(api.notes.saveCapture, {
+    transcript: "Parks threw a party.",
+    draft: buildDraft({ primaryName: "Parks" }),
+    source: "voice",
+    resolutions: [{ name: "Parks", profileId: park }],
+    nameChange: "alias",
+  });
+
+  expect(await t.run((ctx) => ctx.db.get(park))).toMatchObject({
+    name: "Park",
+    aliases: [],
+  });
+});
