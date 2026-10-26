@@ -462,7 +462,7 @@ describe("follow-up email", () => {
     answerByName(
       useQuery,
       // The AI go-ahead is off too, as in production until build 6.
-      { [nameOf(api.featureFlags.switchedOff)]: ["followUpTones", "aiPermission"] },
+      { [nameOf(api.featureFlags.switchedOff)]: ["followUpTones", "aiPermission", "writeTo"] },
       () => result,
     );
   }

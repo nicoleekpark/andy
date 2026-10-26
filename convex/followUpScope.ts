@@ -39,6 +39,14 @@ export type FollowUpScope = {
   factNoteCount: number;
   /** Whether anyone else's note names them. */
   hasMentions: boolean;
+  /**
+   * Write to → Reach out (follow-up-redesign.md, closed call 3): the sender
+   * picks what to write from — notes they tick, their own words, or both — so
+   * a person with no notes can still be written to. Only the person-or-animal
+   * check applies here; the action refuses when neither was given, in words
+   * about what is missing rather than about the notes.
+   */
+  reachOut?: boolean;
 };
 
 /**
@@ -53,6 +61,10 @@ export function followUpRefusal(scope: FollowUpScope): string | null {
     // this exists so the public action agrees. A follow-up to a foster cat
     // would send its health notes on a trip they have no reason to take.
     return "Andy only drafts follow-ups to people.";
+  }
+
+  if (scope.reachOut === true) {
+    return null;
   }
 
   if (scope.ownNoteCount === 0) {

@@ -16,6 +16,12 @@ export type Feature =
    */
   | "followUpTones"
   /**
+   * Write to (`follow-up-redesign.md`): the profile's follow-up button becomes
+   * "Write to {name}" and opens Reach out — notes ticked, own words, tone —
+   * before anything is written. Off: the follow-up sheet as before.
+   */
+  | "writeTo"
+  /**
    * Asking for the go-ahead before anything reaches an AI service
    * (`convex/aiPermission.ts`). Switched off in production until a build that
    * asks is on every phone; the server reads the same row.
