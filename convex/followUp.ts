@@ -1,7 +1,14 @@
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import { action, internalMutation, internalQuery } from "./_generated/server";
-import { MAX_EMAIL_NOTES, followUpStyleValidator } from "./emailPrompt";
+import {
+  EARLIER_NOTES_WINDOW_DAYS,
+  MAX_CHOSEN_NOTE_IDS,
+  MAX_EMAIL_NOTES,
+  MAX_INSTRUCTION_CHARS,
+  NOTES_SCANNED,
+  followUpStyleValidator,
+} from "./emailPrompt";
 import type { EmailNote, FollowUpDraft } from "./emailPrompt";
 import { rememberedFacts } from "./embeddingModel";
 import { countFactNotes, followUpRefusal } from "./followUpScope";
@@ -54,7 +61,15 @@ import { requireAiAllowed } from "./aiPermission";
  * claim rather than a guarantee.
  */
 export const notesForFollowUp = internalQuery({
-  args: { profileId: v.string() },
+  args: {
+    profileId: v.string(),
+    /**
+     * Reach out: the notes the person ticked, instead of the newest-first
+     * choice. Each is checked to be theirs and this person's; one that is not
+     * is left out, never read.
+     */
+    noteIds: v.optional(v.array(v.string())),
+  },
   returns: v.union(
     v.null(),
     v.object({
@@ -88,7 +103,7 @@ export const notesForFollowUp = internalQuery({
         q.eq("userId", user._id).eq("profileId", profileId),
       )
       .order("desc")
-      .take(MAX_EMAIL_NOTES);
+      .take(NOTES_SCANNED);
 
     // Read separately from the notes above, and only far enough to answer
     // "does anybody else's note name them". The distinction matters because a
@@ -102,20 +117,57 @@ export const notesForFollowUp = internalQuery({
       )
       .take(1);
 
+    // The notes they ticked, newest first: owner and person checked on each
+    // (a profileId is a claim, CLAUDE.md), facts only, at most the usual four.
+    async function ticked(ids: string[]) {
+      const picked: { createdAt: number; facts: string[] }[] = [];
+      const seen = new Set<string>();
+      for (const raw of ids.slice(0, MAX_CHOSEN_NOTE_IDS)) {
+        const id = ctx.db.normalizeId("notes", raw);
+        if (id === null || seen.has(id)) continue;
+        seen.add(id);
+        const note = await ctx.db.get("notes", id);
+        if (note === null || note.userId !== user._id || note.profileId !== profileId) continue;
+        const facts = rememberedFacts(note.keyFacts);
+        if (facts.length > 0) picked.push({ createdAt: note.createdAt, facts });
+      }
+      return picked.sort((a, b) => b.createdAt - a.createdAt).slice(0, MAX_EMAIL_NOTES);
+    }
+
+    // A note with nothing endorsed on it is dropped rather than falling back
+    // to its raw text — its raw wording is the unreviewed kind, which is
+    // exactly what carries other people in it.
+    const endorsed = notes
+      .map((note) => ({ createdAt: note.createdAt, facts: rememberedFacts(note.keyFacts) }))
+      .filter((note) => note.facts.length > 0);
+    // The newest leads; the rest only from the year before it, and few
+    // (follow-up-redesign.md, D2). Newest first is the order the prompt's
+    // "Time" rules read them in.
+    const anchor = endorsed[0];
+    const chosen = args.noteIds !== undefined
+      ? await ticked(args.noteIds)
+      :
+      anchor === undefined
+        ? []
+        : [
+            anchor,
+            ...endorsed
+              .slice(1)
+              .filter(
+                (note) =>
+                  anchor.createdAt - note.createdAt <= EARLIER_NOTES_WINDOW_DAYS * 86_400_000,
+              ),
+          ].slice(0, MAX_EMAIL_NOTES);
+
     return {
       personName: profile.name,
       entityType: profile.entityType,
       ownNoteCount: notes.length,
       hasMentions: mentions.length > 0,
-      notes: notes
-        .map((note) => ({
-          recordedOn: new Date(note.createdAt).toISOString().slice(0, 10),
-          facts: rememberedFacts(note.keyFacts),
-        }))
-        // A note with nothing endorsed on it is dropped rather than falling
-        // back to its raw text — its raw wording is the unreviewed kind, which
-        // is exactly what carries other people in it.
-        .filter((note) => note.facts.length > 0),
+      notes: chosen.map((note) => ({
+        recordedOn: new Date(note.createdAt).toISOString().slice(0, 10),
+        facts: note.facts,
+      })),
     };
   },
 });
@@ -155,19 +207,48 @@ export const draft = action({
     today: v.string(),
     /** Format and tone; absent with the `followUpTones` switch off. */
     style: v.optional(followUpStyleValidator),
+    /**
+     * Write to → Reach out (follow-up-redesign.md, decision 4): the notes the
+     * person ticked and what they want to say in their own words. Needs a
+     * style. Absent: the newest-first draft, unchanged.
+     */
+    reachOut: v.optional(
+      v.object({ noteIds: v.array(v.string()), instruction: v.string() }),
+    ),
   },
   returns: v.object({
     personName: v.string(),
     /** Only for an email; a message has none. */
     subject: v.optional(v.string()),
     body: v.string(),
+    /** Reach out only: what Andy did. */
+    intent: v.optional(v.string()),
+    /** Reach out only: the dates of the notes the draft drew on. */
+    usedNotes: v.optional(v.array(v.string())),
   }),
   handler: async (
     ctx,
     args,
-  ): Promise<{ personName: string; subject?: string; body: string }> => {
+  ): Promise<{
+    personName: string;
+    subject?: string;
+    body: string;
+    intent?: string;
+    usedNotes?: string[];
+  }> => {
     // Before reading anything: this person's notes go to Anthropic.
     await requireAiAllowed(ctx);
+    const instruction = args.reachOut?.instruction.trim() ?? "";
+    if (args.reachOut !== undefined) {
+      // Checked before any read or call, like a bad style.
+      if (args.style === undefined) throw new ConvexError("Choose how it should sound first.");
+      if (args.reachOut.noteIds.length > MAX_CHOSEN_NOTE_IDS) {
+        throw new ConvexError("That's more notes than one message can be about. Pick fewer.");
+      }
+      if (instruction.length > MAX_INSTRUCTION_CHARS) {
+        throw new ConvexError("That's more than Andy can take in. Try saying it in fewer words.");
+      }
+    }
     const scope: {
       personName: string;
       entityType: "person" | "animal";
@@ -176,6 +257,7 @@ export const draft = action({
       notes: EmailNote[];
     } | null = await ctx.runQuery(internal.followUp.notesForFollowUp, {
       profileId: args.profileId,
+      ...(args.reachOut === undefined ? {} : { noteIds: args.reachOut.noteIds }),
     });
 
     if (scope === null) {
@@ -197,9 +279,16 @@ export const draft = action({
         scope.notes.map((note) => ({ keyFacts: note.facts })),
       ),
       hasMentions: scope.hasMentions,
+      reachOut: args.reachOut !== undefined,
     });
     if (refusal !== null) {
       throw new ConvexError(refusal);
+    }
+    // Reach out with nothing ticked and nothing said has nothing to write from
+    // — refused here rather than paid for. Unreachable from the screen, whose
+    // Write it waits for one or the other.
+    if (args.reachOut !== undefined && scope.notes.length === 0 && instruction === "") {
+      throw new ConvexError(`Tell Andy what you want to say to ${scope.personName}.`);
     }
 
     const written: FollowUpDraft = await ctx.runAction(internal.email.write, {
@@ -207,6 +296,7 @@ export const draft = action({
       today: args.today,
       notes: scope.notes,
       style: args.style,
+      ...(args.reachOut === undefined ? {} : { instruction }),
     });
 
     // Only once a draft was written: a style that failed is not the one used.
@@ -226,6 +316,8 @@ export const draft = action({
       personName: scope.personName,
       ...(written.subject === undefined ? {} : { subject: written.subject }),
       body: written.body,
+      ...(written.intent === undefined ? {} : { intent: written.intent }),
+      ...(written.usedNotes === undefined ? {} : { usedNotes: written.usedNotes }),
     };
   },
 });

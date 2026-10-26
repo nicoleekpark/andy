@@ -16,6 +16,10 @@ import {
   followUpRefusal,
 } from "../../../../../convex/followUpScope";
 import { DraftSheet } from "../../../../components/draft-sheet";
+import { WriteToSheet, reachOutSources } from "../../../../components/write-to-sheet";
+import type { ReachOutInputs, TickableNote } from "../../../../components/write-to-sheet";
+import { rememberedFacts } from "../../../../../convex/embeddingModel";
+import { MAX_CHOSEN_NOTE_IDS } from "../../../../../convex/emailPrompt";
 import * as FileSystem from "expo-file-system/legacy";
 import { imageContentType } from "../../../../lib/media";
 import type { Draft, DraftStyle } from "../../../../components/draft-sheet";
@@ -81,6 +85,7 @@ export default function ProfileScreen() {
   // so, rather than a draft that waits with no answer.
   const online = useOnline();
   const nothingKept = useNothingKeptOffline();
+  const writeTo = useFeature("writeTo");
   const followUpBlock = useMemo(() => {
     if (result === null || result === undefined) return null;
     if (!online) return "Drafting a follow-up needs a connection.";
@@ -90,8 +95,29 @@ export default function ProfileScreen() {
       ownNoteCount: result.notes.length,
       factNoteCount: countFactNotes(result.notes.map((entry) => entry.note)),
       hasMentions: result.mentionedInTotal > 0,
+      // Write to can start from the person's own words, so no notes is not a
+      // reason to hide it (follow-up-redesign.md, closed call 3).
+      reachOut: writeTo,
     });
-  }, [result, online]);
+  }, [result, online, writeTo]);
+
+  /**
+   * Notes that can be ticked in Reach out: newest first, only those with
+   * something saved under "What to remember" — the same rule the server keeps.
+   */
+  const tickable = useMemo<TickableNote[]>(
+    () =>
+      (result?.notes ?? [])
+        .map((entry) => ({
+          id: entry.note._id as string,
+          date: formatDate(entry.note.createdAt),
+          facts: rememberedFacts(entry.note.keyFacts),
+        }))
+        .filter((note) => note.facts.length > 0)
+        // No more than the server takes in one request.
+        .slice(0, MAX_CHOSEN_NOTE_IDS),
+    [result],
+  );
 
   const requestDraft = useAction(api.followUp.draft);
   const goAhead = useAiGoAhead();
@@ -134,6 +160,68 @@ export default function ProfileScreen() {
    */
   const inFlight = useRef(false);
   const [error, setError] = useState<string | null>(null);
+
+  /**
+   * Write to's sheet: what to write from, then the draft. `null` while closed.
+   * Memory only — the words typed and the draft are never kept on the phone.
+   */
+  const [reachOut, setReachOut] = useState<{
+    inputs: ReachOutInputs;
+    written: { draft: Draft; intent: string; sources: string } | null;
+  } | null>(null);
+
+  const openWriteTo = useCallback(() => {
+    setError(null);
+    setReachOut({
+      inputs: {
+        // The newest note ticked: the default alone is enough to write from.
+        noteIds: tickable[0] === undefined ? [] : [tickable[0].id],
+        instruction: "",
+        style: result?.profile.followUpStyle ?? { format: "message", tone: "friendly" },
+      },
+      written: null,
+    });
+  }, [tickable, result]);
+
+  const writeReachOut = useCallback(
+    async (inputs: ReachOutInputs) => {
+      if (inFlight.current) return;
+      inFlight.current = true;
+      // This person's notes and the words typed go to Anthropic: asked first.
+      if (!(await goAhead())) {
+        inFlight.current = false;
+        return;
+      }
+      setDrafting(true);
+      setError(null);
+      try {
+        const written = await requestDraft({
+          profileId: id,
+          today: localToday(),
+          style: inputs.style,
+          reachOut: { noteIds: inputs.noteIds, instruction: inputs.instruction },
+        });
+        setReachOut((previous) =>
+          previous === null
+            ? previous
+            : {
+                inputs,
+                written: {
+                  draft: { personName: written.personName, subject: written.subject ?? "", body: written.body },
+                  intent: written.intent ?? "",
+                  sources: reachOutSources(written.usedNotes ?? []),
+                },
+              },
+        );
+      } catch (thrown) {
+        setError(userMessage(thrown, "Andy couldn't reach that just now. Try again."));
+      } finally {
+        inFlight.current = false;
+        setDrafting(false);
+      }
+    },
+    [goAhead, requestDraft, id],
+  );
 
   const generateUploadUrl = useMutation(api.photos.generateUploadUrl);
   const attachPhoto = useMutation(api.photos.attach);
@@ -681,7 +769,17 @@ export default function ProfileScreen() {
               feature may use.
             */}
             {result.profile.entityType === "person" ? (
-              followUpBlock === null ? (
+              followUpBlock === null && writeTo ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Write to ${result.profile.name}`}
+                  onPress={openWriteTo}
+                  style={styles.addNote}
+                  testID="follow-up-button"
+                >
+                  <Text style={styles.addNoteLabel}>Write to {result.profile.name}</Text>
+                </Pressable>
+              ) : followUpBlock === null ? (
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Draft a follow-up"
@@ -730,6 +828,31 @@ export default function ProfileScreen() {
         fields still have to reset to it — remounting is the whole reset, so
         nothing has to remember to clear.
       */}
+      {reachOut !== null && result !== null && result !== undefined ? (
+        <WriteToSheet
+          personName={result.profile.name}
+          notes={tickable}
+          inputs={reachOut.inputs}
+          onChangeInputs={(inputs) =>
+            setReachOut((previous) => (previous === null ? previous : { ...previous, inputs }))
+          }
+          written={reachOut.written}
+          onWrite={() => void writeReachOut(reachOut.inputs)}
+          onBack={() => {
+            setError(null);
+            setReachOut((previous) => (previous === null ? previous : { ...previous, written: null }));
+          }}
+          onChooseStyle={(style) => void writeReachOut({ ...reachOut.inputs, style })}
+          onClose={() => {
+            setReachOut(null);
+            setError(null);
+          }}
+          writing={drafting}
+          canWrite={online}
+          error={error}
+        />
+      ) : null}
+
       {attempt !== null ? (
       <DraftSheet
         key={attempt.id}
