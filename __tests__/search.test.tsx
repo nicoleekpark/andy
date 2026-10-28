@@ -320,6 +320,62 @@ describe("search screen", () => {
     expect(recall).not.toHaveBeenCalled();
   });
 
+  test("should hide the hint when name search returns people results", async () => {
+    await renderSearch();
+
+    // The hint is visible with no results.
+    expect(screen.getByTestId("ask-hint-detail")).toBeTruthy();
+
+    mockPeople({
+      people: [
+        {
+          profileId: "p-a",
+          name: "Marcus",
+          matchedName: "Marcus",
+          entityType: "person",
+          noteCount: 1,
+          mentionCount: 0,
+          lastNoteAt: 1,
+        },
+      ],
+      mentions: [],
+    });
+
+    await type("marcus");
+
+    // Once people results appear, the hint has done its job and is hidden.
+    await waitFor(() => expect(screen.getByTestId("people-results")).toBeTruthy());
+    expect(screen.queryByTestId("ask-hint-detail")).toBeNull();
+  });
+
+  test("should hide the hint when name search returns mention results", async () => {
+    await renderSearch();
+
+    // The hint is visible with no results.
+    expect(screen.getByTestId("ask-hint-detail")).toBeTruthy();
+
+    mockPeople({
+      people: [],
+      mentions: [
+        {
+          noteId: "note-9",
+          aboutProfileId: "p-marcus",
+          aboutName: "Marcus",
+          profileId: "p-judy",
+          name: "Judy",
+          quote: "Judy was there too",
+          createdAt: 1,
+        },
+      ],
+    });
+
+    await type("judy");
+
+    // Once mention results appear, the hint is hidden.
+    await waitFor(() => expect(screen.getByTestId("mention-results")).toBeTruthy());
+    expect(screen.queryByTestId("ask-hint-detail")).toBeNull();
+  });
+
   test("should not search while the question is still being typed", async () => {
     await renderSearch();
 

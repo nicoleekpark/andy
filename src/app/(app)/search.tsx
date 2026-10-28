@@ -236,7 +236,10 @@ export default function SearchScreen() {
                   accessibilityLabel="Searching"
                 />
               </View>
-            ) : error === null ? (
+            ) : error === null &&
+              // Hide the hint once name results appear — it has done its job.
+              (byName?.people.length ?? 0) === 0 &&
+              (byName?.mentions.length ?? 0) === 0 ? (
               // Only when nothing has happened yet. Rendering this *under* an
               // error would have the screen apologise and then act as though
               // the question was never asked. Just under the field rather than
