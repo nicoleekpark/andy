@@ -941,18 +941,17 @@ WCAG 1.4.11: a control whose outline is all that marks it out needs 3:1
 | 38.5 | Edit Barbara Apple | Under the name: *Andy also knows them as "Barbara".* Change the name to Barbary Appley — the line says "Barbary" at once. Nothing new appears under Also known as | ⬜ |
 | 38.6 | Keep **지선희** and record "지선이…" | Not offered as 지선희 — a Korean name without a space has no first name to take | ⬜ |
 
-## 39. Updating a name from review (device QA B5-8, part 2, option A)
+## 39. Updating a name from review (automatic, 2026-10-28)
+
+Name updates (rename or add alias) are now automatic — no checkbox. QA feedback: one mention is enough signal.
 
 | # | Do this | Expect | |
 |---|---|---|---|
-| 39.1 | Keep **Barbara** (one word). Record "Barbara Apple came by…" and pick Barbara at *This Barbara Apple?* | Under the choice, an **unticked** box: *Update Barbara's name to Barbara Apple* · *Andy will still find them by "Barbara".* Before choosing, no box | ⬜ |
-| 39.2 | Leave it unticked, **Remember this** | The note is on Barbara's page; her name is still **Barbara** | ⬜ |
-| 39.3 | Again, tick it, **Remember this** | Her page says **Barbara Apple**. Edit: *Also known as* has no new "Barbara" line; *Andy also knows them as "Barbara".* shows under the name | ⬜ |
-| 39.4 | Tick it, then choose **Someone new** | The box goes away; saving makes a new Barbara Apple and leaves the kept Barbara's name alone | ⬜ |
-| 39.5 | Keep **Barbara Apple Smith**, record "Barbara Apple…", pick her | The box reads *Add "Barbara Apple" as another name*; ticked and saved, Edit lists it under Also known as and her name is unchanged | ⬜ |
-| 39.6 | Keep **Barbara Apple**, record "Barbara…", pick her | No box — she already answers to Barbara | ⬜ |
-| 39.7 | Keep **Park**, record "I was at Parks' party…", pick Park at *Is "Parks" one of these?* | No box — a possessive is not another name | ⬜ |
-| 39.8 | Largest Dynamic Type; VoiceOver on the box | The two lines wrap under the box; VoiceOver reads it as a checkbox, unchecked, then checked | ⬜ |
+| 39.1 | Keep **Barbara** (one word). Record "Barbara Apple came by…" and pick Barbara at *This Barbara Apple?*, **Remember this** | Her page says **Barbara Apple**. Edit: *Also known as* has no new "Barbara" line; *Andy also knows them as "Barbara".* shows under the name | ⬜ |
+| 39.2 | Same, but choose **Someone new** | A new Barbara Apple is created; the kept Barbara's name is unchanged | ⬜ |
+| 39.3 | Keep **Barbara Apple Smith**, record "Barbara Apple…", pick her, **Remember this** | Saved; Edit lists "Barbara Apple" under Also known as, her name unchanged | ⬜ |
+| 39.4 | Keep **Barbara Apple**, record "Barbara…", pick her, **Remember this** | Saved; her name is still Barbara Apple (she already answers to Barbara) | ⬜ |
+| 39.5 | Keep **Park**, record "I was at Parks' party…", pick Park at *Is "Parks" one of these?*, **Remember this** | Saved; Park's name unchanged (a possessive is not another name) | ⬜ |
 
 ## 40. Write to → Reach out (follow-up-redesign.md, decision 4)
 
