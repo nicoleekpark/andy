@@ -134,11 +134,14 @@ test("should not write until there is a note ticked or something said, and say w
   await press("Write it");
   expect(draft).not.toHaveBeenCalled();
 
-  // A quick start fills the field — and writes nothing by itself.
+  // A quick start toggles selection (multi-select pills) — and enables the button.
   await press("Check in");
-  expect(screen.getByTestId("reach-out-say").props.value).toBe("Check in");
+  // The text field stays empty; the pill is selected instead.
+  expect(screen.getByTestId("reach-out-say").props.value).toBe("");
   expect(draft).not.toHaveBeenCalled();
   expect(screen.getByTestId("generate-button")).not.toBeDisabled();
+  // The pill shows as checked.
+  expect(screen.getByLabelText("Check in").props.accessibilityState).toEqual(expect.objectContaining({ checked: true }));
 });
 
 test("should offer Write to someone with no notes, and write from the words alone", async () => {

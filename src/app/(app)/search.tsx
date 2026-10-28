@@ -236,7 +236,10 @@ export default function SearchScreen() {
                   accessibilityLabel="Searching"
                 />
               </View>
-            ) : error === null ? (
+            ) : error === null &&
+              // Hide the hint once name results appear — it has done its job.
+              (byName?.people.length ?? 0) === 0 &&
+              (byName?.mentions.length ?? 0) === 0 ? (
               // Only when nothing has happened yet. Rendering this *under* an
               // error would have the screen apologise and then act as though
               // the question was never asked. Just under the field rather than
@@ -245,8 +248,8 @@ export default function SearchScreen() {
                 {/* Two paragraphs: what to type, then what Andy reads (owner, 2026-10-12). */}
                 <View style={styles.hint}>
                   <Text style={styles.quiet}>
-                    Type a name, or describe your memory — like “who just
-                    started a new job?”
+                    Type a name, or describe your memory — like &ldquo;who just
+                    started a new job?&rdquo;
                   </Text>
                   <Text style={styles.quiet} testID="ask-hint-detail">
                     Andy looks through all your notes, even where someone only
