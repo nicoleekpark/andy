@@ -962,7 +962,7 @@ Needs the `writeTo` switch on (no row = on). Reply (paste, screenshot) and refin
 | 40.1 | Open someone with notes | The button reads **Write to {name}** (not "Draft a follow-up") | ⬜ |
 | 40.2 | Tap it | **Reach out to {name}** opens on what to write from. Nothing is written yet (no "Writing…"). Only the newest note with saved details is ticked; a note with nothing under What to remember is not listed | ⬜ |
 | 40.3 | Untick it and leave the field empty | **Write it** is greyed; *Tell Andy what you want to say.* under it | ⬜ |
-| 40.4 | Tap **Check in** | The field fills with "Check in". Nothing is written until **Write it** | ⬜ |
+| 40.4 | Tap **Check in** | The pill is selected (filled green). The text field stays empty. Tap again to deselect. Multiple pills can be selected. Nothing is written until **Write it** | ⬜ |
 | 40.5 | Tick a note, type *check in if she's free this weekend. concise, warm, not burdening*, **Professional**, **Write it** | A draft that does what you asked. Under it, a line saying what Andy did, and *Written from your note of …* naming only the notes it used (or *Written from what you asked for.*) | ⬜ |
 | 40.6 | A plan in the ticked note whose date has passed | The draft asks how it went, never wishes luck (#195) | ⬜ |
 | 40.7 | Tap another tone on the draft | A new draft from the same notes and words | ⬜ |

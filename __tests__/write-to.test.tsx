@@ -134,11 +134,16 @@ test("should not write until there is a note ticked or something said, and say w
   await press("Write it");
   expect(draft).not.toHaveBeenCalled();
 
-  // A quick start fills the field — and writes nothing by itself.
+  // A quick start toggles selection (multi-select) — and enables the button.
   await press("Check in");
-  expect(screen.getByTestId("reach-out-say").props.value).toBe("Check in");
+  // The text field stays empty; the pill is selected instead.
+  expect(screen.getByTestId("reach-out-say").props.value).toBe("");
   expect(draft).not.toHaveBeenCalled();
   expect(screen.getByTestId("generate-button")).not.toBeDisabled();
+  // The pill shows as checked.
+  expect(screen.getByLabelText("Check in").props.accessibilityState).toEqual(
+    expect.objectContaining({ checked: true }),
+  );
 });
 
 test("should offer Write to someone with no notes, and write from the words alone", async () => {
@@ -222,4 +227,37 @@ test("should tell VoiceOver why Write it is waiting, on the button itself", asyn
   await open(written());
   await press("2026-10-18: Starting at Figma on Nov 3");
   expect(screen.getByTestId("generate-button").props.accessibilityHint).toBe("Tell Andy what you want to say.");
+});
+
+test("should combine quick starts and typed instruction when writing", async () => {
+  const draft = written();
+  await open(draft);
+
+  await press("Check in");
+  await press("Congratulate");
+  await act(async () => {
+    fireEvent.changeText(screen.getByTestId("reach-out-say"), "ask about her new role");
+  });
+  await press("Write it");
+
+  expect(draft).toHaveBeenCalledWith(
+    expect.objectContaining({
+      reachOut: { noteIds: ["note-new"], instruction: "Check in, Congratulate. ask about her new role" },
+    }),
+  );
+});
+
+test("should write from quick starts alone when no text is typed", async () => {
+  const draft = written();
+  await open(draft);
+
+  await press("2026-10-18: Starting at Figma on Nov 3");
+  await press("Follow up on our plan");
+  await press("Write it");
+
+  expect(draft).toHaveBeenCalledWith(
+    expect.objectContaining({
+      reachOut: { noteIds: [], instruction: "Follow up on our plan" },
+    }),
+  );
 });

@@ -419,7 +419,7 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `reach-out-compose` | Write to 시트의 첫 화면 — 무엇으로 쓸지. 열어도 호출 없음. 제목 "Reach out to {이름}", 왼쪽 Cancel |
 | `reach-out-note` | "What you know about {이름}" 아래 노트 한 줄 — 체크박스 + 날짜 + 기억할 내용. 최신 노트만 기본 체크. 기억할 내용이 없는 노트는 안 보임. 최대 8개(서버가 한 번에 받는 수) |
 | `reach-out-no-notes` | 노트가 없을 때 "Nothing written about {이름} yet." |
-| `draft-quick-start` | Check in · Congratulate · Follow up on our plan — 누르면 아래 칸을 채움, 쓰지는 않음 (moss 테두리) |
+| `draft-quick-start` | Check in · Congratulate · Follow up on our plan — 다중 선택 체크박스, 선택하면 moss 채움. 아래 칸(instruction)과 별도로 관리하고 서버 전송 시 합침. 쓰지는 않음 |
 | `draft-say-field` | 자리표시 "What do you want to say? (optional)" — 직접 쓰는 말, 500자까지 |
 | `reach-out-format-picker` | Message · Email — 처음 쓸 형식만 정함, 호출 없음 (`draft-format-picker`와 달리 새 초안을 쓰지 않음) |
 | `reach-out-tone-chip` | "Tone" 아래 Friendly · Professional · Brief — 처음 쓸 말투만 정함, 호출 없음 |

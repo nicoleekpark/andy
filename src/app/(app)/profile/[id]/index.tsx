@@ -16,7 +16,7 @@ import {
   followUpRefusal,
 } from "../../../../../convex/followUpScope";
 import { DraftSheet } from "../../../../components/draft-sheet";
-import { WriteToSheet, reachOutSources } from "../../../../components/write-to-sheet";
+import { WriteToSheet, reachOutSources, combineInstruction } from "../../../../components/write-to-sheet";
 import type { ReachOutInputs, TickableNote } from "../../../../components/write-to-sheet";
 import { rememberedFacts } from "../../../../../convex/embeddingModel";
 import { MAX_CHOSEN_NOTE_IDS } from "../../../../../convex/emailPrompt";
@@ -177,6 +177,7 @@ export default function ProfileScreen() {
         // The newest note ticked: the default alone is enough to write from.
         noteIds: tickable[0] === undefined ? [] : [tickable[0].id],
         instruction: "",
+        quickStarts: [],
         style: result?.profile.followUpStyle ?? { format: "message", tone: "friendly" },
       },
       written: null,
@@ -199,7 +200,10 @@ export default function ProfileScreen() {
           profileId: id,
           today: localToday(),
           style: inputs.style,
-          reachOut: { noteIds: inputs.noteIds, instruction: inputs.instruction },
+          reachOut: {
+            noteIds: inputs.noteIds,
+            instruction: combineInstruction(inputs.quickStarts, inputs.instruction),
+          },
         });
         setReachOut((previous) =>
           previous === null

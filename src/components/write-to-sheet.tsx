@@ -23,12 +23,30 @@ export type TickableNote = { id: string; date: string; facts: string[] };
 
 export type ReachOutInputs = {
   noteIds: string[];
+  /** Free-form text: what the person wants to say. */
   instruction: string;
+  /** Selected quick-start intents (multiple allowed). */
+  quickStarts: string[];
   style: DraftStyle;
 };
 
-/** `draft-quick-start` for Reach out: each fills the field, never sends. */
+/** `draft-quick-start` for Reach out: toggleable intents, separate from the field. */
 const QUICK_STARTS = ["Check in", "Congratulate", "Follow up on our plan"] as const;
+
+/**
+ * Combine selected quick starts and free-form instruction into one string
+ * for the server. The quick starts come first as a comma-separated list.
+ */
+export function combineInstruction(quickStarts: string[], instruction: string): string {
+  const parts = [];
+  if (quickStarts.length > 0) {
+    parts.push(quickStarts.join(", "));
+  }
+  if (instruction.trim() !== "") {
+    parts.push(instruction.trim());
+  }
+  return parts.join(". ");
+}
 
 /** Stands in before anything is written, so the fields hook always has a draft. */
 const EMPTY_DRAFT: Draft = { personName: "", subject: "", body: "" };
@@ -69,8 +87,17 @@ export function WriteToSheet({
   // Above the modal for the same reason as `DraftSheet`: the lock hides it,
   // and a hidden modal unmounts what is inside — edits must survive that.
   const fields = useDraftFields(written?.draft ?? EMPTY_DRAFT);
-  const somethingToWriteFrom = inputs.noteIds.length > 0 || inputs.instruction.trim() !== "";
+  const somethingToWriteFrom =
+    inputs.noteIds.length > 0 || inputs.quickStarts.length > 0 || inputs.instruction.trim() !== "";
   const ready = somethingToWriteFrom && canWrite && !writing;
+
+  const toggleQuickStart = (start: string) =>
+    onChangeInputs({
+      ...inputs,
+      quickStarts: inputs.quickStarts.includes(start)
+        ? inputs.quickStarts.filter((one) => one !== start)
+        : [...inputs.quickStarts, start],
+    });
 
   const toggle = (id: string) =>
     onChangeInputs({
@@ -153,20 +180,24 @@ export function WriteToSheet({
             )}
 
             <View style={[styles.chips, styles.gapAbove]}>
-              {QUICK_STARTS.map((start) => (
-                <Pressable
-                  key={start}
-                  accessibilityRole="button"
-                  accessibilityLabel={start}
-                  accessibilityHint="Puts it in the field below. Nothing is written yet."
-                  onPress={() => onChangeInputs({ ...inputs, instruction: start })}
-                  disabled={writing}
-                  style={[styles.quickStart, writing && styles.disabled]}
-                  testID={`draft-quick-start--${start}`}
-                >
-                  <Text style={styles.quickStartLabel}>{start}</Text>
-                </Pressable>
-              ))}
+              {QUICK_STARTS.map((start) => {
+                const selected = inputs.quickStarts.includes(start);
+                return (
+                  <Pressable
+                    key={start}
+                    accessibilityRole="checkbox"
+                    accessibilityLabel={start}
+                    accessibilityState={{ checked: selected }}
+                    accessibilityHint="Nothing is written yet."
+                    onPress={() => toggleQuickStart(start)}
+                    disabled={writing}
+                    style={[styles.quickStart, selected && styles.on, writing && styles.disabled]}
+                    testID={`draft-quick-start--${start}`}
+                  >
+                    <Text style={[styles.quickStartLabel, selected && styles.optionLabelOn]}>{start}</Text>
+                  </Pressable>
+                );
+              })}
             </View>
             <TextInput
               accessibilityLabel="What do you want to say?"
@@ -338,7 +369,8 @@ const styles = StyleSheet.create({
     minHeight: size.touch * 2,
     borderBottomWidth: 1,
     borderBottomColor: colors.edge,
-    paddingVertical: space.sm,
+    paddingTop: space.md,
+    paddingBottom: space.sm,
     textAlignVertical: "top",
   },
   formatPicker: {
