@@ -3,7 +3,7 @@ import { convexTest } from "convex-test";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { api, internal } from "./_generated/api";
 import { AI_NOT_ALLOWED, AI_PERMISSION_FLAG } from "./aiPermission";
-import { EMBEDDING_DIMENSIONS } from "./embeddingModel";
+import { EMBEDDING_DIMENSIONS, EMBEDDING_MODEL } from "./embeddingModel";
 import schema from "./schema";
 
 /**
@@ -44,7 +44,7 @@ function embeddings(count: number) {
         index,
         embedding: Array.from({ length: EMBEDDING_DIMENSIONS }, (_, i) => (index + i) / 10_000),
       })),
-      model: "text-embedding-3-large",
+      model: EMBEDDING_MODEL,
       usage: { prompt_tokens: 8, total_tokens: 8 },
     }),
     text: async () => "",

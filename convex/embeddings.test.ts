@@ -5,6 +5,7 @@ import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import {
   EMBEDDING_DIMENSIONS,
+  EMBEDDING_MODEL,
   MAX_EMBEDDING_CHARS,
   embeddingTextFor,
 } from "./embeddingModel";
@@ -40,7 +41,7 @@ function embeddingsResponse(
       // The API documents input order but also sends `index`. Shuffling here is
       // how the tests hold us to using `index`.
       data: options.shuffle ? [...data].reverse() : data,
-      model: "text-embedding-3-large",
+      model: EMBEDDING_MODEL,
       usage: { prompt_tokens: 8, total_tokens: 8 },
     }),
     text: async () => "",
@@ -234,7 +235,7 @@ test("should refuse a vector of the wrong width rather than store one the index 
   const t = await aiNotEnforced(convexTest(schema, modules));
   const { noteId } = await seedNote(t);
   fetchMock.mockResolvedValueOnce(
-    embeddingsResponse([Array.from({ length: 1536 }, () => 0.01)]),
+    embeddingsResponse([Array.from({ length: EMBEDDING_DIMENSIONS + 1 }, () => 0.01)]),
   );
 
   await expect(

@@ -430,7 +430,7 @@ export default defineSchema({
 
 1. **A `users` table was added.** The draft referenced `v.id("users")` without ever defining that table — Clerk does not create one. Keyed on `tokenIdentifier` (not `subject`), per `convex/_generated/ai/guidelines.md`.
 2. **Child-table indexes lead with `userId`** — `by_user`, `by_user_and_profile_and_createdAt`, `by_user_and_profile_and_date`, `by_user_and_event`. The draft indexed only by `profileId`, which cannot satisfy the rule that every function filters through `by_user`, since Convex only queries index fields in declared order.
-3. **`notes.embedding` is `v.optional`** — the embedding pipeline is Day 4 and manual notes (Day 3) must be insertable without a vector. The vector index is declared now at `dimensions: 1536`, so an embedding model must produce that width or the index has to be recreated.
+3. **`notes.embedding` is `v.optional`** — the embedding pipeline is Day 4 and manual notes (Day 3) must be insertable without a vector. The vector index is declared now at `dimensions: 1536`, so an embedding model must produce that width or the index has to be recreated. Changed to 1024 on 2026-09-10 (`4f8b888`), when `text-embedding-3-large` was chosen; the width now lives once, as `EMBEDDING_DIMENSIONS` in `convex/embeddingModel.ts`, and the draft above keeps 1536 as a record of what was planned.
 4. **`metrics.value`/`unit` are optional, plus a `note` field** — the draft's own example, `"vet_visit"`, has no numeric value.
 5. **`profiles.search_name` gained `filterFields: ["userId"]`** so name search cannot cross users.
 

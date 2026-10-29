@@ -419,7 +419,7 @@ export default defineSchema({
 
 1. **`users` 테이블 추가.** 초안이 `v.id("users")`를 쓰면서 그 테이블을 정의한 적이 없었음 — Clerk은 테이블을 만들어주지 않음. `subject`가 아니라 `tokenIdentifier`로 키를 잡음 (`convex/_generated/ai/guidelines.md` 지시).
 2. **자식 테이블 인덱스가 `userId`로 시작** — `by_user`, `by_user_and_profile_and_createdAt`, `by_user_and_profile_and_date`, `by_user_and_event`. 초안은 `profileId`로만 인덱싱했는데, Convex는 인덱스 필드를 선언된 순서대로만 질의할 수 있어서 그러면 "모든 함수가 `by_user`로 필터한다"는 규칙을 지킬 수 없음.
-3. **`notes.embedding`은 `v.optional`** — 임베딩 파이프라인은 Day 4인데 수동 노트(Day 3)는 벡터 없이 삽입 가능해야 함. 벡터 인덱스는 `dimensions: 1536`으로 지금 선언돼 있으므로, **임베딩 모델이 그 차원을 내지 않으면 인덱스를 다시 만들어야 함.**
+3. **`notes.embedding`은 `v.optional`** — 임베딩 파이프라인은 Day 4인데 수동 노트(Day 3)는 벡터 없이 삽입 가능해야 함. 벡터 인덱스는 `dimensions: 1536`으로 지금 선언돼 있으므로, **임베딩 모델이 그 차원을 내지 않으면 인덱스를 다시 만들어야 함.** 2026-09-10(`4f8b888`)에 `text-embedding-3-large`를 고르면서 1024로 바뀜. 차원 값은 이제 `convex/embeddingModel.ts`의 `EMBEDDING_DIMENSIONS` 한 곳에만 있고, 위 초안의 1536은 계획 당시의 기록으로 남겨 둠.
 4. **`metrics.value`/`unit`은 optional, `note` 필드 추가** — 초안 자신의 예시인 `"vet_visit"`에 숫자 값이 없음.
 5. **`profiles.search_name`에 `filterFields: ["userId"]` 추가** — 이름 검색이 사용자 경계를 넘지 않도록.
 
