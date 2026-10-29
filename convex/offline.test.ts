@@ -2,6 +2,7 @@
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
 import { api } from "./_generated/api";
+import { EMBEDDING_DIMENSIONS } from "./embeddingModel";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -30,7 +31,7 @@ async function twoAccounts() {
       profileId: nina,
       text: "Nina fosters two greyhounds.",
       keyFacts: ["Fosters two greyhounds"],
-      embedding: Array.from({ length: 1536 }, () => 0.1),
+      embedding: Array.from({ length: EMBEDDING_DIMENSIONS }, () => 0.1),
       source: "manual",
       createdAt: 1,
     });
