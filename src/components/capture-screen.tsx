@@ -762,35 +762,16 @@ export function CaptureScreen({
   }, [draft, subjectDeclared, scoped, resolutions, fateOf]);
 
   /**
-   * Whether "Update Barbara's name to Barbara Apple" — or "Add … as another
-   * name" — is ticked (device QA B5-8, part 2, option A).
+   * Automatically add the spoken name as another name for the kept person.
    *
-   * Held as the offer it was ticked for, not as a boolean: choosing somebody
-   * else, or correcting the name, is a different offer, and a tick carried
-   * across to it would rename a person nobody ticked for. Unticked by default
-   * — saying "Barbara Apple" once is as likely a mishearing as her real name.
+   * Previously this was a checkbox (device QA B5-8, part 2, option A), but
+   * that added friction: if Barbara speaks as "Barbara Apple" once, that's
+   * enough signal. The user asked for auto-add (QA feedback, 2026-10-28).
    */
-  const [nameChangeTicked, setNameChangeTicked] = useState<string | null>(null);
-  const nameOffer =
-    draft === null || subjectKept === null || subjectKept.nameUpdate === null
-      ? null
-      : {
-          kind: subjectKept.nameUpdate,
-          kept: subjectKept.name,
-          // Said twice — on screen and to VoiceOver, as label then hint — so
-          // written once.
-          label:
-            subjectKept.nameUpdate === "rename"
-              ? `Update ${subjectKept.name}’s name to ${draft.primary.name.trim()}`
-              : `Add “${draft.primary.name.trim()}” as another name`,
-          hint:
-            subjectKept.nameUpdate === "rename"
-              ? `Andy will still find them by “${subjectKept.name}”.`
-              : "Andy will know them by it next time.",
-          key: `${subjectKept.profileId}|${subjectKept.nameUpdate}|${matchKey(draft.primary.name)}`,
-        };
   const nameChange =
-    nameOffer !== null && nameChangeTicked === nameOffer.key ? nameOffer.kind : undefined;
+    draft === null || subjectKept === null || subjectKept.nameUpdate === null
+      ? undefined
+      : subjectKept.nameUpdate;
 
   /**
    * The transcript this draft came from, frozen at the moment extraction
@@ -1984,27 +1965,7 @@ export function CaptureScreen({
                 />
               );
             })()}
-            {nameOffer === null ? null : (
-              <Pressable
-                accessibilityRole="checkbox"
-                accessibilityLabel={nameOffer.label}
-                accessibilityHint={nameOffer.hint}
-                accessibilityState={{ checked: nameChange !== undefined }}
-                onPress={() =>
-                  setNameChangeTicked(nameChange === undefined ? nameOffer.key : null)
-                }
-                style={styles.checkRow}
-                testID="review-name-change"
-              >
-                <View style={[styles.checkBox, nameChange !== undefined && styles.checkBoxOn]}>
-                  {nameChange !== undefined ? <Text style={styles.checkMark}>✓</Text> : null}
-                </View>
-                <View style={styles.checkWords}>
-                  <Text style={styles.checkLabel}>{nameOffer.label}</Text>
-                  <Text style={styles.quiet}>{nameOffer.hint}</Text>
-                </View>
-              </Pressable>
-            )}
+            {/* Name update (alias or rename) is now automatic — no checkbox. */}
           </Field>
 
           {/*

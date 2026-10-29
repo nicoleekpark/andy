@@ -1040,10 +1040,10 @@ describe("capture screen review step", () => {
     expect(saveCapture.mock.calls[0]?.[0].draft.primary.relationshipContext).toBe("client");
   });
 
-  test("should offer to update a kept person's name, unticked, and send it only when ticked for them", async () => {
+  test("should automatically send nameChange when selecting an existing person with nameUpdate", async () => {
     // Device QA B5-8 part 2: a note says "Barbara Apple" about the kept
-    // "Barbara". Saying it once is not proof it is her name, so the box starts
-    // unticked; and a tick belongs to the person it was ticked for.
+    // "Barbara". The name update is now automatic when selecting a person
+    // with a nameUpdate field (no checkbox needed).
     (useAction as jest.Mock).mockReturnValue(
       jest.fn(async () => makeDraft({ name: "Barbara Apple" }, [])),
     );
@@ -1077,37 +1077,21 @@ describe("capture screen review step", () => {
     await result;
     await reachReview(handlers, "Barbara Apple brought pie.");
 
-    // Nobody chosen yet: nothing to rename.
-    expect(screen.queryByTestId("review-name-change")).toBeNull();
-
-    const pickBarbara = () =>
-      act(async () => {
-        fireEvent.press(screen.getByLabelText("Barbara, book club · 3 notes · last 2026-09-20"));
-      });
-    await pickBarbara();
-    const box = () => screen.getByLabelText("Update Barbara’s name to Barbara Apple");
-    expect(box().props.accessibilityState).toEqual({ checked: false });
-
+    // Pick Barbara - nameChange should be automatic.
     await act(async () => {
-      fireEvent.press(box());
+      fireEvent.press(screen.getByLabelText("Barbara, book club · 3 notes · last 2026-09-20"));
     });
-    expect(box().props.accessibilityState).toEqual({ checked: true });
-
-    // Somebody new instead: there is nobody to rename, and nothing is sent.
-    await act(async () => {
-      fireEvent.press(
-        screen.getByLabelText("Someone new: a different person, also called Barbara Apple"),
-      );
-    });
-    expect(screen.queryByTestId("review-name-change")).toBeNull();
     await act(async () => {
       fireEvent.press(screen.getByLabelText("Remember this"));
     });
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
-    expect(saveCapture.mock.calls[0]?.[0].nameChange).toBeUndefined();
+    expect(saveCapture.mock.calls[0]?.[0].nameChange).toBe("rename");
+
+    // Verify no checkbox exists.
+    expect(screen.queryByTestId("review-name-change")).toBeNull();
   });
 
-  test("should send the name change when it is ticked, and not when it is left alone", async () => {
+  test("should automatically send alias nameChange when selecting a person with nameUpdate alias", async () => {
     (useAction as jest.Mock).mockReturnValue(
       jest.fn(async () => makeDraft({ name: "Barbara Apple" }, [])),
     );
@@ -1146,13 +1130,57 @@ describe("capture screen review step", () => {
       );
     });
     await act(async () => {
-      fireEvent.press(screen.getByLabelText("Add “Barbara Apple” as another name"));
+      fireEvent.press(screen.getByLabelText("Remember this"));
+    });
+    await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
+    expect(saveCapture.mock.calls[0]?.[0].nameChange).toBe("alias");
+  });
+
+  test("should send no nameChange when selecting Someone new", async () => {
+    (useAction as jest.Mock).mockReturnValue(
+      jest.fn(async () => makeDraft({ name: "Barbara Apple" }, [])),
+    );
+    const saveCapture = jest.fn(async (_args: { nameChange?: string }) => ({
+      profileId: "profile-new",
+      noteId: "note-1",
+      createdProfile: true,
+      createdMentionCount: 0,
+    }));
+    mockSaveCapture(saveCapture);
+    scopeTo("Barbara Apple", [
+      {
+        name: "Barbara Apple",
+        viaPossessive: false,
+        candidates: [
+          {
+            profileId: "profile-barbara",
+            name: "Barbara",
+            relationshipContext: "book club",
+            entityType: "person",
+            noteCount: 3,
+            lastNoteAt: new Date("2026-09-20T12:00:00").getTime(),
+            nameUpdate: "rename",
+          },
+        ],
+      },
+    ]);
+    const handlers = captureListeners();
+
+    const result = renderRouter("src/app", { initialUrl: "/capture" });
+    await result;
+    await reachReview(handlers, "Barbara Apple brought pie.");
+
+    // Choose "Someone new" instead of the existing person.
+    await act(async () => {
+      fireEvent.press(
+        screen.getByLabelText("Someone new: a different person, also called Barbara Apple"),
+      );
     });
     await act(async () => {
       fireEvent.press(screen.getByLabelText("Remember this"));
     });
     await waitFor(() => expect(saveCapture).toHaveBeenCalledTimes(1));
-    expect(saveCapture.mock.calls[0]?.[0].nameChange).toBe("alias");
+    expect(saveCapture.mock.calls[0]?.[0].nameChange).toBeUndefined();
   });
 
   test("should offer no name change when the person already answers to the name", async () => {
