@@ -458,7 +458,7 @@ export default defineSchema({
 - **프론트엔드**: Expo (React Native) + TypeScript
 - **백엔드**: Convex (DB, 함수, 실시간 동기화, 벡터 검색, 파일 스토리지)
 - **인증**: Clerk — V1은 Apple Sign-In만 (왜 이렇게 결정했는지, 왜 Convex Auth/Firebase/Supabase가 아닌지는 README의 Tech Stack Decisions 참고)
-- **LLM**: Claude API (추출/비용 절감용 Haiku, 답변 품질용 Sonnet; 명함 사진 추출용 멀티모달) — Convex action에서만 호출, 키는 절대 온디바이스에 없음
+- **LLM**: 모든 호출에 Claude Haiku 4.5 — 노트나 명함 사진 읽기(멀티모달), Advanced search 답변, 팔로업 초안. 기능마다 자기 상수(`EXTRACTION_MODEL`, `ANSWER_MODEL`, `EMAIL_MODEL`)를 따로 두어 하나만 등급을 바꿀 수 있고, 모델 ID 자체는 `convex/claudeModels.ts` 한 곳에만 씀. 답변용 Sonnet은 계획에 있었으나 2026-09-10(`f7337bf`)에 뺌: 노트가 이미 찾아지고 구조화된 채로 오니 추출보다 작은 일이고, 사실을 지어내는 위험은 더 큰 모델이 줄일 뿐 없애지 못함 — 그래서 답을 믿게 하는 대신 출처를 보여줌. Convex action에서만 호출, 키는 절대 온디바이스에 없음
 - **임베딩**: OpenAI `text-embedding-3-large` 1024차원 — 역시 Convex action 전용. 출시 시점 영어 검색 성능으로 골랐고, **V1.1의 한국어 지원 때 저장된 노트를 다시 임베딩하지 않아도 될 만큼** 다국어 대응이 되기 때문
 - **음성**: expo-speech-recognition — 마이크 캡처와 전사를 **함께** 하므로 별도 녹음기가 필요 없다 (expo-audio는 Day 2에 폴백 헤지로 설치했다가 온디바이스 인식이 검증된 뒤 제거했다. expo-av는 Expo SDK 55부터 제거됨 — 쓰지 말 것). 오디오 파일 자체가 필요해지면 같은 라이브러리의 `recordingOptions.persist`가 파일을 떨궈준다. expo-speech는 TTS 전용이고 **V1 의존성이 아님** — Siri 단축어의 음성 응답을 위한 것이었는데 Day 4에 잘렸음
 - **보안**: expo-local-authentication (비밀번호/생체인증 앱 잠금)

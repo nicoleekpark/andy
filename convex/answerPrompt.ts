@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import type { Infer } from "convex/values";
+import { CLAUDE_MODELS } from "./claudeModels";
 import { rememberedFacts } from "./embeddingModel";
 import { matchKey } from "./naming";
 import { singleLineValue } from "./promptBoundary";
@@ -23,7 +24,7 @@ import { singleLineValue } from "./promptBoundary";
  * (inventing a fact the notes do not support) is one that better models reduce
  * but do not remove, which is why the sources are shown rather than trusted.
  */
-export const ANSWER_MODEL = "claude-haiku-4-5";
+export const ANSWER_MODEL = CLAUDE_MODELS.haiku;
 
 /** Short answers only. A ceiling, not a target. */
 export const ANSWER_MAX_TOKENS = 1024;
