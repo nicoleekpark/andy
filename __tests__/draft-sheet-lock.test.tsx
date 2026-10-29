@@ -103,7 +103,7 @@ test("should keep Write to's draft edits through the lock, the same as the sheet
         <WriteToSheet
           personName="Rowan"
           notes={[]}
-          inputs={{ noteIds: [], instruction: "say hi", style: { format: "email", tone: "friendly" } }}
+          inputs={{ noteIds: [], instruction: "say hi", quickStarts: [], style: { format: "email", tone: "friendly" } }}
           onChangeInputs={jest.fn()}
           written={{ draft, intent: "Said hi.", sources: "Written from what you asked for." }}
           onWrite={jest.fn()}
