@@ -39,9 +39,15 @@ Set up on 2026-10-01, for the designer and QA TestFlight hand-off. Its history i
 | `OPENAI_API_KEY` | `text-embedding-3-large` vectors: indexing notes on save/edit, embedding a search question | **Yes** | `convex/embeddings.ts` | Convex Development | Convex Production: **its own key** (`andy-convex-prod`) |
 | `CLERK_SECRET_KEY` | Removes the person's Clerk sign-in when they delete their account | **Yes** | `convex/account.ts` | Convex Development (`sk_test`) | Convex Production: `sk_test` until launch, `sk_live` after |
 | `CLERK_JWT_ISSUER_DOMAIN` | Lets Convex verify a Clerk sign-in token | No | `convex/auth.config.ts` | Convex Development | Convex Production: the same URL until launch |
+| `APPLE_PRIVATE_KEY` | The Sign in with Apple key (`.p8`, stored on one line with literal `\n`s). Signs the requests that revoke a person's Apple sign-in when they delete their account | **Yes** | `convex/appleSignIn.ts` | Not set yet | Not set yet. Needed before App Store submission |
+| `APPLE_KEY_ID` | Which Apple key that is | No | `convex/appleSignIn.ts` | Not set yet | Not set yet |
+| `APPLE_TEAM_ID` | The Apple developer team | No | `convex/appleSignIn.ts` | Not set yet | Not set yet |
+| `APPLE_CLIENT_ID` | The app's bundle id, `com.houseofhuynh.andy` | No | `convex/appleSignIn.ts` | Not set yet | Not set yet |
 | `EXPO_PUBLIC_CONVEX_URL` | Which backend the app talks to | No, it's baked into the app | `src/app/_layout.tsx` | `.env.local` | EAS `preview` + `production` env: `https://agile-dogfish-759.convex.cloud` |
 | `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` | Which Clerk instance the app signs in to | No, public by design | `src/app/_layout.tsx` | `.env.local` | EAS `preview` + `production` env: `pk_test` until launch, `pk_live` after |
 | `CONVEX_DEPLOYMENT` | Where `npx convex dev` pushes | No | Convex CLI | `.env.local` | — |
+
+**The four `APPLE_*` values go together.** With any one missing, nothing is exchanged or revoked and sign-in and deletion work as before. Setup: [`docs/apple-token-revocation.md`](docs/apple-token-revocation.md). The app half (sending Apple's code at sign-in) is not built yet.
 
 **Three Clerk values must come from the same Clerk instance:** the publishable key in the build, and the issuer and secret key on the backend that build talks to. If they don't match, sign-in fails ("You're signed out") or account deletion fails at its last step.
 
@@ -109,9 +115,10 @@ Then check the provider's usage page for spend you don't recognise.
    - Convex Production `CLERK_SECRET_KEY` → `sk_live_…`
    - Convex Production `CLERK_JWT_ISSUER_DOMAIN` → the Production instance's issuer
    - EAS `production` `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` → `pk_live_…`
-3. Clear tester data from the Production deployment.
-4. Optional: move the OpenAI prod key into its own `andy-prod` project (§3).
-5. Run the `eas-release-checklist` skill and the `app-store-reviewer` subagent, as `CLAUDE.md` requires.
+3. Set the four `APPLE_*` variables on Convex Production, and build the app half of Apple token revocation (`docs/apple-token-revocation.md`). App Review requires it (5.1.1(v)).
+4. Clear tester data from the Production deployment.
+5. Optional: move the OpenAI prod key into its own `andy-prod` project (§3).
+6. Run the `eas-release-checklist` skill and the `app-store-reviewer` subagent, as `CLAUDE.md` requires.
 
 ---
 
@@ -124,4 +131,4 @@ npx eas-cli env:list --environment preview    # two EXPO_PUBLIC_ names, public v
 npx eas-cli env:list --environment production
 ```
 
-Expected on each Convex deployment: `ANTHROPIC_API_KEY`, `CLERK_JWT_ISSUER_DOMAIN`, `CLERK_SECRET_KEY`, `OPENAI_API_KEY`. And `.env.local` holds no `CLERK_SECRET_KEY` line.
+Expected on each Convex deployment: `ANTHROPIC_API_KEY`, `CLERK_JWT_ISSUER_DOMAIN`, `CLERK_SECRET_KEY`, `OPENAI_API_KEY`. Once Apple token revocation is set up, the four `APPLE_*` names as well — eight in all. As of 2026-10-29 neither deployment has them. And `.env.local` holds no `CLERK_SECRET_KEY` line.
