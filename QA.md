@@ -386,7 +386,9 @@ edit making things worse, and both were only visible by measuring.
 | 15.9 | On the phone: ask anything that finds notes | The answer sits **above** the cards, with the cited ones marked. Tapping a cited card opens that person | ⬜ |
 | 15.11 | Ask "pottery studio" with a Marcus climbing-gym note also saved | Only the note(s) the answer used are listed. Below them: **"1 other note came up"** (or N). Tap it → Marcus's note appears unmarked; tap **Hide the other notes** → folded again. Ask again → starts folded. When the answer cites nothing ("You haven't written anything about that"), every note is listed as before, nothing folded | ⬜ |
 
-## 16. Follow-up email draft
+## 16. Follow-up draft — the old sheet (was "Follow-up email draft")
+
+Reached only with the `writeTo` switch **off**. With it on (no row, the default), the profile shows **Write to {name}** instead: §40.
 
 Everything here is read by **somebody who is not the user**. That makes it the
 one feature in this app whose output leaves the owner's screen, and the rows
@@ -902,6 +904,8 @@ WCAG 1.4.11: a control whose outline is all that marks it out needs 3:1
 | 33.14 | Set Auto-Lock to 30 seconds (Settings → Display & Brightness). + → Voice, talk for a minute without touching the phone | The screen **stays on** and the recording keeps going. Then tap **Done** and leave the phone on *Is this what you said?*: that screen dims and locks as usual (device QA B5-1) | ⬜ |
 
 ## 34. Follow-up formats and tones (follow-up-tones.md, Final choice)
+
+The old **Draft a follow-up** sheet's picker — reached only with the `writeTo` switch **off** (see §16). Write to's own tone is in §40.
 
 | # | Do this | Expect | |
 |---|---|---|---|

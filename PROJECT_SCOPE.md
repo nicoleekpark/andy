@@ -41,7 +41,7 @@ Risk       : iOS cannot auto-surface caller profiles during a real cellular
              call (confirmed infeasible — see below). Scope replaced this
              with Siri Shortcut + widget — both cut from V1 on day 4 (new
              native targets, and this machine cannot build native locally),
-             so V1 answers "recall it fast" with Ask Andy and the Calendar
+             so V1 answers "recall it fast" with Advanced search (called Ask Andy until 2026-10-19) and the Calendar
              briefing instead. Widget is first back in V1.1.
 ```
 
@@ -93,9 +93,9 @@ Risk       : iOS cannot auto-surface caller profiles during a real cellular
     architecture, on purpose — not an oversight.** Extraction requires
     Claude (server-side, in a Convex action) to read note content in
     plaintext, and **as of day 5 that is no longer only at save time**:
-    Ask Andy sends the notes a question retrieved to Claude on every
+    Advanced search sends the notes a question retrieved to Claude on every
     question, and embeddings send every note to OpenAI once. So content
-    leaves the device on *read* as well as on write, and one Ask Andy
+    leaves the device on *read* as well as on write, and one Advanced search
     request bundles notes about **several different third parties** who
     never consented to any of it. The privacy policy has to describe both
     moments, not just the first — a policy that says "when you save a
@@ -149,27 +149,27 @@ Researched directly rather than assumed:
 
 ### Must Have
 
-- [ ] Auth via **Clerk** — Apple Sign-In only for V1 (see README Tech Stack Decisions)
+- [x] Auth via **Clerk** — Apple Sign-In only for V1 (see README Tech Stack Decisions)
 - [x] Voice recording → on-device/API transcription → Claude extraction into structured profile (name, relationship context, key facts, tags, first-met date) — day 2–3; typed entry is a second door into the same pipeline
 - [x] Manual profile create/edit (fallback when voice isn't used) — day 3: type a note, edit and delete a note, edit and delete a person, and name a person's aliases
-- [ ] **Photo → note: business cards and notes — widened 2026-10-13 (owner, `docs/design/decisions/capture-doors.md`, scope S-a).** The orbit's Photo door takes a business card, a page of handwritten or typed notes, or a screenshot — taken with Andy's camera or chosen from the album. Claude reads the **words** off the picture (and whose card or page it plainly is); the person checks and corrects them, exactly as written, and then Andy reads them like any other note — one rule for every picture, a card included. One photo per note. **The photo itself is not kept** — only the words. Needs a connection (said before the camera opens).
-- [ ] **Advanced search (called Ask Andy until 2026-10-19, device QA B5-2) — semantic recall across every note, answered in prose over its own sources.** One screen, not two. Retrieval runs over every _note_ (not just profile-primary fields), so "the Meta developer I met at X's birthday" surfaces a person who exists only as a mention inside somebody else's note. The same retrieval then feeds a Claude call that answers in a sentence **and shows the notes it used, tappable**. Absorbed the Should-Have "simple RAG chatbot" (day-04 scope cut): retrieval *is* that feature's expensive half, so what remains is one action and no second screen — and two boxes would make the user guess which one to ask. The citations are not polish: Day 2 measured extraction laundering a mistranscription into a confident false fact, and an answer with no visible source is that same failure with the evidence removed. See schema note below.
+- [x] **Photo → note: business cards and notes — widened 2026-10-13 (owner, `docs/design/decisions/capture-doors.md`, scope S-a).** The orbit's Photo door takes a business card, a page of handwritten or typed notes, or a screenshot — taken with Andy's camera or chosen from the album. Claude reads the **words** off the picture (and whose card or page it plainly is); the person checks and corrects them, exactly as written, and then Andy reads them like any other note — one rule for every picture, a card included. One photo per note. **The photo itself is not kept** — only the words. Needs a connection (said before the camera opens).
+- [x] **Advanced search (called Ask Andy until 2026-10-19, device QA B5-2) — semantic recall across every note, answered in prose over its own sources.** One screen, not two. Retrieval runs over every _note_ (not just profile-primary fields), so "the Meta developer I met at X's birthday" surfaces a person who exists only as a mention inside somebody else's note. The same retrieval then feeds a Claude call that answers in a sentence **and shows the notes it used, tappable**. Absorbed the Should-Have "simple RAG chatbot" (day-04 scope cut): retrieval *is* that feature's expensive half, so what remains is one action and no second screen — and two boxes would make the user guess which one to ask. The citations are not polish: Day 2 measured extraction laundering a mistranscription into a confident false fact, and an answer with no visible source is that same failure with the evidence removed. See schema note below.
 - [x] Timeline per profile — chronological list of notes/interactions — day 3, newest first, with who came up in each note
-- [ ] **Calendar Briefing** — read calendar (EventKit — covers Apple + Google + CalDAV in one API, see Reality Checks), fuzzy-match attendee/title names to profiles, schedule a local pre-meeting notification (**the person's name and the meeting — never the notes**, see below) and a post-meeting nudge ("오늘 A랑 어땠어? 새로 기억할 것?")
-- [ ] **Follow-up draft** — generate a draft from stored notes, shown in the app to edit, copy, and regenerate (a second paid call). No inbox read, no OAuth, nothing sent by Andy. Was `mailto:`; changed on day 6, because a follow-up gets sent by text or KakaoTalk as often as by email and `mailto:` is a dead end for both. **Formats and tones — added 2026-10-12 (owner, `docs/design/decisions/follow-up-tones.md`):** Message (no subject) or Email, and Friendly / Professional / Brief, written by Haiku 4.5 under the same nine rules; the format and tone last used for a person are kept on their record, so the next draft opens the same way. A new draft opens as Message + Friendly **Write to — redesigned 2026-10-21 (owner, `docs/design/decisions/follow-up-redesign.md`):** the button becomes **Write to {name}** and opens **Reply** or **Reach out**. Reply answers a message the person **pastes** or a **screenshot** they choose (read and shown to check before anything is written); what they paste or show is sent to Anthropic to write the reply and **never kept** — not on the server, not on the phone. Reach out writes from the notes they tick. Both take a tone, an optional instruction in their own words, and the person's recent notes as background; then up to **10 refines** (chips or their own words) with every version kept, the draft editable by hand, and one line saying what Andy did plus one saying what it was written from. The newest note leads, a plan whose date has passed is treated as past, and a newest note older than 90 days is not treated as news. Never an inbox read, never a clipboard read Andy didn't ask for, never sent by Andy.
-- [ ] Manual photo attachment per profile (expo-image-picker)
-- [ ] **Home list like Contacts — added 2026-10-11 after device QA (#7, #8).** Each row shows the person's photo, or their initials in a circle when there is none, so names stay lined up and a row reads as a person. From about 20 people, an **A–Z index** down the right side (A–Z, then # for everything else, Korean included — V1 launches English-only) with a letter heading over each group; a shorter list shows neither. Home only, no new permission and no new server data — photos already exist on profiles.
-- [ ] **Passcode/biometric app lock** (expo-local-authentication) — this app stores notes about other people without their consent; a lock screen is table stakes for trust, cheap to add
-- [ ] Realtime sync across the user's own devices
-- [ ] **iPad support, free** — don't restrict device family in `app.json`; the iPhone UI runs in scaled/compatibility mode on iPad automatically. No dedicated iPad layout in V1, but full functionality.
-- [ ] **Offline notes — added 2026-10-07 after device QA.** At a convention there is often no signal, and that is exactly when someone tells you something worth remembering. With no connection, a recorded, typed (and later, card) note is **kept on this phone, word for word**, and home says how many are waiting. Back online, Andy reads them by itself; each then waits for one tap of "Remember this" in the usual check step, because names clash most where you meet the most people. Kept in Andy's own app storage, tagged with the account that wrote it, and removed when you sign out (asked first) or delete your account — not when a session merely expires, and never shown to another account. **Reading offline (decided 2026-10-07, later the same day):** a copy of everyone and every note is kept on the phone under the same rules and refreshed whenever online, so people, notes and finding someone by name **or by a word in what you kept about them** (tags, details, how you know them, a note's own words — added 2026-10-08, online too) all work with no connection (saying how fresh the copy is). Asking in your own words and drafting a follow-up need Claude, so they say they need a connection. **Changing things offline (decided 2026-10-08):** edits and deletes are kept on the phone, shown at once, and saved for good when the person presses **Sync** online; anything changed elsewhere in the meantime is asked about, never silently overwritten — notes and people alike. **Still later:** photos offline. Built in slices (`dev-reports/qa-device-build-4.dev.md` → PR plan).
-- [ ] **Asking before AI reads anything — added 2026-10-14 (owner, `docs/design/decisions/pre-submission-privacy.md`; App Review 5.1.2(i) requires explicit permission before personal data goes to a third-party AI).** Never asked by itself: the first time someone reaches for something that reads (Let Andy read it, a photo, Ask, a follow-up), a sheet says what is sent, to Anthropic and OpenAI, and why. They don't train on it, and delete it within 30 days. **Allow** or **Not now**. Not now is remembered on the server and never re-asked unless they reach for one of those again; the server refuses every AI call until Allow. **A no still keeps notes:** Write opens with a one-line **About** (who it's about, then the words as prose), and **Save as written** files the words under that person with nothing read, asking which one when the name is shared. Settings → What Andy sends allows or stops it; the privacy policy is linked from Settings and the sheet. Behind the `aiPermission` switch, off in production until build 6 is on every phone. Built in #175–#178.
+- [x] **Calendar Briefing** — read calendar (EventKit — covers Apple + Google + CalDAV in one API, see Reality Checks), match names in the event's title and attendees to people you keep — strictly, not fuzzy as first planned (day 7, `dev-reports/day-07.dev.md` §5-1), and on the phone so the calendar never leaves it (#127), schedule a local pre-meeting notification (**the person's name and the meeting — never the notes**, see below) and a post-meeting nudge — **"Anything to remember about {name}?"** since 2026-10-21 (#193, device QA B5-11); first planned as "오늘 A랑 어땠어? 새로 기억할 것?", then "How was {name}?"
+- [x] **Follow-up draft** — generate a draft from stored notes, shown in the app to edit, copy, and regenerate (a second paid call). No inbox read, no OAuth, nothing sent by Andy. Was `mailto:`; changed on day 6, because a follow-up gets sent by text or KakaoTalk as often as by email and `mailto:` is a dead end for both. **Formats and tones — added 2026-10-12 (owner, `docs/design/decisions/follow-up-tones.md`):** Message (no subject) or Email, and Friendly / Professional / Brief, written by Haiku 4.5 under the same nine rules; the format and tone last used for a person are kept on their record, so the next draft opens the same way. A new draft opens as Message + Friendly **Write to — redesigned 2026-10-21 (owner, `docs/design/decisions/follow-up-redesign.md`):** the button becomes **Write to {name}** and opens **Reply** or **Reach out**. Reply answers a message the person **pastes** or a **screenshot** they choose (read and shown to check before anything is written); what they paste or show is sent to Anthropic to write the reply and **never kept** — not on the server, not on the phone. Reach out writes from the notes they tick. Both take a tone, an optional instruction in their own words, and the person's recent notes as background; then up to **10 refines** (chips or their own words) with every version kept, the draft editable by hand, and one line saying what Andy did plus one saying what it was written from. The newest note leads, a plan whose date has passed is treated as past, and a newest note older than 90 days is not treated as news. Never an inbox read, never a clipboard read Andy didn't ask for, never sent by Andy. **Built so far:** Write to → Reach out (#194–#199). **Not built yet:** Reply (paste or screenshot), refine, and the privacy copy (device QA B5-10).
+- [x] Manual photo attachment per profile (expo-image-picker)
+- [x] **Home list like Contacts — added 2026-10-11 after device QA (#7, #8).** Each row shows the person's photo, or their initials in a circle when there is none, so names stay lined up and a row reads as a person. From about 20 people, an **A–Z index** down the right side (A–Z, then # for everything else, Korean included — V1 launches English-only) with a letter heading over each group; a shorter list shows neither. Home only, no new permission and no new server data — photos already exist on profiles.
+- [x] **Passcode/biometric app lock** (expo-local-authentication) — this app stores notes about other people without their consent; a lock screen is table stakes for trust, cheap to add
+- [x] Realtime sync across the user's own devices
+- [x] **iPad support, free** — don't restrict device family in `app.json`; the iPhone UI runs in scaled/compatibility mode on iPad automatically. No dedicated iPad layout in V1, but full functionality.
+- [x] **Offline notes — added 2026-10-07 after device QA.** At a convention there is often no signal, and that is exactly when someone tells you something worth remembering. With no connection, a recorded, typed (and later, card) note is **kept on this phone, word for word**, and home says how many are waiting. Back online, Andy reads them by itself; each then waits for one tap of "Remember this" in the usual check step, because names clash most where you meet the most people. Kept in Andy's own app storage, tagged with the account that wrote it, and removed when you sign out (asked first) or delete your account — not when a session merely expires, and never shown to another account. **Reading offline (decided 2026-10-07, later the same day):** a copy of everyone and every note is kept on the phone under the same rules and refreshed whenever online, so people, notes and finding someone by name **or by a word in what you kept about them** (tags, details, how you know them, a note's own words — added 2026-10-08, online too) all work with no connection (saying how fresh the copy is). Asking in your own words and drafting a follow-up need Claude, so they say they need a connection. **Changing things offline (decided 2026-10-08):** edits and deletes are kept on the phone, shown at once, and saved for good when the person presses **Sync** online; anything changed elsewhere in the meantime is asked about, never silently overwritten — notes and people alike. **Still later:** photos offline. Built in slices (`dev-reports/qa-device-build-4.dev.md` → PR plan).
+- [x] **Asking before AI reads anything — added 2026-10-14 (owner, `docs/design/decisions/pre-submission-privacy.md`; App Review 5.1.2(i) requires explicit permission before personal data goes to a third-party AI).** Never asked by itself: the first time someone reaches for something that reads (Let Andy read it, a photo, Advanced search, Write to), a sheet says what is sent, to Anthropic and OpenAI, and why. They don't train on it, and delete it within 30 days. **Allow** or **Not now**. Not now is remembered on the server and never re-asked unless they reach for one of those again; the server refuses every AI call until Allow. **A no still keeps notes:** Write opens with a one-line **About** (who it's about, then the words as prose), and **Save as written** files the words under that person with nothing read, asking which one when the name is shared. Settings → What Andy sends allows or stops it; the privacy policy is linked from Settings and the sheet. Behind the `aiPermission` switch, off in production until build 6 is on every phone. Built in #175–#178.
 
 ### Should Have
 
 **Empty, deliberately** — emptied by the day-04 scope cut (see "The V1 scope cut" below).
 
-The RAG chatbot was *promoted* into Must Have, folded into Ask Andy above, because retrieval pays for most of it. The other three were moved down to Could Have rather than kept as a maybe: a Should Have that will not be reached is a Must Have's competitor for attention, and this list is read as the agreed boundary of V1. If something earns its way back, it comes back as a Must Have with a day against it.
+The RAG chatbot was *promoted* into Must Have, folded into Ask Andy above (now Advanced search), because retrieval pays for most of it. The other three were moved down to Could Have rather than kept as a maybe: a Should Have that will not be reached is a Must Have's competitor for attention, and this list is read as the agreed boundary of V1. If something earns its way back, it comes back as a Must Have with a day against it.
 
 ### Could Have (V1.1+)
 
@@ -179,7 +179,7 @@ The RAG chatbot was *promoted* into Must Have, folded into Ask Andy above, becau
 - [ ] **Siri Shortcut** — "Hey Siri, look up John Doe from Andy" → spoken/text summary of the latest note. Cut alongside the widget on day 4 and for the same reason (App Intents is a native target, same 8-minute loop). Worth recording *why it was ever Must*: it entered the scope as the **substitute** for the iOS call-time popup, which is infeasible (see Reality Checks) — a replacement for something absent, not a pillar of its own. Second in the queue, after the widget.
 - [ ] **iOS Contacts sync** — per-profile opt-in, read an existing contact + optionally write back a note/tag (expo-contacts). Cut on day 4: it is an import convenience sitting outside the capture → recall loop, and it costs a new permission (so an `app-store-reviewer` pass) for a job the user can do by speaking a name once.
 - [ ] **Pet/animal metrics log** — structured time-series per profile (date, metric type, value, unit) for weight/health tracking, plus quick-entry buttons for common types ("weight", "vet visit") on animal profiles. Cut on day 4. The `metrics` table already exists in the schema and the entity model already carries `entityType: "animal"`, so the *generalisation* this project cares about (Mission Alignment) is intact — a foster cat is a first-class profile with notes and a timeline today. What is deferred is the structured chart on top of it; until then "Mochi was 3.2kg today" is a note like any other, which is degraded but not missing.
-- [ ] **Tag/category filters** (client / friend / networking / foster-animal / other) with search filterable by tag and date range. Cut on day 4. Tags themselves already exist, are extracted, and are editable on the profile screen — this is the *filtering UI* over them, and Ask Andy answers most of what it would be used for.
+- [ ] **Tag/category filters** (client / friend / networking / foster-animal / other) with search filterable by tag and date range. Cut on day 4. Tags themselves already exist, are extracted, and are editable on the profile screen — this is the *filtering UI* over them, and Advanced search answers most of what it would be used for.
 - [ ] vCard export per profile — cut on day 4, lowest-value item on the list.
 - [ ] Google Sign-In (alongside the Android build, where it actually matters — see README Tech Stack Decisions)
 - [ ] **Multilingual capture, Korean first** — ⚠ carries a known bug that only becomes reachable here: `capture-screen.tsx`'s `error` handler starts with `if (!recordingRef.current) return;`, and `recordingRef` is only set by the `start` event. An unsupported locale makes the native module send `language-not-supported` *before* `start` fires, so the error is dropped and the screen sits on "Starting…" forever with no way out. Unreachable today — `en-US` and `ko-KR` are both universally supported — and reachable the moment a locale picker exists. Fix is to drop the guard from the `error` handler only; it belongs on `end`, where a stale event after review has already begun is the thing being kept out. — a locale picker (or reading the device's preferred locale) instead of a constant, plus a re-measurement of extraction quality in each language the way day 2 measured Korean. The embedding model chosen for launch (`text-embedding-3-large`) is already multilingual and scored highest of any commercial API on the one benchmark that isolates Korean, so **the stored vectors do not have to be rebuilt** — this is a capture-side change, not a search-side one. Trigger: launch, or a user who cannot use the app in English.
@@ -234,7 +234,7 @@ Three lines already in this document decided most of it:
 | "Timeline **extended from 7 to 10–12 days** to properly fit Calendar briefing and mention search" (Product Narrative) | The extension was *bought* for these two; cutting them would spend the extension on nothing |
 | "Scope **replaces** [the infeasible call popup] **with Siri Shortcut + widget**" (Decision Framework, Risk) | Siri and the widget entered as a substitute for an absent feature, not as pillars — the weakest claim on V1 |
 
-**Kept:** Ask Andy (recall + answers with sources) · Calendar briefing and nudge · app lock · business-card photo · manual photo attach · follow-up email draft · realtime sync and iPad (both free).
+**Kept:** Ask Andy, now Advanced search (recall + answers with sources) · Calendar briefing and nudge · app lock · business-card photo · manual photo attach · follow-up email draft (now Write to {name}) · realtime sync and iPad (both free).
 
 **Cut to V1.1, in queue order:** home widget ⭐ · Siri Shortcut · Contacts sync · pet metrics UI · tag filters · vCard export.
 
@@ -257,7 +257,7 @@ Worth stating plainly, because the cut list is long enough to read as a retreat 
 
 ### What would reopen this
 
-A hard external date, or Ask Andy and the Briefing both landing early enough that a native target fits before the buffer. Neither is true today.
+A hard external date, or Ask Andy (now Advanced search) and the Briefing both landing early enough that a native target fits before the buffer. Neither is true today.
 
 ## User Flow (lightweight — enough to remove Day 1 ambiguity, not a full IA doc)
 
@@ -331,15 +331,20 @@ said "last-notes digest" and described a worse app.
 **Screens (minimum for V1, Expo Router)**
 
 ```
-/ (home)               → everyone you keep, A→Z then 가→힣 (was most-recent-first until 2026-09-29), round record button,
-                         and a bottom search field that filters the list in place (see below)
-/profile/[id]          → timeline, tags, metrics (if animal), photo, follow-up email button
-/profile/[id]/capture  → voice/typed capture, pre-scoped to this profile
-/profile/[id]/edit     → name, aliases, kind, relationship, first met, tags; delete
-/note/[id]             → correct or delete a saved note
-/capture               → capture from home, subject decided from what is said
-/search                → recall search results
-/settings              → calendar permission, app lock, account
+/sign-in               → Sign in with Apple
+/ (home)               → everyone you keep, A→Z then 가→힣 (was most-recent-first until 2026-09-29), a photo or
+                         initials beside each name, an A–Z index once the list is long, the Briefing card,
+                         the round Record button (opens Voice, Write and Photo), and a bottom search field
+                         that filters the list in place (see below)
+/profile/[id]          → photo, details, tags, timeline, who they came up with, Write to {name}
+                         (was: metrics if animal — cut to V1.1; follow-up email button — now Write to)
+/profile/[id]/capture  → Voice, Write or Photo, pre-scoped to this person
+/profile/[id]/edit     → name, also known as, how you know them, first met, tags; delete
+                         (no person/animal choice since 2026-10-01 — V1 is people only)
+/note/[id]             → read, correct or delete a saved note
+/capture               → Voice, Write or Photo from home; who it is about decided from what is said
+/search                → Advanced search: people and notes that match, and an answer over them
+/settings              → calendar, What Andy sends, privacy policy, sign out, delete account
                          (contacts toggle returns with contacts sync, V1.1)
 ```
 
@@ -448,19 +453,19 @@ Voice/Photo Input (expo-speech-recognition captures the mic, expo-image-picker f
    → Convex vector index (per-note, not per-profile)
    → Recall: natural-language query → embed → vector search → results
        (grouped by profile, mention-hits labeled separately)
-   → Surfaces: Ask Andy (one screen: results + an answer over them)
+   → Surfaces: Advanced search (one screen: results + an answer over them)
                 (V1.1 adds the home widget, then the Siri Shortcut)
 
 Calendar Briefing (parallel path)
    EventKit calendar read (covers Apple + Google + CalDAV, one API) →
-   fuzzy-match attendee/title → profile
+   match attendee/title names → person (strict, on the phone)
    → schedule 2 local notifications per matched upcoming meeting:
        (a) pre-meeting: who you are meeting (never the notes)
-       (b) post-meeting: "anything new to remember?" nudge
+       (b) post-meeting: "Anything to remember about {name}?" nudge
    → nudge response → voice/text capture → same extraction pipeline above
 
-Follow-up Email (on demand)
-   Stored notes for a profile → Claude drafts follow-up → editable sheet
+Write to {name} (on demand; was "Follow-up Email", then "Draft a follow-up")
+   Notes the person ticks + their own words + a tone → Claude drafts → editable sheet
    → copy (no inbox access, no OAuth, nothing sent by Andy)
 ```
 
@@ -489,7 +494,7 @@ _Rewritten on day 4. The original table is preserved in `dev-reports/day-04.dev.
 | 2 ✅  | Voice capture → transcription → Claude extraction pipeline (primary profile + secondary mentions). _Business-card photo did **not** slip — it shipped this same day (`2175774`), ahead of its planned day-8 slot._ |
 | 3 ✅  | Profile CRUD + timeline UI + manual entry fallback + the mention graph, aliases, duplicate-name disambiguation. _Pet metrics UI cut to V1.1._                                |
 | 4 ✅  | _Not the planned work._ Branch/PR discipline + CI, English launch and the extraction bugs it exposed, dependency triage, retroactive review gates, **this scope cut**         |
-| 5 ✅  | **Ask Andy** — per-note embeddings + vector recall + the answer-with-sources screen (one screen, both halves)                                                                |
+| 5 ✅  | **Ask Andy** (now Advanced search) — per-note embeddings + vector recall + the answer-with-sources screen (one screen, both halves)                                                                |
 | 6 ✅  | Calendar read (EventKit) + attendee/profile matching. _Shipped **exact**, not fuzzy — day 7 reversed the fuzzy-matching call this row originally assumed; see `dev-reports/day-07.dev.md` §5-1._ |
 | 7 ✅  | Local notification scheduling (pre-meeting briefing, post-meeting nudge) + the 64-pending guardrail. _Capture-from-nudge deferred, not built: the notification carries who it's about and nothing reads it yet — `QA.md` §19.5, tracked as a slice boundary, not a bug._ |
 | 8 ✅  | _Not the planned work, again._ Business-card photo already shipped day 2, so this slot went to hardening the capture-flow name resolution a live test session surfaced instead: possessive names, subject/mention confirmation, word-boundary overlap matching (`Maisie` reaching `Maisie Park`). Nine stacked PRs, #37–#45, none of them in the original plan. Full account: `dev-reports/day-08.dev.md`. |
