@@ -172,9 +172,19 @@ A `featureFlags` table in Convex (`{ key, enabled, note }`), no third-party serv
 
 Running apps hear it live (`useQuery`, no relaunch). **To turn it back on:** delete the row, or set `enabled: true`.
 
-| Key | What off does |
+| Key | Effect when switched off |
 |---|---|
 | `calendarBriefing` | The home Briefing card disappears; the calendar is not read; this app's briefing and nudge reminders already scheduled on the phone are cancelled |
+| `aiPermission` | Andy stops asking before anything a person wrote reaches Anthropic or OpenAI, **and the server stops enforcing it** (`convex/aiPermission.ts`) — notes are read and indexed as if everyone had said yes |
+| `writeTo` | The profile's **Write to {name}** button goes back to the old **Draft a follow-up** sheet. Temporary: see below |
+
+**`aiPermission` is read by the server too**, not only the app — the only switch that is. Off means nothing is asked *and* nothing is refused.
+
+**Rows that exist on purpose.** Production carries `{ key: "aiPermission", enabled: false }` until build 6 is on every tester's phone: builds 4 and 5 have no screen to ask with, so enforcing under them would stop every note being read. **That row must be deleted before `eas submit`** — while it is there the store listing's "Asked first" is untrue (`docs/store/app-store-listing.md`, hard gate 1). Check: `npx convex data featureFlags --prod`.
+
+**Temporary switches.** `writeTo` exists only until Write to has passed device QA on build 6. Then it goes, together with the old `DraftSheet` path and the `followUpTones` key — which guards only that old sheet's format and tone picker, so it is not listed above. Removing a switch removes code and its tests, so it is its own PR.
+
+**No switch stops follow-up drafting's Claude calls.** `writeTo` off falls back to the old sheet, which calls Claude too. At Haiku prices (about 8¢ for the worst session, `follow-up-redesign.md`) that is accepted for now, not overlooked.
 
 How it behaves:
 - **No row means on.** The query (`featureFlags.switchedOff`) returns only the keys that are off, so a typo or an unknown key can only fail to switch something off.
