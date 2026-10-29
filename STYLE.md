@@ -41,7 +41,7 @@ on 2026-10-08 are closed (2026-10-11): dimmed text is never below
 `textOpacity.quiet` (0.7, 5.0:1) — `__tests__/contrast.test.ts` reads every
 style in `src/` to keep it so, a disabled control being the only exception
 WCAG allows — placeholders use `placeholder`, and the only edge of a field or a
-control (Sign out, Ask Andy, a checkbox — 2026-10-11) uses `edge`; the test
+control (Sign out, Ask Andy — now Advanced search — and a checkbox, 2026-10-11) uses `edge`; the test
 fails any other full ring in `line`. `brass` and `line` as pure decoration (the card's stripe, the thread,
 dividers) are exempt.
 
@@ -50,7 +50,7 @@ dividers) are exempt.
 readable as where you are; the dialog itself is `paper`, its action a `moss`
 pill (`alert` only for the three deletions above), Cancel plain text.
 
-**Light only.** There is no dark palette, and `app.json` pins `userInterfaceStyle: "light"` so the OS setting can't half-apply one. A dark variant isn't a colour swap here — `brass` is the signature and it would need re-deciding against a dark ground, which is a real design pass this V1 timeline doesn't have. Not in PROJECT_SCOPE's Must/Should either. Reverting is one line in `app.json` plus six dark values in the table above.
+**Light only.** There is no dark palette, and `app.json` pins `userInterfaceStyle: "light"` so the OS setting can't half-apply one. A dark variant isn't a colour swap here — `brass` is the signature and it would need re-deciding against a dark ground, which is a real design pass this V1 timeline doesn't have. Not in PROJECT_SCOPE's Must/Should either. Reverting is one line in `app.json` plus a dark value for each colour in the table above.
 
 ## Typography
 
