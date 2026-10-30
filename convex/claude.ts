@@ -2,6 +2,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { ConvexError } from "convex/values";
+import type { ClaudeModel } from "./claudeModels";
 
 /**
  * The one Claude call in this codebase, and the one place its failures are
@@ -28,7 +29,7 @@ declare const process: { env: Record<string, string | undefined> };
 
 /** Options a caller must supply. Exported so callers can name the shape. */
 export type ClaudeRequest = {
-  model: string;
+  model: ClaudeModel;
   maxTokens: number;
   system: string;
   schema: Record<string, unknown>;

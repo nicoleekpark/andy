@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import type { Infer } from "convex/values";
+import { CLAUDE_MODELS } from "./claudeModels";
 import { neutralizeTags, singleLineValue } from "./promptBoundary";
 
 /**
@@ -11,7 +12,7 @@ import { neutralizeTags, singleLineValue } from "./promptBoundary";
  */
 
 /** Haiku 4.5, the model every other feature here uses. */
-export const EMAIL_MODEL = "claude-haiku-4-5";
+export const EMAIL_MODEL = CLAUDE_MODELS.haiku;
 
 export const EMAIL_MAX_TOKENS = 1024;
 

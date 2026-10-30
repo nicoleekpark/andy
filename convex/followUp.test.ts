@@ -21,6 +21,7 @@ import {
   buildEmailMessage,
   requestBlock,
 } from "./emailPrompt";
+import { CLAUDE_MODELS } from "./claudeModels";
 import schema from "./schema";
 import { aiNotEnforced } from "../test-support/ai-permission";
 
@@ -47,7 +48,7 @@ function claudeSays(payload: unknown) {
     id: "msg_1",
     type: "message" as const,
     role: "assistant" as const,
-    model: "claude-haiku-4-5",
+    model: CLAUDE_MODELS.haiku,
     stop_reason: "end_turn" as const,
     stop_sequence: null,
     content: [{ type: "text" as const, text: JSON.stringify(payload) }],

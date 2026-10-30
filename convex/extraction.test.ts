@@ -4,6 +4,7 @@ import { convexTest } from "convex-test";
 import { ConvexError } from "convex/values";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { api } from "./_generated/api";
+import { CLAUDE_MODELS } from "./claudeModels";
 import schema from "./schema";
 import {
   EXTRACTION_SCHEMA,
@@ -47,7 +48,7 @@ function buildAnthropicMessage(
     id: "msg_test",
     container: null,
     content: [{ type: "text", text: "{}", citations: null }],
-    model: "claude-haiku-4-5",
+    model: CLAUDE_MODELS.haiku,
     role: "assistant",
     stop_details: null,
     stop_reason: "end_turn",

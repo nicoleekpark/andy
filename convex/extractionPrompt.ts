@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { CLAUDE_MODELS } from "./claudeModels";
 import { neutralizeTags, singleLineValue } from "./promptBoundary";
 import type { Infer } from "convex/values";
 
@@ -15,12 +16,12 @@ import type { Infer } from "convex/values";
  * plain script as well as from the Node-runtime action.
  */
 
-// Single source of truth for the extraction model. PROJECT_SCOPE.md's Tech
-// Stack picks "Haiku for extraction/cost" — but the same document lists
-// "Mention-graph extraction quality" and Korean accuracy as Open Risks, so the
-// choice is meant to be re-decided against measurements, not assumed. Changing
-// tier is this one line.
-export const EXTRACTION_MODEL = "claude-haiku-4-5";
+// Single source of truth for the extraction model. Haiku for cost — but
+// PROJECT_SCOPE.md lists "Mention-graph extraction quality" and Korean accuracy
+// as Open Risks, so the choice is meant to be re-decided against measurements,
+// not assumed. Changing tier is this one line; the id itself lives in
+// `claudeModels.ts`.
+export const EXTRACTION_MODEL = CLAUDE_MODELS.haiku;
 
 // The output is a small, schema-constrained JSON object — a name, a few tags,
 // a handful of facts. This ceiling is a runaway guard on a paid API call the
