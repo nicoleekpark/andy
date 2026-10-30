@@ -331,15 +331,20 @@ said "last-notes digest" and described a worse app.
 **Screens (minimum for V1, Expo Router)**
 
 ```
-/ (home)               → everyone you keep, A→Z then 가→힣 (was most-recent-first until 2026-09-29), round record button,
-                         and a bottom search field that filters the list in place (see below)
-/profile/[id]          → timeline, tags, metrics (if animal), photo, follow-up email button
-/profile/[id]/capture  → voice/typed capture, pre-scoped to this profile
-/profile/[id]/edit     → name, aliases, kind, relationship, first met, tags; delete
-/note/[id]             → correct or delete a saved note
-/capture               → capture from home, subject decided from what is said
-/search                → recall search results
-/settings              → calendar permission, app lock, account
+/sign-in               → Sign in with Apple
+/ (home)               → everyone you keep, A→Z then 가→힣 (was most-recent-first until 2026-09-29), a photo or
+                         initials beside each name, an A–Z index once the list is long, the Briefing card,
+                         the round Record button (opens Voice, Write and Photo), and a bottom search field
+                         that filters the list in place (see below)
+/profile/[id]          → photo, details, tags, timeline, who they came up with, Write to {name}
+                         (was: metrics if animal — cut to V1.1; follow-up email button — now Write to)
+/profile/[id]/capture  → Voice, Write or Photo, pre-scoped to this person
+/profile/[id]/edit     → name, also known as, how you know them, first met, tags; delete
+                         (no person/animal choice since 2026-10-01 — V1 is people only)
+/note/[id]             → read, correct or delete a saved note
+/capture               → Voice, Write or Photo from home; who it is about decided from what is said
+/search                → Advanced search: people and notes that match, and an answer over them
+/settings              → calendar, What Andy sends, privacy policy, sign out, delete account
                          (contacts toggle returns with contacts sync, V1.1)
 ```
 

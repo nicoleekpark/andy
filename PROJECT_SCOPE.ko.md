@@ -312,15 +312,19 @@ WidgetKit과 App Intents는 **둘 다 새 네이티브 타깃**임. 이 둘을 �
 **화면 구성 (V1 최소 구성, Expo Router)**
 
 ```
-/ (홈)                 → 기록한 모든 사람, A→Z 다음 가→힣 (2026-09-29까지는 최근순), 둥근 녹음 버튼,
+/sign-in               → Sign in with Apple
+/ (홈)                 → 기록한 모든 사람, A→Z 다음 가→힣 (2026-09-29까지는 최근순), 이름 옆 사진 또는 이니셜,
+                         목록이 길면 A–Z 색인, 브리핑 카드, 둥근 Record 버튼(Voice, Write, Photo가 열림),
                          그리고 목록을 그 자리에서 거르는 하단 검색칸 (아래 참고)
-/profile/[id]          → 타임라인, 태그, 지표(동물인 경우), 사진, 팔로업 이메일 버튼
-/profile/[id]/capture  → 음성/타이핑 캡처, 이 프로필로 범위가 좁혀짐
-/profile/[id]/edit     → 이름, 별칭, 종류, 관계, 첫 만남, 태그, 삭제
-/note/[id]             → 저장된 노트 수정·삭제
-/capture               → 홈에서의 캡처. 주어는 말한 내용에서 정해짐
-/search                → 회상 검색 결과
-/settings              → 캘린더 권한, 앱 잠금, 계정
+/profile/[id]          → 사진, 기억할 내용, 태그, 타임라인, 함께 언급된 사람, Write to {이름}
+                         (예전: 동물이면 지표 — V1.1로 잘림, 팔로업 이메일 버튼 — 지금의 Write to)
+/profile/[id]/capture  → Voice, Write, Photo, 이 사람으로 범위가 좁혀짐
+/profile/[id]/edit     → 이름, 다른 이름, 아는 사이, 첫 만남, 태그, 삭제
+                         (2026-10-01부터 사람/동물 선택 없음 — V1은 사람만)
+/note/[id]             → 저장된 노트 읽기·수정·삭제
+/capture               → 홈에서의 Voice, Write, Photo. 누구에 대한 것인지는 말한 내용에서 정해짐
+/search                → Advanced search: 맞는 사람과 노트, 그 위에서의 답변
+/settings              → 캘린더, What Andy sends, 개인정보처리방침, 로그아웃, 계정 삭제
                          (연락처 토글은 연락처 동기화와 함께 V1.1에 복귀)
 ```
 
