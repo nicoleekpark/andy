@@ -400,19 +400,19 @@ Unchanged from the brief: everything goes through the Convex action to Anthropic
 - **Reply with a screenshot: yes (a)** — photo icon bottom-left of box A; placeholder tells people they can.
 - **Overrides of the brief, by the owner:** rule 4 — an arrow icon asks Andy (labelled "Ask Andy" for VoiceOver; it sends to Andy, never to the person) and Open Messages opens Apple's Messages; rule 8 — no intent or sources lines.
 
-## Strings (draft for the owner, 2026-10-30)
+## Strings (owner-approved, 2026-10-30)
 
-Written by `product-strategist` for the build. Nothing above is reopened; these fill the gaps the final design left. Patterns follow `docs/copy-deck.md` ("…needs a connection.", "Andy couldn't … just now. Try again.", "That photo didn't come through. Try again."). `[owner]` marks a call I'm not sure of.
+Written by `product-strategist` for the build. Nothing above is reopened; these fill the gaps the final design left. Patterns follow `docs/copy-deck.md` ("…needs a connection.", "Andy couldn't … just now. Try again.", "That photo didn't come through. Try again."). The calls marked for the owner were all answered "as recommended" on 2026-10-30 and are noted inline.
 
 **One new part:** `write-to-status-line` (new, to be added to `component-names.md` in the build PR). One short line for the states below. Before Andy's first answer it sits under `write-to-ask-box`; after, it takes the place of `write-to-hint` while it shows. Only one shows at a time. The designer owns where and how it looks.
 
 **Rules behind the strings:**
 
 - **Offline: the arrow does not wait.** It dims, and nothing is queued. A pass sent later without a fresh tap would arrive when the person has moved on, and the sheet is kept in memory only. When the connection comes back, the line goes away and the arrow turns on again; the person taps it. Typing, the stepper, Copy and Open Messages all keep working offline.
-- **A failed ask changes nothing.** Box A or box B and the chat line stay exactly as they were. No version is added, and it does not count toward the 10 `[owner]`. All server failures (timeout, Claude unreachable, busy) show the one line below rather than the server's own message.
+- **A failed ask changes nothing.** Box A or box B and the chat line stay exactly as they were. No version is added, and it does not count toward the 10 (owner: yes). All server failures (timeout, Claude unreachable, busy) show the one line below rather than the server's own message.
 - **After Not now on `ai-permission-sheet`:** nothing was sent, all text stays, and the arrow stays on. Tapping it again opens the permission sheet again, which matches its footnote ("unless you reach for something it reads").
 - **Over a length cap, nothing is cut.** No `maxLength`: a paste that is cut short silently loses text, which breaks "nothing typed is lost". The arrow dims and the line says by how much to shorten. Copy and Open Messages still work on long text, because it's the person's own message.
-- **While Andy writes, box B and the chat line are locked and dimmed like box A** `[owner]`. Then no "your text changed while Andy was writing" string is needed.
+- **While Andy writes, box B and the chat line are locked and dimmed like box A** (owner: yes). Then no "your text changed while Andy was writing" string is needed.
 
 | Part | When it shows | Proposed text | VoiceOver label if different |
 |---|---|---|---|
@@ -425,7 +425,7 @@ Written by `product-strategist` for the build. Nothing above is reopened; these 
 | `write-to-arrow`, on | Something new to ask | (icon) | Ask Andy |
 | `write-to-arrow`, writing | Andy is writing | (spinner) | Label: Andy is writing. Announced when it starts. |
 | Announcement | Andy's answer arrives | (none visible) | Andy's answer is ready. Version {n} of {n}. |
-| `write-to-status-line`, writing | Andy is writing | Andy is writing… `[owner]`: visible, or spinner only | (the arrow carries it) |
+| `write-to-status-line`, writing | Andy is writing | Andy is writing… (shown, beside the spinner — owner) | (the arrow carries it) |
 | `write-to-arrow`, dimmed (box A empty) | Box A has no text | (dimmed icon) | Ask Andy, dimmed. Hint: Write something first. |
 | `write-to-arrow`, dimmed (nothing new) | Box B matches the version shown and the chat line is empty | (dimmed icon). Nothing new needed on screen: `write-to-hint` already says it. | Ask Andy, dimmed. Hint: Edit the text above, or tell Andy what to change. |
 | `write-to-status-line`, identical resend refused by the server | Should not happen (the arrow is dimmed), but if it does | Edit the text above, or tell Andy what to change. | — |
@@ -433,13 +433,13 @@ Written by `product-strategist` for the build. Nothing above is reopened; these 
 | `write-to-arrow`, dimmed (offline) | Offline | (dimmed icon) | Ask Andy, dimmed. Hint: Asking Andy needs a connection. |
 | `write-to-status-line`, failed ask | The call failed or timed out, including a connection lost mid-ask | Andy couldn't write that just now. Your text is still here. Try again. | — |
 | `write-to-status-line`, after Not now | Person chose Not now on `ai-permission-sheet` | Nothing was sent. Tap the arrow when you want Andy to write it. | Nothing was sent. Tap Ask Andy when you want Andy to write it. |
-| `write-to-status-line`, after Not now on a screenshot | Not now after picking a screenshot | Nothing was sent, and the picture wasn't kept. `[owner]`: only if the build guarantees the picture is dropped here | — |
+| `write-to-status-line`, after Not now on a screenshot | Not now after picking a screenshot | Nothing was sent, and the picture wasn't kept. (owner: the build guarantees the picture is not kept, and a test proves it) | — |
 | `write-to-status-line`, 10-ask cap | The 10th ask after the first has been answered | That's the most Andy can do in one go. Copy it, or close and start again. (Kept as the owner wrote it. It fits the Voice rules: plain, no guilt, and both ways forward named. "Copy" and "close" are the names of the controls.) | — |
 | `write-to-arrow`, dimmed (cap) | After the cap | (dimmed icon) | Ask Andy, dimmed. Hint: That's the most Andy can do in one go. |
 | `write-to-status-line`, box too long | Box A or box B is over 4,000 characters | That's too long for Andy to read at once. Shorten it by {n} characters to ask. | — |
-| `write-to-status-line`, chat line too long | Chat line is over 500 characters | Keep this under 500 characters — {n} to go. `[owner]`: or "Shorten this by {n} characters." to match the line above | — |
+| `write-to-status-line`, chat line too long | Chat line is over 500 characters | Shorten this by {n} characters. | — |
 | `write-to-arrow`, dimmed (too long) | Either cap is passed | (dimmed icon) | Ask Andy, dimmed. Hint: Shorten the text to ask Andy. |
-| `write-to-screenshot-button` | Box A, before the first answer | (photo icon) | Label: Add a screenshot. Hint: Andy reads their message from it. The picture isn't kept. `[owner]`: the hint's second sentence only if the build keeps that promise |
+| `write-to-screenshot-button` | Box A, before the first answer | (photo icon) | Label: Add a screenshot. Hint: Andy reads their message from it. The picture isn't kept. (owner: kept — the build guarantees it) |
 | `write-to-screenshot-button`, offline | Offline | (dimmed icon) | Add a screenshot, dimmed. Hint: Reading a screenshot needs a connection. |
 | `write-to-quote`, reading | While reading | Reading {name}'s message… | (same) |
 | `write-to-quote`, read | After reading | {name} wrote | Label: {name} wrote: {text}. Hint: Double-tap to fix a word. |
