@@ -32,6 +32,8 @@ This repo ships fast because every change is small, tested, and reversible. Foll
    | `convex/`, `src/`                                 | **`silent-failure-hunter`** | act on "must fix"; judgement on the rest           |
    | `src/` — a screen, component, or style (`*.tsx`)  | **`design-system-auditor`** | act on "must fix"; judgement on the rest           |
    | `app.json`, or any permission string              | **`app-store-reviewer`**    | blocking — a ❓ unverified blocks the same as a ⚠️ |
+   | `.claude/hooks/`, `.claude/settings.json`         | **`security-reviewer`**     | blocking — a hook runs before every command, for anyone who trusts the repo |
+   | `.claude/hooks/`, `.claude/settings.json`         | **`code-reviewer`**         | act on "must fix"; judgement on the rest           |
    | only `*.md`, `*.yml`, `package*.json`, `.github/` | none                        |                                                    |
 
    Three or four at once is normal — they are independent, so launch them together rather than in series; that is most of the reason to skip them gone.
