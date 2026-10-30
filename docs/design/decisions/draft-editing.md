@@ -399,3 +399,64 @@ Unchanged from the brief: everything goes through the Convex action to Anthropic
 - Notes: **newest 3, or all if ≤ 3**, saved details only, never mention-only. Write to is offered to everyone; a mention-only person gets no notes. Tone/format default: **learned from the last finished message** (saved field kept and used). Off switch: `writeTo` off = **no Write to button**; old sheets and `followUpTones` are removed in the build. No-SMS devices: Open Messages hidden. Stepping back compares with the shown version. Limits counted on the phone. A kill by iOS loses the sheet. Missing strings (offline, failed ask, after Not now, greyed arrow, stepper VoiceOver): drafted by product-strategist for the owner in the scope PR.
 - **Reply with a screenshot: yes (a)** — photo icon bottom-left of box A; placeholder tells people they can.
 - **Overrides of the brief, by the owner:** rule 4 — an arrow icon asks Andy (labelled "Ask Andy" for VoiceOver; it sends to Andy, never to the person) and Open Messages opens Apple's Messages; rule 8 — no intent or sources lines.
+
+## Strings (draft for the owner, 2026-10-30)
+
+Written by `product-strategist` for the build. Nothing above is reopened; these fill the gaps the final design left. Patterns follow `docs/copy-deck.md` ("…needs a connection.", "Andy couldn't … just now. Try again.", "That photo didn't come through. Try again."). `[owner]` marks a call I'm not sure of.
+
+**One new part:** `write-to-status-line` (new, to be added to `component-names.md` in the build PR). One short line for the states below. Before Andy's first answer it sits under `write-to-ask-box`; after, it takes the place of `write-to-hint` while it shows. Only one shows at a time. The designer owns where and how it looks.
+
+**Rules behind the strings:**
+
+- **Offline: the arrow does not wait.** It dims, and nothing is queued. A pass sent later without a fresh tap would arrive when the person has moved on, and the sheet is kept in memory only. When the connection comes back, the line goes away and the arrow turns on again; the person taps it. Typing, the stepper, Copy and Open Messages all keep working offline.
+- **A failed ask changes nothing.** Box A or box B and the chat line stay exactly as they were. No version is added, and it does not count toward the 10 `[owner]`. All server failures (timeout, Claude unreachable, busy) show the one line below rather than the server's own message.
+- **After Not now on `ai-permission-sheet`:** nothing was sent, all text stays, and the arrow stays on. Tapping it again opens the permission sheet again, which matches its footnote ("unless you reach for something it reads").
+- **Over a length cap, nothing is cut.** No `maxLength`: a paste that is cut short silently loses text, which breaks "nothing typed is lost". The arrow dims and the line says by how much to shorten. Copy and Open Messages still work on long text, because it's the person's own message.
+- **While Andy writes, box B and the chat line are locked and dimmed like box A** `[owner]`. Then no "your text changed while Andy was writing" string is needed.
+
+| Part | When it shows | Proposed text | VoiceOver label if different |
+|---|---|---|---|
+| `write-to-close-button` | Always | Close | Close |
+| Title | Always | Write to {name} | Write to {name} (header) |
+| `write-to-ask-box` | Before the first answer | (placeholder as in the final design) | Label: What to write to {name}. The placeholder is read as the hint. |
+| `write-to-draft-box` | After an answer | (Andy's text) | Label: Message to {name}. If `write-to-edited-tag` shows: Message to {name}, edited |
+| `write-to-edited-tag` | Box B differs from the version shown | Edited | Read as part of the box B label, not as its own element |
+| `write-to-chat-line` | After an answer | (placeholder as in the final design) | Label: Anything else for Andy? Optional |
+| `write-to-arrow`, on | Something new to ask | (icon) | Ask Andy |
+| `write-to-arrow`, writing | Andy is writing | (spinner) | Label: Andy is writing. Announced when it starts. |
+| Announcement | Andy's answer arrives | (none visible) | Andy's answer is ready. Version {n} of {n}. |
+| `write-to-status-line`, writing | Andy is writing | Andy is writing… `[owner]`: visible, or spinner only | (the arrow carries it) |
+| `write-to-arrow`, dimmed (box A empty) | Box A has no text | (dimmed icon) | Ask Andy, dimmed. Hint: Write something first. |
+| `write-to-arrow`, dimmed (nothing new) | Box B matches the version shown and the chat line is empty | (dimmed icon). Nothing new needed on screen: `write-to-hint` already says it. | Ask Andy, dimmed. Hint: Edit the text above, or tell Andy what to change. |
+| `write-to-status-line`, identical resend refused by the server | Should not happen (the arrow is dimmed), but if it does | Edit the text above, or tell Andy what to change. | — |
+| `write-to-status-line`, offline | No connection, before or after the first answer | You're offline. Asking Andy needs a connection — your text stays here. | — |
+| `write-to-arrow`, dimmed (offline) | Offline | (dimmed icon) | Ask Andy, dimmed. Hint: Asking Andy needs a connection. |
+| `write-to-status-line`, failed ask | The call failed or timed out, including a connection lost mid-ask | Andy couldn't write that just now. Your text is still here. Try again. | — |
+| `write-to-status-line`, after Not now | Person chose Not now on `ai-permission-sheet` | Nothing was sent. Tap the arrow when you want Andy to write it. | Nothing was sent. Tap Ask Andy when you want Andy to write it. |
+| `write-to-status-line`, after Not now on a screenshot | Not now after picking a screenshot | Nothing was sent, and the picture wasn't kept. `[owner]`: only if the build guarantees the picture is dropped here | — |
+| `write-to-status-line`, 10-ask cap | The 10th ask after the first has been answered | That's the most Andy can do in one go. Copy it, or close and start again. (Kept as the owner wrote it. It fits the Voice rules: plain, no guilt, and both ways forward named. "Copy" and "close" are the names of the controls.) | — |
+| `write-to-arrow`, dimmed (cap) | After the cap | (dimmed icon) | Ask Andy, dimmed. Hint: That's the most Andy can do in one go. |
+| `write-to-status-line`, box too long | Box A or box B is over 4,000 characters | That's too long for Andy to read at once. Shorten it by {n} characters to ask. | — |
+| `write-to-status-line`, chat line too long | Chat line is over 500 characters | Keep this under 500 characters — {n} to go. `[owner]`: or "Shorten this by {n} characters." to match the line above | — |
+| `write-to-arrow`, dimmed (too long) | Either cap is passed | (dimmed icon) | Ask Andy, dimmed. Hint: Shorten the text to ask Andy. |
+| `write-to-screenshot-button` | Box A, before the first answer | (photo icon) | Label: Add a screenshot. Hint: Andy reads their message from it. The picture isn't kept. `[owner]`: the hint's second sentence only if the build keeps that promise |
+| `write-to-screenshot-button`, offline | Offline | (dimmed icon) | Add a screenshot, dimmed. Hint: Reading a screenshot needs a connection. |
+| `write-to-quote`, reading | While reading | Reading {name}'s message… | (same) |
+| `write-to-quote`, read | After reading | {name} wrote | Label: {name} wrote: {text}. Hint: Double-tap to fix a word. |
+| `write-to-quote` ✕ | After reading | (✕) | Remove {name}'s message |
+| `write-to-status-line`, screenshot didn't load or upload | Picking or sending the picture failed | That screenshot didn't come through. Try again. | — |
+| `write-to-status-line`, no message found | Andy read the picture and found no message | Andy couldn't find a message in that screenshot. Try another, or type what they said. | — |
+| `write-to-status-line`, screenshot too large | The server refuses the size | That screenshot is too large for Andy to read. Try another. | — |
+| `write-to-version-stepper` ‹ | More than one version | ‹ | Previous version |
+| `write-to-version-stepper` › | More than one version | › | Next version |
+| `write-to-version-stepper` readout | More than one version | 2 of 3 | Version 2 of 3 (announced after each step) |
+| `write-to-copy-button` | Box B has text | (copy icon) | Copy the message |
+| `write-to-copy-button`, done | For a moment after the tap | Copied | Announced: Copied |
+| `write-to-copy-button`, dimmed | Box B is empty | (dimmed icon) | Copy the message, dimmed. Hint: The box is empty. |
+| `write-to-status-line`, clipboard failed | Copy could not write to the clipboard | Andy couldn't reach the clipboard. Your text is still here — select it to copy it by hand. | — |
+| `write-to-open-messages-button` | After an answer, on devices that can send texts | Open Messages | Label: Open Messages. Hint: Opens Messages with this text. You choose who it goes to and send it. |
+| `write-to-open-messages-button`, dimmed | Box B is empty | Open Messages (dimmed) | Hint: The box is empty. |
+| `write-to-status-line`, Messages didn't open | The open call failed | Messages didn't open. Copy the text instead. | — |
+| `write-to-close-alert` | Close tapped with any text, nothing copied or opened in Messages | Title: Close without copying? Message: Your text won't be kept. Buttons: Keep writing / Close | (same) |
+
+Checked against Voice: no "send" on any control that Andy acts on (the arrow is "Ask Andy"; the only "send" is in the Open Messages hint, and the person does it); no "data", "saved", "stored" or "collect"; sentence case; one name per action: Close is the button and the alert's button, and "Copy" is the label, the cap line and "Copied".
