@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Mock: draft-editing.md, Option B "Show what changed". HTML approximation of a native screen. Design prototype, not production code. -->
+<title>Draft editing - Option B: Show what changed</title>
+<style>
+:root{--ink:#2A2622;--paper:#E8E6DE;--moss:#5C6B4F;--line:#B8B3A8;--edge:#857E6D;--alert:#9F4C3B;--placeholder:#63605A;
+--display:"Lora",Georgia,serif;--utility:"IBM Plex Mono",monospace;--body:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;
+--xs:4px;--sm:8px;--md:12px;--lg:16px;--xl:24px;--xxl:32px;--text-xs:12px;--text-sm:13px;--text-md:14px;--text-base:15px;--text-lg:16px;--text-xl:17px;
+--radius-control:10px;--radius-card:16px;--radius-pill:999px;--touch:44px;--quiet:.7;--disabled:.5;--scrim:rgba(42,38,34,.42)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#1a1a1a;color:#ddd;font-family:var(--body);padding:32px 20px}
+h1{font:500 26px var(--display);color:#fff}.lead{color:#aaa;max-width:80ch;margin:8px 0 24px;line-height:1.5}
+.row{display:flex;gap:24px;overflow-x:auto;padding-bottom:24px;align-items:flex-start}
+.frame{flex:0 0 390px}.cap{font:var(--text-xs) var(--utility);letter-spacing:.08em;text-transform:uppercase;color:#9fb08f;margin-bottom:8px}
+.note{font-size:13px;color:#aaa;margin-top:8px;line-height:1.45;max-width:390px}
+.phone{width:390px;height:700px;background:var(--paper);color:var(--ink);border-radius:28px;position:relative;overflow:hidden;display:flex;flex-direction:column}
+.nav{height:52px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 var(--lg);border-bottom:1px solid var(--line);font-size:var(--text-xl)}
+.nav b{font-weight:600}.nav .nm{font-family:var(--display);font-weight:500}.nav a{color:var(--moss);min-width:var(--touch);min-height:var(--touch);display:flex;align-items:center}
+.body{flex:1;padding:var(--lg);display:flex;flex-direction:column;gap:var(--md);overflow:hidden}
+.page{border:1px solid var(--edge);border-radius:var(--radius-control);padding:var(--lg);font-size:var(--text-xl);line-height:1.5;min-height:150px}
+.caret{display:inline-block;width:2px;height:1.1em;background:var(--moss);vertical-align:text-bottom}
+.ch{text-decoration:underline;text-decoration-color:var(--moss);text-decoration-thickness:2px;text-underline-offset:4px}
+.ch.open{background:#D8DACD}
+.quiet{opacity:var(--quiet);font-size:var(--text-sm)}.intent{border-left:2px solid var(--line);padding-left:var(--md);font-size:var(--text-md)}
+.sources{font-size:var(--text-sm);opacity:var(--quiet);padding-left:var(--md)}
+.set{display:flex;align-items:center;min-height:var(--touch);font-size:var(--text-md);gap:var(--sm)}.set u{color:var(--moss);text-underline-offset:3px}
+.btn{min-height:var(--touch);border-radius:var(--radius-pill);display:flex;align-items:center;justify-content:center;gap:var(--sm);padding:0 var(--xl);font-size:var(--text-lg);font-weight:600}
+.pri{background:var(--moss);color:var(--paper)}.sec{border:1px solid var(--edge);color:var(--ink)}
+.door{min-height:72px;border:1px solid var(--edge);border-radius:var(--radius-control);padding:var(--md) var(--lg);display:flex;flex-direction:column;justify-content:center;gap:2px}
+.door b{font-size:var(--text-xl)}.door span{font-size:var(--text-md);opacity:var(--quiet)}
+.step{display:flex;align-items:center;justify-content:center;gap:var(--sm);font-size:var(--text-md)}
+.step i{font-style:normal;min-width:var(--touch);min-height:var(--touch);display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--moss)}.step i.off{opacity:var(--disabled)}
+.kbd{height:250px;flex:none;background:var(--line);margin-top:auto;display:flex;align-items:center;justify-content:center;font:var(--text-xs) var(--utility)}
+.spacer{flex:1}
+.pop{position:absolute;left:var(--lg);right:var(--lg);top:250px;background:var(--paper);border:1px solid var(--edge);border-radius:var(--radius-card);padding:var(--lg);display:flex;flex-direction:column;gap:var(--sm);font-size:var(--text-md)}
+.pop .was{font-size:var(--text-lg)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--paper);border-top:1px solid var(--edge);border-radius:var(--radius-card) var(--radius-card) 0 0;padding:var(--sm) var(--lg) var(--xl)}
+.dim{position:absolute;inset:0;background:var(--scrim)}
+.item{min-height:var(--touch);display:flex;align-items:center;font-size:var(--text-xl);border-bottom:1px solid var(--line)}.item:last-child{border:0}
+.item.else{color:var(--moss);font-weight:600}
+.fld{min-height:var(--touch);border:1px solid var(--edge);border-radius:var(--radius-control);padding:0 var(--md);display:flex;align-items:center;font-size:var(--text-lg)}
+.mark{display:flex;align-items:center;gap:var(--sm);font-size:var(--text-md)}.mark s{display:inline-block;width:24px;height:0;border-top:2px solid var(--moss)}
+</style></head><body>
+<h1>Option B - Show what changed</h1>
+<p class="lead">One page. Andy's pass comes back in the same field with its changes underlined (underline plus the line "3 changes", never colour alone). Tap an underlined part to see what you wrote and put it back. Asking again is one button that opens a short list of ready-made changes plus "Something else". Copy only; nothing is sent.</p>
+<div class="row">
+
+<div class="frame"><div class="cap">1 Start</div><div class="phone">
+<div class="nav"><a>Cancel</a><b>Follow-up to <span class="nm">Mina</span></b><a style="opacity:var(--disabled)">Done</a></div>
+<div class="body"><div class="door"><b>Write it myself</b><span>Type your message. Andy can tidy it.</span></div>
+<div class="door"><b>Ask Andy to write it</b><span>Say what it should say.</span></div>
+<div class="set">Friendly · Message · <u>1 note</u></div></div></div>
+<p class="note">Same two doors as every option. Ask Andy to write it opens the page in request mode (see A 1b); the answer lands in the same page.</p></div>
+
+<div class="frame"><div class="cap">2 Own draft typed</div><div class="phone">
+<div class="nav"><a>Cancel</a><b>Follow-up to <span class="nm">Mina</span></b><a>Done</a></div>
+<div class="body"><div class="page">Hi Mina, thanks again for the intro to Dev. We talked yesterday and he is keen. Coffee soon? Tuesday works for me.<span class="caret"></span></div>
+<div class="btn sec">Ask Andy</div></div><div class="kbd">keyboard</div></div>
+<p class="note">One button. Tapped on its own it opens the list in frame 5.</p></div>
+
+<div class="frame"><div class="cap">3 Andy's text, changes marked</div><div class="phone">
+<div class="nav"><a>Cancel</a><b>Follow-up to <span class="nm">Mina</span></b><a>Done</a></div>
+<div class="body"><div class="page"><span class="ch">Hi Mina, thank you again for introducing me to Dev.</span> <span class="ch">We spoke yesterday and he's keen to work together.</span> <span class="ch">Could we get coffee soon?</span> Tuesday works for me.</div>
+<div class="mark"><s></s>3 changes. Tap one to see what you wrote.</div>
+<div class="intent">Kept your opening; tidied the rest.</div><div class="sources">Written from your words.</div>
+<div class="step"><i>‹</i>Version 2 of 2 · Andy's<i class="off">›</i></div><div class="spacer"></div>
+<div class="btn pri">Copy message</div><div class="btn sec">Ask Andy</div></div></div>
+<p class="note">Changes are already applied. Nothing to accept. The marks go away when you type or run the next pass.</p></div>
+
+<div class="frame"><div class="cap">4 Tap a change</div><div class="phone">
+<div class="nav"><a>Cancel</a><b>Follow-up to <span class="nm">Mina</span></b><a>Done</a></div>
+<div class="body"><div class="page"><span class="ch">Hi Mina, thank you again for introducing me to Dev.</span> <span class="ch open">We spoke yesterday and he's keen to work together.</span> <span class="ch">Could we get coffee soon?</span> Tuesday works for me.</div>
+<div class="step" style="margin-top:210px"><i>‹</i>Version 2 of 2 · Andy's<i class="off">›</i></div></div>
+<div class="pop"><span class="quiet" style="font-size:var(--text-sm)">You wrote</span><span class="was">We talked yesterday and he is keen.</span><div class="btn sec" style="margin-top:var(--xs)">Put mine back</div></div></div>
+<p class="note">draft-change-popover. One tap restores that sentence only. Dismiss by tapping elsewhere. Also the answer to "I liked my wording here".</p></div>
+
+<div class="frame"><div class="cap">5 You edit, then ask again</div><div class="phone">
+<div class="nav"><a>Cancel</a><b>Follow-up to <span class="nm">Mina</span></b><a>Done</a></div>
+<div class="body"><div class="page">Hi Mina, thank you again for introducing me to Dev. We spoke yesterday and he's keen to work together. Could we get coffee soon? Thursday works for me.</div></div>
+<div class="dim"></div>
+<div class="sheet"><div class="quiet" style="padding:var(--sm) 0">Change the whole message. Your Thursday edit stays.</div>
+<div class="item">Tidy it up</div><div class="item">Shorter</div><div class="item">Warmer</div><div class="item">More formal</div><div class="item">Less pushy</div><div class="item">Add a question</div><div class="item else">Something else…</div></div></div>
+<p class="note">ask-andy-list (a bottom sheet). Reuses the five refine-chips from 10-21 as list rows. Something else… swaps the list for a one-line field and a Ask Andy button.</p></div>
+
+<div class="frame"><div class="cap">5b Something else</div><div class="phone">
+<div class="nav"><a>Cancel</a><b>Follow-up to <span class="nm">Mina</span></b><a>Done</a></div>
+<div class="body"><div class="page">Hi Mina, thank you again for introducing me to Dev. We spoke yesterday and he's keen to work together. Could we get coffee soon? Thursday works for me.</div></div>
+<div class="dim"></div>
+<div class="sheet" style="padding-bottom:var(--lg)"><div class="quiet" style="padding:var(--sm) 0">Tell Andy what to change.</div>
+<div class="fld">Make it a bit shorter, mention Luca<span class="caret"></span></div><div style="height:var(--sm)"></div><div class="btn pri">Ask Andy</div><div style="height:var(--sm)"></div><div class="kbd" style="height:220px;margin:0">keyboard</div></div></div>
+<p class="note">500-character limit with a counter appearing past 400. The sheet closes on Ask Andy and the page shows the waiting state.</p></div>
+
+<div class="frame"><div class="cap">6 Result</div><div class="phone">
+<div class="nav"><a>Cancel</a><b>Follow-up to <span class="nm">Mina</span></b><a>Done</a></div>
+<div class="body"><div class="page">Hi Mina, thank you for introducing me to Dev. <span class="ch">He's keen.</span> Could we get coffee <span class="ch">Thursday</span>?</div>
+<div class="mark"><s></s>2 changes from your edit.</div>
+<div class="intent">Made it shorter; kept your Thursday.</div><div class="sources">Written from your words.</div>
+<div class="step"><i>‹</i>Version 4 of 4 · Andy's<i class="off">›</i></div><div class="spacer"></div>
+<div class="btn pri">Copy message</div><div class="btn sec">Ask Andy</div></div></div>
+<p class="note">Marks compare to the version just before this pass (your edit), so the diff shows exactly what Andy touched of your words.</p></div>
+
+<div class="frame"><div class="cap">7 Step back</div><div class="phone">
+<div class="nav"><a>Cancel</a><b>Follow-up to <span class="nm">Mina</span></b><a>Done</a></div>
+<div class="body"><div class="page">Hi Mina, thank you again for introducing me to Dev. We spoke yesterday and he's keen to work together. Could we get coffee soon? Thursday works for me.</div>
+<div class="intent">Back to your edit, word for word.</div>
+<div class="step"><i>‹</i>Version 3 of 4 · yours<i>›</i></div><div class="spacer"></div>
+<div class="btn pri">Copy message</div><div class="btn sec">Ask Andy</div></div></div>
+<p class="note">Same stepper as A. Marks are not shown on older versions.</p></div>
+
+</div></body></html>
