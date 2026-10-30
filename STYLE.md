@@ -41,7 +41,7 @@ on 2026-10-08 are closed (2026-10-11): dimmed text is never below
 `textOpacity.quiet` (0.7, 5.0:1) — `__tests__/contrast.test.ts` reads every
 style in `src/` to keep it so, a disabled control being the only exception
 WCAG allows — placeholders use `placeholder`, and the only edge of a field or a
-control (Sign out, Ask Andy, a checkbox — 2026-10-11) uses `edge`; the test
+control (Sign out, Ask Andy — now Advanced search — and a checkbox, 2026-10-11) uses `edge`; the test
 fails any other full ring in `line`. `brass` and `line` as pure decoration (the card's stripe, the thread,
 dividers) are exempt.
 

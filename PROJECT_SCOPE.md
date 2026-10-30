@@ -41,7 +41,7 @@ Risk       : iOS cannot auto-surface caller profiles during a real cellular
              call (confirmed infeasible — see below). Scope replaced this
              with Siri Shortcut + widget — both cut from V1 on day 4 (new
              native targets, and this machine cannot build native locally),
-             so V1 answers "recall it fast" with Ask Andy and the Calendar
+             so V1 answers "recall it fast" with Advanced search (called Ask Andy until 2026-10-19) and the Calendar
              briefing instead. Widget is first back in V1.1.
 ```
 
@@ -93,9 +93,9 @@ Risk       : iOS cannot auto-surface caller profiles during a real cellular
     architecture, on purpose — not an oversight.** Extraction requires
     Claude (server-side, in a Convex action) to read note content in
     plaintext, and **as of day 5 that is no longer only at save time**:
-    Ask Andy sends the notes a question retrieved to Claude on every
+    Advanced search sends the notes a question retrieved to Claude on every
     question, and embeddings send every note to OpenAI once. So content
-    leaves the device on *read* as well as on write, and one Ask Andy
+    leaves the device on *read* as well as on write, and one Advanced search
     request bundles notes about **several different third parties** who
     never consented to any of it. The privacy policy has to describe both
     moments, not just the first — a policy that says "when you save a
@@ -169,7 +169,7 @@ Researched directly rather than assumed:
 
 **Empty, deliberately** — emptied by the day-04 scope cut (see "The V1 scope cut" below).
 
-The RAG chatbot was *promoted* into Must Have, folded into Ask Andy above, because retrieval pays for most of it. The other three were moved down to Could Have rather than kept as a maybe: a Should Have that will not be reached is a Must Have's competitor for attention, and this list is read as the agreed boundary of V1. If something earns its way back, it comes back as a Must Have with a day against it.
+The RAG chatbot was *promoted* into Must Have, folded into Ask Andy above (now Advanced search), because retrieval pays for most of it. The other three were moved down to Could Have rather than kept as a maybe: a Should Have that will not be reached is a Must Have's competitor for attention, and this list is read as the agreed boundary of V1. If something earns its way back, it comes back as a Must Have with a day against it.
 
 ### Could Have (V1.1+)
 
@@ -179,7 +179,7 @@ The RAG chatbot was *promoted* into Must Have, folded into Ask Andy above, becau
 - [ ] **Siri Shortcut** — "Hey Siri, look up John Doe from Andy" → spoken/text summary of the latest note. Cut alongside the widget on day 4 and for the same reason (App Intents is a native target, same 8-minute loop). Worth recording *why it was ever Must*: it entered the scope as the **substitute** for the iOS call-time popup, which is infeasible (see Reality Checks) — a replacement for something absent, not a pillar of its own. Second in the queue, after the widget.
 - [ ] **iOS Contacts sync** — per-profile opt-in, read an existing contact + optionally write back a note/tag (expo-contacts). Cut on day 4: it is an import convenience sitting outside the capture → recall loop, and it costs a new permission (so an `app-store-reviewer` pass) for a job the user can do by speaking a name once.
 - [ ] **Pet/animal metrics log** — structured time-series per profile (date, metric type, value, unit) for weight/health tracking, plus quick-entry buttons for common types ("weight", "vet visit") on animal profiles. Cut on day 4. The `metrics` table already exists in the schema and the entity model already carries `entityType: "animal"`, so the *generalisation* this project cares about (Mission Alignment) is intact — a foster cat is a first-class profile with notes and a timeline today. What is deferred is the structured chart on top of it; until then "Mochi was 3.2kg today" is a note like any other, which is degraded but not missing.
-- [ ] **Tag/category filters** (client / friend / networking / foster-animal / other) with search filterable by tag and date range. Cut on day 4. Tags themselves already exist, are extracted, and are editable on the profile screen — this is the *filtering UI* over them, and Ask Andy answers most of what it would be used for.
+- [ ] **Tag/category filters** (client / friend / networking / foster-animal / other) with search filterable by tag and date range. Cut on day 4. Tags themselves already exist, are extracted, and are editable on the profile screen — this is the *filtering UI* over them, and Advanced search answers most of what it would be used for.
 - [ ] vCard export per profile — cut on day 4, lowest-value item on the list.
 - [ ] Google Sign-In (alongside the Android build, where it actually matters — see README Tech Stack Decisions)
 - [ ] **Multilingual capture, Korean first** — ⚠ carries a known bug that only becomes reachable here: `capture-screen.tsx`'s `error` handler starts with `if (!recordingRef.current) return;`, and `recordingRef` is only set by the `start` event. An unsupported locale makes the native module send `language-not-supported` *before* `start` fires, so the error is dropped and the screen sits on "Starting…" forever with no way out. Unreachable today — `en-US` and `ko-KR` are both universally supported — and reachable the moment a locale picker exists. Fix is to drop the guard from the `error` handler only; it belongs on `end`, where a stale event after review has already begun is the thing being kept out. — a locale picker (or reading the device's preferred locale) instead of a constant, plus a re-measurement of extraction quality in each language the way day 2 measured Korean. The embedding model chosen for launch (`text-embedding-3-large`) is already multilingual and scored highest of any commercial API on the one benchmark that isolates Korean, so **the stored vectors do not have to be rebuilt** — this is a capture-side change, not a search-side one. Trigger: launch, or a user who cannot use the app in English.
@@ -234,7 +234,7 @@ Three lines already in this document decided most of it:
 | "Timeline **extended from 7 to 10–12 days** to properly fit Calendar briefing and mention search" (Product Narrative) | The extension was *bought* for these two; cutting them would spend the extension on nothing |
 | "Scope **replaces** [the infeasible call popup] **with Siri Shortcut + widget**" (Decision Framework, Risk) | Siri and the widget entered as a substitute for an absent feature, not as pillars — the weakest claim on V1 |
 
-**Kept:** Ask Andy (recall + answers with sources) · Calendar briefing and nudge · app lock · business-card photo · manual photo attach · follow-up email draft · realtime sync and iPad (both free).
+**Kept:** Ask Andy, now Advanced search (recall + answers with sources) · Calendar briefing and nudge · app lock · business-card photo · manual photo attach · follow-up email draft (now Write to {name}) · realtime sync and iPad (both free).
 
 **Cut to V1.1, in queue order:** home widget ⭐ · Siri Shortcut · Contacts sync · pet metrics UI · tag filters · vCard export.
 
@@ -257,7 +257,7 @@ Worth stating plainly, because the cut list is long enough to read as a retreat 
 
 ### What would reopen this
 
-A hard external date, or Ask Andy and the Briefing both landing early enough that a native target fits before the buffer. Neither is true today.
+A hard external date, or Ask Andy (now Advanced search) and the Briefing both landing early enough that a native target fits before the buffer. Neither is true today.
 
 ## User Flow (lightweight — enough to remove Day 1 ambiguity, not a full IA doc)
 
@@ -448,19 +448,19 @@ Voice/Photo Input (expo-speech-recognition captures the mic, expo-image-picker f
    → Convex vector index (per-note, not per-profile)
    → Recall: natural-language query → embed → vector search → results
        (grouped by profile, mention-hits labeled separately)
-   → Surfaces: Ask Andy (one screen: results + an answer over them)
+   → Surfaces: Advanced search (one screen: results + an answer over them)
                 (V1.1 adds the home widget, then the Siri Shortcut)
 
 Calendar Briefing (parallel path)
    EventKit calendar read (covers Apple + Google + CalDAV, one API) →
-   fuzzy-match attendee/title → profile
+   match attendee/title names → person (strict, on the phone)
    → schedule 2 local notifications per matched upcoming meeting:
        (a) pre-meeting: who you are meeting (never the notes)
-       (b) post-meeting: "anything new to remember?" nudge
+       (b) post-meeting: "Anything to remember about {name}?" nudge
    → nudge response → voice/text capture → same extraction pipeline above
 
-Follow-up Email (on demand)
-   Stored notes for a profile → Claude drafts follow-up → editable sheet
+Write to {name} (on demand; was "Follow-up Email", then "Draft a follow-up")
+   Notes the person ticks + their own words + a tone → Claude drafts → editable sheet
    → copy (no inbox access, no OAuth, nothing sent by Andy)
 ```
 
@@ -489,7 +489,7 @@ _Rewritten on day 4. The original table is preserved in `dev-reports/day-04.dev.
 | 2 ✅  | Voice capture → transcription → Claude extraction pipeline (primary profile + secondary mentions). _Business-card photo did **not** slip — it shipped this same day (`2175774`), ahead of its planned day-8 slot._ |
 | 3 ✅  | Profile CRUD + timeline UI + manual entry fallback + the mention graph, aliases, duplicate-name disambiguation. _Pet metrics UI cut to V1.1._                                |
 | 4 ✅  | _Not the planned work._ Branch/PR discipline + CI, English launch and the extraction bugs it exposed, dependency triage, retroactive review gates, **this scope cut**         |
-| 5 ✅  | **Ask Andy** — per-note embeddings + vector recall + the answer-with-sources screen (one screen, both halves)                                                                |
+| 5 ✅  | **Ask Andy** (now Advanced search) — per-note embeddings + vector recall + the answer-with-sources screen (one screen, both halves)                                                                |
 | 6 ✅  | Calendar read (EventKit) + attendee/profile matching. _Shipped **exact**, not fuzzy — day 7 reversed the fuzzy-matching call this row originally assumed; see `dev-reports/day-07.dev.md` §5-1._ |
 | 7 ✅  | Local notification scheduling (pre-meeting briefing, post-meeting nudge) + the 64-pending guardrail. _Capture-from-nudge deferred, not built: the notification carries who it's about and nothing reads it yet — `QA.md` §19.5, tracked as a slice boundary, not a bug._ |
 | 8 ✅  | _Not the planned work, again._ Business-card photo already shipped day 2, so this slot went to hardening the capture-flow name resolution a live test session surfaced instead: possessive names, subject/mention confirmation, word-boundary overlap matching (`Maisie` reaching `Maisie Park`). Nine stacked PRs, #37–#45, none of them in the original plan. Full account: `dev-reports/day-08.dev.md`. |
