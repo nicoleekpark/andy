@@ -35,7 +35,7 @@ Set up on 2026-10-01, for the designer and QA TestFlight hand-off. Its history i
 
 | Name | What it does | Secret? | Read by (code) | Local dev | QA / Launch |
 |---|---|---|---|---|---|
-| `ANTHROPIC_API_KEY` | Claude Haiku 4.5: reading a note or card, Ask Andy's answer, follow-up drafts | **Yes** | `convex/claude.ts` (`askClaude`) | Convex Development | Convex Production: **its own key** (`andy-convex-prod`) |
+| `ANTHROPIC_API_KEY` | Claude Haiku 4.5: reading a note or card, Advanced search's answer, follow-up drafts (Write to) | **Yes** | `convex/claude.ts` (`askClaude`) | Convex Development | Convex Production: **its own key** (`andy-convex-prod`) |
 | `OPENAI_API_KEY` | `text-embedding-3-large` vectors: indexing notes on save/edit, embedding a search question | **Yes** | `convex/embeddings.ts` | Convex Development | Convex Production: **its own key** (`andy-convex-prod`) |
 | `CLERK_SECRET_KEY` | Removes the person's Clerk sign-in when they delete their account | **Yes** | `convex/account.ts` | Convex Development (`sk_test`) | Convex Production: `sk_test` until launch, `sk_live` after |
 | `CLERK_JWT_ISSUER_DOMAIN` | Lets Convex verify a Clerk sign-in token | No | `convex/auth.config.ts` | Convex Development | Convex Production: the same URL until launch |
