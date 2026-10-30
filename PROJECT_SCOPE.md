@@ -498,9 +498,9 @@ _Rewritten on day 4. The original table is preserved in `dev-reports/day-04.dev.
 | 6 ✅  | Calendar read (EventKit) + attendee/profile matching. _Shipped **exact**, not fuzzy — day 7 reversed the fuzzy-matching call this row originally assumed; see `dev-reports/day-07.dev.md` §5-1._ |
 | 7 ✅  | Local notification scheduling (pre-meeting briefing, post-meeting nudge) + the 64-pending guardrail. _Capture-from-nudge deferred, not built: the notification carries who it's about and nothing reads it yet — `QA.md` §19.5, tracked as a slice boundary, not a bug._ |
 | 8 ✅  | _Not the planned work, again._ Business-card photo already shipped day 2, so this slot went to hardening the capture-flow name resolution a live test session surfaced instead: possessive names, subject/mention confirmation, word-boundary overlap matching (`Maisie` reaching `Maisie Park`). Nine stacked PRs, #37–#45, none of them in the original plan. Full account: `dev-reports/day-08.dev.md`. |
-| 9     | ~~Follow-up draft~~ _(done day 6 — in-app sheet, not `mailto:`)_, **passcode/biometric lock**, bug bash                                                                     |
-| 10    | Privacy strings, `app-store-reviewer` pass, polish                                                                                                                          |
-| 11–12 | Buffer — physical-device end-to-end test, `QA.md` full pass, EAS build, TestFlight, submit (buffer absorbs whatever slipped, don't skip it)                                 |
+| 9 ✅  | ~~Follow-up draft~~ _(done day 6 — in-app sheet, not `mailto:`)_, **passcode/biometric lock** (#47), bug bash (device QA, build 4)                                                                     |
+| 10 ✅ | Privacy strings, `app-store-reviewer` pass, polish _(#173–#178; app-store-reviewer ran 2026-10-15)_                                                                                                                          |
+| 11–12 | Buffer — physical-device end-to-end test, `QA.md` full pass, EAS build, TestFlight, submit (buffer absorbs whatever slipped, don't skip it). _Open: TestFlight done (build 5); device QA and submission not yet._                                 |
 
 ## Open Risks to Revisit
 
