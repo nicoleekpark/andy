@@ -12,7 +12,7 @@ This repo ships fast because every change is small, tested, and reversible. Foll
 1. **Scope the smallest vertical slice** that is independently useful and testable. If the request is bigger than one slice, say so explicitly and propose the slice breakdown before writing code — don't silently build all of it in one pass. If the request is ambiguous — what counts as done, which screen, which behaviour — ask before step 2. A question costs a message; a wrong slice costs a PR.
 
    **A list worked through one item at a time is a list of slices.** That covers doc disagreements, QA findings, cleanups and review comments. Each item gets its own branch from `main` and its own PR, a one-line docs fix included. Never one branch with a commit per item, and never one PR at the end. Two consequences:
-   - When two items edit the same lines, give each line to exactly one PR, so the PRs merge in any order.
+   - When two items edit the same lines, give each line to exactly one PR. Lines that only sit *next to* each other conflict too (git can't tell neighbouring edits apart), so if two PRs change adjacent lines, say in both that one must merge first and the other then takes `main` in.
    - Before opening them, test-merge the set onto `main` (a throwaway branch, deleted after) to prove they don't conflict.
 2. **Branch from `main` before touching any code** — `git checkout -b feat/<short-slice-name>` (or `fix/...`, `chore/...`). Per `CLAUDE.md`'s Branching Policy, nothing gets committed to `main` directly, no exceptions for size.
 3. **Settle what you don't know before writing code.** Two different unknowns, two different subagents:
