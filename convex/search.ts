@@ -258,7 +258,7 @@ export const recall = action({
   ): Promise<{ query: string; answer: string; results: Result[] }> => {
     const query = args.query.trim();
     if (query === "") {
-      throw new ConvexError("Ask Andy something first.");
+      throw new ConvexError("Type what you're looking for first.");
     }
     // This is embedded, so its cost is a network call on somebody else's meter.
     // A question is a sentence; anything past this is a paste.
@@ -338,7 +338,7 @@ export const recall = action({
         })),
       });
     } catch (error) {
-      console.error("Ask Andy could not write an answer:", error);
+      console.error("Advanced search could not write an answer:", error);
       return { query, answer: "", results };
     }
 

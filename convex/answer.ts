@@ -56,7 +56,7 @@ export const write = internalAction({
       content: [
         { type: "text", text: buildAnswerMessage(args.question, args.notes) },
       ],
-      label: "Ask Andy",
+      label: "Advanced search",
     })) as Partial<Answer>;
 
     // `returns` validates on the way out, which is after this handler has
@@ -65,7 +65,7 @@ export const write = internalAction({
     // something anyone can act on. Structured outputs make it unlikely; the
     // guard costs two lines.
     if (typeof result.answer !== "string" || !Array.isArray(result.usedNotes)) {
-      console.error("Ask Andy returned a body of the wrong shape.");
+      console.error("Advanced search returned a body of the wrong shape.");
       throw new ConvexError(
         "Andy couldn't put that into words. Try asking it differently.",
       );

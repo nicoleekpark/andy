@@ -906,13 +906,13 @@ describe("search screen", () => {
   });
 
   test("should not fall back to the untouched invitation underneath an error", async () => {
-    recall.mockRejectedValue(new ConvexError("Ask Andy something first."));
+    recall.mockRejectedValue(new ConvexError("Type what you're looking for first."));
     await renderSearch();
 
     await ask("anything");
 
     await waitFor(() =>
-      expect(screen.getByText("Ask Andy something first.")).toBeTruthy(),
+      expect(screen.getByText("Type what you're looking for first.")).toBeTruthy(),
     );
     // The invitation says nothing has happened yet. Printed under an apology it
     // makes the screen contradict itself.
@@ -920,17 +920,17 @@ describe("search screen", () => {
   });
 
   test("should clear a previous refusal once a later question succeeds", async () => {
-    recall.mockRejectedValueOnce(new ConvexError("Ask Andy something first."));
+    recall.mockRejectedValueOnce(new ConvexError("Type what you're looking for first."));
     await renderSearch();
     await ask("anything");
     await waitFor(() =>
-      expect(screen.getByText("Ask Andy something first.")).toBeTruthy(),
+      expect(screen.getByText("Type what you're looking for first.")).toBeTruthy(),
     );
 
     recall.mockResolvedValueOnce({ answer: "", query: "marcus", results: [buildResult()] });
     await ask("marcus");
 
     await waitFor(() => expect(screen.getByText("Marcus")).toBeTruthy());
-    expect(screen.queryByText("Ask Andy something first.")).toBeNull();
+    expect(screen.queryByText("Type what you're looking for first.")).toBeNull();
   });
 });

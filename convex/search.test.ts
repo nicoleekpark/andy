@@ -559,9 +559,10 @@ test("should refuse an empty question without spending anything on it", async ()
   const t = await aiNotEnforced(convexTest(schema, modules));
   await seedUser(t, ALICE);
 
+  // In the feature's own words: it was "Ask Andy" until device QA B5-2.
   await expect(
     t.withIdentity(ALICE).action(api.search.recall, { query: "   " }),
-  ).rejects.toThrow();
+  ).rejects.toThrow("Type what you're looking for first.");
   expect(fetchMock).not.toHaveBeenCalled();
 });
 
