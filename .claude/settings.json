@@ -1,5 +1,20 @@
 {
   "enabledPlugins": {
     "expo@claude-plugins-official": true
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-push-to-merged-pr.sh\"",
+            "timeout": 30,
+            "statusMessage": "Checking the branch's PR is still open"
+          }
+        ]
+      }
+    ]
   }
 }
