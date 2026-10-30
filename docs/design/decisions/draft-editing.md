@@ -350,7 +350,9 @@ Every screen has the same layout; the keyboard opening or closing is the only di
 | Part (new) | What it is |
 |---|---|
 | `write-to-close-button` | Close, top left. Title "Write to {name}" centred. |
-| `write-to-ask-box` | Box A, before Andy's first answer. Placeholder: "Write what you want to say to {name}, or tell Andy what to write, or both." then "e.g. Do you want to hang out and talk about our new product? Make it sound casual but still professional." |
+| `write-to-ask-box` | Box A, before Andy's first answer. Placeholder: "Write what you want to say to {name}, or tell Andy what to write, or both. Replying to a message from another app? Add a screenshot of it." then "e.g. Do you want to hang out and talk about our new product? Make it sound casual but still professional." |
+| `write-to-screenshot-button` | Photo icon, bottom-left of box A (VoiceOver "Add a screenshot"). Opens Apple's photo picker for one picture — no photo-library permission. |
+| `write-to-quote` | Their message, read from the screenshot, as a quiet quote at the top of box A ("{name} wrote"). Tap to fix a misread word; ✕ removes it. While reading: a thumbnail and "Reading {name}'s message…", box size unchanged. |
 | `write-to-arrow` | The only button that asks Andy: a round arrow icon in the box's bottom-right corner, and at the end of the chat line. VoiceOver: "Ask Andy". Becomes a spinner while Andy writes ("Andy is writing…"). |
 | `write-to-draft-box` | Box B, Andy's answer. An ordinary editable text field. **Same size as box A on every screen** (sized so that box B, the hint, the chat line and Open Messages all fit with the keyboard up; with the keyboard down the space below stays empty). |
 | `write-to-copy-button` | Copy icon, top right inside box B. On tap: becomes a check and says "Copied" for a moment. |
@@ -359,7 +361,7 @@ Every screen has the same layout; the keyboard opening or closing is the only di
 | `write-to-hint` | Under box B: "Edit the text above, or tell Andy what to change." |
 | `write-to-chat-line` | Under the hint. Placeholder: "Anything else? (optional) e.g. Warmer but simpler." |
 | `write-to-open-messages-button` | Directly under the chat line, always. Opens Apple's Messages with box B's text filled in; the person adds the number and sends it themselves. |
-| `write-to-close-alert` | "Close without copying? Your text won't be kept." — Keep writing / Close. Only when there is text and nothing was copied or sent to Messages. |
+| `write-to-close-alert` | "Close without copying? Your text won't be kept." — Keep writing / Close. Shown when there is any text (box A before an answer included) and nothing was copied or opened in Messages. |
 
 **Removed** (vs 10-21 and the brief): the Reply / Reach out choice (one entrance — owner: "i don't want to separate reply/reach out"), tone and format controls ("technically user can ask Andy to draft this in email format"), the notes picker, refine chips, `draft-regenerate-button`, `draft-replace-alert`, `draft-intent-line` and `draft-sources-line` (no "Kept your Thursday" — Andy keeps key details without announcing it).
 
@@ -368,18 +370,22 @@ Every screen has the same layout; the keyboard opening or closing is the only di
 1. **Box A → arrow.** On once box A has text. What's in it may be a message, an instruction, or both; Andy works out which. While Andy writes, box A keeps its size, its text dimmed and locked.
 2. **Box B is the draft.** Whatever is in box B when the arrow is tapped is what goes to Andy — edited or not.
 3. **The arrow is on when there is something new:** box B differs from Andy's last answer, or the chat line has text, or both. Otherwise it is greyed and the hint says what to do. The server refuses an identical resend too.
-4. **Versions.** Every Andy answer, and the person's edited text when they ask again, is a version. ‹ › steps through them; editing an older one and asking again adds a new version at the end — nothing is cut off. **Versions live only while the sheet is open. Close deletes all of them** — nothing kept on the phone, nothing stored on the server, nothing cached.
-5. **Copy** takes box B as it is. **Open Messages** opens Messages with box B's text; Andy never sends anything.
-6. **Limits:** 10 asks after the first per sheet (unchanged from 10-21), then the arrow stops: "That's the most Andy can do in one go. Copy it, or close and start again." Chat line ≤ 500 characters (`MAX_INSTRUCTION_CHARS`); box text ≤ 4,000 characters.
+4. **Swiping the sheet down only tucks it away** — it does not delete. Opening Write to for the same person again brings back box B, every version and the chat line. Kept per person, **in memory only**, until the Close button (after the alert), sign-out, or iOS ending Andy (then it is simply gone — consistent with nothing kept). Coming back from Messages finds the sheet as it was.
+5. **Versions.** Every Andy answer, and the person's edited text when they ask again, is a version. ‹ › steps through them; editing an older one and asking again adds a new version at the end — nothing is cut off. **Versions live only until Close. Close deletes all of them** — nothing kept on the phone, nothing stored on the server, nothing cached.
+6. **Copy** takes box B as it is (and records the same clipboard fingerprint as today, so sign-out clears it — `forgetOnThisPhone`). **Open Messages** opens Messages with box B's text, and counts as copied; hidden where the device can't send texts. Andy never sends anything.
+7. **Stepping back:** the arrow and the Edited tag compare box B with **the version shown**, not the newest — an untouched older version is not "something new".
+8. **Reply with a screenshot:** pick one screenshot; Andy reads their message into `write-to-quote` (one extra ask, not counted against the 10); the picture is never kept, only the words, as with Photo notes. Covered by the AI permission sheet.
+9. **Limits** (counted on the phone — the server keeps nothing to count with; it still refuses an identical resend it is handed): 10 asks after the first per sheet (unchanged from 10-21), then the arrow stops: "That's the most Andy can do in one go. Copy it, or close and start again." Chat line ≤ 500 characters (`MAX_INSTRUCTION_CHARS`); box text ≤ 4,000 characters.
 
 ### What is sent to Andy (prompt)
 
 | Ask | Sent |
 |---|---|
-| First (box A) | Box A's text; the person's name; today's date; **the newest 4 notes about them as background**, picked automatically with today's recency rules (past plans are past; a newest note older than 90 days isn't news). |
-| Every later ask | The first request (box A); **every chat line sent so far** in this sheet; Andy's last answer **only when box B differs from it** (so Andy can see what the person changed); box B as it is; the new chat line if any; the same notes. |
+| First (box A) | Box A's text; the person's name; today's date; **the saved details (never the wording) of the newest 3 notes in which they are the person written about — all of them if there are 3 or fewer**; never notes where they only came up; picked automatically with today's recency rules (past plans are past; a newest note older than 90 days isn't news). |
+| Screenshot | The picture, once, to read their message into `write-to-quote`. The quote then travels with box A's text. |
+| Every later ask | The first request (box A, with the quote if any); **every chat line sent so far** in this sheet; Andy's last answer **only when box B differs from it** (so Andy can see what the person changed); box B as it is; the new chat line if any; the same notes. |
 
-Andy's rules for a later ask: box B is the base. The person's changes are a direction — carry them through the rest, never undo or reword them. **Never change a day, date, time, number, name, place or link the person wrote.** With only a chat line, change nothing it didn't ask for. Return only the message; if the person asks for an email, put a "Subject: …" line first, in the same text.
+Andy's rules for a later ask: box B is the base. The person's changes are a direction — carry them through the rest, never undo or reword them. **Never change a day, date, time, number, name, place or link the person wrote.** With only a chat line, change nothing it didn't ask for. Return only the message; if the person asks for an email, put a "Subject: …" line first, in the same text. **Tone and format:** with no instruction about them, Andy uses the person's saved default; each answer also labels its own tone and format, and the label of the text the person copies or opens in Messages becomes their new default (owner: "whatever the final tone for the message before"). A mention-only person gets no notes attached. "Today" is the phone's local date, sent as an argument.
 
 **Key details are checked in code**, not only asked for: after Andy answers, the server checks that every day, date, time, number and link in the text it was sent is still in the answer. If one is missing, it asks Andy once more to keep it exactly; if it is still missing, the answer is returned as is (the person sees it and can fix it). Names are protected by the prompt rule only.
 
@@ -389,6 +395,7 @@ Unchanged from the brief: everything goes through the Convex action to Anthropic
 
 - Option: **F**. Brief Q1 (one surface): **yes**, one entrance. Q2 (retire Write another and the replace alert): **yes**. Q3 (chips): **none**. Q4 (notes on own draft): **yes, newest 4, automatic**, no switch. Q5 (scope change): **approved** — the follow-up Must Have is rewritten in `PROJECT_SCOPE.md` / `.ko.md`, including Open Messages.
 - Prompt: D1 **(c)** every chat line + only the latest text; D2 **(a)** newest notes automatically; D3 **(b)** prompt rule + code check; D4 **keep 10**; D5 **Subject line when an email is asked for**.
-- Close without copying: **ask first**. Box text cap: **4,000 characters**.
+- Close without copying: **ask first**, including box A before any answer; **swipe-down keeps everything**, per person, until Close / sign-out / iOS ending Andy. Box text cap: **4,000 characters**.
+- Notes: **newest 3, or all if ≤ 3**, saved details only, never mention-only. Write to is offered to everyone; a mention-only person gets no notes. Tone/format default: **learned from the last finished message** (saved field kept and used). Off switch: `writeTo` off = **no Write to button**; old sheets and `followUpTones` are removed in the build. No-SMS devices: Open Messages hidden. Stepping back compares with the shown version. Limits counted on the phone. A kill by iOS loses the sheet. Missing strings (offline, failed ask, after Not now, greyed arrow, stepper VoiceOver): drafted by product-strategist for the owner in the scope PR.
+- **Reply with a screenshot: yes (a)** — photo icon bottom-left of box A; placeholder tells people they can.
 - **Overrides of the brief, by the owner:** rule 4 — an arrow icon asks Andy (labelled "Ask Andy" for VoiceOver; it sends to Andy, never to the person) and Open Messages opens Apple's Messages; rule 8 — no intent or sources lines.
-- **Still open:** reply by screenshot (10-21) — this design has no screenshot input; decide before V1.1 whether box A gets one.
