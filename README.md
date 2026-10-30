@@ -11,7 +11,7 @@ See [`PROJECT_SCOPE.md`](./PROJECT_SCOPE.md) for the full feature scope, archite
 - Clerk (auth — Apple Sign-In for V1)
 - Claude API (extraction, vision for business cards, and the answers over retrieved notes — called server-side only from Convex actions, never from the client)
 - OpenAI `text-embedding-3-large` at 1024 dimensions (note embeddings, also server-side only)
-- expo-audio (recording), expo-speech-recognition (transcription), expo-image-picker (business card + photo attach), expo-calendar (briefing), expo-notifications, expo-local-authentication (passcode/biometric app lock)
+- expo-speech-recognition (records and transcribes in one, so there is no separate recorder), expo-keep-awake (the screen stays on while recording), expo-camera (taking a photo for a note), expo-image-picker (business card + photo attach), expo-calendar (briefing), expo-notifications, expo-local-authentication (passcode/biometric app lock), expo-apple-authentication (Sign in with Apple), expo-clipboard (copying a follow-up draft), react-native-svg (the thread mark)
 
 _`expo-contacts` and `expo-speech` are not V1 dependencies — contacts sync and the Siri Shortcut were cut on day 4._
 
@@ -43,10 +43,6 @@ npx convex dev             # starts the Convex dev deployment and generates conv
 Then get a build onto the simulator — see **Commands** below. Note that
 `npx expo run:ios` (a local native build) does **not** work on macOS Sequoia; builds go
 through EAS instead. The reason is in the Commands section.
-```bash
-```
-
-> **Note**: `create-expo-app` auto-generates its own `AGENTS.md`, `CLAUDE.md`, and `.claude/settings.json` pointing at the versioned Expo SDK docs and the official Expo Claude plugin. Merge this repo's `CLAUDE.md` into that one (append, don't overwrite) — see the merge note at the top of `CLAUDE.md`.
 
 ### Environment variables
 
@@ -54,11 +50,16 @@ through EAS instead. The reason is in the Commands section.
 limits, and what to do if one leaks — is [`ENVIRONMENTS.md`](ENVIRONMENTS.md).** The short
 version for a fresh machine:
 
-Set in the Convex dashboard (server-side, never in the Expo app):
+Set on each Convex deployment (server-side, never in the Expo app) — all four are required:
 
 ```
 ANTHROPIC_API_KEY=...
+OPENAI_API_KEY=...
+CLERK_SECRET_KEY=...
+CLERK_JWT_ISSUER_DOMAIN=...
 ```
+
+Four more — `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`, `APPLE_CLIENT_ID` — switch on revoking a person's Apple sign-in when they delete their account. Andy runs without them, but App Review requires that revocation, so they are needed before App Store submission ([`docs/apple-token-revocation.md`](docs/apple-token-revocation.md)).
 
 Set in `.env.local` (client-safe only — Metro inlines these into the app bundle, so
 never put a secret here):
