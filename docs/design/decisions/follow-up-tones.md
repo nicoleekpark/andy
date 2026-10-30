@@ -1,5 +1,7 @@
 # Follow-up tones and formats
 
+> **Superseded on 2026-10-30 by `draft-editing.md` → Final design:** no tone or format controls; the person asks Andy in words ("make it an email", "more professional"), and an email gets a "Subject:" line in the same text. The nine prompt rules and Korean 존댓말 + 님 remain the reference for the prompt. Built as #171/#172; removed when the new design is built.
+
 Status: **brief for owner review. Nothing is built.** Owner decisions of 2026-10-12 (Message | Email, tone chips #50) are taken as given. Everything else is a proposal, and each judgement call is marked **[call]**.
 Screen: `draft` (the sheet opened by `follow-up-button` on `profile--person`). Prompt: `convex/emailPrompt.ts`.
 

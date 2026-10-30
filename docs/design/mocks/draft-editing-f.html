@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Mock: draft-editing.md, Option F "Ask, then edit" (owner's sketch, 2026-10-30). HTML approximation of a native screen. Design prototype, not production code. -->
+<title>Draft editing - Option F: Ask, then edit</title>
+<style>
+:root{--ink:#2A2622;--paper:#E8E6DE;--moss:#5C6B4F;--line:#B8B3A8;--edge:#857E6D;--placeholder:#63605A;
+--display:"Lora",Georgia,serif;--utility:"IBM Plex Mono",ui-monospace,Menlo,monospace;--body:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;
+--sm:8px;--md:12px;--lg:16px;--xl:24px;--text-xs:12px;--text-sm:13px;--text-md:14px;--text-lg:16px;--text-xl:17px;
+--radius-control:10px;--radius-card:16px;--radius-pill:999px;--touch:44px;--quiet:.7;--disabled:.5}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#1a1a1a;color:#ddd;font-family:var(--body);padding:32px 20px}
+h1{font:500 26px var(--display);color:#fff}.lead{color:#aaa;max-width:86ch;margin:8px 0 24px;line-height:1.55}
+.row{display:flex;gap:24px;overflow-x:auto;padding-bottom:24px;align-items:flex-start}
+.frame{flex:0 0 390px}.cap{font:var(--text-xs) var(--utility);letter-spacing:.08em;text-transform:uppercase;color:#9fb08f;margin-bottom:8px}
+.note{font-size:13px;color:#aaa;margin-top:8px;line-height:1.45;max-width:390px}
+
+.phone{width:390px;height:760px;background:var(--paper);color:var(--ink);border-radius:28px;position:relative;overflow:hidden;display:flex;flex-direction:column}
+.nav{height:52px;flex:none;display:grid;grid-template-columns:80px 1fr 80px;align-items:center;padding:0 var(--lg);border-bottom:1px solid var(--line)}
+.nav a{color:var(--moss);font-size:var(--text-xl);min-height:var(--touch);display:flex;align-items:center}
+.nav b{text-align:center;font-size:var(--text-xl);font-weight:600}.nav b span{font-family:var(--display);font-weight:500}
+.body{flex:1;padding:var(--lg);display:flex;flex-direction:column;gap:var(--md);overflow:hidden}
+
+.box{border:1px solid var(--edge);border-radius:var(--radius-control);padding:var(--md) var(--lg);font-size:var(--text-xl);line-height:1.45;position:relative;background:var(--paper)}
+.box.a{min-height:180px}
+.box.b{min-height:190px;padding-right:56px}
+.ph{color:var(--placeholder)}
+.caret{display:inline-block;width:2px;height:1.1em;background:var(--moss);vertical-align:text-bottom}
+.copy{position:absolute;top:2px;right:2px;width:var(--touch);height:var(--touch);display:flex;align-items:center;justify-content:center;color:var(--moss)}
+.copied{position:absolute;top:10px;right:44px;font-size:var(--text-sm);color:var(--moss)}
+
+.btn{min-height:var(--touch);border-radius:var(--radius-pill);display:flex;align-items:center;justify-content:center;gap:var(--sm);padding:0 var(--xl);font-size:var(--text-lg);font-weight:600}
+.pri{background:var(--moss);color:var(--paper)}.sec{border:1px solid var(--edge);color:var(--ink)}.dis{opacity:var(--disabled)}
+.hint{font-size:var(--text-md);opacity:var(--quiet);line-height:1.45}
+.chat{display:flex;gap:var(--sm);align-items:flex-end}
+.chat .fld{flex:1;min-height:var(--touch);border:1px solid var(--edge);border-radius:22px;padding:11px var(--lg);font-size:var(--text-lg);line-height:1.35}
+.round{flex:none;width:var(--touch);height:var(--touch);border-radius:50%;background:var(--moss);color:var(--paper);display:flex;align-items:center;justify-content:center}
+.round.dis{opacity:var(--disabled)}
+.spacer{flex:1}
+.thinking{font-size:var(--text-md);opacity:var(--quiet);display:flex;align-items:center;gap:var(--sm)}
+.kbd{height:230px;flex:none;background:var(--line);display:flex;align-items:center;justify-content:center;font:var(--text-xs) var(--utility);color:var(--ink)}
+
+/* iOS Messages compose (system UI, approximated) */
+.ios{background:#fff;color:#000;font-family:var(--body)}
+.ios .top{height:52px;display:grid;grid-template-columns:80px 1fr 80px;align-items:center;padding:0 var(--lg);border-bottom:1px solid #ddd;font-size:17px}
+.ios .top a{color:#007aff}.ios .top b{text-align:center}
+.ios .to{padding:12px var(--lg);border-bottom:1px solid #ddd;font-size:16px;color:#8e8e93}.ios .to i{color:#000;font-style:normal}
+.ios .space{flex:1}
+.ios .compose{display:flex;gap:8px;align-items:flex-end;padding:8px 12px;border-top:1px solid #eee}
+.ios .compose .f{flex:1;border:1px solid #ccc;border-radius:18px;padding:8px 12px;font-size:16px;line-height:1.35}
+.ios .compose .s{width:30px;height:30px;border-radius:50%;background:#34c759;color:#fff;display:flex;align-items:center;justify-content:center;flex:none}
+
+.panel{background:#262626;border-radius:12px;padding:16px 20px;margin-bottom:24px;max-width:1240px}
+.panel h2{font:500 18px var(--display);color:#fff;margin-bottom:8px}
+.panel .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
+.panel h3{font:var(--text-xs) var(--utility);letter-spacing:.06em;text-transform:uppercase;color:#9fb08f;margin-bottom:6px}
+.panel ol{padding-left:20px;color:#ddd;font-size:14px;line-height:1.55}
+.panel li b{color:#fff}
+
+.composer{flex:1;display:flex;flex-direction:column;padding:var(--lg);gap:var(--sm);min-height:0}
+.box.fill{flex:1;min-height:0;display:flex;flex-direction:column}
+.box.fill .txt{flex:1}
+.box .foot{display:flex;align-items:center;justify-content:space-between;min-height:var(--touch);margin:0 -6px -6px 0}
+.box .foot .st{font-size:var(--text-sm);opacity:var(--quiet)}
+.box.busy .txt{opacity:var(--quiet)}
+.spin{width:18px;height:18px;border:2px solid var(--paper);border-top-color:transparent;border-radius:50%}
+.tag{font:var(--text-xs) var(--utility);color:var(--moss)}
+.did{font-size:var(--text-sm);opacity:var(--quiet)}
+.chat .fld{display:flex;align-items:flex-end;gap:var(--sm);padding:6px 6px 6px var(--lg)}
+.chat .fld .t{flex:1;padding:5px 0}
+.chat .fld .round{width:32px;height:32px}
+.box .round{width:36px;height:36px}
+
+/* round 3: one box size on every screen, sized so screen 4 fits with the keyboard up */
+.box.fixed{height:250px;flex:none;display:flex;flex-direction:column}
+.box.fixed .txt{flex:1;overflow:hidden}
+.box .foot{display:flex;align-items:center;justify-content:space-between;min-height:var(--touch);margin:0 -6px -6px 0}
+.step{display:flex;align-items:center;font:var(--text-sm) var(--utility);margin-left:-10px}
+.step i{font-style:normal;width:var(--touch);height:var(--touch);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--moss)}
+.step i.off{opacity:var(--disabled)}
+.empty-space{flex:1}
+</style></head><body>
+<h1>Option F - Ask, then edit (final)</h1>
+<p class="lead">Owner's design, finalised 2026-10-30. One box size on every screen; under box B always the hint, the chat line, then Open Messages - the keyboard opening or closing is the only difference. Edit Andy's text and send, with or without a line for Andy; the arrow is on whenever there is something new. Andy never changes key details you wrote (days, times, names, numbers) and doesn't announce it. ‹ › steps through every version while the sheet is open; Close deletes them all. No tone or format controls. Light mode, tokens as in theme.ts.</p>
+<div class="panel"><h2>Decided wording</h2><div class="cols">
+<div><h3>Box A placeholder</h3><ol><li>Write what you want to say to Mina, or tell Andy what to write, or both. e.g. Do you want to hang out and talk about our new product? Make it sound casual but still professional.</li></ol></div>
+<div><h3>Hint under box B</h3><ol><li>Edit the text above, or tell Andy what to change.</li></ol></div>
+<div><h3>Chat line placeholder</h3><ol><li>Anything else? (optional) e.g. Warmer but simpler.</li></ol></div>
+<div><h3>Asking Andy</h3><ol><li>One round arrow icon everywhere (VoiceOver: "Ask Andy")</li></ol></div>
+</div></div>
+<div class="row">
+<div class="frame"><div class="cap">1 Opens empty</div><div class="phone"><div class="nav"><a>Close</a><b>Write to <span>Mina</span></b><span></span></div><div class="composer"><div class="box fixed"><div class="txt"><span class="caret"></span><span class="ph">Write what you want to say to Mina, or tell Andy what to write, or both.<br><br>e.g. Do you want to hang out and talk about our new product? Make it sound casual but still professional.</span></div><div class="foot"><span class="st"></span><span class="round dis" aria-label="Ask Andy">↑</span></div></div><div class="empty-space"></div></div><div class="kbd">keyboard</div></div><p class="note">One box, one arrow. The box is the same size on every screen.</p></div>
+<div class="frame"><div class="cap">2 Typed in box A</div><div class="phone"><div class="nav"><a>Close</a><b>Write to <span>Mina</span></b><span></span></div><div class="composer"><div class="box fixed"><div class="txt">Do you want to hang out and talk about our new product? Make it sound casual but still professional.<span class="caret"></span></div><div class="foot"><span class="st"></span><span class="round" aria-label="Ask Andy">↑</span></div></div><div class="empty-space"></div></div><div class="kbd">keyboard</div></div><p class="note">A message, an instruction, or both. The arrow turns on once there is text.</p></div>
+<div class="frame"><div class="cap">3 Andy is writing</div><div class="phone"><div class="nav"><a>Close</a><b>Write to <span>Mina</span></b><span></span></div><div class="composer"><div class="box fixed busy"><div class="txt">Do you want to hang out and talk about our new product? Make it sound casual but still professional.</div><div class="foot"><span class="st">Andy is writing…</span><span class="round" aria-label="Ask Andy"><span class="spin"></span></span></div></div><div class="empty-space"></div></div></div><p class="note">Same box, same size; your words stay, dimmed. The arrow becomes a spinner.</p></div>
+<div class="frame"><div class="cap">4 Andy's answer (box B)</div><div class="phone"><div class="nav"><a>Close</a><b>Write to <span>Mina</span></b><span></span></div><div class="composer"><div class="box b fixed"><div class="txt">Hi Mina - thanks so much for introducing me to Dev. We had a great chat and I'd love to keep it going. Coffee next week? Tuesday works for me.</div><div class="foot"><span class="step"><i class="off">‹</i>1 of 1<i class="off">›</i></span><span></span></div><span class="copy" title="Copy"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg></span></div><div class="hint">Edit the text above, or tell Andy what to change.</div><div class="chat"><div class="fld"><span class="t ph">Anything else? (optional) e.g. Warmer but simpler.</span><span class="round dis" aria-label="Ask Andy">↑</span></div></div><div class="btn sec">Open Messages</div><div class="empty-space"></div></div></div><p class="note">Box B is the draft, editable. Copy top right, versions bottom left. Nothing new to give Andy, so the arrow is greyed; the hint says what to do. Open Messages sits right under the chat line.</p></div>
+<div class="frame"><div class="cap">4b Same, keyboard up</div><div class="phone"><div class="nav"><a>Close</a><b>Write to <span>Mina</span></b><span></span></div><div class="composer"><div class="box b fixed"><div class="txt">Hi Mina - thanks so much for introducing me to Dev. We had a great chat and I'd love to keep it going. Coffee next week? Tuesday works for me.</div><div class="foot"><span class="step"><i class="off">‹</i>1 of 1<i class="off">›</i></span><span></span></div><span class="copy" title="Copy"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg></span></div><div class="hint">Edit the text above, or tell Andy what to change.</div><div class="chat"><div class="fld"><span class="t ph">Anything else? (optional) e.g. Warmer but simpler.</span><span class="round dis" aria-label="Ask Andy">↑</span></div></div><div class="btn sec">Open Messages</div><div class="empty-space"></div></div><div class="kbd">keyboard</div></div><p class="note">Identical layout - the keyboard simply covers the empty space below. Everything still fits.</p></div>
+<div class="frame"><div class="cap">5a Edit the text, just send</div><div class="phone"><div class="nav"><a>Close</a><b>Write to <span>Mina</span></b><span></span></div><div class="composer"><div class="box b fixed"><div class="txt"><span class=tag>Edited</span><br>Hi Mina - thanks so much for introducing me to Dev. We had a great chat and I'd love to keep it going. Coffee next week? Thursday<span class="caret"></span> works for me.</div><div class="foot"><span class="step"><i class="off">‹</i>1 of 1<i class="off">›</i></span><span></span></div><span class="copy" title="Copy"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg></span></div><div class="hint">Edit the text above, or tell Andy what to change.</div><div class="chat"><div class="fld"><span class="t ph">Anything else? (optional) e.g. Warmer but simpler.</span><span class="round" aria-label="Ask Andy">↑</span></div></div><div class="btn sec">Open Messages</div><div class="empty-space"></div></div><div class="kbd">keyboard</div></div><p class="note">Edit the text and tap the arrow; the chat line is optional. Andy carries your edit through and never changes key details you wrote, like the day. "Edited": Andy hasn't seen this version yet.</p></div>
+<div class="frame"><div class="cap">5b Edit and tell Andy</div><div class="phone"><div class="nav"><a>Close</a><b>Write to <span>Mina</span></b><span></span></div><div class="composer"><div class="box b fixed"><div class="txt"><span class=tag>Edited</span><br>Hi Mina - thanks so much for introducing me to Dev. We had a great chat and I'd love to keep it going. Coffee next week? Thursday works for me.</div><div class="foot"><span class="step"><i class="off">‹</i>1 of 1<i class="off">›</i></span><span></span></div><span class="copy" title="Copy"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg></span></div><div class="hint">Edit the text above, or tell Andy what to change.</div><div class="chat"><div class="fld"><span class="t">warmer but simpler<span class="caret"></span></span><span class="round" aria-label="Ask Andy">↑</span></div></div><div class="btn sec">Open Messages</div><div class="empty-space"></div></div><div class="kbd">keyboard</div></div><p class="note">Your edit plus a line for Andy. Either one alone turns the arrow on.</p></div>
+<div class="frame"><div class="cap">6 New answer, copied</div><div class="phone"><div class="nav"><a>Close</a><b>Write to <span>Mina</span></b><span></span></div><div class="composer"><div class="box b fixed"><div class="txt">Hi Mina - thanks for introducing me to Dev, he was great. Coffee Thursday?</div><div class="foot"><span class="step"><i class="">‹</i>3 of 3<i class="off">›</i></span><span></span></div><span class="copied">Copied</span><span class="copy"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5L19 8"/></svg></span></div><div class="hint">Edit the text above, or tell Andy what to change.</div><div class="chat"><div class="fld"><span class="t ph">Anything else? (optional) e.g. Warmer but simpler.</span><span class="round dis" aria-label="Ask Andy">↑</span></div></div><div class="btn sec">Open Messages</div><div class="empty-space"></div></div></div><p class="note">Version 3 of 3; your edit became version 2 before Andy wrote. Thursday stayed - Andy doesn't announce it.</p></div>
+<div class="frame"><div class="cap">6b Step back</div><div class="phone"><div class="nav"><a>Close</a><b>Write to <span>Mina</span></b><span></span></div><div class="composer"><div class="box b fixed"><div class="txt">Hi Mina - thanks so much for introducing me to Dev. We had a great chat and I'd love to keep it going. Coffee next week? Thursday works for me.</div><div class="foot"><span class="step"><i class="">‹</i>2 of 3<i class="">›</i></span><span></span></div><span class="copy" title="Copy"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg></span></div><div class="hint">Edit the text above, or tell Andy what to change.</div><div class="chat"><div class="fld"><span class="t ph">Anything else? (optional) e.g. Warmer but simpler.</span><span class="round dis" aria-label="Ask Andy">↑</span></div></div><div class="btn sec">Open Messages</div><div class="empty-space"></div></div></div><p class="note">‹ shows version 2. Edit it or ask again and it becomes version 4 - nothing is cut off. Versions live only while this sheet is open; Close deletes all of them.</p></div>
+<!-- 7 -->
+<div class="frame"><div class="cap">7 Open Messages</div><div class="phone ios">
+<div class="top"><span></span><b>New Message</b><a style="text-align:right">Cancel</a></div>
+<div class="to">To: <span class="caret" style="background:#007aff"></span></div>
+<div class="space"></div>
+<div class="compose"><div class="f">Hi Mina - thanks for introducing me to Dev, he was great. Coffee Thursday?</div><div class="s">↑</div></div>
+<div class="kbd" style="background:#d1d3d9">keyboard</div></div>
+<p class="note">Apple's own Messages screen, with the text already in it. You add Mina's number and send it yourself - Andy never sends anything.</p></div>
+
+</div>
+</body></html>

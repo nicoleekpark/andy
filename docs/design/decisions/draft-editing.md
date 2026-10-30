@@ -1,6 +1,6 @@
 # Draft editing: write it, change it, hand it back
 
-Status: **brief, 2026-10-30. Nothing designed or built.** Comes after the owner turned down `draft-refinement.md` A/B/C (2026-10-29). `follow-up-redesign.md` (2026-10-21) and `follow-up-tones.md` still apply unless this file asks the owner to change something (§5).
+Status: **decided, 2026-10-30 — owner chose option F ("Ask, then edit", the owner's own sketch). See `## Final design` at the end; it overrides anything above that disagrees.** Nothing built yet. Options A–E are kept as the record of what was considered.
 Screens: `write-to` and `draft`. Part names come from `component-names.md`. Anything new is marked **(new)**.
 
 ## Brief
@@ -338,3 +338,57 @@ Written by `product-strategist`, 2026-10-30, against §3 rules 1-9 and §4. I re
 5. **Q4: When you write your own draft, does Andy still read your notes about the person?** Recommended: **yes, as background**. Your text leads, and the notes can be switched off for that sheet.
 6. **Q5: Approve the scope change?** The follow-up Must Have in `PROJECT_SCOPE.md` and `PROJECT_SCOPE.ko.md` gains "…or the person's own draft, improved in place; every pass keeps the text it started from as a version". Recommended: **yes**, in the build PR. *This is a scope change and needs your approval.*
 7. **New: what happens when you close a sheet you haven't copied from?** Recommended: one Close control plus the question "Close without copying? Your text won't be kept." (Keep writing / Close). Alternatives: close silently as today, or keep the two words Cancel and Done. *I'm raising this. The designer hasn't weighed in yet.*
+
+## Final design (owner, 2026-10-30)
+
+Mock: `docs/design/mocks/draft-editing-f.html`. Option F, the owner's sketch, refined over three rounds in conversation. **Not chosen:** A (point and ask), B (show what changed — "B is out"), C (ask in the page), D (pages), E (receipt — "too complex"). The two-door start ("Write it myself / Ask Andy to write it") is removed everywhere: one page, one entrance.
+
+### Layout — one sheet, `write-to`
+
+Every screen has the same layout; the keyboard opening or closing is the only difference.
+
+| Part (new) | What it is |
+|---|---|
+| `write-to-close-button` | Close, top left. Title "Write to {name}" centred. |
+| `write-to-ask-box` | Box A, before Andy's first answer. Placeholder: "Write what you want to say to {name}, or tell Andy what to write, or both." then "e.g. Do you want to hang out and talk about our new product? Make it sound casual but still professional." |
+| `write-to-arrow` | The only button that asks Andy: a round arrow icon in the box's bottom-right corner, and at the end of the chat line. VoiceOver: "Ask Andy". Becomes a spinner while Andy writes ("Andy is writing…"). |
+| `write-to-draft-box` | Box B, Andy's answer. An ordinary editable text field. **Same size as box A on every screen** (sized so that box B, the hint, the chat line and Open Messages all fit with the keyboard up; with the keyboard down the space below stays empty). |
+| `write-to-copy-button` | Copy icon, top right inside box B. On tap: becomes a check and says "Copied" for a moment. |
+| `write-to-version-stepper` | "‹ 2 of 3 ›", bottom left inside box B. |
+| `write-to-edited-tag` | "Edited", top left inside box B, while the text differs from Andy's last answer. |
+| `write-to-hint` | Under box B: "Edit the text above, or tell Andy what to change." |
+| `write-to-chat-line` | Under the hint. Placeholder: "Anything else? (optional) e.g. Warmer but simpler." |
+| `write-to-open-messages-button` | Directly under the chat line, always. Opens Apple's Messages with box B's text filled in; the person adds the number and sends it themselves. |
+| `write-to-close-alert` | "Close without copying? Your text won't be kept." — Keep writing / Close. Only when there is text and nothing was copied or sent to Messages. |
+
+**Removed** (vs 10-21 and the brief): the Reply / Reach out choice (one entrance — owner: "i don't want to separate reply/reach out"), tone and format controls ("technically user can ask Andy to draft this in email format"), the notes picker, refine chips, `draft-regenerate-button`, `draft-replace-alert`, `draft-intent-line` and `draft-sources-line` (no "Kept your Thursday" — Andy keeps key details without announcing it).
+
+### Behaviour
+
+1. **Box A → arrow.** On once box A has text. What's in it may be a message, an instruction, or both; Andy works out which. While Andy writes, box A keeps its size, its text dimmed and locked.
+2. **Box B is the draft.** Whatever is in box B when the arrow is tapped is what goes to Andy — edited or not.
+3. **The arrow is on when there is something new:** box B differs from Andy's last answer, or the chat line has text, or both. Otherwise it is greyed and the hint says what to do. The server refuses an identical resend too.
+4. **Versions.** Every Andy answer, and the person's edited text when they ask again, is a version. ‹ › steps through them; editing an older one and asking again adds a new version at the end — nothing is cut off. **Versions live only while the sheet is open. Close deletes all of them** — nothing kept on the phone, nothing stored on the server, nothing cached.
+5. **Copy** takes box B as it is. **Open Messages** opens Messages with box B's text; Andy never sends anything.
+6. **Limits:** 10 asks after the first per sheet (unchanged from 10-21), then the arrow stops: "That's the most Andy can do in one go. Copy it, or close and start again." Chat line ≤ 500 characters (`MAX_INSTRUCTION_CHARS`); box text ≤ 4,000 characters.
+
+### What is sent to Andy (prompt)
+
+| Ask | Sent |
+|---|---|
+| First (box A) | Box A's text; the person's name; today's date; **the newest 4 notes about them as background**, picked automatically with today's recency rules (past plans are past; a newest note older than 90 days isn't news). |
+| Every later ask | The first request (box A); **every chat line sent so far** in this sheet; Andy's last answer **only when box B differs from it** (so Andy can see what the person changed); box B as it is; the new chat line if any; the same notes. |
+
+Andy's rules for a later ask: box B is the base. The person's changes are a direction — carry them through the rest, never undo or reword them. **Never change a day, date, time, number, name, place or link the person wrote.** With only a chat line, change nothing it didn't ask for. Return only the message; if the person asks for an email, put a "Subject: …" line first, in the same text.
+
+**Key details are checked in code**, not only asked for: after Andy answers, the server checks that every day, date, time, number and link in the text it was sent is still in the answer. If one is missing, it asks Andy once more to keep it exactly; if it is still missing, the answer is returned as is (the person sees it and can fix it). Names are protected by the prompt rule only.
+
+Unchanged from the brief: everything goes through the Convex action to Anthropic (Haiku 4.5), never from the phone; not stored, not logged; `requireAiAllowed` gates it; user text goes through `promptBoundary.ts`.
+
+### Owner decisions, 2026-10-30 (the questions above, answered)
+
+- Option: **F**. Brief Q1 (one surface): **yes**, one entrance. Q2 (retire Write another and the replace alert): **yes**. Q3 (chips): **none**. Q4 (notes on own draft): **yes, newest 4, automatic**, no switch. Q5 (scope change): **approved** — the follow-up Must Have is rewritten in `PROJECT_SCOPE.md` / `.ko.md`, including Open Messages.
+- Prompt: D1 **(c)** every chat line + only the latest text; D2 **(a)** newest notes automatically; D3 **(b)** prompt rule + code check; D4 **keep 10**; D5 **Subject line when an email is asked for**.
+- Close without copying: **ask first**. Box text cap: **4,000 characters**.
+- **Overrides of the brief, by the owner:** rule 4 — an arrow icon asks Andy (labelled "Ask Andy" for VoiceOver; it sends to Andy, never to the person) and Open Messages opens Apple's Messages; rule 8 — no intent or sources lines.
+- **Still open:** reply by screenshot (10-21) — this design has no screenshot input; decide before V1.1 whether box A gets one.
