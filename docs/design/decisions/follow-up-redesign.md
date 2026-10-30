@@ -98,7 +98,7 @@ Screen: `draft`, opened by `follow-up-button` on `profile--person`. New part nam
 - A paste reply with no refines costs about **0.5¢**. A screenshot reply about **1.1¢**.
 - The worst case for one session (screenshot plus 10 refines) is about **8¢**. Start over is a deliberate tap, not a loop.
 - Caching only applies once the stable prefix (system, notes, their message) reaches **4,096 tokens** on Haiku 4.5. Below that it silently doesn't cache, so put the prefix first and verify when built.
-- No server quota is planned (per `CLAUDE.md`). The `followUpTones` switch is the kill switch.
+- No server quota is planned (per `CLAUDE.md`). **There is no cost kill switch today** (corrected 2026-10-29): `followUpTones` only guards the old sheet's picker, and `writeTo` off falls back to the old sheet, which calls Claude too. See `INFRA.md` #6.
 
 ### 5. Copy (final strings, sentence case)
 

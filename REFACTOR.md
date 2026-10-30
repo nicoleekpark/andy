@@ -2,6 +2,8 @@
 
 Written 2026-10-02, while the designer and QA test build 1.0.0 (3) on their phones. Measured on `main` at that date.
 
+**Names are as they were on that date.** Ask Andy is now **Advanced search** (device QA B5-2, 2026-10-19); Draft a follow-up is now **Write to {name}** (2026-10-22).
+
 **Refactoring here means changing how the code is organised without changing what the app does.** A person using the app should not be able to tell that any of these happened, with one exception. B fixes a real bug. J2 and G produce reports and change no code.
 
 ## The rules for every option
