@@ -7,7 +7,13 @@ description: Use whenever asked to implement a feature, fix, or change in this r
 
 This repo ships fast because every change is small, tested, and reversible. Follow this loop for every feature request, no exceptions:
 
+**No step here is yours to waive, and none is the developer's to be offered.** If a rule looks wrong, inconsistent with another, or not to fit the case in front of you, stop and ask. Don't pick an interpretation, and don't put a rule-breaking plan up for a yes/no. On 2026-10-29 a plan to stack seven items on one PR was offered, accepted, and built (#206). It broke the Branching Policy and had to be split back into #207–#213.
+
 1. **Scope the smallest vertical slice** that is independently useful and testable. If the request is bigger than one slice, say so explicitly and propose the slice breakdown before writing code — don't silently build all of it in one pass. If the request is ambiguous — what counts as done, which screen, which behaviour — ask before step 2. A question costs a message; a wrong slice costs a PR.
+
+   **A list worked through one item at a time is a list of slices.** That covers doc disagreements, QA findings, cleanups and review comments. Each item gets its own branch from `main` and its own PR, a one-line docs fix included. Never one branch with a commit per item, and never one PR at the end. Two consequences:
+   - When two items edit the same lines, give each line to exactly one PR. Lines that only sit *next to* each other conflict too (git can't tell neighbouring edits apart), so if two PRs change adjacent lines, say in both that one must merge first and the other then takes `main` in.
+   - Before opening them, test-merge the set onto `main` (a throwaway branch, deleted after) to prove they don't conflict.
 2. **Branch from `main` before touching any code** — `git checkout -b feat/<short-slice-name>` (or `fix/...`, `chore/...`). Per `CLAUDE.md`'s Branching Policy, nothing gets committed to `main` directly, no exceptions for size.
 3. **Settle what you don't know before writing code.** Two different unknowns, two different subagents:
 
@@ -32,6 +38,8 @@ This repo ships fast because every change is small, tested, and reversible. Foll
    | `convex/`, `src/`                                 | **`silent-failure-hunter`** | act on "must fix"; judgement on the rest           |
    | `src/` — a screen, component, or style (`*.tsx`)  | **`design-system-auditor`** | act on "must fix"; judgement on the rest           |
    | `app.json`, or any permission string              | **`app-store-reviewer`**    | blocking — a ❓ unverified blocks the same as a ⚠️ |
+   | `.claude/hooks/`, `.claude/settings.json`         | **`security-reviewer`**     | blocking — a hook runs before every command, for anyone who trusts the repo |
+   | `.claude/hooks/`, `.claude/settings.json`         | **`code-reviewer`**         | act on "must fix"; judgement on the rest           |
    | only `*.md`, `*.yml`, `package*.json`, `.github/` | none                        |                                                    |
 
    Three or four at once is normal — they are independent, so launch them together rather than in series; that is most of the reason to skip them gone.
@@ -42,6 +50,8 @@ This repo ships fast because every change is small, tested, and reversible. Foll
 
 7. **Run lint/typecheck** (`npm run lint`) — must be clean. Never behind a pipe: `npm run lint | tail -3` reports `tail`'s exit code, which is how a commit once landed carrying two type errors.
 8. **Commit on the branch, push it, and open a PR** (`gh pr create`) — never merge it. The PR description is the handover report below, not a placeholder.
+
+   **Before pushing to a branch that already has a PR, check the PR is still open:** `gh pr view <branch> --json state`. The developer merges between turns without saying so. A push to a merged branch reaches nobody, and the work looks shipped when it isn't: #205 merged with one commit, then seven more went to its branch. If the PR is merged or closed, branch again from `main` and open a new PR. Never call a PR open or unmerged from memory.
 9. **Report back so they can review, then wait.** The report — which doubles as the PR description — is the deliverable of this step, not a formality:
    - what changed, file by file, and **why** — including anything discovered mid-slice that wasn't in the plan
    - the commands they can run to verify it themselves (`npm run lint`, `npm run test`, …) with the results you actually got

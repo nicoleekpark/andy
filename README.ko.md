@@ -13,7 +13,7 @@
 - Clerk (인증 — V1은 Apple Sign-In)
 - Claude API (추출, 명함용 비전, 검색된 노트 위에서의 답변 — Convex action에서만 서버사이드로 호출, 클라이언트에서는 절대 호출하지 않음)
 - OpenAI `text-embedding-3-large` 1024차원 (노트 임베딩, 역시 서버사이드 전용)
-- expo-audio(녹음), expo-speech-recognition(전사), expo-image-picker(명함 + 사진 첨부), expo-calendar(브리핑), expo-notifications, expo-local-authentication(비밀번호/생체인증 앱 잠금)
+- expo-speech-recognition(녹음과 전사를 한 번에 — 별도 녹음기 없음), expo-keep-awake(녹음 중 화면 켜둠), expo-camera(노트용 사진 찍기), expo-image-picker(명함 + 사진 첨부), expo-calendar(브리핑), expo-notifications, expo-local-authentication(비밀번호/생체인증 앱 잠금), expo-apple-authentication(Sign in with Apple), expo-clipboard(팔로업 초안 복사), react-native-svg(실 마크)
 
 _`expo-contacts`와 `expo-speech`는 V1 의존성이 아님 — 연락처 동기화와 Siri 단축어는 Day 4에 잘렸음._
 
@@ -44,21 +44,22 @@ npx convex dev             # Convex 개발 배포를 시작하고 convex/_genera
 
 그다음 시뮬레이터에 빌드를 올린다 — 아래 **명령어** 절 참고. `npx expo run:ios`(로컬 네이티브
 빌드)는 macOS Sequoia 에서 **동작하지 않는다.** 빌드는 EAS 를 거친다. 이유는 명령어 절에 적혀 있다.
-```bash
-```
-
-> **참고**: `create-expo-app`은 자체적으로 `AGENTS.md`, `CLAUDE.md`, `.claude/settings.json`을 자동 생성해서 버전별 Expo SDK 문서와 공식 Expo Claude 플러그인을 가리킴. 이 레포의 `CLAUDE.md`는 그것과 합칠 것(덮어쓰지 말고 이어붙이기) — `CLAUDE.md` 맨 위의 merge note 참고.
 
 ### 환경변수
 
 **전체 지도 — 키마다 어느 환경에 있는지, 어떤 제한과 지출 한도를 걸었는지, 유출되면 어떻게
 하는지 — 는 [`ENVIRONMENTS.md`](ENVIRONMENTS.md) 에 있다.** 새 머신을 위한 요약만:
 
-Convex 대시보드에 설정 (서버사이드, Expo 앱에는 절대 넣지 않음):
+각 Convex 배포에 설정 (서버사이드, Expo 앱에는 절대 넣지 않음) — 네 개 모두 필수:
 
 ```
 ANTHROPIC_API_KEY=...
+OPENAI_API_KEY=...
+CLERK_SECRET_KEY=...
+CLERK_JWT_ISSUER_DOMAIN=...
 ```
+
+네 개 더 — `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`, `APPLE_CLIENT_ID` — 는 계정을 삭제할 때 그 사람의 Apple 로그인을 철회하는 기능을 켠다. 없어도 Andy는 돌아가지만, App Review가 이 철회를 요구하므로 App Store 제출 전에는 필요하다 ([`docs/apple-token-revocation.md`](docs/apple-token-revocation.md)).
 
 `.env.local`에 설정 (클라이언트에 노출돼도 안전한 것만 — Metro 가 앱 번들에 그대로 인라인하므로
 비밀은 절대 여기 두지 말 것):

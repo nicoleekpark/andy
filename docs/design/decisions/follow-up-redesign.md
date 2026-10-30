@@ -1,6 +1,8 @@
 # Follow-up redesign: Reply or Reach out, then refine
 
-Status: **owner decisions of 2026-10-21, recorded. Nothing is built.** This supersedes both earlier versions of this brief. The designer draws **one flow**, not options. `follow-up-tones.md` (2026-10-12) still holds where nothing below changes it: tones, Message/Email, rules 1–9, per-person style, Korean 존댓말 + 님.
+> **Superseded in large part on 2026-10-30 by `draft-editing.md` → Final design.** Still true from here: newest-note-first and past-is-past (#195), nothing sent by Andy, the 10-ask cap, nothing kept after the sheet closes. **No longer true:** the Reply / Reach out choice (one entrance now), Reply by paste and by screenshot as separate flows (paste into box A instead; screenshot is an open question), tone and format controls, notes picker, refine chips, the intent and sources lines. Reach out as built (#196–#199) is what the new design replaces.
+
+Status: **owner decisions of 2026-10-21, recorded.** (Reach out built in #194–#199; the rest superseded — see above.) This supersedes both earlier versions of this brief. The designer draws **one flow**, not options. `follow-up-tones.md` (2026-10-12) still holds where nothing below changes it: tones, Message/Email, rules 1–9, per-person style, Korean 존댓말 + 님.
 Screen: `draft`, opened by `follow-up-button` on `profile--person`. New part names are marked **(new)** and are proposals for `component-names.md` in the build PR.
 
 ## Brief
@@ -98,7 +100,7 @@ Screen: `draft`, opened by `follow-up-button` on `profile--person`. New part nam
 - A paste reply with no refines costs about **0.5¢**. A screenshot reply about **1.1¢**.
 - The worst case for one session (screenshot plus 10 refines) is about **8¢**. Start over is a deliberate tap, not a loop.
 - Caching only applies once the stable prefix (system, notes, their message) reaches **4,096 tokens** on Haiku 4.5. Below that it silently doesn't cache, so put the prefix first and verify when built.
-- No server quota is planned (per `CLAUDE.md`). The `followUpTones` switch is the kill switch.
+- No server quota is planned (per `CLAUDE.md`). **There is no cost kill switch today** (corrected 2026-10-29): `followUpTones` only guards the old sheet's picker, and `writeTo` off falls back to the old sheet, which calls Claude too. See `INFRA.md` #6.
 
 ### 5. Copy (final strings, sentence case)
 

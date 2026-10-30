@@ -4,6 +4,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { EMBEDDING_DIMENSIONS } from "./embeddingModel";
+import { CLAUDE_MODELS } from "./claudeModels";
 import schema from "./schema";
 import { aiNotEnforced } from "../test-support/ai-permission";
 
@@ -46,7 +47,7 @@ beforeEach(() => {
     id: "msg_1",
     type: "message",
     role: "assistant",
-    model: "claude-haiku-4-5",
+    model: CLAUDE_MODELS.haiku,
     stop_reason: "end_turn",
     stop_sequence: null,
     content: [{ type: "text", text: JSON.stringify({ answer: "…", usedNotes: [] }) }],
@@ -558,9 +559,10 @@ test("should refuse an empty question without spending anything on it", async ()
   const t = await aiNotEnforced(convexTest(schema, modules));
   await seedUser(t, ALICE);
 
+  // In the feature's own words: it was "Ask Andy" until device QA B5-2.
   await expect(
     t.withIdentity(ALICE).action(api.search.recall, { query: "   " }),
-  ).rejects.toThrow();
+  ).rejects.toThrow("Type what you're looking for first.");
   expect(fetchMock).not.toHaveBeenCalled();
 });
 

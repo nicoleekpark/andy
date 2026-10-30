@@ -18,6 +18,7 @@ import type * as calendar from "../calendar.js";
 import type * as calendarMatch from "../calendarMatch.js";
 import type * as calendarNames from "../calendarNames.js";
 import type * as claude from "../claude.js";
+import type * as claudeModels from "../claudeModels.js";
 import type * as cleanup from "../cleanup.js";
 import type * as email from "../email.js";
 import type * as emailPrompt from "../emailPrompt.js";
@@ -58,6 +59,7 @@ declare const fullApi: ApiFromModules<{
   calendarMatch: typeof calendarMatch;
   calendarNames: typeof calendarNames;
   claude: typeof claude;
+  claudeModels: typeof claudeModels;
   cleanup: typeof cleanup;
   email: typeof email;
   emailPrompt: typeof emailPrompt;

@@ -52,7 +52,7 @@ If something works differently from the "Expect" column, **that's a report**, ev
 
 Check the app against **[`STYLE.md`](https://github.com/nicoleekpark/andy/blob/main/STYLE.md)**, the decided colours, type, spacing, motion and voice:
 
-- [ ] **Colours:** only the six in STYLE.md. **Brass** appears inside the app only on the Briefing card; before sign-in, it's also the thread.
+- [ ] **Colours:** only the colours in STYLE.md. **Brass** appears inside the app only on the Briefing card; before sign-in, it's also the thread.
 - [ ] **Type:** names, section headers and the home title in **Lora**; dates and metadata in **IBM Plex Mono**; everything else in the system font.
 - [ ] **Spacing:** consistent gaps and edges, nothing touching the screen edge.
 - [ ] **Thread motion:**

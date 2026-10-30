@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Mock: draft-editing.md, Option E "Receipt" (owner + Claude, 2026-10-30). HTML approximation of a native screen. Design prototype, not production code. -->
+<title>Draft editing - Option E: Receipt</title>
+<style>
+:root{--ink:#2A2622;--paper:#E8E6DE;--moss:#5C6B4F;--line:#B8B3A8;--edge:#857E6D;--placeholder:#63605A;
+--display:"Lora",Georgia,serif;--utility:"IBM Plex Mono",ui-monospace,Menlo,monospace;--body:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;
+--xs:4px;--sm:8px;--md:12px;--lg:16px;--xl:24px;--xxl:32px;--text-xs:12px;--text-sm:13px;--text-md:14px;--text-base:15px;--text-lg:16px;--text-xl:17px;--text-xxl:18px;
+--radius-control:10px;--radius-pill:999px;--touch:44px;--quiet:.7;--disabled:.5}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#1a1a1a;color:#ddd;font-family:var(--body);padding:32px 20px}
+h1{font:500 26px var(--display);color:#fff}.lead{color:#aaa;max-width:86ch;margin:8px 0 24px;line-height:1.55}
+.row{display:flex;gap:24px;overflow-x:auto;padding-bottom:24px;align-items:flex-start}
+.frame{flex:0 0 390px}.cap{font:var(--text-xs) var(--utility);letter-spacing:.08em;text-transform:uppercase;color:#9fb08f;margin-bottom:8px}
+.note{font-size:13px;color:#aaa;margin-top:8px;line-height:1.45;max-width:390px}
+
+.phone{width:390px;height:760px;background:var(--paper);color:var(--ink);border-radius:28px;position:relative;overflow:hidden;display:flex;flex-direction:column}
+.nav{height:52px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 var(--lg)}
+.nav a{color:var(--moss);min-width:var(--touch);min-height:var(--touch);display:flex;align-items:center;font-size:var(--text-xl)}
+.doc{flex:1;padding:0 var(--xl) var(--lg);display:flex;flex-direction:column;overflow:hidden}
+
+/* receipt header */
+.title{font:500 26px/1.2 var(--display);margin:var(--xs) 0 var(--lg)}
+.meta{display:grid;grid-template-columns:96px 1fr;row-gap:2px;font-size:var(--text-md)}
+.meta dt{font:var(--text-sm) var(--utility);opacity:var(--quiet);min-height:28px;display:flex;align-items:center}
+.meta dd{min-height:28px;display:flex;align-items:center;gap:6px}
+.meta dd u{text-decoration:none;border-bottom:1px solid var(--edge)}
+.chev{font-size:11px;opacity:var(--quiet)}
+.rule{border-top:1px solid var(--line);margin:var(--lg) 0}
+.rule.ink{border-top-color:var(--ink)}
+
+/* the message is the headline */
+.msg{font-size:var(--text-xxl);line-height:1.5;min-height:120px;position:relative}
+.msg .ph{color:var(--placeholder)}
+.caret{display:inline-block;width:2px;height:1.1em;background:var(--moss);vertical-align:text-bottom}
+.sel{background:#C9CFC0;outline:1px solid var(--moss)}
+.fresh{background:#DCE0D4}
+.ask{margin-top:var(--md);border-top:1px solid var(--line);padding-top:var(--sm);font-size:var(--text-md);min-height:var(--touch);display:flex;flex-direction:column;justify-content:center;gap:2px}
+.ask .lbl{font:var(--text-xs) var(--utility);opacity:var(--quiet)}
+.ask .ph{color:var(--placeholder)}
+.done-line{font-size:var(--text-sm);opacity:var(--quiet);margin-top:var(--sm);line-height:1.45}
+
+.btns{display:flex;gap:var(--sm);margin-top:var(--lg)}
+.btn{flex:1;min-height:var(--touch);border-radius:var(--radius-pill);display:flex;align-items:center;justify-content:center;font-size:var(--text-lg);font-weight:600}
+.pri{background:var(--moss);color:var(--paper)}.sec{border:1px solid var(--edge);color:var(--ink)}.dis{opacity:var(--disabled)}
+
+/* versions = payment history */
+.h2{font:500 20px var(--display);margin-bottom:var(--md)}
+table{width:100%;border-collapse:collapse;font-size:var(--text-md)}
+th{font:var(--text-xs) var(--utility);opacity:var(--quiet);text-align:left;font-weight:400;padding-bottom:6px;border-bottom:1px solid var(--ink)}
+td{min-height:var(--touch);height:var(--touch);border-bottom:1px solid var(--line);vertical-align:middle}
+td.n{font-family:var(--utility);width:44px}
+td.by{width:58px}
+td.go{text-align:right;color:var(--moss);width:40px}
+tr.cur td{font-weight:600}
+tr.cur td.n::before{content:"● ";color:var(--moss);font-size:9px;vertical-align:middle}
+.empty{font-size:var(--text-sm);opacity:var(--quiet)}
+.foot{margin-top:auto;padding-top:var(--md);border-top:1px solid var(--line);font:var(--text-xs) var(--utility);opacity:var(--quiet);text-align:right}
+
+.kbd{height:230px;flex:none;background:var(--line);display:flex;align-items:center;justify-content:center;font:var(--text-xs) var(--utility);color:var(--ink)}
+.bar{flex:none;border-top:1px solid var(--line);background:var(--paper);padding:var(--sm) var(--lg);display:flex;align-items:center;gap:var(--sm)}
+.bar .fld{flex:1;min-height:var(--touch);border:1px solid var(--edge);border-radius:var(--radius-control);padding:0 var(--md);display:flex;align-items:center;font-size:var(--text-md)}
+.bar .fld .ph{color:var(--placeholder)}
+.bar .btn{flex:none;padding:0 var(--lg)}
+.toast{font-size:var(--text-sm);background:var(--ink);color:var(--paper);border-radius:var(--radius-control);padding:var(--sm) var(--md);align-self:flex-start;margin-top:var(--sm)}
+</style></head><body>
+<h1>Option E - Receipt</h1>
+<p class="lead">One page, laid out like a receipt: what it is at the top in label rows, the message itself as the big headline, one small line under it for what you tell Andy, and the versions as a history table at the bottom. No "write it myself / ask Andy" choice: leave the message empty and tell Andy what to write; or write it and ask Andy to tidy it; or select words and ask about just those. Copy only - nothing is sent. Light mode, tokens as in theme.ts; the selection tint is the iOS system selection.</p>
+<div class="row">
+
+<!-- 1 -->
+<div class="frame"><div class="cap">1 Opens empty</div><div class="phone">
+<div class="nav"><a>Close</a></div>
+<div class="doc">
+<div class="title">Write to Mina</div>
+<dl class="meta">
+<dt>As</dt><dd><u>Message</u><span class="chev">▾</span></dd>
+<dt>Tone</dt><dd><u>Friendly</u><span class="chev">▾</span></dd>
+<dt>From</dt><dd><u>2 notes</u><span class="chev">▾</span></dd>
+</dl>
+<div class="rule ink"></div>
+<div class="msg"><span class="caret"></span><span class="ph">Your message</span></div>
+<div class="ask"><span class="lbl">Tell Andy (optional)</span><span class="ph">e.g. thank her for the intro to Dev</span></div>
+<div class="btns"><div class="btn sec dis">Ask Andy</div><div class="btn pri dis">Copy message</div></div>
+<div class="rule"></div>
+<div class="h2">Versions</div>
+<div class="empty">None yet. Every time Andy writes, the text before it is kept here.</div>
+<div class="foot">Nothing is sent from Andy - you copy it</div>
+</div></div>
+<p class="note">Nothing is written on open. Two places to type, each labelled for what it is: the message (big) and what you tell Andy (small). Both buttons wait until there is something to work with.</p></div>
+
+<!-- 2 -->
+<div class="frame"><div class="cap">2 Tell Andy what to write</div><div class="phone">
+<div class="nav"><a>Close</a></div>
+<div class="doc">
+<div class="title">Write to Mina</div>
+<dl class="meta">
+<dt>As</dt><dd><u>Message</u><span class="chev">▾</span></dd>
+<dt>Tone</dt><dd><u>Friendly</u><span class="chev">▾</span></dd>
+<dt>From</dt><dd><u>2 notes</u><span class="chev">▾</span></dd>
+</dl>
+<div class="rule ink"></div>
+<div class="msg"><span class="ph">Your message</span></div>
+<div class="ask"><span class="lbl">Tell Andy (optional)</span><span>thank her for the intro to Dev, coffee next week<span class="caret"></span></span></div>
+<div class="btns"><div class="btn sec">Ask Andy</div><div class="btn pri dis">Copy message</div></div>
+</div><div class="kbd">keyboard</div></div>
+<p class="note">Message empty + a line for Andy = Andy writes it. No mode to pick: what is filled in says what you want.</p></div>
+
+<!-- 3 -->
+<div class="frame"><div class="cap">3 Andy's draft is the headline</div><div class="phone">
+<div class="nav"><a>Close</a></div>
+<div class="doc">
+<div class="title">Write to Mina</div>
+<dl class="meta">
+<dt>As</dt><dd><u>Message</u><span class="chev">▾</span></dd>
+<dt>Tone</dt><dd><u>Friendly</u><span class="chev">▾</span></dd>
+<dt>From</dt><dd><u>2 notes</u><span class="chev">▾</span></dd>
+</dl>
+<div class="rule ink"></div>
+<div class="msg">Hi Mina - thanks so much for introducing me to Dev. We had a great chat and I'd love to keep it going. Coffee next week? Tuesday works for me.</div>
+<div class="done-line">Andy wrote this from "thank her for the intro to Dev, coffee next week" and 2 notes.</div>
+<div class="ask"><span class="lbl">Tell Andy (optional)</span><span class="ph">e.g. shorter</span></div>
+<div class="btns"><div class="btn sec">Ask Andy</div><div class="btn pri">Copy message</div></div>
+<div class="rule"></div>
+<div class="h2">Versions</div>
+<table><tr><th>No.</th><th>By</th><th>What changed</th><th></th></tr>
+<tr class="cur"><td class="n">1</td><td class="by">Andy</td><td>First draft</td><td class="go"></td></tr></table>
+<div class="foot">Version 1 of 1</div>
+</div></div>
+<p class="note">The instruction you gave moves into one quiet line under the message, like a receipt's description - it says what this text is and where it came from. The Tell Andy line is empty again for the next ask.</p></div>
+
+<!-- 4 -->
+<div class="frame"><div class="cap">4 Fix it yourself, right there</div><div class="phone">
+<div class="nav"><a>Close</a></div>
+<div class="doc">
+<div class="title">Write to Mina</div>
+<dl class="meta">
+<dt>As</dt><dd><u>Message</u><span class="chev">▾</span></dd>
+<dt>Tone</dt><dd><u>Friendly</u><span class="chev">▾</span></dd>
+</dl>
+<div class="rule ink"></div>
+<div class="msg">Hi Mina - thanks so much for introducing me to Dev. We had a great chat and I'd love to keep it going. Coffee next week? Thursday<span class="caret"></span> works for me.</div>
+<div class="ask"><span class="lbl">Tell Andy (optional)</span><span class="ph">e.g. shorter</span></div>
+<div class="btns"><div class="btn sec">Ask Andy</div><div class="btn pri">Copy message</div></div>
+</div><div class="kbd">keyboard</div></div>
+<p class="note">The headline is just a text field: tap and type. Tuesday becomes Thursday. Copy now and that is what you get - no other step.</p></div>
+
+<!-- 5 -->
+<div class="frame"><div class="cap">5 Select words, ask about just those</div><div class="phone">
+<div class="nav"><a>Close</a></div>
+<div class="doc">
+<div class="title">Write to Mina</div>
+<div class="rule ink" style="margin-top:0"></div>
+<div class="msg">Hi Mina - thanks so much for introducing me to Dev. <span class="sel">We had a great chat and I'd love to keep it going.</span> Coffee next week? Thursday works for me.</div>
+</div>
+<div class="bar"><div class="fld"><span class="ph">Tell Andy about these words</span></div><div class="btn sec">Ask Andy</div></div>
+<div class="kbd">keyboard</div></div>
+<p class="note">With words selected, the same Tell Andy line sits above the keyboard and says it is about those words. Only they change - your Thursday can't be touched. Empty line = "tidy these words".</p></div>
+
+<!-- 6 -->
+<div class="frame"><div class="cap">6 Back from Andy</div><div class="phone">
+<div class="nav"><a>Close</a></div>
+<div class="doc">
+<div class="title">Write to Mina</div>
+<dl class="meta">
+<dt>As</dt><dd><u>Message</u><span class="chev">▾</span></dd>
+<dt>Tone</dt><dd><u>Friendly</u><span class="chev">▾</span></dd>
+<dt>From</dt><dd><u>2 notes</u><span class="chev">▾</span></dd>
+</dl>
+<div class="rule ink"></div>
+<div class="msg">Hi Mina - thanks so much for introducing me to Dev. <span class="fresh">He was great to talk to.</span> Coffee next week? Thursday works for me.</div>
+<div class="done-line">Andy made those words shorter. Kept your Thursday.</div>
+<div class="btns"><div class="btn sec">Ask Andy</div><div class="btn pri">Copy message</div></div>
+<div class="rule"></div>
+<div class="h2">Versions</div>
+<table><tr><th>No.</th><th>By</th><th>What changed</th><th></th></tr>
+<tr class="cur"><td class="n">3</td><td class="by">Andy</td><td>Shorter middle</td><td class="go"></td></tr>
+<tr><td class="n">2</td><td class="by">You</td><td>Tuesday → Thursday</td><td class="go">›</td></tr>
+<tr><td class="n">1</td><td class="by">Andy</td><td>First draft</td><td class="go">›</td></tr></table>
+<div class="foot">Version 3 of 3</div>
+</div></div>
+<p class="note">The changed words are tinted for a moment. Your hand edit was kept as its own version before Andy wrote ("You"). The table reads like a payment history: who, what, newest first.</p></div>
+
+<!-- 7 -->
+<div class="frame"><div class="cap">7 Go back to an earlier one</div><div class="phone">
+<div class="nav"><a>Close</a></div>
+<div class="doc">
+<div class="title">Write to Mina</div>
+<dl class="meta">
+<dt>As</dt><dd><u>Message</u><span class="chev">▾</span></dd>
+<dt>Tone</dt><dd><u>Friendly</u><span class="chev">▾</span></dd>
+<dt>From</dt><dd><u>2 notes</u><span class="chev">▾</span></dd>
+</dl>
+<div class="rule ink"></div>
+<div class="msg">Hi Mina - thanks so much for introducing me to Dev. We had a great chat and I'd love to keep it going. Coffee next week? Thursday works for me.</div>
+<div class="btns"><div class="btn sec">Ask Andy</div><div class="btn pri">Copy message</div></div>
+<div class="rule"></div>
+<div class="h2">Versions</div>
+<table><tr><th>No.</th><th>By</th><th>What changed</th><th></th></tr>
+<tr><td class="n">3</td><td class="by">Andy</td><td>Shorter middle</td><td class="go">›</td></tr>
+<tr class="cur"><td class="n">2</td><td class="by">You</td><td>Tuesday → Thursday</td><td class="go"></td></tr>
+<tr><td class="n">1</td><td class="by">Andy</td><td>First draft</td><td class="go">›</td></tr></table>
+<div class="foot">Version 2 of 3</div>
+</div></div>
+<p class="note">Tap a row and the page shows that version. Nothing is deleted: edit it or ask Andy again and it becomes version 4 at the top. Copy always copies what is on the page.</p></div>
+
+</div>
+</body></html>
