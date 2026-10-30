@@ -184,7 +184,7 @@ Running apps hear it live (`useQuery`, no relaunch). **To turn it back on:** del
 
 **Temporary switches.** `writeTo` exists only until Write to has passed device QA on build 6. Then it goes, together with the old `DraftSheet` path and the `followUpTones` key — which guards only that old sheet's format and tone picker, so it is not listed above. Removing a switch removes code and its tests, so it is its own PR.
 
-**No switch stops follow-up drafting's Claude calls.** `writeTo` off falls back to the old sheet, which calls Claude too. At Haiku prices that is about 8¢ for the worst session (`follow-up-redesign.md`). Whether that needs a switch is an open owner decision, not settled.
+**No switch stops follow-up drafting's Claude calls.** `writeTo` off falls back to the old sheet, which calls Claude too. At Haiku prices that is about 8¢ for the worst session (`follow-up-redesign.md`). **Decided (owner, 2026-10-29): no switch.** The ceiling is the monthly spend limit on the Anthropic `andy-prod` workspace (`ENVIRONMENTS.md` §3) — which only holds if it is actually set there; its figure is still blank in that table.
 
 How it behaves:
 - **No row means on.** The query (`featureFlags.switchedOff`) returns only the keys that are off, so a typo or an unknown key can only fail to switch something off.
