@@ -41,6 +41,9 @@ import type * as profiles from "../profiles.js";
 import type * as promptBoundary from "../promptBoundary.js";
 import type * as search from "../search.js";
 import type * as users from "../users.js";
+import type * as writeTo from "../writeTo.js";
+import type * as writeToClaude from "../writeToClaude.js";
+import type * as writeToPrompt from "../writeToPrompt.js";
 
 import type {
   ApiFromModules,
@@ -82,6 +85,9 @@ declare const fullApi: ApiFromModules<{
   promptBoundary: typeof promptBoundary;
   search: typeof search;
   users: typeof users;
+  writeTo: typeof writeTo;
+  writeToClaude: typeof writeToClaude;
+  writeToPrompt: typeof writeToPrompt;
 }>;
 
 /**
