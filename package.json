@@ -3,7 +3,7 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.128.0",
+    "@anthropic-ai/sdk": "^1.4.0",
     "@clerk/expo": "^4.14.2",
     "@expo/ui": "~57.0.13",
     "convex": "^1.48.0",

@@ -24,7 +24,11 @@ const modules = import.meta.glob("./**/*.ts");
 // so `error instanceof Anthropic.AuthenticationError` in extraction.ts is
 // checked against the actual class — inventing that shape is exactly the kind
 // of mock-vs-reality mismatch that shipped a bug on Day 1.
-const { createMessage } = vi.hoisted(() => ({ createMessage: vi.fn() }));
+const { createMessage, constructed } = vi.hoisted(() => ({
+  createMessage: vi.fn(),
+  /** The options each client was built with — tracing must be off. */
+  constructed: [] as unknown[],
+}));
 
 vi.mock("@anthropic-ai/sdk", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@anthropic-ai/sdk")>();
@@ -33,6 +37,9 @@ vi.mock("@anthropic-ai/sdk", async (importOriginal) => {
     static RateLimitError = actual.RateLimitError;
     static APIConnectionError = actual.APIConnectionError;
     messages = { create: createMessage };
+    constructor(options: unknown) {
+      constructed.push(options);
+    }
   }
   return { ...actual, default: MockAnthropic };
 });
@@ -48,6 +55,7 @@ function buildAnthropicMessage(
     id: "msg_test",
     container: null,
     content: [{ type: "text", text: "{}", citations: null }],
+    diagnostics: null,
     model: CLAUDE_MODELS.haiku,
     role: "assistant",
     stop_details: null,
@@ -60,6 +68,7 @@ function buildAnthropicMessage(
       cache_read_input_tokens: null,
       inference_geo: null,
       input_tokens: 100,
+      speed: null,
       output_tokens: 50,
       output_tokens_details: null,
       server_tool_use: null,
@@ -113,6 +122,31 @@ test("should refuse and never call the Anthropic SDK when text is longer than MA
   ).rejects.toBeInstanceOf(ConvexError);
 
   expect(createMessage).not.toHaveBeenCalled();
+});
+
+test("should build the Anthropic client with tracing switched off", async () => {
+  // SDK 1.x turns OpenTelemetry on by default, and traces can carry message
+  // content — what people wrote about others. `askClaude` is the one place a
+  // client is built, so this is the one place to hold it.
+  const t = await aiNotEnforced(convexTest(schema, modules));
+  createMessage.mockResolvedValueOnce(
+    buildAnthropicMessage({
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            primary: { name: "Nina", entityType: "person", relationshipContext: null, tags: [], firstMetDate: null, keyFacts: [] },
+            mentions: [],
+          }),
+          citations: null,
+        },
+      ],
+    }),
+  );
+
+  await t.withIdentity(IDENTITY).action(api.extraction.fromTranscript, { text: "Met Nina", today: "2026-08-27" });
+
+  expect(constructed.at(-1)).toMatchObject({ openTelemetry: false });
 });
 
 test("should accept a transcript exactly at MAX_TRANSCRIPT_CHARS and call the Anthropic SDK", async () => {
