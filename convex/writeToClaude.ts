@@ -11,9 +11,11 @@ import {
   WRITE_TO_SYSTEM_PROMPT,
   buildWriteToMessage,
   formatOf,
+  keyDetails,
+  missingDetails,
   writeToAnswerValidator,
 } from "./writeToPrompt";
-import type { WriteToAnswer, WriteToTone } from "./writeToPrompt";
+import type { WriteToAnswer, WriteToInput, WriteToTone } from "./writeToPrompt";
 
 /**
  * Writing it.
@@ -39,33 +41,61 @@ export const compose = internalAction({
   },
   returns: writeToAnswerValidator,
   handler: async (_ctx, args): Promise<WriteToAnswer> => {
-    const result = (await askClaude({
-      model: WRITE_TO_MODEL,
-      maxTokens: WRITE_TO_MAX_TOKENS,
-      schema: WRITE_TO_SCHEMA,
-      system: WRITE_TO_SYSTEM_PROMPT,
-      content: [{ type: "text", text: buildWriteToMessage(args) }],
-      label: "Write to",
-    })) as { text?: unknown; tone?: unknown };
+    const first = await ask(args);
 
-    // `returns` validates after the handler has read the result, so a wrong
-    // shape would surface as a raw TypeError; say something a person can act on.
-    const text = typeof result.text === "string" ? result.text.trim() : "";
-    if (text === "") {
-      console.error("Write to returned no text.");
-      throw new ConvexError("Andy couldn't write that just now. Your text is still here. Try again.");
+    // Key details are checked in code, not only asked for (Final design;
+    // owner, 2026-11-04): on a later ask, every day, date, time, number and
+    // link in box B must still be there. Not on the first ask — box A mixes
+    // the message with instructions like "two sentences" — and not when the
+    // new chat line names a detail itself, because then changing one is what
+    // the person asked for.
+    if (args.current === undefined || keyDetails(args.instruction ?? "").length > 0) {
+      return first;
     }
+    const missing = missingDetails(args.current, first.text);
+    if (missing.length === 0) return first;
 
-    // The tone is the model's label, kept only if it is one of the three; the
-    // format is read from the text itself, so the two can never disagree.
-    const tones: readonly WriteToTone[] = ["friendly", "professional", "brief"];
-    const tone = tones.find((known) => known === result.tone) ?? "friendly";
-    // Refused rather than cut: a cut answer reads as finished, and the next ask
-    // would refuse it as too long anyway.
-    if (text.length > MAX_WRITE_TO_CHARS) {
-      console.error("Write to returned more than the draft limit.");
-      throw new ConvexError("Andy couldn't write that just now. Your text is still here. Try again.");
+    // Once more, told exactly what to keep. Whatever comes back is returned
+    // as is: the person sees it and can fix it in the box. If the second try
+    // fails, the first answer is still a usable one, so it is the one given.
+    console.error("Write to dropped a key detail; asking once more.");
+    try {
+      return await ask({ ...args, keepExactly: missing });
+    } catch {
+      console.error("Write to's second try failed; returning the first answer.");
+      return first;
     }
-    return { text, tone, format: formatOf(text) };
   },
 });
+
+/** One call to Claude, shaped into an answer or refused. */
+async function ask(input: WriteToInput): Promise<WriteToAnswer> {
+  const result = (await askClaude({
+    model: WRITE_TO_MODEL,
+    maxTokens: WRITE_TO_MAX_TOKENS,
+    schema: WRITE_TO_SCHEMA,
+    system: WRITE_TO_SYSTEM_PROMPT,
+    content: [{ type: "text", text: buildWriteToMessage(input) }],
+    label: "Write to",
+  })) as { text?: unknown; tone?: unknown };
+
+  // `returns` validates after the handler has read the result, so a wrong
+  // shape would surface as a raw TypeError; say something a person can act on.
+  const text = typeof result.text === "string" ? result.text.trim() : "";
+  if (text === "") {
+    console.error("Write to returned no text.");
+    throw new ConvexError("Andy couldn't write that just now. Your text is still here. Try again.");
+  }
+
+  // The tone is the model's label, kept only if it is one of the three; the
+  // format is read from the text itself, so the two can never disagree.
+  const tones: readonly WriteToTone[] = ["friendly", "professional", "brief"];
+  const tone = tones.find((known) => known === result.tone) ?? "friendly";
+  // Refused rather than cut: a cut answer reads as finished, and the next ask
+  // would refuse it as too long anyway.
+  if (text.length > MAX_WRITE_TO_CHARS) {
+    console.error("Write to returned more than the draft limit.");
+    throw new ConvexError("Andy couldn't write that just now. Your text is still here. Try again.");
+  }
+  return { text, tone, format: formatOf(text) };
+}
