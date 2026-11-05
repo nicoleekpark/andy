@@ -13,7 +13,7 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 
 **For the designer:** read top to bottom and mark anything that sounds wrong, unclear, or unlike the rest. Quote the string and its `Where` when you report it.
 
-537 strings, 13 with a planned change.
+540 strings, 13 with a planned change.
 
 ## Sign-in
 
@@ -512,6 +512,9 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 | That's longer than a tag. Try a shorter one. | server error | `convex/profiles.ts:313` |  |
 | That's longer than a relationship. Try a shorter one. | server error | `convex/profiles.ts:326` |  |
 | Your account isn't set up yet. Sign in again. | server error | `convex/users.ts:30` |  |
+| Andy couldn't write that just now. Your text is still here. Try again. | server error | `convex/writeTo.ts:117` |  |
+| Write something first. | server error | `convex/writeTo.ts:148` |  |
+| Andy only writes to people. | server error | `convex/writeTo.ts:172` |  |
 
 ## Other
 
