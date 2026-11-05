@@ -63,7 +63,9 @@ export async function askClaude(options: ClaudeRequest): Promise<unknown> {
     );
   }
 
-  const client = new Anthropic({ apiKey });
+  // Tracing off. Since 0.134 the SDK turns OpenTelemetry on by default, and its
+  // traces can carry message content — here, what people wrote about others.
+  const client = new Anthropic({ apiKey, openTelemetry: false });
 
   let response;
   try {
