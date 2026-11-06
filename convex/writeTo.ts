@@ -6,6 +6,7 @@ import { requireAiAllowed } from "./aiPermission";
 import { NOTES_SCANNED } from "./emailPrompt";
 import type { EmailNote } from "./emailPrompt";
 import { rememberedFacts } from "./embeddingModel";
+import { MAX_IMAGE_CHARS, imageMediaTypeValidator } from "./extractionPrompt";
 import { getAuthenticatedUser } from "./users";
 import {
   MAX_ASKS_AFTER_FIRST,
@@ -13,6 +14,7 @@ import {
   MAX_INSTRUCTION_CHARS,
   MAX_WRITE_TO_NOTES,
   writeToAnswerValidator,
+  writeToQuoteValidator,
   writeToStyleValidator,
 } from "./writeToPrompt";
 import type { WriteToAnswer, WriteToStyle } from "./writeToPrompt";
@@ -104,6 +106,8 @@ export const write = action({
     /** The phone's own date, `YYYY-MM-DD`. */
     today: v.string(),
     request: v.string(),
+    /** Their message, read from a screenshot and checked by the person (slice 6). */
+    quote: v.optional(v.string()),
     earlierInstructions: v.array(v.string()),
     lastAnswer: v.optional(v.string()),
     current: v.optional(v.string()),
@@ -122,12 +126,14 @@ export const write = action({
     }
 
     const request = args.request.trim();
+    const quote = args.quote?.trim() ?? "";
     const instruction = args.instruction?.trim() ?? "";
     const current = args.current?.trim();
     const lastAnswer = args.lastAnswer?.trim();
 
     if (
       request.length > MAX_WRITE_TO_CHARS ||
+      quote.length > MAX_WRITE_TO_CHARS ||
       (current?.length ?? 0) > MAX_WRITE_TO_CHARS ||
       (lastAnswer?.length ?? 0) > MAX_WRITE_TO_CHARS
     ) {
@@ -147,8 +153,8 @@ export const write = action({
     }
 
     if (current === undefined) {
-      // The first ask: box A is all there is.
-      if (request === "" || lastAnswer !== undefined) {
+      // The first ask: box A is all there is — what to say, their message, or both.
+      if ((request === "" && quote === "") || lastAnswer !== undefined) {
         throw new ConvexError("Write something first.");
       }
     } else {
@@ -182,6 +188,7 @@ export const write = action({
       today: args.today,
       notes: scope.notes,
       ...(scope.style === undefined ? {} : { style: scope.style }),
+      ...(quote === "" ? {} : { quote }),
       request,
       earlierInstructions: args.earlierInstructions
         .map((said) => said.trim())
@@ -225,3 +232,24 @@ export async function saveStyle(ctx: MutationCtx, profileIdArg: string, style: W
   if (now?.format === style.format && now?.tone === style.tone) return;
   await ctx.db.patch("profiles", profileId, { followUpStyle: style });
 }
+
+/**
+ * Read their message from a screenshot (slice 6; draft-editing.md → behaviour
+ * 8): one picture, sent as an argument and never stored, turned into the words
+ * of the message the person is replying to. Asked for before anything is read,
+ * like every call that reaches an AI service.
+ */
+export const readScreenshot = action({
+  args: { imageBase64: v.string(), mediaType: imageMediaTypeValidator },
+  returns: writeToQuoteValidator,
+  handler: async (ctx, args): Promise<{ found: boolean; text: string }> => {
+    await requireAiAllowed(ctx);
+    if (args.imageBase64 === "") {
+      throw new ConvexError("That screenshot didn't come through. Try again.");
+    }
+    if (args.imageBase64.length > MAX_IMAGE_CHARS) {
+      throw new ConvexError("That screenshot is too large for Andy to read. Try another.");
+    }
+    return await ctx.runAction(internal.writeToClaude.readMessage, args);
+  },
+});

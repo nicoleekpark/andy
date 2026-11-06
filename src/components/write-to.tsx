@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AccessibilityInfo,
   ActivityIndicator,
+  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -12,14 +13,19 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { SymbolView } from "expo-symbols";
+import * as FileSystem from "expo-file-system/legacy";
+import * as ImagePicker from "expo-image-picker";
+import { ConvexError } from "convex/values";
 import { useAction, useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "@convex/_generated/api";
 import { MAX_ASKS_AFTER_FIRST, MAX_INSTRUCTION_CHARS, MAX_WRITE_TO_CHARS } from "../../convex/writeToPrompt";
+import { MAX_IMAGE_CHARS } from "../../convex/extractionPrompt";
 import { colors, disabledOpacity, fonts, radius, size, space, textOpacity, textSize } from "../constants/theme";
 import { useAiGoAhead } from "@/lib/ai-go-ahead";
 import { putOnClipboard } from "@/lib/clipboard";
 import { canSendTexts, openMessages } from "@/lib/messages";
+import { shrinkForReading } from "@/lib/photo-size";
 import { localToday } from "@/lib/dates";
 import { useLocked } from "../lib/lock-context";
 import { onForgetOnThisPhone } from "@/lib/on-phone";
@@ -51,8 +57,28 @@ type Answer = FunctionReturnType<typeof api.writeTo.write>;
  */
 type Version = { text: string; answer: Answer | null; label: Answer };
 
+/**
+ * Their message, read from a screenshot (`write-to-quote`): while reading, a
+ * thumbnail held in memory only; once read, just the words, which the person
+ * can fix. The picture itself is never kept (behaviour 8).
+ */
+type Quote = { reading: true; thumb: string } | { reading: false; text: string };
+
+/**
+ * Delete a picture file Andy was handed. A failure leaves it in the picker's
+ * cache folder, which sign-out clears with everything else (`forgetOnThisPhone`).
+ */
+async function removeFile(uri: string): Promise<void> {
+  try {
+    await FileSystem.deleteAsync(uri, { idempotent: true });
+  } catch {
+    // See above: the next sign-out takes it.
+  }
+}
+
 /** What a tucked-away sheet keeps for its person. */
 type Kept = {
+  quote: string;
   request: string;
   versions: Version[];
   drafts: string[];
@@ -75,12 +101,24 @@ export function forgetWriteToSheets(): void {
 onForgetOnThisPhone(forgetWriteToSheets);
 
 /** Said in the Strings table's words; one line at a time. */
-type Problem = "failed" | "notNow" | "clipboard" | "messages";
+type Problem =
+  | "failed"
+  | "notNow"
+  | "clipboard"
+  | "messages"
+  | "shotFailed"
+  | "shotNone"
+  | "shotTooLarge"
+  | "shotNotNow";
 const PROBLEMS: Record<Problem, string> = {
   failed: "Andy couldn't write that just now. Your text is still here. Try again.",
   notNow: "Nothing was sent. Tap the arrow when you want Andy to write it.",
   clipboard: "Andy couldn't reach the clipboard. Your text is still here — select it to copy it by hand.",
   messages: "Messages didn't open. Copy the text instead.",
+  shotFailed: "That screenshot didn't come through. Try again.",
+  shotNone: "Andy couldn't find a message in that screenshot. Try another, or type what they said.",
+  shotTooLarge: "That screenshot is too large for Andy to read. Try another.",
+  shotNotNow: "Nothing was sent, and the picture wasn't kept.",
 };
 /** VoiceOver's version of a line, where the Strings table gives one. */
 const PROBLEMS_SPOKEN: Partial<Record<Problem, string>> = {
@@ -101,6 +139,11 @@ export function useWriteTo(profileId: string) {
   const [start] = useState(() => kept.get(profileId));
   const [open, setOpen] = useState(false);
   const [request, setRequest] = useState(start?.request ?? "");
+  const [quote, setQuote] = useState<Quote | null>(
+    start !== undefined && start.quote !== "" ? { reading: false, text: start.quote } : null,
+  );
+  /** The words of the quote, once read: what goes to Andy with every ask. */
+  const quoteText = quote !== null && !quote.reading ? quote.text : "";
   const [versions, setVersions] = useState<Version[]>(start?.versions ?? []);
   /**
    * Box B's text for each version, starting as the version itself. Kept per
@@ -150,6 +193,7 @@ export function useWriteTo(profileId: string) {
   if (owner !== profileId) {
     const theirs = kept.get(profileId);
     setOwner(profileId);
+    setQuote(theirs !== undefined && theirs.quote !== "" ? { reading: false, text: theirs.quote } : null);
     setOpen(false);
     setWriting(false);
     setProblem(null);
@@ -177,12 +221,22 @@ export function useWriteTo(profileId: string) {
 
   // Kept for this person while there is anything to keep; Close deletes it.
   useEffect(() => {
-    if (request === "" && versions.length === 0 && instruction === "") {
+    if (request === "" && quoteText === "" && versions.length === 0 && instruction === "") {
       kept.delete(profileId);
       return;
     }
-    kept.set(profileId, { request, versions, drafts, shown, instruction, earlier, asksAfterFirst, copiedOnce });
-  }, [profileId, request, versions, drafts, shown, instruction, earlier, asksAfterFirst, copiedOnce]);
+    kept.set(profileId, {
+      quote: quoteText,
+      request,
+      versions,
+      drafts,
+      shown,
+      instruction,
+      earlier,
+      asksAfterFirst,
+      copiedOnce,
+    });
+  }, [profileId, quoteText, request, versions, drafts, shown, instruction, earlier, asksAfterFirst, copiedOnce]);
 
   /** Close, for good: every version and the text are gone (behaviour 5). */
   const discard = useCallback(() => {
@@ -192,6 +246,7 @@ export function useWriteTo(profileId: string) {
     setWriting(false);
     setOpen(false);
     setRequest("");
+    setQuote(null);
     setVersions([]);
     setDrafts([]);
     setShown(0);
@@ -209,7 +264,8 @@ export function useWriteTo(profileId: string) {
 
   /** The Close button: asks first when there is text and none of it was copied. */
   const close = useCallback(() => {
-    const anyText = request.trim() !== "" || versions.length > 0 || instruction.trim() !== "";
+    const anyText =
+      request.trim() !== "" || quoteText.trim() !== "" || versions.length > 0 || instruction.trim() !== "";
     if (!anyText || copiedOnce) {
       discard();
       return;
@@ -218,7 +274,7 @@ export function useWriteTo(profileId: string) {
       { text: "Keep writing", style: "cancel" },
       { text: "Close", onPress: discard },
     ]);
-  }, [request, versions.length, instruction, copiedOnce, confirm, discard]);
+  }, [request, quoteText, versions.length, instruction, copiedOnce, confirm, discard]);
 
   const version = versions[shown] ?? null;
   const draft = drafts[shown] ?? "";
@@ -252,6 +308,7 @@ export function useWriteTo(profileId: string) {
         profileId,
         today: localToday(),
         request,
+        ...(quoteText.trim() === "" ? {} : { quote: quoteText }),
         earlierInstructions: earlier,
         ...(answer === null ? {} : { current: draft, lastAnswer: answer.text, instruction: said }),
       });
@@ -292,7 +349,78 @@ export function useWriteTo(profileId: string) {
         setWriting(false);
       }
     }
-  }, [goAhead, write, profileId, request, earlier, answer, draft, instruction, versions, drafts, shown, version]);
+  }, [goAhead, write, profileId, request, quoteText, earlier, answer, draft, instruction, versions, drafts, shown, version]);
+
+  const readScreenshot = useAction(api.writeTo.readScreenshot);
+  /**
+   * Reply with a screenshot (behaviour 8): one picture from Apple's picker —
+   * no photo-library permission, the picker hands back only the one chosen —
+   * read into `write-to-quote`. The picker's own copy of the file is deleted
+   * as soon as its bytes are in memory, and the bytes go only to the read.
+   */
+  const addScreenshot = useCallback(async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    const mine = session.current;
+    try {
+      const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], base64: true, quality: 0.6 });
+      if (picked.canceled) return;
+      const asset = picked.assets?.[0];
+      let base64 = asset?.base64 ?? "";
+      // A long chat screenshot can be past what one call may carry: made
+      // smaller the way Andy's camera does it, rather than refused.
+      if (asset !== undefined && base64.length > MAX_IMAGE_CHARS) {
+        try {
+          const small = await shrinkForReading(asset.uri, asset.width, asset.height);
+          await removeFile(small.uri);
+          base64 = small.base64;
+        } catch {
+          // Too large it stays; said below.
+        }
+      }
+      // The picture is never kept, not even the picker's copy — removed before
+      // anything else, whether or not this sheet is still the one open.
+      if (asset !== undefined) await removeFile(asset.uri);
+      if (mine !== session.current) return;
+      if (base64 === "") {
+        setProblem("shotFailed");
+        return;
+      }
+      if (base64.length > MAX_IMAGE_CHARS) {
+        setProblem("shotTooLarge");
+        return;
+      }
+      // Their words go to Anthropic: asked first, like any ask.
+      if (!(await goAhead())) {
+        if (mine === session.current) setProblem("shotNotNow");
+        return;
+      }
+      if (mine !== session.current) return;
+      setProblem(null);
+      setQuote({ reading: true, thumb: `data:image/jpeg;base64,${base64}` });
+      const read = await readScreenshot({ imageBase64: base64, mediaType: "image/jpeg" });
+      if (mine !== session.current) return;
+      if (!read.found) {
+        setQuote(null);
+        setProblem("shotNone");
+        return;
+      }
+      setQuote({ reading: false, text: read.text });
+    } catch (thrown) {
+      if (mine !== session.current) return;
+      setQuote(null);
+      const tooLarge = thrown instanceof ConvexError && String(thrown.data).includes("too large");
+      setProblem(tooLarge ? "shotTooLarge" : "shotFailed");
+    } finally {
+      if (mine === session.current) inFlight.current = false;
+    }
+  }, [goAhead, readScreenshot]);
+
+  const editQuote = useCallback((text: string) => {
+    setQuote({ reading: false, text });
+    setProblem(null);
+  }, []);
+  const removeQuote = useCallback(() => setQuote(null), []);
 
   /**
    * Any edit makes a failed ask, a Not now or a clipboard miss old news: the
@@ -387,6 +515,11 @@ export function useWriteTo(profileId: string) {
     tuck,
     request,
     setRequest: editRequest,
+    quote,
+    quoteText,
+    addScreenshot,
+    editQuote,
+    removeQuote,
     answer,
     draft,
     setDraft,
@@ -411,12 +544,15 @@ export type WriteToController = ReturnType<typeof useWriteTo>;
 
 /** Why the arrow is greyed, said as its VoiceOver hint (Strings), or null when it is on. */
 function arrowBlock(controller: WriteToController, online: boolean): string | null {
-  const { writing, request, answer, draft, instruction, asksAfterFirst } = controller;
-  if (writing) return null;
+  const { writing, request, quote, quoteText, answer, draft, instruction, asksAfterFirst } = controller;
+  if (writing || quote?.reading === true) return null;
   if (!online) return "Asking Andy needs a connection.";
   if (answer === null) {
-    if (request.length > MAX_WRITE_TO_CHARS) return "Shorten the text to ask Andy.";
-    if (request.trim() === "") return "Write something first.";
+    if (request.length > MAX_WRITE_TO_CHARS || quoteText.length > MAX_WRITE_TO_CHARS) {
+      return "Shorten the text to ask Andy.";
+    }
+    // Box A is what to say, their message, or both.
+    if (request.trim() === "" && quoteText.trim() === "") return "Write something first.";
     return null;
   }
   if (draft.length > MAX_WRITE_TO_CHARS || instruction.length > MAX_INSTRUCTION_CHARS) {
@@ -441,13 +577,14 @@ const tooLong = (over: number): Status => ({
 
 /** The one line under the boxes (`write-to-status-line`), or nothing. */
 function statusOf(controller: WriteToController, online: boolean): Status | null {
-  const { writing, problem, request, answer, draft, instruction, asksAfterFirst } = controller;
+  const { writing, problem, request, quoteText, answer, draft, instruction, asksAfterFirst } = controller;
   if (writing) return { text: WRITING, alert: false };
   const said: Status | null =
     problem === null ? null : { text: PROBLEMS[problem], spoken: PROBLEMS_SPOKEN[problem], alert: problem !== "notNow" };
   if (answer === null) {
     if (!online) return { text: OFFLINE, alert: false };
     if (request.length > MAX_WRITE_TO_CHARS) return tooLong(request.length - MAX_WRITE_TO_CHARS);
+    if (quoteText.length > MAX_WRITE_TO_CHARS) return tooLong(quoteText.length - MAX_WRITE_TO_CHARS);
     return said;
   }
   if (said !== null) return said;
@@ -466,8 +603,20 @@ function statusOf(controller: WriteToController, online: boolean): Status | null
 }
 
 /** The round arrow: the only thing that asks Andy (`write-to-arrow`). */
-function Arrow({ writing, block, onPress }: { writing: boolean; block: string | null; onPress: () => void }) {
+function Arrow({
+  writing,
+  busy,
+  block,
+  onPress,
+}: {
+  writing: boolean;
+  /** What Andy is busy with instead, said by the spinner ("Reading Mina's message…"). */
+  busy?: string;
+  block: string | null;
+  onPress: () => void;
+}) {
   if (writing) return <ActivityIndicator color={colors.moss} accessibilityLabel="Andy is writing" />;
+  if (busy !== undefined) return <ActivityIndicator color={colors.moss} accessibilityLabel={busy} />;
   return (
     <Pressable
       accessibilityRole="button"
@@ -514,7 +663,12 @@ export function WriteToSheet({ personName, controller }: { personName: string; c
     tuck,
     canText,
     openInMessages,
+    quote,
+    addScreenshot,
+    editQuote,
+    removeQuote,
   } = controller;
+  const reading = quote?.reading === true ? `Reading ${personName}'s message…` : undefined;
   const status = statusOf(controller, online);
   const block = arrowBlock(controller, online);
   // Edited: box B differs from Andy's answer shown — Andy hasn't seen this text.
@@ -577,11 +731,50 @@ export function WriteToSheet({ personName, controller }: { personName: string; c
           {answer === null ? (
             <>
               <View style={[styles.box, boxHeight]}>
+                {quote === null ? null : quote.reading ? (
+                  <View style={styles.quoteRow} testID="write-to-quote">
+                    <Image source={{ uri: quote.thumb }} style={styles.thumb} accessibilityIgnoresInvertColors />
+                    <Text style={styles.quoteLabel}>{`Reading ${personName}'s message…`}</Text>
+                  </View>
+                ) : (
+                  <View style={styles.quote} testID="write-to-quote">
+                    <View style={styles.quoteRow}>
+                      <Text style={styles.quoteLabel} importantForAccessibility="no" accessibilityElementsHidden>
+                        {personName} wrote
+                      </Text>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Remove ${personName}'s message`}
+                        disabled={writing}
+                        onPress={removeQuote}
+                        style={styles.quoteRemove}
+                        testID="write-to-quote-remove"
+                      >
+                        <SymbolView
+                          name="xmark"
+                          size={size.icon}
+                          tintColor={colors.ink}
+                          fallback={<Text style={styles.quoteLabel}>✕</Text>}
+                        />
+                      </Pressable>
+                    </View>
+                    <TextInput
+                      accessibilityLabel={`${personName} wrote: ${quote.text}`}
+                      accessibilityHint="Double-tap to fix a word."
+                      value={quote.text}
+                      onChangeText={editQuote}
+                      editable={!writing}
+                      multiline
+                      style={[styles.quoteText, writing && styles.dimmed]}
+                      testID="write-to-quote-text"
+                    />
+                  </View>
+                )}
                 <TextInput
                   accessibilityLabel={`What to write to ${personName}`}
                   placeholder={
-                    // The screenshot sentence joins with its button (slice 6).
-                    `Write what you want to say to ${personName}, or tell Andy what to write, or both.\n\n` +
+                    `Write what you want to say to ${personName}, or tell Andy what to write, or both. ` +
+                    "Replying to a message from another app? Add a screenshot of it.\n\n" +
                     "e.g. Do you want to hang out and talk about our new product? Make it sound casual but still professional."
                   }
                   placeholderTextColor={colors.placeholder}
@@ -592,8 +785,28 @@ export function WriteToSheet({ personName, controller }: { personName: string; c
                   style={[styles.boxText, writing && styles.dimmed]}
                   testID="write-to-ask-box"
                 />
-                <View style={styles.boxCorner}>
-                  <Arrow writing={writing} block={block} onPress={() => void ask()} />
+                <View style={styles.boxBottom}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Add a screenshot"
+                    accessibilityHint={
+                      online
+                        ? "Andy reads their message from it. The picture isn't kept."
+                        : "Reading a screenshot needs a connection."
+                    }
+                    disabled={!online || writing || reading !== undefined}
+                    onPress={() => void addScreenshot()}
+                    style={[styles.arrow, (!online || writing || reading !== undefined) && styles.disabled]}
+                    testID="write-to-screenshot-button"
+                  >
+                    <SymbolView
+                      name="photo"
+                      size={size.icon}
+                      tintColor={colors.ink}
+                      fallback={<Text style={styles.arrowFallback}>Photo</Text>}
+                    />
+                  </Pressable>
+                  <Arrow writing={writing} busy={reading} block={block} onPress={() => void ask()} />
                 </View>
               </View>
               {statusLine}
@@ -766,7 +979,21 @@ const styles = StyleSheet.create({
   step: { minWidth: size.touch, minHeight: size.touch, alignItems: "center", justifyContent: "center" },
   stepLabel: { color: colors.moss, fontSize: textSize.xxl },
   stepCount: { color: colors.ink, fontSize: textSize.sm, opacity: textOpacity.secondary },
-  boxCorner: { flexDirection: "row", justifyContent: "flex-end" },
+  boxBottom: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  // Their message, quiet above what the person writes: a rule, not a box.
+  // Shares the box with what the person writes; long text scrolls inside.
+  quote: {
+    flexShrink: 1,
+    borderLeftWidth: size.rule,
+    borderLeftColor: colors.line,
+    paddingLeft: space.sm,
+    marginBottom: space.sm,
+  },
+  quoteRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: space.sm },
+  quoteLabel: { color: colors.ink, fontSize: textSize.sm, opacity: textOpacity.secondary, flexShrink: 1 },
+  quoteText: { flexShrink: 1, color: colors.ink, fontSize: textSize.md },
+  quoteRemove: { minWidth: size.touch, minHeight: size.touch, alignItems: "center", justifyContent: "center" },
+  thumb: { width: size.touch, height: size.touch, borderRadius: radius.control },
   arrow: { minWidth: size.touch, minHeight: size.touch, alignItems: "center", justifyContent: "center" },
   arrowFallback: { color: colors.moss, fontSize: textSize.lg },
   copy: {

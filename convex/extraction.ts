@@ -18,6 +18,7 @@ import {
   buildUserMessage,
   cardDraftValidator,
   draftValidator,
+  imageMediaTypeValidator,
   normalizeCardName,
   peopleOnly,
   photoWordsValidator,
@@ -139,12 +140,7 @@ export const fromTranscript = action({
 const imageArgs = {
   /** The photo, base64-encoded. Never a URL: we do not fetch what we are told to. */
   imageBase64: v.string(),
-  mediaType: v.union(
-    v.literal("image/jpeg"),
-    v.literal("image/png"),
-    v.literal("image/webp"),
-    v.literal("image/gif"),
-  ),
+  mediaType: imageMediaTypeValidator,
 };
 
 function checkImage(imageBase64: string) {

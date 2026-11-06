@@ -141,6 +141,8 @@ export const size = {
    * Dynamic Type scale (never below 1), so the text area survives large text.
    */
   writeBox: 200,
+  /** A quiet rule set beside text — a quote, an aside — not a control's edge. */
+  rule: 2,
 } as const;
 
 /**

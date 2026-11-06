@@ -959,7 +959,7 @@ Name updates (rename or add alias) are now automatic — no checkbox. QA feedbac
 
 ## 40. Write to (draft-editing.md, Final design F)
 
-Needs the `writeTo` switch on (no row = on) and a dev build against the dev deployment. Built so far: box A, the arrow, box B, Copy and the status line (slice 4a); asking again, **Edited**, the hint and the chat line (4b); versions ‹ › (4c); the Close question and the sheet surviving a swipe down (4d); Open Messages (5). Not yet, so not a bug: the screenshot button. **Needs a dev app built after this slice** (`expo-sms` is native); on an older build, and always in the simulator, Open Messages is hidden.
+Needs the `writeTo` switch on (no row = on) and a dev build against the dev deployment. Built so far: box A, the arrow, box B, Copy and the status line (slice 4a); asking again, **Edited**, the hint and the chat line (4b); versions ‹ › (4c); the Close question and the sheet surviving a swipe down (4d); Open Messages (5); replying with a screenshot (6). **Needs a dev app built after this slice** (`expo-sms` is native); on an older build, and always in the simulator, Open Messages is hidden.
 
 | # | Do this | Expect | |
 |---|---|---|---|
@@ -1002,6 +1002,13 @@ Needs the `writeTo` switch on (no row = on) and a dev build against the dev depl
 | 40.36 | Open Messages, pick a recipient, send | It sends from Messages, by you; back in the sheet nothing changed. **Close** now closes without asking. The next Write to for this person starts in that message's tone and format | ⬜ |
 | 40.37 | A text with emoji, line breaks and a link | All of it arrives in the composer as written | ⬜ |
 | 40.38 | iPad without SMS, or the simulator | No Open Messages button; Copy still works | ⬜ |
+| 40.39 | Box A, tap the photo icon | Apple's photo picker, **no permission question**. Pick a chat screenshot | A thumbnail and *Reading {name}'s message…* at the top of box A; box A stays the same size; the arrow is a spinner. Then *{name} wrote* and their last message(s) — not your own bubbles, names or times | ⬜ |
+| 40.40 | Fix a misread word in the quote; tap ✕ | Editing works; ✕ removes the quote and leaves what you typed | ⬜ |
+| 40.41 | Quote only (box A otherwise empty), tap the arrow | Andy writes a reply to their message | ⬜ |
+| 40.42 | A screenshot with no message (a settings screen) | *Andy couldn't find a message in that screenshot. Try another, or type what they said.* | ⬜ |
+| 40.43 | Fresh account: pick a screenshot, **Not now** | *Nothing was sent, and the picture wasn't kept.* | ⬜ |
+| 40.44 | After reading, check the app's files (Xcode → Devices → Andy's container, `Caches/ImagePicker`) | The picked file is gone | ⬜ |
+| 40.45 | Airplane mode | The photo icon is dimmed; VoiceOver hint *Reading a screenshot needs a connection.* | ⬜ |
 
 ## 35. Asking before Andy sends anything (pre-submission-privacy.md, A)
 
