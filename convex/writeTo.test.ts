@@ -8,6 +8,7 @@ import { AI_NOT_ALLOWED } from "./aiPermission";
 import { CLAUDE_MODELS } from "./claudeModels";
 import schema from "./schema";
 import {
+  MAX_KEEP_EXACTLY_ITEMS,
   MAX_WRITE_TO_CHARS,
   MAX_INSTRUCTION_CHARS,
   WRITE_TO_STALE_BLOCK,
@@ -926,4 +927,63 @@ test("should hold the detail when the chat line protects a kind it names in word
 
 test("should free the day but hold the time when a protecting line also writes a new day", () => {
   expect(detailsToKeep("Dinner Thursday at 3:30", "Dinner", "don't be formal, move it to Friday")).toEqual(["3:30"]);
+});
+
+// Details the answer lost, named so the sheet can say "Check: …" ------------
+
+test("should return the second answer with the still-missing details through the public action when the second try still drops one", async () => {
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  const t = await aiNotEnforced(convexTest(schema, modules));
+  const { amy } = await seed(t);
+  createMessage.mockResolvedValueOnce(reply({ text: "Dinner soon?" }));
+  createMessage.mockResolvedValueOnce(reply({ text: "Dinner sometime?" }));
+
+  const answer = await t
+    .withIdentity(ALICE)
+    .action(api.writeTo.write, { ...base(amy), current: "Dinner Thursday?", instruction: "warmer" });
+
+  expect(createMessage).toHaveBeenCalledTimes(2);
+  expect(answer.text).toBe("Dinner sometime?");
+  expect(answer.droppedDetails).toEqual(["Thursday"]);
+});
+
+test("should return the first answer with the first missing details when the second try fails", async () => {
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  createMessage.mockResolvedValueOnce(reply({ text: "Dinner soon?" }));
+  createMessage.mockRejectedValueOnce(new Error("overloaded"));
+
+  const answer = await composeLater(later);
+
+  expect(answer.text).toBe("Dinner soon?");
+  expect(answer.droppedDetails).toEqual(["Thursday"]);
+});
+
+test("should leave droppedDetails out when the second try keeps every detail", async () => {
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  createMessage.mockResolvedValueOnce(reply({ text: "Dinner soon?" }));
+  createMessage.mockResolvedValueOnce(reply({ text: "Dinner Thursday, love?" }));
+
+  const answer = await composeLater(later);
+
+  expect(answer).not.toHaveProperty("droppedDetails");
+});
+
+test("should leave droppedDetails out on the first ask and when nothing is missing", async () => {
+  createMessage.mockResolvedValueOnce(reply({ text: "Dinner soon?" }));
+  expect(await composeLater({})).not.toHaveProperty("droppedDetails");
+
+  createMessage.mockResolvedValueOnce(reply({ text: "Dinner Thursday, love?" }));
+  expect(await composeLater(later)).not.toHaveProperty("droppedDetails");
+});
+
+test("should return at most MAX_KEEP_EXACTLY_ITEMS dropped details when more are missing", async () => {
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  const numbers = Array.from({ length: 25 }, (_, i) => String(i + 100));
+  createMessage.mockResolvedValueOnce(reply({ text: "Dinner soon?" }));
+  createMessage.mockResolvedValueOnce(reply({ text: "Dinner sometime?" }));
+
+  const answer = await composeLater({ current: `Dinner ${numbers.join(" ")}`, instruction: "warmer" });
+
+  expect(answer.droppedDetails).toHaveLength(MAX_KEEP_EXACTLY_ITEMS);
+  expect(answer.droppedDetails).toEqual(numbers.slice(0, MAX_KEEP_EXACTLY_ITEMS));
 });
