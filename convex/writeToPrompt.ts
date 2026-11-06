@@ -48,6 +48,9 @@ export const writeToAnswerValidator = v.object({
   text: v.string(),
   tone: writeToToneValidator,
   format: writeToFormatValidator,
+  // Key details still missing after the second try, for the sheet's
+  // "Check: …" line. Absent when nothing is missing.
+  droppedDetails: v.optional(v.array(v.string())),
 });
 export type WriteToAnswer = Infer<typeof writeToAnswerValidator>;
 export type WriteToTone = Infer<typeof writeToToneValidator>;

@@ -4,6 +4,8 @@ import { ConvexError, v } from "convex/values";
 import { internalAction } from "./_generated/server";
 import { askClaude } from "./claude";
 import {
+  MAX_KEEP_EXACTLY_CHARS,
+  MAX_KEEP_EXACTLY_ITEMS,
   MAX_WRITE_TO_CHARS,
   WRITE_TO_MAX_TOKENS,
   WRITE_TO_MODEL,
@@ -49,21 +51,32 @@ export const compose = internalAction({
     // kind of detail the new chat line names itself, because then changing
     // one is what the person asked for (`detailsToKeep`).
     if (args.current === undefined) return first;
-    const missing = detailsToKeep(args.current, first.text, args.instruction ?? "");
+    const instruction = args.instruction ?? "";
+    const missing = detailsToKeep(args.current, first.text, instruction);
     if (missing.length === 0) return first;
 
     // Once more, told exactly what to keep. Whatever comes back is returned
-    // as is: the person sees it and can fix it in the box. If the second try
-    // fails, the first answer is still a usable one, so it is the one given.
+    // as is, naming what is still missing so the sheet can say "Check: …":
+    // the person sees it and can fix it in the box. If the second try fails,
+    // the first answer is still a usable one, so it is the one given.
     console.error("Write to dropped a key detail; asking once more.");
+    let second: WriteToAnswer;
     try {
-      return await ask({ ...args, keepExactly: missing });
+      second = await ask({ ...args, keepExactly: missing });
     } catch {
       console.error("Write to's second try failed; returning the first answer.");
-      return first;
+      return withDropped(first, missing);
     }
+    return withDropped(second, detailsToKeep(args.current, second.text, instruction));
   },
 });
+
+/** The answer, carrying the details it lost, if any (a few, each short). */
+function withDropped(answer: WriteToAnswer, dropped: string[]): WriteToAnswer {
+  if (dropped.length === 0) return answer;
+  const capped = dropped.slice(0, MAX_KEEP_EXACTLY_ITEMS);
+  return { ...answer, droppedDetails: capped.map((detail) => detail.slice(0, MAX_KEEP_EXACTLY_CHARS)) };
+}
 
 /** One call to Claude, shaped into an answer or refused. */
 async function ask(input: WriteToInput): Promise<WriteToAnswer> {
