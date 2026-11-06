@@ -138,9 +138,12 @@ export const size = {
    * height on every screen (draft-editing.md, Final design): small enough that
    * box B, the hint, the chat line and Open Messages fit above the keyboard on
    * the smallest iPhone. Longer text scrolls inside the box. Multiplied by the
-   * Dynamic Type scale (never below 1), so the text area survives large text.
+   * Dynamic Type scale (never below 1, at most `writeBoxMaxScale`), so the
+   * text area survives large text.
    */
   writeBox: 200,
+  /** How far the boxes grow with Dynamic Type: twice, then the text scrolls inside. */
+  writeBoxMaxScale: 2,
   /** A quiet rule set beside text — a quote, an aside — not a control's edge. */
   rule: 2,
 } as const;

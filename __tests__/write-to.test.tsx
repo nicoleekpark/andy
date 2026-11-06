@@ -16,8 +16,8 @@ import * as ImagePicker from "expo-image-picker";
 import { ConvexError } from "convex/values";
 import { hasNativeModule } from "../src/lib/native";
 import { shrinkForReading } from "../src/lib/photo-size";
-import { AccessibilityInfo, Dimensions, StyleSheet } from "react-native";
-import { size } from "../src/constants/theme";
+import { AccessibilityInfo, Dimensions, Keyboard, StyleSheet } from "react-native";
+import { size, space } from "../src/constants/theme";
 import { useAction, useConvexConnectionState, useMutation, useQuery } from "convex/react";
 import { renderRouter } from "expo-router/testing-library";
 import { api } from "@convex/_generated/api";
@@ -820,6 +820,77 @@ describe("versions (slice 4c)", () => {
       withFontScale(0.8);
       await open(jest.fn(async () => ANSWER));
       expect(heightOf()).toBe(size.writeBox);
+    });
+
+    test("should stop growing at the cap when Dynamic Type is above it", async () => {
+      withFontScale(3.1);
+      await open(jest.fn(async () => ANSWER));
+      expect(heightOf()).toBe(size.writeBox * size.writeBoxMaxScale);
+      expect(heightOf()).toBe(size.writeBox * 2);
+    });
+
+    describe("with the keyboard", () => {
+      const listeners: Record<string, (event: unknown) => void> = {};
+      beforeEach(() => {
+        jest.spyOn(Keyboard, "addListener").mockImplementation(((name: string, fn: (event: unknown) => void) => {
+          listeners[name] = fn;
+          return { remove: jest.fn() };
+        }) as never);
+      });
+      const keyboard = async (height: number | null) =>
+        act(async () => {
+          if (height === null) listeners.keyboardWillHide({});
+          else listeners.keyboardWillShow({ endCoordinates: { height } });
+        });
+      const viewport = async (height: number) =>
+        act(async () => {
+          fireEvent(screen.getByTestId("write-to-ask-box"), "layout", { nativeEvent: { layout: { height } } });
+        });
+
+      test("should leave room above the keyboard when the grown box would fill the sheet", async () => {
+        withFontScale(3.1);
+        await open(jest.fn(async () => ANSWER));
+        await viewport(547);
+        await keyboard(260);
+        expect(heightOf()).toBe(547 - 260 - space.xl - size.touch);
+        expect(heightOf()).toBeGreaterThan(size.writeBox);
+      });
+
+      test("should keep the strip even when that leaves the box under its base height", async () => {
+        withFontScale(3.1);
+        await open(jest.fn(async () => ANSWER));
+        await viewport(400);
+        await keyboard(260);
+        // Reaching Open Messages wins: the box gives way, the strip stays.
+        expect(heightOf()).toBe(400 - 260 - space.xl - size.touch);
+      });
+
+      test("should grow as far as the cap when the keyboard is up but the room is not measured yet", async () => {
+        withFontScale(3.1);
+        await open(jest.fn(async () => ANSWER));
+        await keyboard(260);
+        expect(heightOf()).toBe(size.writeBox * size.writeBoxMaxScale);
+      });
+
+      test("should follow the keyboard when it changes height while up (emoji, predictive bar)", async () => {
+        withFontScale(3.1);
+        await open(jest.fn(async () => ANSWER));
+        await viewport(547);
+        await keyboard(260);
+        await act(async () => {
+          listeners.keyboardWillChangeFrame({ endCoordinates: { height: 300 } });
+        });
+        expect(heightOf()).toBe(547 - 300 - space.xl - size.touch);
+      });
+
+      test("should return to the cap when the keyboard goes down", async () => {
+        withFontScale(3.1);
+        await open(jest.fn(async () => ANSWER));
+        await viewport(547);
+        await keyboard(260);
+        await keyboard(null);
+        expect(heightOf()).toBe(size.writeBox * 2);
+      });
     });
   });
 
