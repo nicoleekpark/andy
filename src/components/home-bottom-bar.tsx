@@ -1,7 +1,8 @@
 import { router } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { type GestureResponderEvent, Keyboard, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { useKeyboardHeight } from "@/lib/keyboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, radius, size, space, textOpacity, textSize } from "@/constants/theme";
 
@@ -156,26 +157,6 @@ export function HomeBottomBar({
       )}
     </View>
   );
-}
-
-/**
- * How much of the screen the keyboard covers, so the bar can sit on top of it
- * (R8). The bar is the last thing on home and home runs to the bottom of the
- * window, so the keyboard's height is exactly how far it has to rise.
- */
-function useKeyboardHeight(): number {
-  const [height, setHeight] = useState(0);
-  useEffect(() => {
-    const shown = Keyboard.addListener("keyboardWillShow", (event) =>
-      setHeight(event.endCoordinates.height),
-    );
-    const hidden = Keyboard.addListener("keyboardWillHide", () => setHeight(0));
-    return () => {
-      shown.remove();
-      hidden.remove();
-    };
-  }, []);
-  return height;
 }
 
 const styles = StyleSheet.create({

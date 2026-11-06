@@ -24,6 +24,7 @@ import { MAX_IMAGE_CHARS } from "../../convex/extractionPrompt";
 import { colors, disabledOpacity, fonts, radius, size, space, textOpacity, textSize } from "../constants/theme";
 import { useAiGoAhead } from "@/lib/ai-go-ahead";
 import { putOnClipboard } from "@/lib/clipboard";
+import { useKeyboardHeight } from "@/lib/keyboard";
 import { canSendTexts, openMessages } from "@/lib/messages";
 import { shrinkForReading } from "@/lib/photo-size";
 import { localToday } from "@/lib/dates";
@@ -641,9 +642,23 @@ export function WriteToSheet({ personName, controller }: { personName: string; c
   const locked = useLocked();
   const online = useOnline();
   // One height on every screen, grown with Dynamic Type so the text area
-  // stays usable when the rows inside the box grow too (WCAG 1.4.4).
+  // stays usable when the rows inside the box grow too (WCAG 1.4.4) — up to
+  // `writeBoxMaxScale`, past which the text scrolls inside the box.
   const { fontScale } = useWindowDimensions();
-  const boxHeight = { height: size.writeBox * Math.max(1, fontScale) };
+  const keyboard = useKeyboardHeight();
+  const [viewport, setViewport] = useState(0);
+  const grown = size.writeBox * Math.min(Math.max(1, fontScale), size.writeBoxMaxScale);
+  // With the keyboard up, the box never fills all the room above it: a drag
+  // that starts inside a box scrolls only the box, so a touch-high strip is
+  // left below it to scroll the sheet on to the chat line and Open Messages.
+  // `room` assumes the box can be scrolled to the top of the sheet, which it
+  // can. Only very large text on a small phone ever needs it — about 219pt on
+  // an iPhone SE at the largest size, still above the base; the strip wins
+  // over the base height only where the room is smaller than that.
+  const room = viewport - keyboard - space.xl - size.touch;
+  const boxHeight = {
+    height: keyboard > 0 && viewport > 0 ? Math.min(grown, Math.max(room, size.touch)) : grown,
+  };
   const {
     request,
     setRequest,
@@ -724,6 +739,7 @@ export function WriteToSheet({ personName, controller }: { personName: string; c
 
         <ScrollView
           style={styles.fill}
+          onLayout={(event) => setViewport(event.nativeEvent.layout.height)}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           automaticallyAdjustKeyboardInsets
