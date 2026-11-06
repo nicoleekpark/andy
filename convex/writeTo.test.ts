@@ -987,3 +987,116 @@ test("should return at most MAX_KEEP_EXACTLY_ITEMS dropped details when more are
   expect(answer.droppedDetails).toHaveLength(MAX_KEEP_EXACTLY_ITEMS);
   expect(answer.droppedDetails).toEqual(numbers.slice(0, MAX_KEEP_EXACTLY_ITEMS));
 });
+
+// 12. Default style ----------------------------------------------------------
+
+const STYLE = { format: "email", tone: "brief" } as const;
+
+const followUpStyleOf = (t: ReturnType<typeof convexTest>, id: Id<"profiles">) =>
+  t.run(async (ctx) => (await ctx.db.get("profiles", id))?.followUpStyle ?? null);
+
+test("should send the saved tone and format in a default_style block when the person has one", async () => {
+  const t = await aiNotEnforced(convexTest(schema, modules));
+  const { amy } = await seed(t);
+  await t.run((ctx) => ctx.db.patch("profiles", amy, { followUpStyle: STYLE }));
+  createMessage.mockResolvedValueOnce(reply());
+
+  await t.withIdentity(ALICE).action(api.writeTo.write, base(amy));
+
+  expect(promptSent()).toContain("<default_style>\ntone: brief\nformat: email\n</default_style>");
+});
+
+test("should send no default_style block when the person has no saved style", async () => {
+  const t = await aiNotEnforced(convexTest(schema, modules));
+  const { amy } = await seed(t);
+  createMessage.mockResolvedValueOnce(reply());
+
+  await t.withIdentity(ALICE).action(api.writeTo.write, base(amy));
+
+  expect(promptSent()).not.toContain("<default_style");
+});
+
+test("should leave the saved style out on a later ask, when box B already has its own", () => {
+  const message = buildWriteToMessage({
+    personName: "Amy",
+    today: "2026-09-17",
+    notes: [],
+    request: "thanks for the intro",
+    earlierInstructions: [],
+    current: "Thanks for the intro. Coffee Thursday?",
+    instruction: "warmer",
+    style: STYLE,
+  });
+  expect(message).not.toContain("<default_style");
+});
+
+test("should count the default_style tags among the app's own when the message is built", () => {
+  const message = buildWriteToMessage({
+    personName: `Amy ${PAYLOADS[1]}`,
+    today: "2026-09-17",
+    notes: [{ recordedOn: "2026-09-01", facts: [PAYLOADS[0]] }],
+    request: PAYLOADS.join("\n"),
+    earlierInstructions: [],
+    style: STYLE,
+  });
+  // person, notes, one note, request = 8; default_style opened and closed = 2.
+  expect(message.match(/</g) ?? []).toHaveLength(10);
+});
+
+test("should save the style on the caller's own person", async () => {
+  const t = await aiNotEnforced(convexTest(schema, modules));
+  const { amy } = await seed(t);
+
+  await t.withIdentity(ALICE).mutation(api.writeTo.rememberStyle, { profileId: amy, style: STYLE });
+
+  expect(await followUpStyleOf(t, amy)).toEqual(STYLE);
+});
+
+test("should not write again when the style is unchanged", async () => {
+  const t = await aiNotEnforced(convexTest(schema, modules));
+  const { amy } = await seed(t);
+  await t.withIdentity(ALICE).mutation(api.writeTo.rememberStyle, { profileId: amy, style: STYLE });
+  const before = await t.run((ctx) => ctx.db.get("profiles", amy));
+
+  await t.withIdentity(ALICE).mutation(api.writeTo.rememberStyle, { profileId: amy, style: STYLE });
+  expect(await t.run((ctx) => ctx.db.get("profiles", amy))).toEqual(before);
+
+  await t.withIdentity(ALICE).mutation(api.writeTo.rememberStyle, {
+    profileId: amy,
+    style: { format: "message", tone: "brief" },
+  });
+  expect(await followUpStyleOf(t, amy)).toEqual({ format: "message", tone: "brief" });
+});
+
+test("should leave another user's person untouched when a second user saves a style on it", async () => {
+  const t = await aiNotEnforced(convexTest(schema, modules));
+  const { amy } = await seed(t);
+  await t.withIdentity(BOB).mutation(api.users.ensureUser, {});
+
+  const result = await t.withIdentity(BOB).mutation(api.writeTo.rememberStyle, { profileId: amy, style: STYLE });
+
+  expect(result).toBeNull();
+  expect(await followUpStyleOf(t, amy)).toBeNull();
+});
+
+test("should return null without throwing when the id is malformed or the person is deleted", async () => {
+  const t = await aiNotEnforced(convexTest(schema, modules));
+  const { amy } = await seed(t);
+
+  expect(
+    await t.withIdentity(ALICE).mutation(api.writeTo.rememberStyle, { profileId: "not-an-id", style: STYLE }),
+  ).toBeNull();
+
+  await t.run((ctx) => ctx.db.delete("profiles", amy));
+  expect(
+    await t.withIdentity(ALICE).mutation(api.writeTo.rememberStyle, { profileId: amy, style: STYLE }),
+  ).toBeNull();
+});
+
+test("should refuse a signed-out caller when saving a style", async () => {
+  const t = await aiNotEnforced(convexTest(schema, modules));
+  const { amy } = await seed(t);
+
+  await expect(t.mutation(api.writeTo.rememberStyle, { profileId: amy, style: STYLE })).rejects.toThrow();
+  expect(await followUpStyleOf(t, amy)).toBeNull();
+});

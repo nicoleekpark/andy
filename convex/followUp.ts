@@ -14,6 +14,7 @@ import { rememberedFacts } from "./embeddingModel";
 import { countFactNotes, followUpRefusal } from "./followUpScope";
 import { getAuthenticatedUser } from "./users";
 import { requireAiAllowed } from "./aiPermission";
+import { saveStyle } from "./writeTo";
 
 /**
  * A follow-up email, drafted from what you already wrote down.
@@ -182,14 +183,7 @@ export const rememberStyle = internalMutation({
   args: { profileId: v.string(), style: followUpStyleValidator },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const user = await getAuthenticatedUser(ctx);
-    const profileId = ctx.db.normalizeId("profiles", args.profileId);
-    if (profileId === null) return null;
-    const profile = await ctx.db.get("profiles", profileId);
-    if (profile === null || profile.userId !== user._id) return null;
-    const now = profile.followUpStyle;
-    if (now?.format === args.style.format && now?.tone === args.style.tone) return null;
-    await ctx.db.patch("profiles", profileId, { followUpStyle: args.style });
+    await saveStyle(ctx, args.profileId, args.style);
     return null;
   },
 });
