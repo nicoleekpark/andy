@@ -13,7 +13,7 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 
 **For the designer:** read top to bottom and mark anything that sounds wrong, unclear, or unlike the rest. Quote the string and its `Where` when you report it.
 
-540 strings, 13 with a planned change.
+541 strings, 13 with a planned change.
 
 ## Sign-in
 
@@ -473,12 +473,13 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 | Andy can't delete accounts right now. Nothing was deleted. Try again shortly. | server error | `convex/account.ts:135` |  |
 | Your notes and people are deleted, but Andy couldn't finish removing your sign-in. Try again. | server error | `convex/account.ts:163` |  |
 | Andy couldn't put that into words. Try asking it differently. | server error | `convex/answer.ts:70` |  |
-| Andy can't reach Claude right now. This one's on us — try again shortly. | server error | `convex/claude.ts:62` |  |
-| Andy is thinking about too many things at once. Try again in a moment. | server error | `convex/claude.ts:88` |  |
-| Andy couldn't reach Claude right now. Try again in a moment. | server error | `convex/claude.ts:97` |  |
-| Andy couldn't make sense of that one. Try again, or type it in instead. | server error | `convex/claude.ts:102` |  |
-| Andy couldn't process that one. Try again, or type it in instead. | server error | `convex/claude.ts:111` |  |
-| That one was long and Andy lost the thread. Try splitting it into two. | server error | `convex/claude.ts:120` |  |
+| Andy can't reach Claude right now. This one's on us — try again shortly. | server error | `convex/claude.ts:81` |  |
+| Andy is taking a short break. Try again in a little while. | server error | `convex/claude.ts:110` |  |
+| Andy is thinking about too many things at once. Try again in a moment. | server error | `convex/claude.ts:120` |  |
+| Andy couldn't reach Claude right now. Try again in a moment. | server error | `convex/claude.ts:129` |  |
+| Andy couldn't make sense of that one. Try again, or type it in instead. | server error | `convex/claude.ts:134` |  |
+| Andy couldn't process that one. Try again, or type it in instead. | server error | `convex/claude.ts:143` |  |
+| That one was long and Andy lost the thread. Try splitting it into two. | server error | `convex/claude.ts:152` |  |
 | Andy couldn't put that into words. Try again in a moment. | server error | `convex/email.ts:124` |  |
 | Andy couldn't index that note for search. | server error | `convex/embeddings.ts:121` |  |
 | There's nothing to save yet — try recording again. | server error | `convex/extraction.ts:87` |  |
