@@ -16,10 +16,7 @@ import {
   followUpRefusal,
 } from "../../../../../convex/followUpScope";
 import { DraftSheet } from "../../../../components/draft-sheet";
-import { WriteToSheet, reachOutSources, combineInstruction } from "../../../../components/write-to-sheet";
-import type { ReachOutInputs, TickableNote } from "../../../../components/write-to-sheet";
-import { rememberedFacts } from "../../../../../convex/embeddingModel";
-import { MAX_CHOSEN_NOTE_IDS } from "../../../../../convex/emailPrompt";
+import { WriteToSheet, useWriteTo } from "../../../../components/write-to";
 import * as FileSystem from "expo-file-system/legacy";
 import { imageContentType } from "../../../../lib/media";
 import type { Draft, DraftStyle } from "../../../../components/draft-sheet";
@@ -101,24 +98,6 @@ export default function ProfileScreen() {
     });
   }, [result, online, writeTo]);
 
-  /**
-   * Notes that can be ticked in Reach out: newest first, only those with
-   * something saved under "What to remember" — the same rule the server keeps.
-   */
-  const tickable = useMemo<TickableNote[]>(
-    () =>
-      (result?.notes ?? [])
-        .map((entry) => ({
-          id: entry.note._id as string,
-          date: formatDate(entry.note.createdAt),
-          facts: rememberedFacts(entry.note.keyFacts),
-        }))
-        .filter((note) => note.facts.length > 0)
-        // No more than the server takes in one request.
-        .slice(0, MAX_CHOSEN_NOTE_IDS),
-    [result],
-  );
-
   const requestDraft = useAction(api.followUp.draft);
   const goAhead = useAiGoAhead();
   /**
@@ -161,71 +140,8 @@ export default function ProfileScreen() {
   const inFlight = useRef(false);
   const [error, setError] = useState<string | null>(null);
 
-  /**
-   * Write to's sheet: what to write from, then the draft. `null` while closed.
-   * Memory only — the words typed and the draft are never kept on the phone.
-   */
-  const [reachOut, setReachOut] = useState<{
-    inputs: ReachOutInputs;
-    written: { draft: Draft; intent: string; sources: string } | null;
-  } | null>(null);
-
-  const openWriteTo = useCallback(() => {
-    setError(null);
-    setReachOut({
-      inputs: {
-        // The newest note ticked: the default alone is enough to write from.
-        noteIds: tickable[0] === undefined ? [] : [tickable[0].id],
-        instruction: "",
-        quickStarts: [],
-        style: result?.profile.followUpStyle ?? { format: "message", tone: "friendly" },
-      },
-      written: null,
-    });
-  }, [tickable, result]);
-
-  const writeReachOut = useCallback(
-    async (inputs: ReachOutInputs) => {
-      if (inFlight.current) return;
-      inFlight.current = true;
-      // This person's notes and the words typed go to Anthropic: asked first.
-      if (!(await goAhead())) {
-        inFlight.current = false;
-        return;
-      }
-      setDrafting(true);
-      setError(null);
-      try {
-        const written = await requestDraft({
-          profileId: id,
-          today: localToday(),
-          style: inputs.style,
-          reachOut: {
-            noteIds: inputs.noteIds,
-            instruction: combineInstruction(inputs.quickStarts, inputs.instruction),
-          },
-        });
-        setReachOut((previous) =>
-          previous === null
-            ? previous
-            : {
-                inputs,
-                written: {
-                  draft: { personName: written.personName, subject: written.subject ?? "", body: written.body },
-                  intent: written.intent ?? "",
-                  sources: reachOutSources(written.usedNotes ?? []),
-                },
-              },
-        );
-      } catch (thrown) {
-        setError(userMessage(thrown, "Andy couldn't reach that just now. Try again."));
-      } finally {
-        inFlight.current = false;
-        setDrafting(false);
-      }
-    },
-    [goAhead, requestDraft, id],
-  );
+  /** Write to's sheet (draft-editing.md, F): memory only, held here above the sheet. */
+  const writeToSheet = useWriteTo(id);
 
   const generateUploadUrl = useMutation(api.photos.generateUploadUrl);
   const attachPhoto = useMutation(api.photos.attach);
@@ -777,7 +693,7 @@ export default function ProfileScreen() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={`Write to ${result.profile.name}`}
-                  onPress={openWriteTo}
+                  onPress={writeToSheet.show}
                   style={styles.addNote}
                   testID="follow-up-button"
                 >
@@ -826,37 +742,16 @@ export default function ProfileScreen() {
         ) : null}
       </View>
 
+      {writeToSheet.open && result !== null && result !== undefined ? (
+        <WriteToSheet personName={result.profile.name} controller={writeToSheet} />
+      ) : null}
+
       {/*
         Mounted only while there is a draft, and keyed on the attempt rather
         than the text. A rewrite can come back word-for-word identical and the
         fields still have to reset to it — remounting is the whole reset, so
         nothing has to remember to clear.
       */}
-      {reachOut !== null && result !== null && result !== undefined ? (
-        <WriteToSheet
-          personName={result.profile.name}
-          notes={tickable}
-          inputs={reachOut.inputs}
-          onChangeInputs={(inputs) =>
-            setReachOut((previous) => (previous === null ? previous : { ...previous, inputs }))
-          }
-          written={reachOut.written}
-          onWrite={() => void writeReachOut(reachOut.inputs)}
-          onBack={() => {
-            setError(null);
-            setReachOut((previous) => (previous === null ? previous : { ...previous, written: null }));
-          }}
-          onChooseStyle={(style) => void writeReachOut({ ...reachOut.inputs, style })}
-          onClose={() => {
-            setReachOut(null);
-            setError(null);
-          }}
-          writing={drafting}
-          canWrite={online}
-          error={error}
-        />
-      ) : null}
-
       {attempt !== null ? (
       <DraftSheet
         key={attempt.id}

@@ -13,7 +13,7 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 
 **For the designer:** read top to bottom and mark anything that sounds wrong, unclear, or unlike the rest. Quote the string and its `Where` when you report it.
 
-541 strings, 13 with a planned change.
+542 strings, 13 with a planned change.
 
 ## Sign-in
 
@@ -245,61 +245,61 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 
 | What a person reads | Kind | Where | Planned change (STYLE.md → Terminology) |
 |---|---|---|---|
-| Drafting a follow-up needs a connection. | text | `src/app/(app)/profile/[id]/index.tsx:91` |  |
-| Andy couldn't reach that just now. Try again. | message | `src/app/(app)/profile/[id]/index.tsx:221` |  |
-| Andy couldn't open your photos. You can grant access in Settings. | message | `src/app/(app)/profile/[id]/index.tsx:269` |  |
-| Andy couldn't save that photo. Try again.{…} | message | `src/app/(app)/profile/[id]/index.tsx:340` |  |
-| Cancel | button | `src/app/(app)/profile/[id]/index.tsx:352` |  |
-| Remove | button | `src/app/(app)/profile/[id]/index.tsx:354` |  |
-| Andy couldn't remove that photo. Try again. | message | `src/app/(app)/profile/[id]/index.tsx:361` |  |
-| Edit the note from {…} | VoiceOver | `src/app/(app)/profile/[id]/index.tsx:468` |  |
-| Edit | text | `src/app/(app)/profile/[id]/index.tsx:472` |  |
-| Edit this person | VoiceOver | `src/app/(app)/profile/[id]/index.tsx:489` |  |
-| Loading… | text | `src/app/(app)/profile/[id]/index.tsx:509` |  |
-| Andy doesn't have anyone by that link. | text | `src/app/(app)/profile/[id]/index.tsx:512` |  |
-| Add a photo | VoiceOver | `src/app/(app)/profile/[id]/index.tsx:529` |  |
-| Replace photo | VoiceOver | `src/app/(app)/profile/[id]/index.tsx:529` |  |
-| Photo of {…} | VoiceOver | `src/app/(app)/profile/[id]/index.tsx:547` |  |
-| also {…} | text | `src/app/(app)/profile/[id]/index.tsx:557` |  |
-| first met {…} | text | `src/app/(app)/profile/[id]/index.tsx:572` |  |
-| Nothing remembered yet. | text | `src/app/(app)/profile/[id]/index.tsx:590` |  |
-| {…} {…} on {…} | VoiceOver | `src/app/(app)/profile/[id]/index.tsx:617` |  |
-| Also came up | text | `src/app/(app)/profile/[id]/index.tsx:663` |  |
-| Open {…} | VoiceOver | `src/app/(app)/profile/[id]/index.tsx:691` |  |
-| Mentioned in | text | `src/app/(app)/profile/[id]/index.tsx:713` |  |
-| {…}of {…} | text | `src/app/(app)/profile/[id]/index.tsx:717` |  |
-| Write to {…} | VoiceOver | `src/app/(app)/profile/[id]/index.tsx:779` |  |
-| Write to {…} | text | `src/app/(app)/profile/[id]/index.tsx:784` |  |
-| Draft a follow-up | VoiceOver | `src/app/(app)/profile/[id]/index.tsx:789` |  |
-| Writing… | text | `src/app/(app)/profile/[id]/index.tsx:798` |  |
-| Draft a follow-up | text | `src/app/(app)/profile/[id]/index.tsx:798` |  |
-| Add a note | VoiceOver | `src/app/(app)/profile/[id]/index.tsx:817` |  |
-| Add a note | text | `src/app/(app)/profile/[id]/index.tsx:822` |  |
-| Message copied | text | `src/components/draft-sheet.tsx:85` |  |
-| Subject and message copied | text | `src/components/draft-sheet.tsx:85` |  |
-| Write another | button | `src/components/draft-sheet.tsx:294` |  |
-| Keep my edits | button | `src/components/draft-sheet.tsx:295` |  |
-| Back to what to write from | VoiceOver | `src/components/draft-sheet.tsx:320` |  |
-| ‹ Edit | text | `src/components/draft-sheet.tsx:325` |  |
-| Follow-up to {…} | text | `src/components/draft-sheet.tsx:328` |  |
-| Close the draft | VoiceOver | `src/components/draft-sheet.tsx:331` |  |
-| Done | text | `src/components/draft-sheet.tsx:335` |  |
-| Format | VoiceOver | `src/components/draft-sheet.tsx:367` |  |
-| Writes a new draft. | VoiceOver | `src/components/draft-sheet.tsx:377` |  |
-| Tone | VoiceOver | `src/components/draft-sheet.tsx:390` |  |
-| Subject | text | `src/components/draft-sheet.tsx:418` |  |
-| Subject | VoiceOver | `src/components/draft-sheet.tsx:420` |  |
-| Message | text | `src/components/draft-sheet.tsx:433` |  |
-| Message | VoiceOver | `src/components/draft-sheet.tsx:435` |  |
-| Writing… | placeholder | `src/components/draft-sheet.tsx:437` |  |
-| Andy couldn't reach the clipboard in this build. The draft is still here — select the text to copy it by hand. | text | `src/components/draft-sheet.tsx:471` |  |
-| Copy the message | VoiceOver | `src/components/draft-sheet.tsx:495` |  |
-| Copy message | text | `src/components/draft-sheet.tsx:499` |  |
-| Copy the subject and message | VoiceOver | `src/components/draft-sheet.tsx:504` |  |
-| Copy with subject | text | `src/components/draft-sheet.tsx:508` |  |
-| Write another draft | VoiceOver | `src/components/draft-sheet.tsx:515` |  |
-| Write another | text | `src/components/draft-sheet.tsx:521` |  |
-| Nothing is sent by Andy. Copy this into whatever you use. | text | `src/components/draft-sheet.tsx:526` |  |
+| Drafting a follow-up needs a connection. | text | `src/app/(app)/profile/[id]/index.tsx:88` |  |
+| Andy couldn't open your photos. You can grant access in Settings. | message | `src/app/(app)/profile/[id]/index.tsx:185` |  |
+| Andy couldn't save that photo. Try again.{…} | message | `src/app/(app)/profile/[id]/index.tsx:256` |  |
+| Cancel | button | `src/app/(app)/profile/[id]/index.tsx:268` |  |
+| Remove | button | `src/app/(app)/profile/[id]/index.tsx:270` |  |
+| Andy couldn't remove that photo. Try again. | message | `src/app/(app)/profile/[id]/index.tsx:277` |  |
+| Andy couldn't reach that just now. Try again. | message | `src/app/(app)/profile/[id]/index.tsx:342` |  |
+| Edit the note from {…} | VoiceOver | `src/app/(app)/profile/[id]/index.tsx:384` |  |
+| Edit | text | `src/app/(app)/profile/[id]/index.tsx:388` |  |
+| Edit this person | VoiceOver | `src/app/(app)/profile/[id]/index.tsx:405` |  |
+| Loading… | text | `src/app/(app)/profile/[id]/index.tsx:425` |  |
+| Andy doesn't have anyone by that link. | text | `src/app/(app)/profile/[id]/index.tsx:428` |  |
+| Add a photo | VoiceOver | `src/app/(app)/profile/[id]/index.tsx:445` |  |
+| Replace photo | VoiceOver | `src/app/(app)/profile/[id]/index.tsx:445` |  |
+| Photo of {…} | VoiceOver | `src/app/(app)/profile/[id]/index.tsx:463` |  |
+| also {…} | text | `src/app/(app)/profile/[id]/index.tsx:473` |  |
+| first met {…} | text | `src/app/(app)/profile/[id]/index.tsx:488` |  |
+| Nothing remembered yet. | text | `src/app/(app)/profile/[id]/index.tsx:506` |  |
+| {…} {…} on {…} | VoiceOver | `src/app/(app)/profile/[id]/index.tsx:533` |  |
+| Also came up | text | `src/app/(app)/profile/[id]/index.tsx:579` |  |
+| Open {…} | VoiceOver | `src/app/(app)/profile/[id]/index.tsx:607` |  |
+| Mentioned in | text | `src/app/(app)/profile/[id]/index.tsx:629` |  |
+| {…}of {…} | text | `src/app/(app)/profile/[id]/index.tsx:633` |  |
+| Write to {…} | VoiceOver | `src/app/(app)/profile/[id]/index.tsx:695` |  |
+| Write to {…} | text | `src/app/(app)/profile/[id]/index.tsx:700` |  |
+| Draft a follow-up | VoiceOver | `src/app/(app)/profile/[id]/index.tsx:705` |  |
+| Writing… | text | `src/app/(app)/profile/[id]/index.tsx:714` |  |
+| Draft a follow-up | text | `src/app/(app)/profile/[id]/index.tsx:714` |  |
+| Add a note | VoiceOver | `src/app/(app)/profile/[id]/index.tsx:733` |  |
+| Add a note | text | `src/app/(app)/profile/[id]/index.tsx:738` |  |
+| Message copied | text | `src/components/draft-sheet.tsx:37` |  |
+| Subject and message copied | text | `src/components/draft-sheet.tsx:37` |  |
+| Write another | button | `src/components/draft-sheet.tsx:246` |  |
+| Keep my edits | button | `src/components/draft-sheet.tsx:247` |  |
+| Back to what to write from | VoiceOver | `src/components/draft-sheet.tsx:272` |  |
+| ‹ Edit | text | `src/components/draft-sheet.tsx:277` |  |
+| Follow-up to {…} | text | `src/components/draft-sheet.tsx:280` |  |
+| Close the draft | VoiceOver | `src/components/draft-sheet.tsx:283` |  |
+| Done | text | `src/components/draft-sheet.tsx:287` |  |
+| Format | VoiceOver | `src/components/draft-sheet.tsx:319` |  |
+| Writes a new draft. | VoiceOver | `src/components/draft-sheet.tsx:329` |  |
+| Tone | VoiceOver | `src/components/draft-sheet.tsx:342` |  |
+| Subject | text | `src/components/draft-sheet.tsx:370` |  |
+| Subject | VoiceOver | `src/components/draft-sheet.tsx:372` |  |
+| Message | text | `src/components/draft-sheet.tsx:385` |  |
+| Message | VoiceOver | `src/components/draft-sheet.tsx:387` |  |
+| Writing… | placeholder | `src/components/draft-sheet.tsx:389` |  |
+| Andy couldn't reach the clipboard in this build. The draft is still here — select the text to copy it by hand. | text | `src/components/draft-sheet.tsx:423` |  |
+| Copy the message | VoiceOver | `src/components/draft-sheet.tsx:447` |  |
+| Copy message | text | `src/components/draft-sheet.tsx:451` |  |
+| Copy the subject and message | VoiceOver | `src/components/draft-sheet.tsx:456` |  |
+| Copy with subject | text | `src/components/draft-sheet.tsx:460` |  |
+| Write another draft | VoiceOver | `src/components/draft-sheet.tsx:467` |  |
+| Write another | text | `src/components/draft-sheet.tsx:473` |  |
+| Nothing is sent by Andy. Copy this into whatever you use. | text | `src/components/draft-sheet.tsx:478` |  |
 
 ## Edit a person
 
@@ -487,11 +487,11 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 | Andy couldn't tell who that note was about. Try recording it again. | server error | `convex/extraction.ts:109` |  |
 | That photo didn't come through. Try again. | server error | `convex/extraction.ts:152` |  |
 | That photo is too large for Andy to read. Try taking it again, closer in. | server error | `convex/extraction.ts:156` |  |
-| Choose how it should sound first. | server error | `convex/followUp.ts:244` |  |
-| That's more notes than one message can be about. Pick fewer. | server error | `convex/followUp.ts:246` |  |
-| That's more than Andy can take in. Try saying it in fewer words. | server error | `convex/followUp.ts:249` |  |
-| Andy couldn't find that person. | server error | `convex/followUp.ts:264` |  |
-| Tell Andy what you want to say to {…}. | server error | `convex/followUp.ts:291` |  |
+| Choose how it should sound first. | server error | `convex/followUp.ts:238` |  |
+| That's more notes than one message can be about. Pick fewer. | server error | `convex/followUp.ts:240` |  |
+| That's more than Andy can take in. Try saying it in fewer words. | server error | `convex/followUp.ts:243` |  |
+| Andy couldn't find that person. | server error | `convex/followUp.ts:258` |  |
+| Tell Andy what you want to say to {…}. | server error | `convex/followUp.ts:285` |  |
 | There's nothing to save yet. | server error | `convex/notes.ts:135` |  |
 | Andy couldn't tell who this note is about. Add a name and try again. | server error | `convex/notes.ts:162` |  |
 | There's more detail in that note than Andy can save at once. Try splitting it into two. | server error | `convex/notes.ts:168` |  |
@@ -513,9 +513,9 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 | That's longer than a tag. Try a shorter one. | server error | `convex/profiles.ts:313` |  |
 | That's longer than a relationship. Try a shorter one. | server error | `convex/profiles.ts:326` |  |
 | Your account isn't set up yet. Sign in again. | server error | `convex/users.ts:30` |  |
-| Andy couldn't write that just now. Your text is still here. Try again. | server error | `convex/writeTo.ts:117` |  |
-| Write something first. | server error | `convex/writeTo.ts:148` |  |
-| Andy only writes to people. | server error | `convex/writeTo.ts:172` |  |
+| Andy couldn't write that just now. Your text is still here. Try again. | server error | `convex/writeTo.ts:121` |  |
+| Write something first. | server error | `convex/writeTo.ts:152` |  |
+| Andy only writes to people. | server error | `convex/writeTo.ts:177` |  |
 
 ## Other
 
@@ -586,28 +586,29 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 | Delete {…} | VoiceOver | `src/components/removable-line.tsx:54` |  |
 | Delete | text | `src/components/removable-line.tsx:59` |  |
 | M-4 80 C 14 76, 28 68, 38 60 C 54 48, 64 26, 50 22 C 36 18, 30 38, 44 48 C 58 58, 80 44, 104 30 | text | `src/components/thread-loop.tsx:19` |  |
-| Check in | text | `src/components/write-to-sheet.tsx:34` |  |
-| Follow up on our plan | text | `src/components/write-to-sheet.tsx:34` |  |
-| Reach out to {…} | title | `src/components/write-to-sheet.tsx:116` |  |
-| Reach out to {…} | text | `src/components/write-to-sheet.tsx:136` |  |
-| What you know about {…} | text | `src/components/write-to-sheet.tsx:148` |  |
-| Nothing written about {…}yet. | text | `src/components/write-to-sheet.tsx:150` |  |
-| Nothing is written yet. | VoiceOver | `src/components/write-to-sheet.tsx:191` |  |
-| What do you want to say? | VoiceOver | `src/components/write-to-sheet.tsx:203` |  |
-| What do you want to say? (optional) | placeholder | `src/components/write-to-sheet.tsx:204` |  |
-| Format | VoiceOver | `src/components/write-to-sheet.tsx:218` |  |
-| Tone | text | `src/components/write-to-sheet.tsx:238` |  |
-| Tone | VoiceOver | `src/components/write-to-sheet.tsx:239` |  |
-| Write it | VoiceOver | `src/components/write-to-sheet.tsx:263` |  |
-| Tell Andy what you want to say. | VoiceOver | `src/components/write-to-sheet.tsx:267` |  |
-| Writing needs a connection. | VoiceOver | `src/components/write-to-sheet.tsx:269` |  |
-| Writing… | text | `src/components/write-to-sheet.tsx:277` |  |
-| Write it | text | `src/components/write-to-sheet.tsx:277` |  |
-| Tell Andy what you want to say. | text | `src/components/write-to-sheet.tsx:281` |  |
-| Writing needs a connection. | text | `src/components/write-to-sheet.tsx:284` |  |
-| Written from what you asked for. | text | `src/components/write-to-sheet.tsx:298` |  |
-| Written from your note of {…}. | text | `src/components/write-to-sheet.tsx:299` |  |
-| Written from your notes of {…} and {…}. | text | `src/components/write-to-sheet.tsx:301` |  |
+| Andy couldn't write that just now. Your text is still here. Try again. | text | `src/components/write-to.tsx:42` |  |
+| Nothing was sent. Tap the arrow when you want Andy to write it. | text | `src/components/write-to.tsx:43` |  |
+| Andy couldn't reach the clipboard. Your text is still here — select it to copy it by hand. | text | `src/components/write-to.tsx:44` |  |
+| Nothing was sent. Tap Ask Andy when you want Andy to write it. | text | `src/components/write-to.tsx:48` |  |
+| You're offline. Asking Andy needs a connection — your text stays here. | text | `src/components/write-to.tsx:50` |  |
+| Andy is writing… | text | `src/components/write-to.tsx:51` |  |
+| That's too long for Andy to read at once. Shorten it by {…} characters to ask. | button | `src/components/write-to.tsx:186` |  |
+| Check: {…} | button | `src/components/write-to.tsx:191` |  |
+| Asking Andy needs a connection. | text | `src/components/write-to.tsx:209` |  |
+| Shorten the text to ask Andy. | text | `src/components/write-to.tsx:211` |  |
+| Write something first. | text | `src/components/write-to.tsx:213` |  |
+| Write to {…} | text | `src/components/write-to.tsx:237` |  |
+| What to write to {…} | VoiceOver | `src/components/write-to.tsx:253` |  |
+| Write what you want to say to {…}, or tell Andy what to write, or both. | placeholder | `src/components/write-to.tsx:256` |  |
+| e.g. Do you want to hang out and talk about our new product? Make it sound casual but still professional. | placeholder | `src/components/write-to.tsx:257` |  |
+| Andy is writing | VoiceOver | `src/components/write-to.tsx:269` |  |
+| Ask Andy | VoiceOver | `src/components/write-to.tsx:273` |  |
+| Ask | text | `src/components/write-to.tsx:284` |  |
+| Copy the message | VoiceOver | `src/components/write-to.tsx:295` |  |
+| The box is empty. | VoiceOver | `src/components/write-to.tsx:296` |  |
+| Copied | text | `src/components/write-to.tsx:302` |  |
+| Copy | text | `src/components/write-to.tsx:307` |  |
+| Message to {…} | VoiceOver | `src/components/write-to.tsx:312` |  |
 | What the card says | text | `src/lib/note-source.ts:27` |  |
 | What the card said | text | `src/lib/note-source.ts:27` |  |
 | What the photo says | text | `src/lib/note-source.ts:29` |  |

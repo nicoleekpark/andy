@@ -280,7 +280,7 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `note-entry-came-up-label` | ALSO CAME UP — 이 노트에 같이 나온 사람들 제목 |
 | `note-entry-came-up-link` | 같이 나온 프로필 (이름 탭하면 그 프로필로) — 인용문 |
 | `note-entry-source-toggle` | ▸ What you wrote/said — 노트 원문 펼치기 |
-| `follow-up-button` | **Write to {이름}** — Reach out 시트를 엶 (`writeTo` 스위치가 켜졌을 때, follow-up-redesign.md). 꺼지면 예전 "Draft a follow-up" — 후속 메일 초안 만들기 |
+| `follow-up-button` | **Write to {이름}** — `write-to` 시트를 엶 (`writeTo` 스위치가 켜졌을 때, draft-editing.md). 꺼지면 예전 "Draft a follow-up" — 후속 메일 초안 만들기 |
 | `add-note-button` | 이 프로필에 노트 추가 — 기록 화면으로 |
 | `profile-photo--empty` | + — 사진 추가 |
 | `profile-meta` | 관계 · first met |
@@ -412,21 +412,19 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `draft-replace-alert` | 고친 초안이 있을 때 새로 쓰기 전에 묻는 창 — "Write another?" / "Your edits to this draft will be replaced." · Write another (moss) · Keep my edits. `confirm-dialog`로 그림 |
 | `draft-footnote` | Andy는 보내지 않는다는 안내 |
 
-### `write-to` (follow-up-redesign.md — Reach out, 2026-10-22)
+### `write-to` (draft-editing.md — Final design F, 2026-10-30)
+
+한 시트. 만들어지는 중: slice 4a에 아래 행들. 다시 묻기·채팅 줄·Edited(4b), 버전(4c), Close 질문·쓸어내려도 유지(4d), Open Messages(5), 스크린샷(6)은 각 PR에서 행 추가.
 
 | Name | 설명 |
 |---|---|
-| `reach-out-compose` | Write to 시트의 첫 화면 — 무엇으로 쓸지. 열어도 호출 없음. 제목 "Reach out to {이름}", 왼쪽 Cancel |
-| `reach-out-note` | "What you know about {이름}" 아래 노트 한 줄 — 체크박스 + 날짜 + 기억할 내용. 최신 노트만 기본 체크. 기억할 내용이 없는 노트는 안 보임. 최대 8개(서버가 한 번에 받는 수) |
-| `reach-out-no-notes` | 노트가 없을 때 "Nothing written about {이름} yet." |
-| `draft-quick-start` | Check in · Congratulate · Follow up on our plan — 다중 선택 체크박스, 선택하면 moss 채움. 아래 칸(instruction)과 별도로 관리하고 서버 전송 시 합침. 쓰지는 않음 |
-| `draft-say-field` | 자리표시 "What do you want to say? (optional)" — 직접 쓰는 말, 500자까지 |
-| `reach-out-format-picker` | Message · Email — 처음 쓸 형식만 정함, 호출 없음 (`draft-format-picker`와 달리 새 초안을 쓰지 않음) |
-| `reach-out-tone-chip` | "Tone" 아래 Friendly · Professional · Brief — 처음 쓸 말투만 정함, 호출 없음 |
-| `generate-button` | Write it — 체크한 노트나 쓴 말이 하나라도 있어야 켜짐. 꺼졌을 때 `generate-hint` "Tell Andy what you want to say." (VoiceOver는 버튼의 힌트로 읽음). 쓰는 동안 시트의 모든 입력이 기다림 |
-| `draft-back` | 초안 위 "‹ Edit" — 무엇으로 썼는지로 돌아감, 입력 그대로. 고친 초안이 있으면 `draft-replace-alert`가 먼저 물음 |
-| `draft-intent-line` | 초안 아래 한 줄, 왼쪽 선 — Andy가 한 일 ("Asked about the new job."). 복사 안 됨 |
-| `draft-sources-line` | 그 아래 조용한 한 줄 — "Written from your note of 2026-10-18." / "…notes of … and …" / "Written from what you asked for." 실제로 쓴 것만. 복사 안 됨 |
+| `write-to` | Write to {이름} 시트 — 박스 A에 쓰고 화살표 → Andy의 답이 박스 B. 열어도 호출 없음. 메모리에만(프로필 화면이 들고 있음, 앱 잠금이 시트를 숨겨도 글은 남음) |
+| `write-to-close-button` | 왼쪽 위 Close. 지금은 바로 닫음(4d에서 복사 안 했으면 먼저 물음) |
+| `write-to-ask-box` | 박스 A — 자리표시 "Write what you want to say to {이름}, or tell Andy what to write, or both." + 예시. VoiceOver "What to write to {이름}". 높이 `size.writeBox`. Andy가 쓰는 동안 흐려지고 잠김 |
+| `write-to-arrow` | 박스 A 오른쪽 아래 둥근 화살표(SF Symbol `arrow.up.circle.fill`, moss) — Andy에게 묻는 유일한 버튼. VoiceOver "Ask Andy". 글이 없거나·오프라인·4,000자 넘으면 흐림(힌트가 이유를 말함). 쓰는 동안 스피너 |
+| `write-to-draft-box` | 박스 B — Andy의 답, 그냥 편집되는 칸. VoiceOver "Message to {이름}". 박스 A와 같은 높이 |
+| `write-to-copy-button` | 박스 B 오른쪽 위 복사 아이콘(`doc.on.doc`) → 누르면 체크 + "Copied"(고치면 사라짐). VoiceOver "Copy the message". 복사하면 그 답의 톤·형식이 이 사람의 기본값이 됨(`writeTo.rememberStyle`). 클립보드 지문은 로그아웃 때 지워짐 |
+| `write-to-status-line` | 박스 아래 한 줄, 한 번에 하나 — Andy is writing… · 오프라인 · 너무 김(몇 자 줄일지) · 실패 · Not now 뒤 · 클립보드 실패(alert 색) · "Check: Thursday, 3:30"(재요청 뒤에도 빠진 세부, 서버 `droppedDetails`) |
 
 ### `ai-permission-sheet`
 
