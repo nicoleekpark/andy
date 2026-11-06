@@ -133,6 +133,13 @@ export const size = {
   touch: 44,
   /** The round Record on home's bottom bar (`record-button--round`), straddling the bar's top edge. */
   round: 72,
+  /**
+   * Write to's two boxes (`write-to-ask-box`, `write-to-draft-box`), the same
+   * height on every screen (draft-editing.md, Final design): small enough that
+   * box B, the hint, the chat line and Open Messages fit above the keyboard on
+   * the smallest iPhone. Longer text scrolls inside the box.
+   */
+  writeBox: 200,
 } as const;
 
 /**

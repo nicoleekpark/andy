@@ -957,26 +957,25 @@ Name updates (rename or add alias) are now automatic — no checkbox. QA feedbac
 | 39.4 | Keep **Barbara Apple**, record "Barbara…", pick her, **Remember this** | Saved; her name is still Barbara Apple (she already answers to Barbara) | ⬜ |
 | 39.5 | Keep **Park**, record "I was at Parks' party…", pick Park at *Is "Parks" one of these?*, **Remember this** | Saved; Park's name unchanged (a possessive is not another name) | ⬜ |
 
-## 40. Write to → Reach out (follow-up-redesign.md, decision 4)
+## 40. Write to (draft-editing.md, Final design F)
 
-Needs the `writeTo` switch on (no row = on). Reply (paste, screenshot) and refining come in later slices.
+Needs the `writeTo` switch on (no row = on) and a dev build against the dev deployment. Built so far: box A, the arrow, box B, Copy and the status line (slice 4a). Not yet, so not a bug: asking again, the chat line and its hint, **Edited**, versions (‹ ›), the Close question, the sheet surviving a swipe down, Open Messages, the screenshot button. Until the Close question exists, **Close and a swipe down both lose the text**.
 
 | # | Do this | Expect | |
 |---|---|---|---|
 | 40.1 | Open someone with notes | The button reads **Write to {name}** (not "Draft a follow-up") | ⬜ |
-| 40.2 | Tap it | **Reach out to {name}** opens on what to write from. Nothing is written yet (no "Writing…"). Only the newest note with saved details is ticked; a note with nothing under What to remember is not listed | ⬜ |
-| 40.3 | Untick it and leave the field empty | **Write it** is greyed; *Tell Andy what you want to say.* under it | ⬜ |
-| 40.4 | Tap **Check in** | The pill is selected (filled green). The text field stays empty. Tap again to deselect. Multiple pills can be selected. Nothing is written until **Write it** | ⬜ |
-| 40.5 | Tick a note, type *check in if she's free this weekend. concise, warm, not burdening*, **Professional**, **Write it** | A draft that does what you asked. Under it, a line saying what Andy did, and *Written from your note of …* naming only the notes it used (or *Written from what you asked for.*) | ⬜ |
-| 40.6 | A plan in the ticked note whose date has passed | The draft asks how it went, never wishes luck (#195) | ⬜ |
-| 40.7 | Tap another tone on the draft | A new draft from the same notes and words | ⬜ |
-| 40.8 | **‹ Edit** | Back to what to write from, everything as you left it | ⬜ |
-| 40.9 | Copy message | Only the draft — not the two lines under it | ⬜ |
-| 40.10 | Someone with no notes (only mentioned, or all notes deleted) | **Write to** is still offered; the notes area says *Nothing written about … yet.*; with words typed, a draft is written | ⬜ |
-| 40.11 | Fresh account that hasn't allowed AI: **Write it** | *Let Andy read your notes?* first; Not now sends nothing | ⬜ |
-| 40.12 | Edit the draft, lock the phone, unlock | The draft and your edits are still there | ⬜ |
-| 40.13 | Switch off: insert `{ key: "writeTo", enabled: false }` | The old **Draft a follow-up** sheet, unchanged | ⬜ |
-| 40.14 | Largest Dynamic Type; VoiceOver | Rows wrap; notes read as checkboxes (checked / not checked); Write it reads as dimmed when off | ⬜ |
+| 40.2 | Tap it | **Write to {name}**: Close top left, one empty box with the placeholder *Write what you want to say to {name}, or tell Andy what to write, or both.* and an example. The arrow, bottom right of the box, is greyed. Nothing is written yet | ⬜ |
+| 40.3 | Type *coffee Thursday at 3:30? make it casual*, tap the arrow | The text dims and locks, the arrow becomes a spinner, *Andy is writing…* under the box. Then Andy's message replaces it in a box of the same height, with a copy icon top right | ⬜ |
+| 40.4 | Edit the message, tap the copy icon, paste in Notes | It turns into a check and *Copied*; the paste is your edited text. Editing again takes *Copied* away | ⬜ |
+| 40.5 | Copy a message Andy wrote as an email (*write her an email…*), Close, open Write to again for her, ask *say thanks* | The new draft is an email too (the copied text's tone and format became her default). Ask *text her: thanks* and it is a plain message | ⬜ |
+| 40.6 | Airplane mode with the sheet open, before asking | *You're offline. Asking Andy needs a connection — your text stays here.*; the arrow greys; typing still works. After an answer, airplane mode shows no line: Copy still works offline | ⬜ |
+| 40.6a | Tap the arrow, then Close while Andy is writing; open Write to again | An empty box A: the answer you walked away from does not appear | ⬜ |
+| 40.7 | Paste more than 4,000 characters into the box | *That's too long for Andy to read at once. Shorten it by {n} characters to ask.*, in the alert colour; the arrow greys; nothing is cut | ⬜ |
+| 40.8 | Fresh account that hasn't allowed AI: tap the arrow | *Let Andy read your notes?* first. **Not now**: *Nothing was sent. Tap the arrow when you want Andy to write it.*; the text stays | ⬜ |
+| 40.9 | Lock the phone with text in either box, unlock | The sheet and the text are back | ⬜ |
+| 40.10 | Someone with no notes (only mentioned, or all notes deleted) | **Write to** is still offered, and Andy writes from what you typed | ⬜ |
+| 40.11 | Switch off: insert `{ key: "writeTo", enabled: false }` | The old **Draft a follow-up** sheet, unchanged | ⬜ |
+| 40.12 | Largest Dynamic Type; VoiceOver | Title reads as a header; box A *What to write to {name}*; the arrow *Ask Andy*, dimmed with its reason; on the answer *Andy's answer is ready. Version 1 of 1.*; box B *Message to {name}*; Copy *Copy the message*, then *Copied*. Long text scrolls inside the box | ⬜ |
 
 ## 35. Asking before Andy sends anything (pre-submission-privacy.md, A)
 
