@@ -2,7 +2,8 @@ jest.mock("../src/lib/native", () => ({ hasNativeModule: jest.fn(() => true) }))
 
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import * as Clipboard from "expo-clipboard";
-import { AccessibilityInfo } from "react-native";
+import { AccessibilityInfo, Dimensions, StyleSheet } from "react-native";
+import { size } from "../src/constants/theme";
 import { useAction, useConvexConnectionState, useMutation, useQuery } from "convex/react";
 import { renderRouter } from "expo-router/testing-library";
 import { api } from "@convex/_generated/api";
@@ -596,5 +597,228 @@ describe("asking again (slice 4b)", () => {
 
     expect(screen.getByTestId("write-to-status-line")).toHaveTextContent(/You're offline/);
     expect(screen.getByTestId(ARROW)).toBeDisabled();
+  });
+});
+
+describe("versions (slice 4c)", () => {
+  const CHAT = "write-to-chat-line";
+  const STEPPER = "write-to-version-stepper";
+  const A1 = { ...ANSWER, text: "Version one text", tone: "casual", format: "message" };
+  const A2 = { ...ANSWER, text: "Version two text", tone: "formal", format: "email" };
+  const A3 = { ...ANSWER, text: "Version three text", tone: "warm", format: "note" };
+  const A4 = { ...ANSWER, text: "Version four text", tone: "warm", format: "note" };
+  const draftBox = () => screen.getByTestId("write-to-draft-box");
+
+  async function chatAndAsk(text = "change it") {
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId(CHAT), text);
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("write-to-arrow"));
+    });
+  }
+  async function editB(text: string) {
+    await act(async () => {
+      fireEvent.changeText(draftBox(), text);
+    });
+  }
+  async function back(times = 1) {
+    for (let i = 0; i < times; i++) await press("Previous version");
+  }
+  async function forward(times = 1) {
+    for (let i = 0; i < times; i++) await press("Next version");
+  }
+  /** Four versions: A1, A2, the person's "my edit", A3; shown is the last. */
+  async function fourVersions(write: jest.Mock, rememberStyle?: jest.Mock) {
+    await askAndy(write, rememberStyle);
+    await chatAndAsk();
+    await editB("my edit");
+    await chatAndAsk();
+  }
+
+  test("should show no stepper after one answer and 2 of 2 with the announcement after a second", async () => {
+    const announce = jest.spyOn(AccessibilityInfo, "announceForAccessibility").mockImplementation(() => {});
+    await askAndy(jest.fn().mockResolvedValueOnce(A1).mockResolvedValue(A2));
+    expect(screen.queryByTestId(STEPPER)).toBeNull();
+    expect(announce).toHaveBeenCalledWith("Andy's answer is ready. Version 1 of 1.");
+
+    await chatAndAsk();
+
+    expect(screen.getByTestId(STEPPER)).toBeTruthy();
+    expect(screen.getByLabelText("Version 2 of 2")).toHaveTextContent("2 of 2");
+    expect(announce).toHaveBeenCalledWith("Andy's answer is ready. Version 2 of 2.");
+  });
+
+  test("should add the edited text as its own version before Andy's answer when asking again after an edit", async () => {
+    const announce = jest.spyOn(AccessibilityInfo, "announceForAccessibility").mockImplementation(() => {});
+    await fourVersions(jest.fn().mockResolvedValueOnce(A1).mockResolvedValueOnce(A2).mockResolvedValue(A3));
+
+    expect(screen.getByLabelText("Version 4 of 4")).toBeTruthy();
+    expect(announce).toHaveBeenCalledWith("Andy's answer is ready. Version 4 of 4.");
+    expect(draftBox().props.value).toBe(A3.text);
+    await back();
+    expect(announce).toHaveBeenLastCalledWith("Version 3 of 4");
+    expect(draftBox().props.value).toBe("my edit");
+  });
+
+  test("should keep an unsent edit on a version when stepping away and back", async () => {
+    await fourVersions(jest.fn().mockResolvedValueOnce(A1).mockResolvedValueOnce(A2).mockResolvedValue(A3));
+    await back(2);
+    expect(draftBox().props.value).toBe(A2.text);
+
+    await editB("edit on two");
+    await forward(2);
+    expect(draftBox().props.value).toBe(A3.text);
+    await back(2);
+
+    expect(draftBox().props.value).toBe("edit on two");
+    expect(screen.getByLabelText("Message to Nina, edited")).toBeTruthy();
+    await forward(2);
+    expect(draftBox().props.value).toBe(A3.text);
+    expect(screen.getByLabelText("Message to Nina")).toBeTruthy();
+  });
+
+  test("should append and send the shown version as lastAnswer when asking from an edited older version", async () => {
+    const write = jest.fn().mockResolvedValueOnce(A1).mockResolvedValueOnce(A2).mockResolvedValue(A3);
+    await askAndy(write);
+    await chatAndAsk();
+    await back();
+    await editB("older edit");
+    await chatAndAsk("warmer");
+
+    expect(write).toHaveBeenLastCalledWith(
+      expect.objectContaining({ current: "older edit", lastAnswer: A1.text, instruction: "warmer" }),
+    );
+    expect(screen.getByLabelText("Version 4 of 4")).toBeTruthy();
+    await back(3);
+    expect(screen.getByLabelText("Version 1 of 4")).toBeTruthy();
+    expect(draftBox().props.value).toBe(A1.text);
+    await forward();
+    expect(draftBox().props.value).toBe(A2.text);
+    await forward();
+    expect(draftBox().props.value).toBe("older edit");
+  });
+
+  test("should disable Previous at the first version, Next at the last, and both while writing", async () => {
+    let resolve!: (a: typeof A1) => void;
+    const write = jest
+      .fn()
+      .mockResolvedValueOnce(A1)
+      .mockResolvedValueOnce(A2)
+      .mockResolvedValueOnce(A3)
+      .mockImplementationOnce(
+        () =>
+          new Promise<typeof A1>((r) => {
+            resolve = r;
+          }),
+      );
+    await askAndy(write);
+    await chatAndAsk();
+    await chatAndAsk();
+    expect(screen.getByLabelText("Next version")).toBeDisabled();
+    expect(screen.getByLabelText("Previous version")).not.toBeDisabled();
+    await back(2);
+    expect(screen.getByLabelText("Previous version")).toBeDisabled();
+    expect(screen.getByLabelText("Next version")).not.toBeDisabled();
+
+    await forward();
+    expect(screen.getByLabelText("Previous version")).not.toBeDisabled();
+    expect(screen.getByLabelText("Next version")).not.toBeDisabled();
+    await chatAndAsk();
+    expect(screen.getByLabelText("Previous version")).toBeDisabled();
+    expect(screen.getByLabelText("Next version")).toBeDisabled();
+
+    await act(async () => {
+      resolve(A4);
+    });
+    expect(screen.getByLabelText("Previous version")).not.toBeDisabled();
+  });
+
+  test("should copy the shown version's text and remember the style of the version it was edited from when the person's version is shown", async () => {
+    const set = jest.spyOn(Clipboard, "setStringAsync").mockResolvedValue(true);
+    const rememberStyle = jest.fn(async () => undefined);
+    await fourVersions(jest.fn().mockResolvedValueOnce(A1).mockResolvedValueOnce(A2).mockResolvedValue(A3), rememberStyle);
+
+    await back();
+    await press("Copy the message");
+    expect(set).toHaveBeenLastCalledWith("my edit");
+    expect(rememberStyle).toHaveBeenLastCalledWith({ profileId: "profile-1", style: { tone: "formal", format: "email" } });
+
+    await back(2);
+    await press("Copy the message");
+    expect(set).toHaveBeenLastCalledWith(A1.text);
+    expect(rememberStyle).toHaveBeenLastCalledWith({ profileId: "profile-1", style: { tone: "casual", format: "message" } });
+  });
+
+  test("should keep another version's unsent edit when asking again from an edited version", async () => {
+    await askAndy(jest.fn().mockResolvedValueOnce(A1).mockResolvedValueOnce(A2).mockResolvedValue(A3));
+    await chatAndAsk();
+    await back();
+    await editB("edit on one");
+    await forward();
+    await editB("edit on two");
+    await chatAndAsk();
+
+    await back(3);
+    expect(screen.getByLabelText("Version 1 of 4")).toBeTruthy();
+    expect(draftBox().props.value).toBe("edit on one");
+    expect(screen.getByLabelText("Message to Nina, edited")).toBeTruthy();
+  });
+
+  test("should remember the style of the version a person's edit came from when it is copied", async () => {
+    jest.spyOn(Clipboard, "setStringAsync").mockResolvedValue(true);
+    const rememberStyle = jest.fn(async () => undefined);
+    await askAndy(jest.fn().mockResolvedValueOnce(A1).mockResolvedValueOnce(A2).mockResolvedValue(A3), rememberStyle);
+    await chatAndAsk();
+    await back();
+    await editB("edit of one");
+    await chatAndAsk();
+    await back();
+    expect(draftBox().props.value).toBe("edit of one");
+    await press("Copy the message");
+
+    expect(rememberStyle).toHaveBeenLastCalledWith({ profileId: "profile-1", style: { tone: "casual", format: "message" } });
+  });
+
+  describe("box height", () => {
+    const heightOf = () => StyleSheet.flatten(screen.getByTestId("write-to-ask-box").parent?.props.style).height;
+    const withFontScale = (fontScale: number) =>
+      jest.spyOn(Dimensions, "get").mockReturnValue({ width: 390, height: 844, scale: 3, fontScale });
+
+    test("should grow both boxes with the text size when Dynamic Type is above 1", async () => {
+      withFontScale(2);
+      await open(jest.fn(async () => ANSWER));
+      expect(heightOf()).toBe(size.writeBox * 2);
+    });
+
+    test("should keep the box at its base height when the text size is below 1", async () => {
+      withFontScale(0.8);
+      await open(jest.fn(async () => ANSWER));
+      expect(heightOf()).toBe(size.writeBox);
+    });
+  });
+
+  test("should show the Check line only on the Andy version that left details out", async () => {
+    const write = jest
+      .fn()
+      .mockResolvedValueOnce(A1)
+      .mockResolvedValueOnce({ ...A2, droppedDetails: ["Thursday"] })
+      .mockResolvedValue(A3);
+    await askAndy(write);
+    await chatAndAsk();
+    expect(screen.getByTestId("write-to-status-line")).toHaveTextContent("Check: Thursday");
+    await editB("my edit");
+    await chatAndAsk();
+    expect(screen.queryByText(/Check:/)).toBeNull();
+
+    await back();
+    // The person's version carries no Check line, even though the Andy answer before it did.
+    expect(draftBox().props.value).toBe("my edit");
+    expect(screen.queryByText(/Check:/)).toBeNull();
+    await back();
+    expect(draftBox().props.value).toBe(A2.text);
+    expect(screen.getByTestId("write-to-status-line")).toHaveTextContent("Check: Thursday");
+    await back();
+    expect(screen.queryByText(/Check:/)).toBeNull();
   });
 });

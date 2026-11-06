@@ -959,7 +959,7 @@ Name updates (rename or add alias) are now automatic — no checkbox. QA feedbac
 
 ## 40. Write to (draft-editing.md, Final design F)
 
-Needs the `writeTo` switch on (no row = on) and a dev build against the dev deployment. Built so far: box A, the arrow, box B, Copy and the status line (slice 4a); asking again, **Edited**, the hint and the chat line (4b). Not yet, so not a bug: versions (‹ ›), the Close question, the sheet surviving a swipe down, Open Messages, the screenshot button. Until the Close question exists, **Close and a swipe down both lose the text**.
+Needs the `writeTo` switch on (no row = on) and a dev build against the dev deployment. Built so far: box A, the arrow, box B, Copy and the status line (slice 4a); asking again, **Edited**, the hint and the chat line (4b); versions ‹ › (4c). Not yet, so not a bug: the Close question, the sheet surviving a swipe down, Open Messages, the screenshot button. Until the Close question exists, **Close and a swipe down both lose the text**.
 
 | # | Do this | Expect | |
 |---|---|---|---|
@@ -984,6 +984,13 @@ Needs the `writeTo` switch on (no row = on) and a dev build against the dev depl
 | 40.18 | Ask again ten times | After the tenth answer: *That's the most Andy can do in one go. Copy it, or close and start again.*; the arrow stays greyed; Copy still works | ⬜ |
 | 40.19 | Paste more than 500 characters on the chat line | *Shorten this by {n} characters.*; the arrow greys | ⬜ |
 | 40.20 | VoiceOver, keyboard up, after an answer | Box B reads *Message to {name}, edited* once edited (Edited is not read on its own); the cap and *Shorten this…* lines are read aloud when they appear; the chat line and its arrow stay above the keyboard; the hint and status line swap without the layout jumping | ⬜ |
+| 40.21 | After the first answer | No ‹ › yet. Ask again once: **‹ 2 of 2 ›** bottom left of box B; VoiceOver hears *Andy's answer is ready. Version 2 of 2.* | ⬜ |
+| 40.22 | Edit box B, then ask again | **‹ 4 of 4 ›**: your edited text is version 3, Andy's new answer version 4 | ⬜ |
+| 40.23 | ‹ back to version 2, change a word, › to 4, ‹ back to 2 | Version 2 still has your change and **Edited**; version 4 is untouched. The arrow is on at 2 (edited), greyed at an untouched version | ⬜ |
+| 40.24 | At version 2 (edited), ask again | A new version 5 at the end (your edit is 5, Andy's answer 6); nothing is cut off; version 2 is back as it was | ⬜ |
+| 40.25 | Copy at an older version, then Close | The paste is that version's text. Close deletes every version: reopening starts empty | ⬜ |
+| 40.26 | VoiceOver, three or more versions | ‹ › read *Previous version* / *Next version*, dimmed at the ends; each step says *Version n of N*; the targets are easy to hit at the largest text size | ⬜ |
+| 40.27 | Settings → Accessibility → Larger Text, the largest size | Both boxes grow with the text; inside box B the copy row, the text and ‹ › all fit and nothing clips; the text area stays a usable size | ⬜ |
 
 ## 35. Asking before Andy sends anything (pre-submission-privacy.md, A)
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AccessibilityInfo,
   ActivityIndicator,
@@ -9,6 +9,7 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { SymbolView } from "expo-symbols";
 import { useAction, useMutation } from "convex/react";
@@ -27,15 +28,23 @@ import { useOnline } from "@/lib/offline-copy";
  *
  * One sheet: box A, the arrow, then Andy's answer in box B, editable, with a
  * copy button; then edit it, or tell Andy what to change on the chat line, and
- * ask again (slices 4a, 4b). Versions, the Close question and keeping the
- * sheet when it is swiped away follow in their own slices; until then Close
- * and a swipe both close.
+ * ask again (slices 4a, 4b), stepping through every version with ‹ › (4c).
+ * The Close question and keeping the sheet when it is swiped away follow in
+ * their own slice; until then Close and a swipe both close.
  *
  * Nothing is kept: the text lives in memory in the profile screen, above the
  * sheet, so the app lock can hide the sheet without losing it.
  */
 
 type Answer = FunctionReturnType<typeof api.writeTo.write>;
+
+/**
+ * One version: every Andy answer, and the person's edited text when they ask
+ * again (Final design, behaviour 5). `answer` is Andy's answer — null for the
+ * person's own text; `label` is the tone and format it carries, the person's
+ * text taking the label of the version it was edited from.
+ */
+type Version = { text: string; answer: Answer | null; label: Answer };
 
 /** Said in the Strings table's words; one line at a time. */
 type Problem = "failed" | "notNow" | "clipboard";
@@ -60,8 +69,13 @@ export function useWriteTo(profileId: string) {
   const goAhead = useAiGoAhead();
   const [open, setOpen] = useState(false);
   const [request, setRequest] = useState("");
-  const [answer, setAnswer] = useState<Answer | null>(null);
-  const [draft, setDraftText] = useState("");
+  const [versions, setVersions] = useState<Version[]>([]);
+  /**
+   * Box B's text for each version, starting as the version itself. Kept per
+   * version so stepping away from an edit and back again loses nothing.
+   */
+  const [drafts, setDrafts] = useState<string[]>([]);
+  const [shown, setShown] = useState(0);
   const [writing, setWriting] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
   /** Cleared by editing, not by a timer: "Copied" stops being true when the text moves. */
@@ -88,14 +102,26 @@ export function useWriteTo(profileId: string) {
     setWriting(false);
     setOpen(false);
     setRequest("");
-    setAnswer(null);
-    setDraftText("");
+    setVersions([]);
+    setDrafts([]);
+    setShown(0);
     setProblem(null);
     setCopied(false);
     setInstruction("");
     setEarlier([]);
     setAsksAfterFirst(0);
   }, []);
+
+  const version = versions[shown] ?? null;
+  const draft = drafts[shown] ?? "";
+  /**
+   * The version shown, as the sheet reads it: its text is what the arrow and
+   * Edited compare box B with (behaviour 7); its label gives tone and format.
+   */
+  const answer = useMemo(() => {
+    if (version === null) return null;
+    return { ...version.label, text: version.text, droppedDetails: version.answer?.droppedDetails };
+  }, [version]);
 
   const ask = useCallback(async () => {
     if (inFlight.current) return;
@@ -122,8 +148,21 @@ export function useWriteTo(profileId: string) {
         ...(answer === null ? {} : { current: draft, lastAnswer: answer.text, instruction: said }),
       });
       if (mine !== session.current) return;
-      setAnswer(written);
-      setDraftText(written.text);
+      // Box B's edit, when there is one, becomes a version of its own, and the
+      // version it came from goes back to how it was; Andy's answer goes last.
+      const editedShown = answer !== null && isEdited(draft, answer.text);
+      const added: Version[] =
+        editedShown && version !== null ? [{ text: draft, answer: null, label: version.label }] : [];
+      added.push({ text: written.text, answer: written, label: written });
+      const next = [...versions, ...added];
+      setVersions(next);
+      // Other versions keep their unsent edits; only the one asked from goes
+      // back, since its edit is now a version of its own.
+      setDrafts([
+        ...drafts.map((text, i) => (editedShown && i === shown ? (versions[i]?.text ?? text) : text)),
+        ...added.map((v) => v.text),
+      ]);
+      setShown(next.length - 1);
       draftNow.current = written.text;
       setCopied(false);
       if (answer !== null) {
@@ -131,7 +170,9 @@ export function useWriteTo(profileId: string) {
         if (said !== "") setEarlier((lines) => [...lines, said]);
         setInstruction("");
       }
-      AccessibilityInfo.announceForAccessibility("Andy's answer is ready.");
+      AccessibilityInfo.announceForAccessibility(
+        `Andy's answer is ready. Version ${next.length} of ${next.length}.`,
+      );
     } catch {
       // Every server failure shows the one line (Strings), and changes nothing:
       // both boxes and the chat line stay, and it does not count toward the 10.
@@ -143,18 +184,34 @@ export function useWriteTo(profileId: string) {
         setWriting(false);
       }
     }
-  }, [goAhead, write, profileId, request, earlier, answer, draft, instruction]);
+  }, [goAhead, write, profileId, request, earlier, answer, draft, instruction, versions, drafts, shown, version]);
 
   /**
    * Any edit makes a failed ask, a Not now or a clipboard miss old news: the
    * line would otherwise sit over the reason the arrow is greyed now.
    */
-  const setDraft = useCallback((text: string) => {
-    setDraftText(text);
-    draftNow.current = text;
-    setCopied(false);
-    setProblem(null);
-  }, []);
+  const setDraft = useCallback(
+    (text: string) => {
+      setDrafts((all) => all.map((was, i) => (i === shown ? text : was)));
+      draftNow.current = text;
+      setCopied(false);
+      setProblem(null);
+    },
+    [shown],
+  );
+  /** ‹ › — to another version; announced as "Version 2 of 3". */
+  const step = useCallback(
+    (by: -1 | 1) => {
+      const to = shown + by;
+      if (to < 0 || to >= versions.length) return;
+      setShown(to);
+      draftNow.current = drafts[to] ?? "";
+      setCopied(false);
+      setProblem(null);
+      AccessibilityInfo.announceForAccessibility(`Version ${to + 1} of ${versions.length}`);
+    },
+    [shown, versions.length, drafts],
+  );
   const editRequest = useCallback((text: string) => {
     setRequest(text);
     setProblem(null);
@@ -201,6 +258,10 @@ export function useWriteTo(profileId: string) {
     instruction,
     setInstruction: editInstruction,
     asksAfterFirst,
+    /** Which version is shown (0-based) and how many there are. */
+    shown,
+    versionCount: versions.length,
+    step,
     writing,
     problem,
     copied,
@@ -293,8 +354,27 @@ function Arrow({ writing, block, onPress }: { writing: boolean; block: string | 
 export function WriteToSheet({ personName, controller }: { personName: string; controller: WriteToController }) {
   const locked = useLocked();
   const online = useOnline();
-  const { request, setRequest, answer, draft, setDraft, instruction, setInstruction, writing, copied, ask, copy, close } =
-    controller;
+  // One height on every screen, grown with Dynamic Type so the text area
+  // stays usable when the rows inside the box grow too (WCAG 1.4.4).
+  const { fontScale } = useWindowDimensions();
+  const boxHeight = { height: size.writeBox * Math.max(1, fontScale) };
+  const {
+    request,
+    setRequest,
+    answer,
+    draft,
+    setDraft,
+    instruction,
+    setInstruction,
+    shown,
+    versionCount,
+    step,
+    writing,
+    copied,
+    ask,
+    copy,
+    close,
+  } = controller;
   const status = statusOf(controller, online);
   const block = arrowBlock(controller, online);
   // Edited: box B differs from Andy's answer shown — Andy hasn't seen this text.
@@ -354,7 +434,7 @@ export function WriteToSheet({ personName, controller }: { personName: string; c
         >
           {answer === null ? (
             <>
-              <View style={styles.box}>
+              <View style={[styles.box, boxHeight]}>
                 <TextInput
                   accessibilityLabel={`What to write to ${personName}`}
                   placeholder={
@@ -378,7 +458,7 @@ export function WriteToSheet({ personName, controller }: { personName: string; c
             </>
           ) : (
             <>
-              <View style={styles.box}>
+              <View style={[styles.box, boxHeight]}>
                 <View style={styles.boxTop}>
                   {edited ? (
                     // Read as part of box B's label, not on its own (Strings).
@@ -416,6 +496,31 @@ export function WriteToSheet({ personName, controller }: { personName: string; c
                   style={[styles.boxText, writing && styles.dimmed]}
                   testID="write-to-draft-box"
                 />
+                {versionCount > 1 ? (
+                  <View style={styles.stepper} testID="write-to-version-stepper">
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Previous version"
+                      disabled={writing || shown === 0}
+                      onPress={() => step(-1)}
+                      style={[styles.step, (writing || shown === 0) && styles.disabled]}
+                    >
+                      <Text style={styles.stepLabel}>‹</Text>
+                    </Pressable>
+                    <Text style={styles.stepCount} accessibilityLabel={`Version ${shown + 1} of ${versionCount}`}>
+                      {shown + 1} of {versionCount}
+                    </Text>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Next version"
+                      disabled={writing || shown === versionCount - 1}
+                      onPress={() => step(1)}
+                      style={[styles.step, (writing || shown === versionCount - 1) && styles.disabled]}
+                    >
+                      <Text style={styles.stepLabel}>›</Text>
+                    </Pressable>
+                  </View>
+                ) : null}
               </View>
               {/* The status line takes the hint's place while it shows. */}
               {statusLine ?? (
@@ -462,7 +567,6 @@ const styles = StyleSheet.create({
   content: { padding: space.xl, gap: space.sm, paddingBottom: space.xxxl },
   // Both boxes: one height on every screen; the field's edge is `edge` (3:1, WCAG 1.4.11).
   box: {
-    height: size.writeBox,
     borderWidth: 1,
     borderColor: colors.edge,
     borderRadius: radius.control,
@@ -487,6 +591,10 @@ const styles = StyleSheet.create({
     paddingLeft: space.lg,
   },
   chatLine: { flex: 1, minHeight: size.touch, color: colors.ink, fontSize: textSize.lg },
+  stepper: { flexDirection: "row", alignItems: "center" },
+  step: { minWidth: size.touch, minHeight: size.touch, alignItems: "center", justifyContent: "center" },
+  stepLabel: { color: colors.moss, fontSize: textSize.xxl },
+  stepCount: { color: colors.ink, fontSize: textSize.sm, opacity: textOpacity.secondary },
   boxCorner: { flexDirection: "row", justifyContent: "flex-end" },
   arrow: { minWidth: size.touch, minHeight: size.touch, alignItems: "center", justifyContent: "center" },
   arrowFallback: { color: colors.moss, fontSize: textSize.lg },

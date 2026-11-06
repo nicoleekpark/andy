@@ -137,7 +137,8 @@ export const size = {
    * Write to's two boxes (`write-to-ask-box`, `write-to-draft-box`), the same
    * height on every screen (draft-editing.md, Final design): small enough that
    * box B, the hint, the chat line and Open Messages fit above the keyboard on
-   * the smallest iPhone. Longer text scrolls inside the box.
+   * the smallest iPhone. Longer text scrolls inside the box. Multiplied by the
+   * Dynamic Type scale (never below 1), so the text area survives large text.
    */
   writeBox: 200,
 } as const;
