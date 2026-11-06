@@ -166,6 +166,8 @@ async function forgetAndysCopy(): Promise<void> {
  *   which person a shared name means, the note left half-written on the
  *   capture screen) — and anything holding them in
  *   memory, told through `onForgetOnThisPhone`;
+ * - Write to's tucked-away sheets, held in memory only, per person
+ *   (`forgetWriteToSheets`, also through `onForgetOnThisPhone`);
  * - this app's reminders — pending, and already delivered in Notification
  *   Center (`forgetBriefings`) — which carry a person's name;
  * - photos: `expo-image`'s memory and disk caches (profile photos), and the
