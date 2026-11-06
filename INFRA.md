@@ -80,6 +80,16 @@ they never read this file — but an alert with no PR is one nobody acts on.
 
 [Controlling which dependencies are updated by Dependabot](https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/controlling-dependencies-updated)
 
+### A merged native update needs a new dev app build
+
+A Dependabot (or any) PR that moves a package with native code — `@clerk/expo`,
+an `expo-*` package, `react-native` — passes CI and still breaks `npm run dev`
+the moment it merges: the dev app installed on the simulator or phone carries
+the old native code. #222 did exactly that on 2026-11-05 ("The native Clerk
+module in this app binary is incompatible…"). Rebuild before running:
+`npm run build:ios` → `npm run ios:install` (simulator), or
+`npm run build:ios:device` (phone). `small-commit-flow` requires the PR to say so.
+
 ### What it must not propose, and why CI cannot help
 
 `.github/dependabot.yml` ignores every Expo-pinned package. Dependabot reads
