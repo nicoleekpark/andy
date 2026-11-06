@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
-import { action, internalQuery } from "./_generated/server";
+import { action, internalQuery, mutation } from "./_generated/server";
+import type { MutationCtx } from "./_generated/server";
 import { requireAiAllowed } from "./aiPermission";
 import { NOTES_SCANNED } from "./emailPrompt";
 import type { EmailNote } from "./emailPrompt";
@@ -12,8 +13,9 @@ import {
   MAX_INSTRUCTION_CHARS,
   MAX_WRITE_TO_NOTES,
   writeToAnswerValidator,
+  writeToStyleValidator,
 } from "./writeToPrompt";
-import type { WriteToAnswer } from "./writeToPrompt";
+import type { WriteToAnswer, WriteToStyle } from "./writeToPrompt";
 
 /**
  * Write to {name} (`docs/design/decisions/draft-editing.md` → Final design).
@@ -43,6 +45,7 @@ export const notesForWriteTo = internalQuery({
       personName: v.string(),
       entityType: v.union(v.literal("person"), v.literal("animal")),
       notes: v.array(v.object({ recordedOn: v.string(), facts: v.array(v.string()) })),
+      style: v.optional(writeToStyleValidator),
     }),
   ),
   handler: async (ctx, args) => {
@@ -74,6 +77,7 @@ export const notesForWriteTo = internalQuery({
         recordedOn: new Date(note.createdAt).toISOString().slice(0, 10),
         facts: note.facts,
       })),
+      ...(profile.followUpStyle === undefined ? {} : { style: profile.followUpStyle }),
     };
   },
 });
@@ -161,6 +165,7 @@ export const write = action({
       personName: string;
       entityType: "person" | "animal";
       notes: EmailNote[];
+      style?: WriteToStyle;
     } | null = await ctx.runQuery(internal.writeTo.notesForWriteTo, {
       profileId: args.profileId,
     });
@@ -176,6 +181,7 @@ export const write = action({
       personName: scope.personName,
       today: args.today,
       notes: scope.notes,
+      ...(scope.style === undefined ? {} : { style: scope.style }),
       request,
       earlierInstructions: args.earlierInstructions
         .map((said) => said.trim())
@@ -187,3 +193,35 @@ export const write = action({
     });
   },
 });
+
+/**
+ * Save the tone and format of the text the person just copied or opened in
+ * Messages: it becomes how Andy writes to this person next time
+ * (draft-editing.md → Final design, "Tone and format"; owner: "whatever the
+ * final tone for the message before"). Kept on the person's record, where the
+ * old follow-up sheet keeps it too.
+ */
+export const rememberStyle = mutation({
+  args: { profileId: v.string(), style: writeToStyleValidator },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await saveStyle(ctx, args.profileId, args.style);
+    return null;
+  },
+});
+
+/**
+ * The one place a person's tone and format is written. Owner-checked like
+ * every write; a person who is gone, or not the caller's, is left alone, and
+ * an unchanged style is not written again.
+ */
+export async function saveStyle(ctx: MutationCtx, profileIdArg: string, style: WriteToStyle) {
+  const user = await getAuthenticatedUser(ctx);
+  const profileId = ctx.db.normalizeId("profiles", profileIdArg);
+  if (profileId === null) return;
+  const profile = await ctx.db.get("profiles", profileId);
+  if (profile === null || profile.userId !== user._id) return;
+  const now = profile.followUpStyle;
+  if (now?.format === style.format && now?.tone === style.tone) return;
+  await ctx.db.patch("profiles", profileId, { followUpStyle: style });
+}

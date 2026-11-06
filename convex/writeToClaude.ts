@@ -15,6 +15,7 @@ import {
   detailsToKeep,
   formatOf,
   writeToAnswerValidator,
+  writeToStyleValidator,
 } from "./writeToPrompt";
 import type { WriteToAnswer, WriteToInput, WriteToTone } from "./writeToPrompt";
 
@@ -34,6 +35,7 @@ export const compose = internalAction({
     personName: v.string(),
     today: v.string(),
     notes: v.array(v.object({ recordedOn: v.string(), facts: v.array(v.string()) })),
+    style: v.optional(writeToStyleValidator),
     request: v.string(),
     earlierInstructions: v.array(v.string()),
     lastAnswer: v.optional(v.string()),
