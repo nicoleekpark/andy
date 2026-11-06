@@ -98,27 +98,29 @@ whole argument for the ignore list.
 Expo-pinned packages move when the SDK moves — `npx expo install --fix` during
 an SDK upgrade — never on Dependabot's weekly schedule.
 
-### Known version skew (2026-09-08)
+### Version skew — resolved 2026-11-05 (#232)
 
-`npx expo install --check` reports two packages behind what SDK 57 expects:
+The skew noted on 2026-09-08 (`jest-expo` 57.0.4, `react-native` 0.86.2) had
+grown to 22 packages behind SDK 57's expected versions by 2026-11-04. #232 ran
+`npx expo install --fix`; `npx expo install --check` now says up to date.
 
-```
-jest-expo@57.0.4     - expected ~57.0.5
-react-native@0.86.2  - expected 0.86.3
-```
-
-They must move **together**: `jest-expo@57.0.5` requires
-`@react-native/jest-preset@^0.86.3`, which `react-native@0.86.2` refuses as a
-peer. This is the ERESOLVE that stopped Dependabot generating a valid lock file
-for its own PR — not a Dependabot bug, a real conflict in the tree.
-
-Left alone deliberately. `react-native` is a native package, so moving it makes
-the installed dev client stale and the change is only truly verified by a fresh
-`eas build`. That is not a routine patch update and does not belong in a
-dependency-refresh commit.
-
-**Trigger:** the next EAS build for any reason — do the pair then, and verify on
-the device rather than in CI.
+What it cost to find out, for next time:
+- **The lockfile can refuse the move.** `react-native@0.86.3` and
+  `jest-expo@57.0.6` both want `@react-native/jest-preset` ^0.86.3, but the old
+  lockfile pinned 0.86.2, and npm reported a peer conflict instead of moving it.
+  The fix was to delete the three stale entries
+  (`node_modules/react-native`, `node_modules/jest-expo`,
+  `node_modules/@react-native/jest-preset`) from `package-lock.json` and run
+  `npm install --package-lock-only` — never `--force` or `--legacy-peer-deps`,
+  which would accept a broken set.
+- **Prove it with a plain `npm ci`**, which is what CI and EAS run. An
+  `npm install` that succeeds locally can leave a lockfile `npm ci` rejects
+  (Dependabot #223 shipped exactly that).
+- **Expo publishes patches often** — new ones appeared between the first pass and
+  the merge a day later. Re-run `npx expo install --check` right before an EAS
+  build.
+- It changes native code, so it needs a new EAS build and a device pass before
+  it is trusted (the five checks in #232).
 
 ### `expo-speech-recognition` has an SDK 57 release now
 
