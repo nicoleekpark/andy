@@ -5,10 +5,17 @@ jest.mock("expo-sms", () => ({
   sendSMSAsync: jest.fn(async () => ({ result: "sent" })),
 }));
 
+jest.mock("expo-file-system/legacy", () => ({ deleteAsync: jest.fn(async () => undefined) }));
+jest.mock("../src/lib/photo-size", () => ({ shrinkForReading: jest.fn() }));
+
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import * as Clipboard from "expo-clipboard";
 import * as SMS from "expo-sms";
+import * as FileSystem from "expo-file-system/legacy";
+import * as ImagePicker from "expo-image-picker";
+import { ConvexError } from "convex/values";
 import { hasNativeModule } from "../src/lib/native";
+import { shrinkForReading } from "../src/lib/photo-size";
 import { AccessibilityInfo, Dimensions, StyleSheet } from "react-native";
 import { size } from "../src/constants/theme";
 import { useAction, useConvexConnectionState, useMutation, useQuery } from "convex/react";
@@ -20,6 +27,7 @@ import { answerDialog } from "../test-support/dialog";
 import { OfflineCopyProvider } from "../src/lib/offline-copy";
 import { LockedContext } from "../src/lib/lock-context";
 import { MAX_WRITE_TO_CHARS } from "../convex/writeToPrompt";
+import { MAX_IMAGE_CHARS } from "../convex/extractionPrompt";
 import { answerByName, nameOf, quietCall } from "../test-support/convex-mocks";
 
 /**
@@ -1182,5 +1190,340 @@ describe("Open Messages (slice 5)", () => {
       fireEvent.press(screen.getByTestId("write-to-arrow"));
     });
     expect(screen.getByTestId(BUTTON)).toBeDisabled();
+  });
+});
+
+describe("Reply with a screenshot (slice 6)", () => {
+  const URI = "file:///tmp/picked.jpg";
+  const READ = { found: true, text: "Are you free Thursday?" };
+  const QUOTE = "write-to-quote-text";
+  const SMALL = "file:///tmp/shrunk.jpg";
+
+  const pick = (base64: string | null = "AAAA") =>
+    (ImagePicker.launchImageLibraryAsync as jest.Mock).mockResolvedValueOnce({
+      canceled: false,
+      assets: [{ uri: URI, ...(base64 === null ? {} : { base64 }) }],
+    });
+
+  async function openShot(
+    read: jest.Mock,
+    write: jest.Mock = jest.fn(async () => ANSWER),
+    opts?: { switchedOff?: string[] },
+  ) {
+    answerByName(
+      useQuery,
+      {
+        [nameOf(api.featureFlags.switchedOff)]: opts?.switchedOff ?? ["aiPermission"],
+        [nameOf(api.users.current)]: { _id: "user-1", _creationTime: 1, tokenIdentifier: "t|alice" },
+      },
+      () => person(),
+    );
+    answerByName(
+      useAction,
+      { [nameOf(api.writeTo.write)]: write, [nameOf(api.writeTo.readScreenshot)]: read },
+      quietCall,
+    );
+    answerByName(useMutation, { [nameOf(api.writeTo.rememberStyle)]: jest.fn(async () => undefined) }, quietCall);
+    await renderRouter("src/app", { initialUrl: "/profile/profile-1" });
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("follow-up-button"));
+    });
+  }
+  async function addShot() {
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("write-to-screenshot-button"));
+    });
+  }
+  const line = () => screen.getByTestId("write-to-status-line");
+
+  test("should read the screenshot into the quote, send only the picture to readScreenshot and delete the picker's copy", async () => {
+    const read = jest.fn(async () => READ);
+    await openShot(read);
+    pick("AAAA");
+    await addShot();
+
+    expect(read).toHaveBeenCalledWith({ imageBase64: "AAAA", mediaType: "image/jpeg" });
+    expect(screen.getByTestId(QUOTE).props.value).toBe(READ.text);
+    expect(FileSystem.deleteAsync).toHaveBeenCalledWith(URI, { idempotent: true });
+  });
+
+  test("should show Reading Nina's message and a spinner instead of the arrow while the read runs", async () => {
+    let resolve!: (r: typeof READ) => void;
+    const read = jest.fn(() => new Promise<typeof READ>((r) => (resolve = r)));
+    await openShot(read);
+    pick();
+    await addShot();
+
+    expect(screen.getByText("Reading Nina's message…")).toBeTruthy();
+    expect(screen.getByLabelText("Reading Nina's message…")).toBeTruthy();
+    expect(screen.queryByTestId("write-to-arrow")).toBeNull();
+
+    await act(async () => resolve(READ));
+    expect(screen.getByTestId("write-to-arrow")).toBeTruthy();
+  });
+
+  test("should delete the picker's copy and send nothing when the go-ahead is declined", async () => {
+    const read = jest.fn(async () => READ);
+    await openShot(read, undefined, { switchedOff: [] });
+    pick();
+    await addShot();
+    await press("Not now");
+
+    expect(read).not.toHaveBeenCalled();
+    expect(FileSystem.deleteAsync).toHaveBeenCalledWith(URI, { idempotent: true });
+    expect(line()).toHaveTextContent("Nothing was sent, and the picture wasn't kept.");
+    expect(screen.queryByTestId("write-to-quote")).toBeNull();
+  });
+
+  test("should say it didn't come through, and not read, when the picker returns no image data", async () => {
+    const read = jest.fn(async () => READ);
+    await openShot(read);
+    pick(null);
+    await addShot();
+
+    expect(read).not.toHaveBeenCalled();
+    expect(line()).toHaveTextContent("That screenshot didn't come through. Try again.");
+    expect(FileSystem.deleteAsync).toHaveBeenCalledWith(URI, { idempotent: true });
+  });
+
+  test("should say it is too large, and not read, when the picture is over the size limit and shrinking it leaves it too large", async () => {
+    const read = jest.fn(async () => READ);
+    await openShot(read);
+    (shrinkForReading as jest.Mock).mockResolvedValueOnce({ uri: SMALL, base64: "a".repeat(MAX_IMAGE_CHARS + 1) });
+    pick("a".repeat(MAX_IMAGE_CHARS + 1));
+    await addShot();
+
+    expect(read).not.toHaveBeenCalled();
+    expect(line()).toHaveTextContent("That screenshot is too large for Andy to read. Try another.");
+    expect(FileSystem.deleteAsync).toHaveBeenCalledWith(URI, { idempotent: true });
+  });
+
+  test("should shrink an over-size picture, read the shrunk one and delete both files when the picture is over the size limit", async () => {
+    const read = jest.fn(async () => READ);
+    await openShot(read);
+    (shrinkForReading as jest.Mock).mockResolvedValueOnce({ uri: SMALL, base64: "SMALL" });
+    (ImagePicker.launchImageLibraryAsync as jest.Mock).mockResolvedValueOnce({
+      canceled: false,
+      assets: [{ uri: URI, base64: "a".repeat(MAX_IMAGE_CHARS + 1), width: 4000, height: 9000 }],
+    });
+    await addShot();
+
+    expect(shrinkForReading).toHaveBeenCalledWith(URI, 4000, 9000);
+    expect(read).toHaveBeenCalledWith({ imageBase64: "SMALL", mediaType: "image/jpeg" });
+    expect(FileSystem.deleteAsync).toHaveBeenCalledWith(SMALL, { idempotent: true });
+    expect(FileSystem.deleteAsync).toHaveBeenCalledWith(URI, { idempotent: true });
+    expect(screen.getByTestId(QUOTE).props.value).toBe(READ.text);
+  });
+
+  test("should say it is too large and delete only the picker's copy when shrinking throws", async () => {
+    const read = jest.fn(async () => READ);
+    await openShot(read);
+    (shrinkForReading as jest.Mock).mockRejectedValueOnce(new Error("no"));
+    pick("a".repeat(MAX_IMAGE_CHARS + 1));
+    await addShot();
+
+    expect(read).not.toHaveBeenCalled();
+    expect(line()).toHaveTextContent("That screenshot is too large for Andy to read. Try another.");
+    expect(FileSystem.deleteAsync).toHaveBeenCalledTimes(1);
+    expect(FileSystem.deleteAsync).toHaveBeenCalledWith(URI, { idempotent: true });
+  });
+
+  test("should still delete the picker's copy and read nothing when Close came while the picker was open", async () => {
+    const read = jest.fn(async () => READ);
+    await openShot(read);
+    let resolve!: (r: unknown) => void;
+    (ImagePicker.launchImageLibraryAsync as jest.Mock).mockImplementationOnce(
+      () => new Promise((r) => (resolve = r)),
+    );
+    await addShot();
+    await press("Close");
+    await act(async () => {
+      resolve({ canceled: false, assets: [{ uri: URI, base64: "AAAA" }] });
+    });
+
+    expect(FileSystem.deleteAsync).toHaveBeenCalledWith(URI, { idempotent: true });
+    expect(read).not.toHaveBeenCalled();
+  });
+
+  test("should say no message was found and show no quote when the read finds nothing", async () => {
+    await openShot(jest.fn(async () => ({ found: false, text: "" })));
+    pick();
+    await addShot();
+
+    expect(line()).toHaveTextContent(
+      "Andy couldn't find a message in that screenshot. Try another, or type what they said.",
+    );
+    expect(screen.queryByTestId("write-to-quote")).toBeNull();
+  });
+
+  test("should show the too-large line when the server says the screenshot is too large", async () => {
+    await openShot(
+      jest.fn(async () => {
+        throw new ConvexError("That screenshot is too large for Andy to read. Try another.");
+      }),
+    );
+    pick();
+    await addShot();
+
+    expect(line()).toHaveTextContent("That screenshot is too large for Andy to read. Try another.");
+    expect(screen.queryByTestId("write-to-quote")).toBeNull();
+  });
+
+  test("should show the didn't-come-through line when the read fails for another reason", async () => {
+    await openShot(
+      jest.fn(async () => {
+        throw new Error("boom");
+      }),
+    );
+    pick();
+    await addShot();
+
+    expect(line()).toHaveTextContent("That screenshot didn't come through. Try again.");
+    expect(screen.queryByTestId("write-to-quote")).toBeNull();
+  });
+
+  test("should do nothing when the picker is cancelled", async () => {
+    const read = jest.fn(async () => READ);
+    await openShot(read);
+    await addShot();
+
+    expect(read).not.toHaveBeenCalled();
+    expect(FileSystem.deleteAsync).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("write-to-quote")).toBeNull();
+  });
+
+  test("should enable the arrow with only a quote and send the quote on the first ask and every later one", async () => {
+    const write = jest.fn(async () => ANSWER);
+    await openShot(jest.fn(async () => READ), write);
+    expect(screen.getByTestId("write-to-arrow")).toBeDisabled();
+    pick();
+    await addShot();
+    expect(screen.getByTestId("write-to-arrow")).not.toBeDisabled();
+
+    await press(ASK);
+    expect(write).toHaveBeenLastCalledWith(
+      expect.objectContaining({ request: "", quote: READ.text, earlierInstructions: [] }),
+    );
+
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId("write-to-chat-line"), "warmer");
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("write-to-arrow"));
+    });
+    expect(write).toHaveBeenCalledTimes(2);
+    expect(write).toHaveBeenLastCalledWith(expect.objectContaining({ quote: READ.text, instruction: "warmer" }));
+  });
+
+  test("should send the corrected words when the quote is edited, and none when it is removed", async () => {
+    const write = jest.fn(async () => ANSWER);
+    await openShot(jest.fn(async () => READ), write);
+    pick();
+    await addShot();
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId(QUOTE), "Are you free Friday?");
+    });
+    await typeAsk("say yes");
+    await press(ASK);
+    expect(write).toHaveBeenLastCalledWith(expect.objectContaining({ quote: "Are you free Friday?" }));
+
+    await press("Close");
+    await answerDialog("Close");
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("follow-up-button"));
+    });
+    pick();
+    await addShot();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("write-to-quote-remove"));
+    });
+    expect(screen.queryByTestId("write-to-quote")).toBeNull();
+    await typeAsk("say yes");
+    await press(ASK);
+    expect((write.mock.calls as unknown[][])[1][0]).not.toHaveProperty("quote");
+  });
+
+  test("should keep the quote across a tuck and bring it back on reopening", async () => {
+    await openShot(jest.fn(async () => READ));
+    pick();
+    await addShot();
+
+    let node = screen.getByTestId("write-to").parent;
+    while (node !== null && node.props.presentationStyle !== "pageSheet") node = node.parent;
+    await act(async () => {
+      node!.props.onRequestClose();
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("follow-up-button"));
+    });
+
+    expect(screen.getByTestId(QUOTE).props.value).toBe(READ.text);
+  });
+
+  test("should bring the quote back on a remounted screen when it was the only thing kept", async () => {
+    await openShot(jest.fn(async () => READ));
+    pick();
+    await addShot();
+    let node = screen.getByTestId("write-to").parent;
+    while (node !== null && node.props.presentationStyle !== "pageSheet") node = node.parent;
+    await act(async () => {
+      node!.props.onRequestClose();
+    });
+
+    await screen.unmount();
+    await openShot(jest.fn(async () => READ));
+
+    expect(screen.getByTestId(QUOTE).props.value).toBe(READ.text);
+  });
+
+  test("should ask before Close when only a quote is there", async () => {
+    await openShot(jest.fn(async () => READ));
+    pick();
+    await addShot();
+
+    await press("Close");
+
+    expect(screen.getByTestId("confirm-dialog")).toHaveTextContent(/Close without copying\?/);
+  });
+
+  test("should disable the screenshot button when offline", async () => {
+    const { Pressable, Text } = jest.requireActual("react-native") as typeof import("react-native");
+    function Sheet() {
+      const controller = useWriteTo("profile-1");
+      return (
+        <>
+          <WriteToSheet personName="Nina" controller={controller} />
+          <Pressable testID="open-it" onPress={controller.show}>
+            <Text>open</Text>
+          </Pressable>
+        </>
+      );
+    }
+    const tree = () => (
+      <ConfirmProvider>
+        <OfflineCopyProvider ownerId="user-1">
+          <Sheet />
+        </OfflineCopyProvider>
+      </ConfirmProvider>
+    );
+    answerByName(useAction, {}, quietCall);
+    answerByName(useMutation, {}, quietCall);
+    answerByName(useQuery, { [nameOf(api.featureFlags.switchedOff)]: ["aiPermission"] }, () => undefined);
+    const { rerender } = await render(tree());
+    await fireEvent.press(screen.getByTestId("open-it"));
+    expect(screen.getByTestId("write-to-screenshot-button")).not.toBeDisabled();
+
+    online(false);
+    await rerender(tree());
+
+    expect(screen.getByTestId("write-to-screenshot-button")).toBeDisabled();
+  });
+
+  test("should hide the screenshot button once there is an answer", async () => {
+    await openShot(jest.fn(async () => READ));
+    await typeAsk("say yes");
+    await press(ASK);
+
+    expect(screen.queryByTestId("write-to-screenshot-button")).toBeNull();
   });
 });

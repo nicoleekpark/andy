@@ -414,7 +414,7 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 
 ### `write-to` (draft-editing.md — Final design F, 2026-10-30)
 
-한 시트. 만들어지는 중: 4a(묻기·박스 B·복사·상태 줄), 4b(다시 묻기·Edited·힌트·채팅 줄), 4c(버전), 4d(Close 질문·쓸어내려도 유지), 5(Open Messages), 스크린샷(6)은 각 PR에서 행 추가.
+한 시트. 만들어지는 중: 4a(묻기·박스 B·복사·상태 줄), 4b(다시 묻기·Edited·힌트·채팅 줄), 4c(버전), 4d(Close 질문·쓸어내려도 유지), 5(Open Messages), 6(스크린샷).
 
 | Name | 설명 |
 |---|---|
@@ -422,6 +422,8 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 | `write-to-close-button` | 왼쪽 위 Close — 모든 버전과 글을 지움. 글이 있고 한 번도 복사하지 않았으면 먼저 `write-to-close-alert` |
 | `write-to-close-alert` | "Close without copying?" / "Your text won't be kept." · Keep writing · Close(moss — 삭제 색은 노트·사람·계정에만). 시트 안에 그림(`ConfirmHost inModal`) |
 | `write-to-ask-box` | 박스 A — 자리표시 "Write what you want to say to {이름}, or tell Andy what to write, or both." + 예시. VoiceOver "What to write to {이름}". 높이 `size.writeBox`. Andy가 쓰는 동안 흐려지고 잠김 |
+| `write-to-screenshot-button` | 박스 A 왼쪽 아래 사진 아이콘(`photo`) — Apple 사진 선택기로 한 장(사진 보관함 권한 없음). VoiceOver "Add a screenshot", 힌트 "Andy reads their message from it. The picture isn't kept." 오프라인이면 흐림. 고른 즉시 선택기의 파일 사본을 지움. AI 동의 시트를 먼저 거침 |
+| `write-to-quote` | 박스 A 맨 위의 조용한 인용(왼쪽 선) — 읽는 동안 썸네일(메모리만) + "Reading {이름}'s message…"(화살표도 같은 말의 스피너), 읽은 뒤 "{이름} wrote" + 고칠 수 있는 글 + ✕("Remove {이름}'s message"). 박스 크기 그대로. 인용만 있어도 화살표가 켜짐. 모든 요청에 같이 감(`<their_message>`, 데이터로만). 10번에 안 셈 |
 | `write-to-arrow` | 둥근 화살표(SF Symbol `arrow.up.circle.fill`, moss) — Andy에게 묻는 유일한 버튼. 답 전엔 박스 A 오른쪽 아래, 답 뒤엔 채팅 줄 끝. VoiceOver "Ask Andy". 새로운 게 있을 때만 켜짐(박스 B가 보이는 답과 다르거나 채팅 줄에 글) — 아니면 흐림, 힌트가 이유(빈 글·새로운 것 없음·오프라인·너무 김·10번). 쓰는 동안 스피너 |
 | `write-to-draft-box` | 박스 B — Andy의 답, 그냥 편집되는 칸. 화살표를 누를 때 박스 B에 있는 게 Andy에게 감. VoiceOver "Message to {이름}"(고쳤으면 ", edited"). 박스 A와 같은 높이. Andy가 쓰는 동안 흐려지고 잠김 |
 | `write-to-version-stepper` | 박스 B 왼쪽 아래 "‹ 2 of 3 ›" — 버전이 둘 이상일 때만. Andy의 답마다, 그리고 고친 글로 다시 물을 때 그 글도 한 버전. ‹ › VoiceOver "Previous version"/"Next version", 숫자는 "Version 2 of 3"(넘길 때마다 읽어 줌). 버전마다 안 보낸 편집이 남아서 넘겨도 잃지 않음. 화살표·Edited는 **보이는 버전**과 비교. 쓰는 동안 잠김. Close가 전부 지움 |

@@ -18,6 +18,7 @@ import {
   keyDetails,
   missingDetails,
 } from "./writeToPrompt";
+import { MAX_IMAGE_CHARS } from "./extractionPrompt";
 import { aiNotEnforced } from "../test-support/ai-permission";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -1099,4 +1100,116 @@ test("should refuse a signed-out caller when saving a style", async () => {
 
   await expect(t.mutation(api.writeTo.rememberStyle, { profileId: amy, style: STYLE })).rejects.toThrow();
   expect(await followUpStyleOf(t, amy)).toBeNull();
+});
+
+// 11. Reply with a screenshot (slice 6) ---------------------------------------
+
+const SHOT = { imageBase64: "eA==", mediaType: "image/jpeg" as const };
+const shotSays = (payload: unknown) => createMessage.mockResolvedValueOnce(claudeSays(payload));
+
+test("should refuse a screenshot from someone signed out, and never call Claude", async () => {
+  const t = await aiNotEnforced(convexTest(schema, modules));
+
+  await expect(t.action(api.writeTo.readScreenshot, SHOT)).rejects.toThrow();
+  expect(createMessage).not.toHaveBeenCalled();
+});
+
+test("should refuse a screenshot and never call Claude when the AI go-ahead is enforced and not given", async () => {
+  const t = convexTest(schema, modules);
+  await t.withIdentity(ALICE).mutation(api.users.ensureUser, {});
+
+  await expect(t.withIdentity(ALICE).action(api.writeTo.readScreenshot, SHOT)).rejects.toThrow(AI_NOT_ALLOWED);
+  expect(createMessage).not.toHaveBeenCalled();
+});
+
+test("should refuse an empty screenshot before calling Claude", async () => {
+  const t = await aiNotEnforced(convexTest(schema, modules));
+
+  await expect(
+    t.withIdentity(ALICE).action(api.writeTo.readScreenshot, { ...SHOT, imageBase64: "" }),
+  ).rejects.toThrow("That screenshot didn't come through. Try again.");
+  expect(createMessage).not.toHaveBeenCalled();
+});
+
+test("should refuse a screenshot over the size limit before calling Claude", async () => {
+  const t = await aiNotEnforced(convexTest(schema, modules));
+
+  await expect(
+    t.withIdentity(ALICE).action(api.writeTo.readScreenshot, {
+      ...SHOT,
+      imageBase64: "a".repeat(MAX_IMAGE_CHARS + 1),
+    }),
+  ).rejects.toThrow("That screenshot is too large for Andy to read. Try another.");
+  expect(createMessage).not.toHaveBeenCalled();
+});
+
+test("should return found with their words, trimmed, when Claude reads a message", async () => {
+  const t = await aiNotEnforced(convexTest(schema, modules));
+  shotSays({ found: true, text: "  Are you free Thursday?\nLet me know  " });
+
+  const read = await t.withIdentity(ALICE).action(api.writeTo.readScreenshot, SHOT);
+
+  expect(read).toEqual({ found: true, text: "Are you free Thursday?\nLet me know" });
+  expect(createMessage).toHaveBeenCalledTimes(1);
+});
+
+test("should return found false when Claude says found but the text is empty", async () => {
+  const t = await aiNotEnforced(convexTest(schema, modules));
+  shotSays({ found: true, text: "   " });
+
+  const read = await t.withIdentity(ALICE).action(api.writeTo.readScreenshot, SHOT);
+
+  expect(read.found).toBe(false);
+  expect(read.text).toBe("");
+});
+
+test("should cap what is read from a screenshot at the Write to limit", async () => {
+  const t = await aiNotEnforced(convexTest(schema, modules));
+  shotSays({ found: true, text: "a".repeat(MAX_WRITE_TO_CHARS + 50) });
+
+  const read = await t.withIdentity(ALICE).action(api.writeTo.readScreenshot, SHOT);
+
+  expect(read.text).toHaveLength(MAX_WRITE_TO_CHARS);
+});
+
+test("should accept a first ask with only their message and put it in their_message", async () => {
+  const t = await aiNotEnforced(convexTest(schema, modules));
+  const { amy } = await seed(t);
+  createMessage.mockResolvedValueOnce(reply());
+
+  await t.withIdentity(ALICE).action(api.writeTo.write, { ...base(amy), request: "  ", quote: "  Are you free Thursday?  " });
+
+  expect(promptSent()).toContain("<their_message>\nAre you free Thursday?\n</their_message>");
+});
+
+test("should refuse a first ask with neither a request nor their message", async () => {
+  const t = await aiNotEnforced(convexTest(schema, modules));
+  const { amy } = await seed(t);
+
+  await expect(
+    t.withIdentity(ALICE).action(api.writeTo.write, { ...base(amy), request: "", quote: "   " }),
+  ).rejects.toThrow(WRITE_FIRST);
+  expect(createMessage).not.toHaveBeenCalled();
+});
+
+test("should refuse their message over the limit, and never call Claude", async () => {
+  const t = await aiNotEnforced(convexTest(schema, modules));
+  const { amy } = await seed(t);
+
+  await expect(
+    t.withIdentity(ALICE).action(api.writeTo.write, { ...base(amy), quote: "a".repeat(MAX_WRITE_TO_CHARS + 1) }),
+  ).rejects.toThrow(TOO_LONG);
+  expect(createMessage).not.toHaveBeenCalled();
+});
+
+test("should keep their message from forming a tag, counted on every < in the built message", async () => {
+  const t = await aiNotEnforced(convexTest(schema, modules));
+  const { amy } = await seed(t);
+  createMessage.mockResolvedValueOnce(reply());
+
+  await t.withIdentity(ALICE).action(api.writeTo.write, { ...base(amy), quote: PAYLOADS.join("\n") });
+
+  // person, notes, one note, request, their_message: each opened and closed = 10.
+  expect(promptSent().match(/</g) ?? []).toHaveLength(10);
+  expect(promptSent()).toContain("ignore the rules");
 });

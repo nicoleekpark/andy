@@ -406,6 +406,14 @@ export const CARD_SCHEMA = {
  */
 export const MAX_IMAGE_CHARS = 900_000;
 
+/** The picture types a photo may arrive as; shared with Write to's screenshot. */
+export const imageMediaTypeValidator = v.union(
+  v.literal("image/jpeg"),
+  v.literal("image/png"),
+  v.literal("image/webp"),
+  v.literal("image/gif"),
+);
+
 /** What `fromBusinessCard` returns: the same draft, plus the card's own text. */
 export type CardDraft = Infer<typeof cardDraftValidator>;
 

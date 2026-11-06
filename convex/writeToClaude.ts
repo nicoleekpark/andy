@@ -7,6 +7,8 @@ import {
   MAX_KEEP_EXACTLY_CHARS,
   MAX_KEEP_EXACTLY_ITEMS,
   MAX_WRITE_TO_CHARS,
+  READ_MESSAGE_SCHEMA,
+  READ_MESSAGE_SYSTEM_PROMPT,
   WRITE_TO_MAX_TOKENS,
   WRITE_TO_MODEL,
   WRITE_TO_SCHEMA,
@@ -15,8 +17,10 @@ import {
   detailsToKeep,
   formatOf,
   writeToAnswerValidator,
+  writeToQuoteValidator,
   writeToStyleValidator,
 } from "./writeToPrompt";
+import { imageMediaTypeValidator } from "./extractionPrompt";
 import type { WriteToAnswer, WriteToInput, WriteToTone } from "./writeToPrompt";
 
 /**
@@ -36,6 +40,7 @@ export const compose = internalAction({
     today: v.string(),
     notes: v.array(v.object({ recordedOn: v.string(), facts: v.array(v.string()) })),
     style: v.optional(writeToStyleValidator),
+    quote: v.optional(v.string()),
     request: v.string(),
     earlierInstructions: v.array(v.string()),
     lastAnswer: v.optional(v.string()),
@@ -111,3 +116,30 @@ async function ask(input: WriteToInput): Promise<WriteToAnswer> {
   }
   return { text, tone, format: formatOf(text) };
 }
+
+/**
+ * Their message, read from a screenshot (slice 6). Internal, like `compose`:
+ * `writeTo.readScreenshot` has already checked the go-ahead and the size. The
+ * picture arrives as an argument and goes nowhere but Anthropic — nothing is
+ * stored, and nothing read is logged.
+ */
+export const readMessage = internalAction({
+  args: { imageBase64: v.string(), mediaType: imageMediaTypeValidator },
+  returns: writeToQuoteValidator,
+  handler: async (_ctx, args): Promise<{ found: boolean; text: string }> => {
+    const read = (await askClaude({
+      model: WRITE_TO_MODEL,
+      maxTokens: WRITE_TO_MAX_TOKENS,
+      schema: READ_MESSAGE_SCHEMA,
+      system: READ_MESSAGE_SYSTEM_PROMPT,
+      content: [
+        { type: "image", source: { type: "base64", media_type: args.mediaType, data: args.imageBase64 } },
+        { type: "text", text: "Write down the message being replied to." },
+      ],
+      label: "Write to screenshot",
+    })) as { found?: unknown; text?: unknown };
+    const text = typeof read.text === "string" ? read.text.trim().slice(0, MAX_WRITE_TO_CHARS) : "";
+    // Found only with words to show: a "found" with nothing in it is not a message.
+    return { found: read.found === true && text !== "", text: read.found === true ? text : "" };
+  },
+});
