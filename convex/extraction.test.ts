@@ -35,6 +35,8 @@ vi.mock("@anthropic-ai/sdk", async (importOriginal) => {
   class MockAnthropic {
     static AuthenticationError = actual.AuthenticationError;
     static RateLimitError = actual.RateLimitError;
+    static BadRequestError = actual.BadRequestError;
+    static APIError = actual.APIError;
     static APIConnectionError = actual.APIConnectionError;
     messages = { create: createMessage };
     constructor(options: unknown) {
@@ -239,6 +241,101 @@ test("should surface a RateLimitError from the Anthropic SDK as a ConvexError, n
 
   await expect(rejection).rejects.toBeInstanceOf(ConvexError);
   await expect(rejection).rejects.not.toBeInstanceOf(Anthropic.RateLimitError);
+});
+
+const SPEND_LIMIT_MESSAGE = "Andy is taking a short break. Try again in a little while.";
+
+async function transcriptRejection(error: unknown) {
+  const t = await aiNotEnforced(convexTest(schema, modules));
+  createMessage.mockRejectedValueOnce(error);
+  return t.withIdentity(IDENTITY).action(api.extraction.fromTranscript, {
+    text: "Some private note about Nina.",
+    today: "2026-08-27",
+  });
+}
+
+function apiBody(type: string, message: string, details?: unknown) {
+  return { type: "error", error: { type, message, ...(details ? { details } : {}) } };
+}
+
+test("should say Andy is taking a short break when a 400 says the workspace API usage limits were reached", async () => {
+  const msg = "You have reached your specified workspace API usage limits. You will regain access on 2026-12-01 at 00:00 UTC.";
+  const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+  try {
+    const rejection = await transcriptRejection(
+      new Anthropic.BadRequestError(400, apiBody("invalid_request_error", msg), msg, new Headers()),
+    ).then(
+      () => null,
+      (e) => e,
+    );
+    expect(rejection).toBeInstanceOf(ConvexError);
+    expect(rejection.data).toBe(SPEND_LIMIT_MESSAGE);
+    expect(spy.mock.calls.flat().join(" ")).not.toContain("Nina");
+  } finally {
+    spy.mockRestore();
+  }
+});
+
+test("should say Andy is taking a short break when a 429 carries the enforced_spend_limit_reached error code", async () => {
+  const msg = "Rate limit reached";
+  const rejection = transcriptRejection(
+    new Anthropic.RateLimitError(
+      429,
+      apiBody("rate_limit_error", msg, { error_code: "enforced_spend_limit_reached" }),
+      msg,
+      new Headers(),
+    ),
+  );
+  await expect(rejection).rejects.toMatchObject({ data: SPEND_LIMIT_MESSAGE });
+});
+
+test("should say Andy is taking a short break when Anthropic answers 402 billing_error", async () => {
+  const msg = "Payment required";
+  const rejection = transcriptRejection(
+    new Anthropic.APIError(402, apiBody("billing_error", msg), msg, new Headers()),
+  );
+  await expect(rejection).rejects.toMatchObject({ data: SPEND_LIMIT_MESSAGE });
+});
+
+test("should say Andy is taking a short break when a 402 arrives whatever its body says", async () => {
+  const msg = "Payment required";
+  const rejection = transcriptRejection(
+    new Anthropic.APIError(402, apiBody("unknown_error", msg), msg, new Headers()),
+  );
+  await expect(rejection).rejects.toMatchObject({ data: SPEND_LIMIT_MESSAGE });
+});
+
+test("should say Andy is taking a short break when a 400 says the credit balance is too low", async () => {
+  const msg = "Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.";
+  const rejection = transcriptRejection(
+    new Anthropic.BadRequestError(400, apiBody("invalid_request_error", msg), msg, new Headers()),
+  );
+  await expect(rejection).rejects.toMatchObject({ data: SPEND_LIMIT_MESSAGE });
+});
+
+test("should keep the too-many-things message when an ordinary 429 has no spend-limit code", async () => {
+  const msg = "Number of request tokens has exceeded your per-minute rate limit";
+  const rejection = transcriptRejection(
+    new Anthropic.RateLimitError(429, apiBody("rate_limit_error", msg), msg, new Headers()),
+  );
+  await expect(rejection).rejects.toMatchObject({
+    data: "Andy is thinking about too many things at once. Try again in a moment.",
+  });
+});
+
+test("should keep the generic message when an ordinary 400 is a bad request, not a spend limit", async () => {
+  const msg = "max_tokens: 999999 > 64000, which is the maximum allowed number of output tokens";
+  const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+  try {
+    const rejection = transcriptRejection(
+      new Anthropic.BadRequestError(400, apiBody("invalid_request_error", msg), msg, new Headers()),
+    );
+    await expect(rejection).rejects.toMatchObject({
+      data: "Andy couldn't make sense of that one. Try again, or type it in instead.",
+    });
+  } finally {
+    spy.mockRestore();
+  }
 });
 
 test("should surface an APIConnectionError from the Anthropic SDK as a ConvexError, not the raw SDK error", async () => {

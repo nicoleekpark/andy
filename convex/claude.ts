@@ -39,6 +39,25 @@ export type ClaudeRequest = {
 };
 
 /**
+ * Whether Anthropic refused because the account hit its spend limit or ran out
+ * of credit. Three shapes reach us (Anthropic docs, checked 2026-11-05): a
+ * limit the owner set comes back as 400 "…reached your specified … API usage
+ * limits"; the tier's cap as 429 with `enforced_spend_limit_reached`; no
+ * credit as 402 `billing_error`, or 400 "Your credit balance is too low".
+ * Read from the status and the body rather than a class, because a 429 is
+ * otherwise an ordinary rate limit and a 400 an ordinary bad request.
+ */
+function isSpendLimit(error: unknown): boolean {
+  if (typeof error !== "object" || error === null || !("status" in error)) return false;
+  const { status } = error as { status?: unknown };
+  if (status === 402) return true;
+  if (status !== 400 && status !== 429) return false;
+  const body = JSON.stringify((error as { error?: unknown }).error ?? null);
+  const text = `${(error as { message?: unknown }).message ?? ""} ${body}`;
+  return /enforced_spend_limit_reached|billing_error|api usage limits|credit balance is too low/i.test(text);
+}
+
+/**
  * Make the call, translate its failures, parse its JSON.
  *
  * Every feature that talks to Claude goes through here — extraction from a
@@ -79,6 +98,17 @@ export async function askClaude(options: ClaudeRequest): Promise<unknown> {
   } catch (error) {
     // Typed SDK errors, most specific first. Each maps to something the user
     // can act on — or to an honest "not your fault" when they can't.
+    if (isSpendLimit(error)) {
+      // The account's monthly cap, or its credit, has run out: nothing the
+      // person did, and nothing a retry fixes until the owner raises it.
+      // The feature and the status only: 402 is credit, 400/429 a limit.
+      console.error(
+        `${options.label}: Anthropic spend limit or credit reached (HTTP ${(error as { status: number }).status}). ` +
+          "Raise it in the Anthropic console " +
+          "(Settings → Limits, or Billing); no deploy is needed.",
+      );
+      throw new ConvexError("Andy is taking a short break. Try again in a little while.");
+    }
     if (error instanceof Anthropic.AuthenticationError) {
       console.error("Anthropic rejected the API key:", error.message);
       throw new ConvexError(
