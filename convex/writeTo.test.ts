@@ -647,6 +647,44 @@ test("should list only the details the answer lost, whatever their case", () => 
   expect(missingDetails("Thursday at 3:30", "see you soon")).toEqual(["Thursday", "3:30"]);
 });
 
+test("should find short day and month forms in key details when they are capitalized", () => {
+  expect(keyDetails("see you Fri")).toEqual(["Fri"]);
+  expect(keyDetails("Thu or Thurs or Tues")).toEqual(["Thu", "Thurs", "Tues"]);
+  expect(keyDetails("Sept 5, Sep 6, Oct 7")).toEqual(["Sept", "5", "Sep", "6", "Oct", "7"]);
+  expect(keyDetails("lunch Fri. then")).toEqual(["Fri"]);
+  expect(keyDetails("Fri at 3:30 with https://a.com/x")).toEqual(["Fri", "3:30", "https://a.com/x"]);
+});
+
+test("should not treat lowercase ordinary words as details when they spell a short day or month", () => {
+  expect(keyDetails("I sat down in the sun on the wed lawn")).toEqual([]);
+  expect(keyDetails("mar the paint")).toEqual([]);
+  expect(keyDetails("jan")).toEqual([]);
+  expect(keyDetails("Sat")).toEqual(["Sat"]);
+  expect(keyDetails("Jan")).toEqual(["Jan"]);
+});
+
+test("should not count a short form again when it is part of a link or email", () => {
+  expect(keyDetails("see https://a.com/Oct")).toEqual(["https://a.com/Oct"]);
+  expect(keyDetails("write to Jan@x.com")).toEqual(["Jan@x.com"]);
+  expect(keyDetails("Oct 5 at https://a.com/Oct")).toEqual(["Oct", "5", "https://a.com/Oct"]);
+});
+
+test("should not let an ordinary word in the answer keep a short form", () => {
+  expect(missingDetails("see you Sat", "we sat down")).toEqual(["Sat"]);
+  expect(missingDetails("see you Sat", "see you Sat")).toEqual([]);
+  expect(missingDetails("see you Sat", "see you Saturday")).toEqual([]);
+});
+
+test("should count a day or month as kept when the answer spells it differently", () => {
+  expect(missingDetails("see you Fri", "see you Friday")).toEqual([]);
+  expect(missingDetails("see you Friday", "see you Fri")).toEqual([]);
+  expect(missingDetails("Sept 5", "September 5")).toEqual([]);
+  expect(missingDetails("September 5", "Sept 5")).toEqual([]);
+  expect(missingDetails("Fri", "see you soon")).toEqual(["Fri"]);
+  expect(missingDetails("Fri", "see you Fridays")).toEqual(["Fri"]);
+  expect(missingDetails("Friday", "see you Fridays")).toEqual(["Friday"]);
+});
+
 async function composeLater(extra: Record<string, unknown>) {
   const t = convexTest(schema, modules);
   return t.action(internal.writeToClaude.compose, {
