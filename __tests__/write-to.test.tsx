@@ -7,7 +7,9 @@ import { size } from "../src/constants/theme";
 import { useAction, useConvexConnectionState, useMutation, useQuery } from "convex/react";
 import { renderRouter } from "expo-router/testing-library";
 import { api } from "@convex/_generated/api";
-import { WriteToSheet, useWriteTo } from "../src/components/write-to";
+import { WriteToSheet, forgetWriteToSheets, useWriteTo } from "../src/components/write-to";
+import { ConfirmProvider } from "../src/components/confirm-dialog";
+import { answerDialog } from "../test-support/dialog";
 import { OfflineCopyProvider } from "../src/lib/offline-copy";
 import { LockedContext } from "../src/lib/lock-context";
 import { MAX_WRITE_TO_CHARS } from "../convex/writeToPrompt";
@@ -91,6 +93,8 @@ function online(isWebSocketConnected: boolean) {
 }
 
 afterEach(() => {
+  // Tucked-away sheets live in memory for the app's life; each test starts clean.
+  forgetWriteToSheets();
   online(true);
   jest.restoreAllMocks();
   jest.clearAllMocks();
@@ -216,6 +220,7 @@ test("should start the next sheet empty and usable when Close came while the wri
   expect(write).toHaveBeenCalledTimes(1);
 
   await press("Close");
+  await answerDialog("Close");
   await act(async () => {
     resolve(ANSWER);
   });
@@ -245,9 +250,11 @@ test("should not show the offline line, and keep the Check line, when the connec
     );
   }
   const tree = () => (
-    <OfflineCopyProvider ownerId="user-1">
-      <Sheet />
-    </OfflineCopyProvider>
+    <ConfirmProvider>
+      <OfflineCopyProvider ownerId="user-1">
+        <Sheet />
+      </OfflineCopyProvider>
+    </ConfirmProvider>
   );
   answerByName(useAction, { [nameOf(api.writeTo.write)]: jest.fn(async () => ({ ...ANSWER, droppedDetails: ["Thursday"] })) }, quietCall);
   answerByName(useMutation, {}, quietCall);
@@ -338,14 +345,14 @@ describe("app lock", () => {
     answerByName(useAction, {}, quietCall);
     answerByName(useMutation, {}, quietCall);
     answerByName(useQuery, { [nameOf(api.featureFlags.switchedOff)]: ["aiPermission"] }, () => undefined);
-    const { rerender } = await render(<Harness locked={false} />);
+    const { rerender } = await render(<ConfirmProvider><Harness locked={false} /></ConfirmProvider>);
     await fireEvent.press(screen.getByTestId("open-it"));
     await fireEvent.changeText(screen.getByLabelText("What to write to Nina"), "keep me");
 
-    await rerender(<Harness locked />);
+    await rerender(<ConfirmProvider><Harness locked /></ConfirmProvider>);
     expect(screen.queryByLabelText("What to write to Nina")).toBeNull();
 
-    await rerender(<Harness locked={false} />);
+    await rerender(<ConfirmProvider><Harness locked={false} /></ConfirmProvider>);
     expect(screen.getByLabelText("What to write to Nina").props.value).toBe("keep me");
   });
 });
@@ -362,6 +369,7 @@ test("should not show the clipboard line or remember the style on the next sheet
   await askAndy(jest.fn(async () => ANSWER), rememberStyle);
   await press("Copy the message");
   await press("Close");
+  await answerDialog("Close");
   await act(async () => {
     fail(new Error("no"));
   });
@@ -577,9 +585,11 @@ describe("asking again (slice 4b)", () => {
       );
     }
     const tree = () => (
-      <OfflineCopyProvider ownerId="user-1">
-        <Sheet />
-      </OfflineCopyProvider>
+      <ConfirmProvider>
+        <OfflineCopyProvider ownerId="user-1">
+          <Sheet />
+        </OfflineCopyProvider>
+      </ConfirmProvider>
     );
     answerByName(useAction, { [nameOf(api.writeTo.write)]: jest.fn(async () => ANSWER) }, quietCall);
     answerByName(useMutation, {}, quietCall);
@@ -820,5 +830,228 @@ describe("versions (slice 4c)", () => {
     expect(screen.getByTestId("write-to-status-line")).toHaveTextContent("Check: Thursday");
     await back();
     expect(screen.queryByText(/Check:/)).toBeNull();
+  });
+});
+
+describe("Close and swipe-down (slice 4d)", () => {
+  const CHAT = "write-to-chat-line";
+  const A2 = { ...ANSWER, text: "Hi Nina, Friday?" };
+
+  /** What a swipe down does: the sheet's Modal is asked to close. */
+  async function swipeDown() {
+    let node = screen.getByTestId("write-to").parent;
+    while (node !== null && node.props.presentationStyle !== "pageSheet") node = node.parent;
+    await act(async () => {
+      node!.props.onRequestClose();
+    });
+  }
+  async function reopen() {
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("follow-up-button"));
+    });
+  }
+  /** Two answers, a chat line half-written: everything the sheet can hold. */
+  async function everything() {
+    await askAndy(jest.fn().mockResolvedValueOnce(ANSWER).mockResolvedValue(A2));
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId(CHAT), "warmer");
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("write-to-arrow"));
+    });
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId(CHAT), "half written");
+    });
+  }
+
+  test("should ask first, keep everything on Keep writing, and start empty after Close when there is text and nothing was copied", async () => {
+    await askAndy(jest.fn(async () => ANSWER));
+
+    await press("Close");
+    expect(screen.getByTestId("confirm-dialog")).toHaveTextContent(/Close without copying\?/);
+    expect(screen.getByTestId("confirm-dialog")).toHaveTextContent(/Your text won't be kept\./);
+
+    await answerDialog("Keep writing");
+    expect(screen.queryByTestId("confirm-dialog")).toBeNull();
+    expect(screen.getByLabelText("Message to Nina").props.value).toBe(ANSWER.text);
+
+    await press("Close");
+    await answerDialog("Close");
+    expect(screen.queryByLabelText("What to write to Nina")).toBeNull();
+    await reopen();
+    expect(screen.getByLabelText("What to write to Nina").props.value).toBe("");
+    expect(screen.queryByLabelText("Message to Nina")).toBeNull();
+  });
+
+  test("should ask when only box A has text", async () => {
+    await open(jest.fn(async () => ANSWER));
+    await typeAsk("just a start");
+
+    await press("Close");
+
+    expect(screen.getByTestId("confirm-dialog")).toHaveTextContent(/Close without copying\?/);
+  });
+
+  test("should close at once without asking when the text was copied", async () => {
+    jest.spyOn(Clipboard, "setStringAsync").mockResolvedValue(true);
+    await askAndy(jest.fn(async () => ANSWER));
+    await press("Copy the message");
+
+    await press("Close");
+
+    expect(screen.queryByTestId("confirm-dialog")).toBeNull();
+    expect(screen.queryByLabelText("What to write to Nina")).toBeNull();
+    await reopen();
+    expect(screen.getByLabelText("What to write to Nina").props.value).toBe("");
+  });
+
+  test("should close at once without asking when there is no text", async () => {
+    await open(jest.fn(async () => ANSWER));
+
+    await press("Close");
+
+    expect(screen.queryByTestId("confirm-dialog")).toBeNull();
+    expect(screen.queryByLabelText("What to write to Nina")).toBeNull();
+  });
+
+  test("should hide the sheet on a swipe down and bring back box A, box B, every version and the chat line on reopening", async () => {
+    await everything();
+
+    await swipeDown();
+    expect(screen.queryByLabelText("What to write to Nina")).toBeNull();
+    expect(screen.queryByTestId("confirm-dialog")).toBeNull();
+    await reopen();
+
+    expect(screen.getByTestId("write-to-draft-box").props.value).toBe(A2.text);
+    expect(screen.getByLabelText("Version 2 of 2")).toBeTruthy();
+    expect(screen.getByTestId(CHAT).props.value).toBe("half written");
+  });
+
+  test("should bring back box A's text on reopening when the sheet was tucked away before asking", async () => {
+    await open(jest.fn(async () => ANSWER));
+    await typeAsk("a start");
+
+    await swipeDown();
+    await reopen();
+
+    expect(screen.getByLabelText("What to write to Nina").props.value).toBe("a start");
+  });
+
+  test("should keep the sheet across the profile screen being left and opened again", async () => {
+    await everything();
+    await swipeDown();
+
+    await screen.unmount();
+    await open(jest.fn(async () => ANSWER));
+
+    expect(screen.getByTestId("write-to-draft-box").props.value).toBe(A2.text);
+    expect(screen.getByLabelText("Version 2 of 2")).toBeTruthy();
+    expect(screen.getByTestId(CHAT).props.value).toBe("half written");
+  });
+
+  test("should open empty on a remounted screen when the tucked sheets were forgotten", async () => {
+    await everything();
+    await swipeDown();
+
+    forgetWriteToSheets();
+    await screen.unmount();
+    await open(jest.fn(async () => ANSWER));
+
+    expect(screen.getByLabelText("What to write to Nina").props.value).toBe("");
+    expect(screen.queryByTestId("write-to-draft-box")).toBeNull();
+  });
+
+  test("should give each person their own sheet when the screen is reused for someone else, and never file one person's text under another", async () => {
+    answerByName(useAction, {}, quietCall);
+    answerByName(useMutation, {}, quietCall);
+    answerByName(useQuery, { [nameOf(api.featureFlags.switchedOff)]: ["aiPermission"] }, () => undefined);
+    function Inner({ id }: { id: string }) {
+      const controller = useWriteTo(id);
+      return (
+        <>
+          <WriteToSheet personName="Nina" controller={controller} />
+          <ShowIt onShow={controller.show} />
+        </>
+      );
+    }
+    const Reused = ({ id }: { id: string }) => (
+      <ConfirmProvider>
+        <Inner id={id} />
+      </ConfirmProvider>
+    );
+    const { Pressable, Text } = jest.requireActual("react-native") as typeof import("react-native");
+    function ShowIt({ onShow }: { onShow: () => void }) {
+      return (
+        <Pressable testID="show-it" onPress={onShow}>
+          <Text>show</Text>
+        </Pressable>
+      );
+    }
+    const boxA = () => screen.getByLabelText("What to write to Nina");
+    const show = () => act(async () => { fireEvent.press(screen.getByTestId("show-it")); });
+
+    const { rerender } = await render(<Reused id="amy" />);
+    await show();
+    await fireEvent.changeText(boxA(), "for Amy");
+    await swipeDown();
+
+    await rerender(<Reused id="ben" />);
+    await show();
+    expect(boxA().props.value).toBe("");
+    await swipeDown();
+
+    await rerender(<Reused id="amy" />);
+    await show();
+    expect(boxA().props.value).toBe("for Amy");
+    await swipeDown();
+
+    await rerender(<Reused id="ben" />);
+    await screen.unmount();
+    await render(<Reused id="ben" />);
+    await show();
+    expect(boxA().props.value).toBe("");
+  });
+
+  test("should drop an ask still running for the previous person when the screen is reused for someone else", async () => {
+    let finish: (v: typeof ANSWER) => void = () => undefined;
+    const write = jest.fn(() => new Promise<typeof ANSWER>((r) => { finish = r; }));
+    answerByName(useAction, { [nameOf(api.writeTo.write)]: write }, quietCall);
+    answerByName(useMutation, {}, quietCall);
+    answerByName(useQuery, { [nameOf(api.featureFlags.switchedOff)]: ["aiPermission"] }, () => undefined);
+    const { Pressable, Text } = jest.requireActual("react-native") as typeof import("react-native");
+    function Inner({ id }: { id: string }) {
+      const controller = useWriteTo(id);
+      return (
+        <>
+          <WriteToSheet personName="Nina" controller={controller} />
+          <Pressable testID="show-it" onPress={controller.show}>
+            <Text>show</Text>
+          </Pressable>
+        </>
+      );
+    }
+    const Reused = ({ id }: { id: string }) => (
+      <ConfirmProvider>
+        <Inner id={id} />
+      </ConfirmProvider>
+    );
+    const boxA = () => screen.getByLabelText("What to write to Nina");
+    const show = () => act(async () => { fireEvent.press(screen.getByTestId("show-it")); });
+
+    const { rerender } = await render(<Reused id="amy" />);
+    await show();
+    await fireEvent.changeText(boxA(), "for Amy");
+    await press(ASK);
+    expect(write).toHaveBeenCalledTimes(1);
+
+    await rerender(<Reused id="ben" />);
+    await act(async () => { finish(ANSWER); });
+    await show();
+    expect(screen.queryByTestId("write-to-draft-box")).toBeNull();
+    expect(boxA().props.value).toBe("");
+
+    await fireEvent.changeText(boxA(), "for Ben");
+    await press(ASK);
+    expect(write).toHaveBeenCalledTimes(2);
   });
 });

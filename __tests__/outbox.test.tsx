@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { useAuth } from "@clerk/expo";
 import { useAction, useConvexAuth, useConvexConnectionState } from "convex/react";
 import { renderRouter } from "expo-router/testing-library";
@@ -7,7 +7,9 @@ import { answerDialog, spyOnConfirm } from "../test-support/dialog";
 import { Image } from "expo-image";
 import * as Clipboard from "expo-clipboard";
 import * as native from "@/lib/native";
-import { fingerprintOf } from "@/lib/on-phone";
+import { fingerprintOf, forgetOnThisPhone } from "@/lib/on-phone";
+import { useWriteTo } from "@/components/write-to";
+import { ConfirmProvider } from "@/components/confirm-dialog";
 
 /**
  * Notes kept on this phone while offline (`src/lib/outbox.tsx`): what is kept,
@@ -391,5 +393,46 @@ describe("outbox in the app", () => {
     await waitFor(() => expect(signOut).toHaveBeenCalledTimes(1));
     expect(files().has(OUTBOX)).toBe(false);
     await waitFor(() => expect(cancel).toHaveBeenCalledWith("ours"));
+  });
+});
+
+describe("Write to sheet, tucked away", () => {
+  const { Pressable, Text } = jest.requireActual("react-native") as typeof import("react-native");
+  function Tucked() {
+    const sheet = useWriteTo("profile-1");
+    return (
+      <>
+        <Text testID="kept-text">{sheet.request}</Text>
+        <Pressable testID="type-it" onPress={() => sheet.setRequest("ask if she is free Thursday")}>
+          <Text>type</Text>
+        </Pressable>
+        <Pressable testID="tuck-it" onPress={sheet.tuck}>
+          <Text>tuck</Text>
+        </Pressable>
+      </>
+    );
+  }
+  const tree = () => (
+    <ConfirmProvider>
+      <Tucked />
+    </ConfirmProvider>
+  );
+
+  test("should open empty on a remounted screen when the phone was forgotten after the sheet was tucked away", async () => {
+    const first = await render(tree());
+    await fireEvent.press(screen.getByTestId("type-it"));
+    await fireEvent.press(screen.getByTestId("tuck-it"));
+    await first.unmount();
+
+    // Control: left alone, the text is still there on the next mount.
+    const second = await render(tree());
+    expect(screen.getByTestId("kept-text")).toHaveTextContent("ask if she is free Thursday");
+    await second.unmount();
+
+    forgetOnThisPhone();
+    await render(tree());
+
+    expect(screen.getByTestId("kept-text")).toHaveTextContent("");
+    expect(screen.getByTestId("kept-text").props.children).toBe("");
   });
 });

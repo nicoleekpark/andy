@@ -21,6 +21,8 @@ import { useAiGoAhead } from "@/lib/ai-go-ahead";
 import { putOnClipboard } from "@/lib/clipboard";
 import { localToday } from "@/lib/dates";
 import { useLocked } from "../lib/lock-context";
+import { onForgetOnThisPhone } from "@/lib/on-phone";
+import { ConfirmHost, useConfirm } from "@/components/confirm-dialog";
 import { useOnline } from "@/lib/offline-copy";
 
 /**
@@ -29,11 +31,13 @@ import { useOnline } from "@/lib/offline-copy";
  * One sheet: box A, the arrow, then Andy's answer in box B, editable, with a
  * copy button; then edit it, or tell Andy what to change on the chat line, and
  * ask again (slices 4a, 4b), stepping through every version with ‹ › (4c).
- * The Close question and keeping the sheet when it is swiped away follow in
- * their own slice; until then Close and a swipe both close.
  *
- * Nothing is kept: the text lives in memory in the profile screen, above the
- * sheet, so the app lock can hide the sheet without losing it.
+ * Swiping the sheet down only tucks it away (4d): opening Write to for the
+ * same person again brings back both boxes, every version and the chat line.
+ * Kept per person **in memory only** — never on disk, never on the server —
+ * until Close (which asks first when nothing was copied), sign-out, or iOS
+ * ending Andy. The live state sits in the profile screen, above the sheet, so
+ * the app lock can hide the sheet without losing it.
  */
 
 type Answer = FunctionReturnType<typeof api.writeTo.write>;
@@ -45,6 +49,29 @@ type Answer = FunctionReturnType<typeof api.writeTo.write>;
  * text taking the label of the version it was edited from.
  */
 type Version = { text: string; answer: Answer | null; label: Answer };
+
+/** What a tucked-away sheet keeps for its person. */
+type Kept = {
+  request: string;
+  versions: Version[];
+  drafts: string[];
+  shown: number;
+  instruction: string;
+  earlier: string[];
+  asksAfterFirst: number;
+  copiedOnce: boolean;
+};
+
+/**
+ * Tucked-away sheets, by person — in memory only, gone with the app. A sign-out
+ * the person chose clears them with everything else (`forgetOnThisPhone`).
+ */
+const kept = new Map<string, Kept>();
+/** Every tucked-away sheet gone — on a sign-out the person chose. */
+export function forgetWriteToSheets(): void {
+  kept.clear();
+}
+onForgetOnThisPhone(forgetWriteToSheets);
 
 /** Said in the Strings table's words; one line at a time. */
 type Problem = "failed" | "notNow" | "clipboard";
@@ -67,24 +94,29 @@ export function useWriteTo(profileId: string) {
   const write = useAction(api.writeTo.write);
   const rememberStyle = useMutation(api.writeTo.rememberStyle);
   const goAhead = useAiGoAhead();
+  // Asked from out here: the question must outlive the sheet the lock hides.
+  const confirm = useConfirm();
+  const [start] = useState(() => kept.get(profileId));
   const [open, setOpen] = useState(false);
-  const [request, setRequest] = useState("");
-  const [versions, setVersions] = useState<Version[]>([]);
+  const [request, setRequest] = useState(start?.request ?? "");
+  const [versions, setVersions] = useState<Version[]>(start?.versions ?? []);
   /**
    * Box B's text for each version, starting as the version itself. Kept per
    * version so stepping away from an edit and back again loses nothing.
    */
-  const [drafts, setDrafts] = useState<string[]>([]);
-  const [shown, setShown] = useState(0);
+  const [drafts, setDrafts] = useState<string[]>(start?.drafts ?? []);
+  const [shown, setShown] = useState(start?.shown ?? 0);
   const [writing, setWriting] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
   /** Cleared by editing, not by a timer: "Copied" stops being true when the text moves. */
   const [copied, setCopied] = useState(false);
   /** The chat line, and every line already sent in this sheet (Andy keeps them all). */
-  const [instruction, setInstruction] = useState("");
-  const [earlier, setEarlier] = useState<string[]>([]);
+  const [instruction, setInstruction] = useState(start?.instruction ?? "");
+  const [earlier, setEarlier] = useState<string[]>(start?.earlier ?? []);
   /** Asks after the first, counted here: the server keeps nothing to count with. */
-  const [asksAfterFirst, setAsksAfterFirst] = useState(0);
+  const [asksAfterFirst, setAsksAfterFirst] = useState(start?.asksAfterFirst ?? 0);
+  /** Copied (or, from slice 5, opened in Messages) at least once: Close need not ask. */
+  const [copiedOnce, setCopiedOnce] = useState(start?.copiedOnce ?? false);
   const inFlight = useRef(false);
   /**
    * Which opening of the sheet this is. Close moves it on, so an answer that
@@ -93,9 +125,54 @@ export function useWriteTo(profileId: string) {
    */
   const session = useRef(0);
   /** The text box B holds right now, for a copy to check after its await. */
-  const draftNow = useRef("");
+  const draftNow = useRef(start?.drafts[start.shown] ?? "");
 
-  const close = useCallback(() => {
+  /**
+   * The person this state was loaded for. If the screen is reused for someone
+   * else, their own sheet is loaded in its place — React's way of resetting
+   * state on a prop change, during render — so the save below only ever sees
+   * the new person's own state, and nothing is filed under the wrong person.
+   */
+  const [owner, setOwner] = useState(profileId);
+  if (owner !== profileId) {
+    const theirs = kept.get(profileId);
+    setOwner(profileId);
+    setOpen(false);
+    setWriting(false);
+    setProblem(null);
+    setCopied(false);
+    setRequest(theirs?.request ?? "");
+    setVersions(theirs?.versions ?? []);
+    setDrafts(theirs?.drafts ?? []);
+    setShown(theirs?.shown ?? 0);
+    setInstruction(theirs?.instruction ?? "");
+    setEarlier(theirs?.earlier ?? []);
+    setAsksAfterFirst(theirs?.asksAfterFirst ?? 0);
+    setCopiedOnce(theirs?.copiedOnce ?? false);
+  }
+
+  // The previous person's ask or copy, still running, must not land here.
+  const loadedFor = useRef(profileId);
+  useEffect(() => {
+    if (loadedFor.current === profileId) return;
+    loadedFor.current = profileId;
+    session.current += 1;
+    inFlight.current = false;
+    const theirs = kept.get(profileId);
+    draftNow.current = theirs?.drafts[theirs.shown] ?? "";
+  }, [profileId]);
+
+  // Kept for this person while there is anything to keep; Close deletes it.
+  useEffect(() => {
+    if (request === "" && versions.length === 0 && instruction === "") {
+      kept.delete(profileId);
+      return;
+    }
+    kept.set(profileId, { request, versions, drafts, shown, instruction, earlier, asksAfterFirst, copiedOnce });
+  }, [profileId, request, versions, drafts, shown, instruction, earlier, asksAfterFirst, copiedOnce]);
+
+  /** Close, for good: every version and the text are gone (behaviour 5). */
+  const discard = useCallback(() => {
     session.current += 1;
     inFlight.current = false;
     draftNow.current = "";
@@ -110,7 +187,25 @@ export function useWriteTo(profileId: string) {
     setInstruction("");
     setEarlier([]);
     setAsksAfterFirst(0);
-  }, []);
+    setCopiedOnce(false);
+    kept.delete(profileId);
+  }, [profileId]);
+
+  /** A swipe down only tucks the sheet away; everything stays (behaviour 4). */
+  const tuck = useCallback(() => setOpen(false), []);
+
+  /** The Close button: asks first when there is text and none of it was copied. */
+  const close = useCallback(() => {
+    const anyText = request.trim() !== "" || versions.length > 0 || instruction.trim() !== "";
+    if (!anyText || copiedOnce) {
+      discard();
+      return;
+    }
+    confirm("Close without copying?", "Your text won't be kept.", [
+      { text: "Keep writing", style: "cancel" },
+      { text: "Close", onPress: discard },
+    ]);
+  }, [request, versions.length, instruction, copiedOnce, confirm, discard]);
 
   const version = versions[shown] ?? null;
   const draft = drafts[shown] ?? "";
@@ -237,6 +332,7 @@ export function useWriteTo(profileId: string) {
     if (draftNow.current !== draft) return;
     setProblem((now) => (now === "clipboard" ? null : now));
     setCopied(true);
+    setCopiedOnce(true);
     AccessibilityInfo.announceForAccessibility("Copied");
     if (answer !== null) {
       // The tone and format of the text copied become how Andy writes to this
@@ -250,6 +346,7 @@ export function useWriteTo(profileId: string) {
     open,
     show: useCallback(() => setOpen(true), []),
     close,
+    tuck,
     request,
     setRequest: editRequest,
     answer,
@@ -374,6 +471,7 @@ export function WriteToSheet({ personName, controller }: { personName: string; c
     ask,
     copy,
     close,
+    tuck,
   } = controller;
   const status = statusOf(controller, online);
   const block = arrowBlock(controller, online);
@@ -405,7 +503,9 @@ export function WriteToSheet({ personName, controller }: { personName: string; c
       visible={!locked}
       animationType="slide"
       presentationStyle="pageSheet"
-      onRequestClose={close}
+      // A swipe down tucks it away, kept for this person (behaviour 4).
+      allowSwipeDismissal
+      onRequestClose={tuck}
     >
       <View style={styles.fill} testID="write-to">
         <View style={styles.header}>
@@ -544,6 +644,8 @@ export function WriteToSheet({ personName, controller }: { personName: string; c
             </>
           )}
         </ScrollView>
+        {/* The Close question, drawn inside the sheet so it sits above it. */}
+        <ConfirmHost inModal />
       </View>
     </Modal>
   );

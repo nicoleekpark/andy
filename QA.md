@@ -959,7 +959,7 @@ Name updates (rename or add alias) are now automatic — no checkbox. QA feedbac
 
 ## 40. Write to (draft-editing.md, Final design F)
 
-Needs the `writeTo` switch on (no row = on) and a dev build against the dev deployment. Built so far: box A, the arrow, box B, Copy and the status line (slice 4a); asking again, **Edited**, the hint and the chat line (4b); versions ‹ › (4c). Not yet, so not a bug: the Close question, the sheet surviving a swipe down, Open Messages, the screenshot button. Until the Close question exists, **Close and a swipe down both lose the text**.
+Needs the `writeTo` switch on (no row = on) and a dev build against the dev deployment. Built so far: box A, the arrow, box B, Copy and the status line (slice 4a); asking again, **Edited**, the hint and the chat line (4b); versions ‹ › (4c); the Close question and the sheet surviving a swipe down (4d). Not yet, so not a bug: Open Messages, the screenshot button.
 
 | # | Do this | Expect | |
 |---|---|---|---|
@@ -969,7 +969,7 @@ Needs the `writeTo` switch on (no row = on) and a dev build against the dev depl
 | 40.4 | Edit the message, tap the copy icon, paste in Notes | It turns into a check and *Copied*; the paste is your edited text. Editing again takes *Copied* away | ⬜ |
 | 40.5 | Copy a message Andy wrote as an email (*write her an email…*), Close, open Write to again for her, ask *say thanks* | The new draft is an email too (the copied text's tone and format became her default). Ask *text her: thanks* and it is a plain message | ⬜ |
 | 40.6 | Airplane mode with the sheet open, before or after an answer | *You're offline. Asking Andy needs a connection — your text stays here.*; the arrow greys; typing and Copy still work. If a *Check: …* line is showing it stays instead | ⬜ |
-| 40.6a | Tap the arrow, then Close while Andy is writing; open Write to again | An empty box A: the answer you walked away from does not appear | ⬜ |
+| 40.6a | Tap the arrow, then **Close** → **Close** while Andy is writing; open Write to again | An empty box A: the answer you walked away from does not appear | ⬜ |
 | 40.7 | Paste more than 4,000 characters into the box | *That's too long for Andy to read at once. Shorten it by {n} characters to ask.*, in the alert colour; the arrow greys; nothing is cut | ⬜ |
 | 40.8 | Fresh account that hasn't allowed AI: tap the arrow | *Let Andy read your notes?* first. **Not now**: *Nothing was sent. Tap the arrow when you want Andy to write it.*; the text stays | ⬜ |
 | 40.9 | Lock the phone with text in either box, unlock | The sheet and the text are back | ⬜ |
@@ -991,6 +991,13 @@ Needs the `writeTo` switch on (no row = on) and a dev build against the dev depl
 | 40.25 | Copy at an older version, then Close | The paste is that version's text. Close deletes every version: reopening starts empty | ⬜ |
 | 40.26 | VoiceOver, three or more versions | ‹ › read *Previous version* / *Next version*, dimmed at the ends; each step says *Version n of N*; the targets are easy to hit at the largest text size | ⬜ |
 | 40.27 | Settings → Accessibility → Larger Text, the largest size | Both boxes grow with the text; inside box B the copy row, the text and ‹ › all fit and nothing clips; the text area stays a usable size | ⬜ |
+| 40.28 | With text in either box and nothing copied, tap **Close** | *Close without copying?* / *Your text won't be kept.* — **Keep writing** leaves everything as it was; **Close** closes, and Write to opens empty next time | ⬜ |
+| 40.29 | Copy, then **Close** | Closes at once, no question | ⬜ |
+| 40.30 | Swipe the sheet down mid-draft (two versions, text on the chat line), go to home, come back to the same person, **Write to** | Everything as you left it: both versions, the version you were on, the chat line | ⬜ |
+| 40.31 | Same, but open **Write to** for someone else | Their own sheet (empty, or theirs as left) — never the first person's text | ⬜ |
+| 40.32 | Swipe down with text, then sign out and back in, open the same person | Write to opens empty (sign-out leaves nothing) | ⬜ |
+| 40.33 | Swipe down with text, force-quit Andy, reopen | Write to opens empty (memory only — the expected loss) | ⬜ |
+| 40.34 | With *Close without copying?* showing, lock the phone, unlock | Locked: the lock covers the question. Unlocked: the sheet and the question are back as they were | ⬜ |
 
 ## 35. Asking before Andy sends anything (pre-submission-privacy.md, A)
 
