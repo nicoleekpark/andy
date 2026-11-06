@@ -959,7 +959,7 @@ Name updates (rename or add alias) are now automatic — no checkbox. QA feedbac
 
 ## 40. Write to (draft-editing.md, Final design F)
 
-Needs the `writeTo` switch on (no row = on) and a dev build against the dev deployment. Built so far: box A, the arrow, box B, Copy and the status line (slice 4a); asking again, **Edited**, the hint and the chat line (4b); versions ‹ › (4c); the Close question and the sheet surviving a swipe down (4d). Not yet, so not a bug: Open Messages, the screenshot button.
+Needs the `writeTo` switch on (no row = on) and a dev build against the dev deployment. Built so far: box A, the arrow, box B, Copy and the status line (slice 4a); asking again, **Edited**, the hint and the chat line (4b); versions ‹ › (4c); the Close question and the sheet surviving a swipe down (4d); Open Messages (5). Not yet, so not a bug: the screenshot button. **Needs a dev app built after this slice** (`expo-sms` is native); on an older build, and always in the simulator, Open Messages is hidden.
 
 | # | Do this | Expect | |
 |---|---|---|---|
@@ -998,6 +998,10 @@ Needs the `writeTo` switch on (no row = on) and a dev build against the dev depl
 | 40.32 | Swipe down with text, then sign out and back in, open the same person | Write to opens empty (sign-out leaves nothing) | ⬜ |
 | 40.33 | Swipe down with text, force-quit Andy, reopen | Write to opens empty (memory only — the expected loss) | ⬜ |
 | 40.34 | With *Close without copying?* showing, lock the phone, unlock | Locked: the lock covers the question. Unlocked: the sheet and the question are back as they were | ⬜ |
+| 40.35 | On an iPhone, after an answer | **Open Messages** right under the chat line. Tap it: Apple's Messages composer opens over the sheet with box B's text (edits included) and no recipient. Cancel: the sheet is exactly as it was, and **Close** still asks *Close without copying?* | ⬜ |
+| 40.36 | Open Messages, pick a recipient, send | It sends from Messages, by you; back in the sheet nothing changed. **Close** now closes without asking. The next Write to for this person starts in that message's tone and format | ⬜ |
+| 40.37 | A text with emoji, line breaks and a link | All of it arrives in the composer as written | ⬜ |
+| 40.38 | iPad without SMS, or the simulator | No Open Messages button; Copy still works | ⬜ |
 
 ## 35. Asking before Andy sends anything (pre-submission-privacy.md, A)
 

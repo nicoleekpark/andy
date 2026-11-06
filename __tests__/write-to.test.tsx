@@ -1,7 +1,14 @@
 jest.mock("../src/lib/native", () => ({ hasNativeModule: jest.fn(() => true) }));
 
+jest.mock("expo-sms", () => ({
+  isAvailableAsync: jest.fn(async () => true),
+  sendSMSAsync: jest.fn(async () => ({ result: "sent" })),
+}));
+
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import * as Clipboard from "expo-clipboard";
+import * as SMS from "expo-sms";
+import { hasNativeModule } from "../src/lib/native";
 import { AccessibilityInfo, Dimensions, StyleSheet } from "react-native";
 import { size } from "../src/constants/theme";
 import { useAction, useConvexConnectionState, useMutation, useQuery } from "convex/react";
@@ -1053,5 +1060,127 @@ describe("Close and swipe-down (slice 4d)", () => {
     await fireEvent.changeText(boxA(), "for Ben");
     await press(ASK);
     expect(write).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("Open Messages (slice 5)", () => {
+  const BUTTON = "write-to-open-messages-button";
+  const sms = SMS as jest.Mocked<typeof SMS>;
+
+  afterEach(() => {
+    (hasNativeModule as jest.Mock).mockImplementation(() => true);
+    sms.isAvailableAsync.mockImplementation(async () => true);
+    sms.sendSMSAsync.mockImplementation(async () => ({ result: "sent" }));
+  });
+
+  test("should show the button after an answer when this phone can send texts", async () => {
+    await askAndy(jest.fn(async () => ANSWER));
+    expect(screen.getByTestId(BUTTON)).toBeTruthy();
+  });
+
+  test("should hide the button when this phone cannot send texts", async () => {
+    sms.isAvailableAsync.mockImplementation(async () => false);
+    await askAndy(jest.fn(async () => ANSWER));
+    expect(screen.queryByTestId(BUTTON)).toBeNull();
+  });
+
+  test("should hide the button and not throw when the SMS native module is missing", async () => {
+    (hasNativeModule as jest.Mock).mockImplementation((name: string) => name !== "ExpoSMS");
+    await askAndy(jest.fn(async () => ANSWER));
+    expect(screen.queryByTestId(BUTTON)).toBeNull();
+    expect(sms.isAvailableAsync).not.toHaveBeenCalled();
+  });
+
+  test("should open Messages with the edited text and no recipient, then close without asking and remember the style", async () => {
+    const rememberStyle = jest.fn(async () => undefined);
+    await askAndy(jest.fn(async () => ANSWER), rememberStyle);
+    await act(async () => {
+      fireEvent.changeText(screen.getByLabelText("Message to Nina"), "Hi Nina, Friday instead?");
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByTestId(BUTTON));
+    });
+
+    expect(sms.sendSMSAsync).toHaveBeenCalledWith([], "Hi Nina, Friday instead?");
+    expect(rememberStyle).toHaveBeenCalledWith({
+      profileId: "profile-1",
+      style: { tone: "casual", format: "message" },
+    });
+
+    await press("Close");
+    expect(screen.queryByTestId("confirm-dialog")).toBeNull();
+    expect(screen.queryByLabelText("What to write to Nina")).toBeNull();
+  });
+
+  test("should say Messages didn't open and still ask on Close when the composer rejects", async () => {
+    sms.sendSMSAsync.mockImplementation(async () => {
+      throw new Error("no");
+    });
+    const rememberStyle = jest.fn(async () => undefined);
+    await askAndy(jest.fn(async () => ANSWER), rememberStyle);
+    await act(async () => {
+      fireEvent.press(screen.getByTestId(BUTTON));
+    });
+
+    expect(screen.getByTestId("write-to-status-line")).toHaveTextContent("Messages didn't open. Copy the text instead.");
+    expect(rememberStyle).not.toHaveBeenCalled();
+    await press("Close");
+    expect(screen.getByTestId("confirm-dialog")).toHaveTextContent(/Close without copying\?/);
+  });
+
+  test("should show no status line, not remember the style and still ask on Close when the person cancels the composer", async () => {
+    sms.sendSMSAsync.mockImplementation(async () => ({ result: "cancelled" }));
+    const rememberStyle = jest.fn(async () => undefined);
+    await askAndy(jest.fn(async () => ANSWER), rememberStyle);
+    await act(async () => {
+      fireEvent.press(screen.getByTestId(BUTTON));
+    });
+
+    expect(sms.sendSMSAsync).toHaveBeenCalled();
+    expect(screen.queryByTestId("write-to-status-line")).toBeNull();
+    expect(rememberStyle).not.toHaveBeenCalled();
+    await press("Close");
+    expect(screen.getByTestId("confirm-dialog")).toHaveTextContent(/Close without copying\?/);
+  });
+
+  test("should count it as sent and close without asking when iOS answers unknown", async () => {
+    sms.sendSMSAsync.mockImplementation(async () => ({ result: "unknown" }));
+    const rememberStyle = jest.fn(async () => undefined);
+    await askAndy(jest.fn(async () => ANSWER), rememberStyle);
+    await act(async () => {
+      fireEvent.press(screen.getByTestId(BUTTON));
+    });
+
+    expect(rememberStyle).toHaveBeenCalled();
+    await press("Close");
+    expect(screen.queryByTestId("confirm-dialog")).toBeNull();
+  });
+
+  test("should disable the button when box B is empty or whitespace", async () => {
+    await askAndy(jest.fn(async () => ANSWER));
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId("write-to-draft-box"), "  \n");
+    });
+    expect(screen.getByTestId(BUTTON)).toBeDisabled();
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId("write-to-draft-box"), "");
+    });
+    expect(screen.getByTestId(BUTTON)).toBeDisabled();
+  });
+
+  test("should disable the button while a later ask is writing", async () => {
+    const write = jest
+      .fn()
+      .mockResolvedValueOnce(ANSWER)
+      .mockImplementationOnce(() => new Promise<typeof ANSWER>(() => {}));
+    await askAndy(write);
+    expect(screen.getByTestId(BUTTON)).not.toBeDisabled();
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId("write-to-chat-line"), "warmer");
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("write-to-arrow"));
+    });
+    expect(screen.getByTestId(BUTTON)).toBeDisabled();
   });
 });
