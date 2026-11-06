@@ -2,6 +2,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { ConvexError } from "convex/values";
+import { SHORT_BREAK } from "./spendLimit";
 import type { ClaudeModel } from "./claudeModels";
 
 /**
@@ -107,7 +108,7 @@ export async function askClaude(options: ClaudeRequest): Promise<unknown> {
           "Raise it in the Anthropic console " +
           "(Settings → Limits, or Billing); no deploy is needed.",
       );
-      throw new ConvexError("Andy is taking a short break. Try again in a little while.");
+      throw new ConvexError(SHORT_BREAK);
     }
     if (error instanceof Anthropic.AuthenticationError) {
       console.error("Anthropic rejected the API key:", error.message);

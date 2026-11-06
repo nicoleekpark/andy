@@ -6,6 +6,7 @@ import type { Id } from "./_generated/dataModel";
 import { EMBEDDING_DIMENSIONS } from "./embeddingModel";
 import { CLAUDE_MODELS } from "./claudeModels";
 import schema from "./schema";
+import { SHORT_BREAK } from "./spendLimit";
 import { aiNotEnforced } from "../test-support/ai-permission";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -553,6 +554,27 @@ test("should refuse a signed-out search without spending anything on it", async 
   // The order is the security property: identity is resolved before the query
   // is embedded, so a signed-out caller cannot run up a bill.
   expect(fetchMock).not.toHaveBeenCalled();
+});
+
+test("should tell the person Andy is taking a short break when OpenAI's spend limit is reached while embedding the question", async () => {
+  const t = await aiNotEnforced(convexTest(schema, modules));
+  await seedUser(t, ALICE);
+  const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+  fetchMock.mockResolvedValueOnce({
+    ok: false,
+    status: 429,
+    json: async () => ({
+      error: { type: "insufficient_quota", code: "insufficient_quota" },
+    }),
+    text: async () => "",
+  });
+
+  await expect(
+    t.withIdentity(ALICE).action(api.search.recall, {
+      query: "who runs a climbing gym",
+    }),
+  ).rejects.toThrow(SHORT_BREAK);
+  consoleError.mockRestore();
 });
 
 test("should refuse an empty question without spending anything on it", async () => {

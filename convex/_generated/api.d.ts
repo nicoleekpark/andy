@@ -40,6 +40,7 @@ import type * as possessive from "../possessive.js";
 import type * as profiles from "../profiles.js";
 import type * as promptBoundary from "../promptBoundary.js";
 import type * as search from "../search.js";
+import type * as spendLimit from "../spendLimit.js";
 import type * as users from "../users.js";
 import type * as writeTo from "../writeTo.js";
 import type * as writeToClaude from "../writeToClaude.js";
@@ -84,6 +85,7 @@ declare const fullApi: ApiFromModules<{
   profiles: typeof profiles;
   promptBoundary: typeof promptBoundary;
   search: typeof search;
+  spendLimit: typeof spendLimit;
   users: typeof users;
   writeTo: typeof writeTo;
   writeToClaude: typeof writeToClaude;

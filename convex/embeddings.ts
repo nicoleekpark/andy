@@ -1,4 +1,5 @@
 import { ConvexError, v } from "convex/values";
+import { SHORT_BREAK } from "./spendLimit";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { mayUseAi } from "./aiPermission";
@@ -78,15 +79,15 @@ const EMBED_BATCH = 64;
  * `type` and `code` are enough to tell a bad key from a rate limit from an
  * oversized input, and neither can contain note text.
  */
-async function failureKind(response: Response): Promise<string> {
+async function failureKind(response: Response): Promise<{ type: string; code: string }> {
   try {
     const body = (await response.json()) as {
       error?: { type?: string; code?: string };
     };
-    return `${body.error?.type ?? "unknown"}/${body.error?.code ?? "none"}`;
+    return { type: body.error?.type ?? "unknown", code: body.error?.code ?? "none" };
   } catch {
     // A response that is not JSON at all — a gateway error page, usually.
-    return "unparseable";
+    return { type: "unparseable", code: "none" };
   }
 }
 
@@ -139,9 +140,22 @@ async function fetchEmbeddings(inputs: string[]): Promise<number[][]> {
   });
 
   if (!response.ok) {
-    console.error(
-      `OpenAI embeddings failed: ${response.status} ${await failureKind(response)}`,
-    );
+    const kind = await failureKind(response);
+    // The project's spend limit (or its credit) has run out: OpenAI answers 429
+    // with `insufficient_quota`, unlike an ordinary rate limit. The person reads
+    // the same sentence as for Anthropic's; the owner reads how to undo it —
+    // and that notes saved meanwhile stay out of search until backfilled, since
+    // nothing retries a failed index on its own.
+    if (kind.type === "insufficient_quota" || kind.code === "insufficient_quota") {
+      console.error(
+        `OpenAI spend limit or credit reached (HTTP ${response.status}). Raise it in the ` +
+          "OpenAI console (Settings → Limits); no deploy is needed. Notes saved meanwhile " +
+          "are not searchable until: npx convex run embeddings:backfillEmbeddings '{}' " +
+          "(add --prod on production).",
+      );
+      throw new ConvexError(SHORT_BREAK);
+    }
+    console.error(`OpenAI embeddings failed: ${response.status} ${kind.type}/${kind.code}`);
     throw new ConvexError("Andy couldn't index that note for search.");
   }
 
