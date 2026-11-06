@@ -13,7 +13,7 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 
 **For the designer:** read top to bottom and mark anything that sounds wrong, unclear, or unlike the rest. Quote the string and its `Where` when you report it.
 
-576 strings, 13 with a planned change.
+575 strings, 13 with a planned change.
 
 ## Sign-in
 
@@ -473,15 +473,14 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 | Andy can't delete accounts right now. Nothing was deleted. Try again shortly. | server error | `convex/account.ts:135` |  |
 | Your notes and people are deleted, but Andy couldn't finish removing your sign-in. Try again. | server error | `convex/account.ts:163` |  |
 | Andy couldn't put that into words. Try asking it differently. | server error | `convex/answer.ts:70` |  |
-| Andy can't reach Claude right now. This one's on us — try again shortly. | server error | `convex/claude.ts:81` |  |
-| Andy is taking a short break. Try again in a little while. | server error | `convex/claude.ts:110` |  |
-| Andy is thinking about too many things at once. Try again in a moment. | server error | `convex/claude.ts:120` |  |
-| Andy couldn't reach Claude right now. Try again in a moment. | server error | `convex/claude.ts:129` |  |
-| Andy couldn't make sense of that one. Try again, or type it in instead. | server error | `convex/claude.ts:134` |  |
-| Andy couldn't process that one. Try again, or type it in instead. | server error | `convex/claude.ts:143` |  |
-| That one was long and Andy lost the thread. Try splitting it into two. | server error | `convex/claude.ts:152` |  |
+| Andy can't reach Claude right now. This one's on us — try again shortly. | server error | `convex/claude.ts:82` |  |
+| Andy is thinking about too many things at once. Try again in a moment. | server error | `convex/claude.ts:121` |  |
+| Andy couldn't reach Claude right now. Try again in a moment. | server error | `convex/claude.ts:130` |  |
+| Andy couldn't make sense of that one. Try again, or type it in instead. | server error | `convex/claude.ts:135` |  |
+| Andy couldn't process that one. Try again, or type it in instead. | server error | `convex/claude.ts:144` |  |
+| That one was long and Andy lost the thread. Try splitting it into two. | server error | `convex/claude.ts:153` |  |
 | Andy couldn't put that into words. Try again in a moment. | server error | `convex/email.ts:124` |  |
-| Andy couldn't index that note for search. | server error | `convex/embeddings.ts:121` |  |
+| Andy couldn't index that note for search. | server error | `convex/embeddings.ts:122` |  |
 | There's nothing to save yet — try recording again. | server error | `convex/extraction.ts:88` |  |
 | That note is longer than Andy can take in one go. Try splitting it into two. | server error | `convex/extraction.ts:99` |  |
 | Andy couldn't tell who that note was about. Try recording it again. | server error | `convex/extraction.ts:110` |  |
@@ -547,19 +546,19 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 | Not allowed — Andy won't read notes, answer questions or draft follow-ups. | text | `src/components/ai-section.tsx:68` |  |
 | Allow | label | `src/components/ai-section.tsx:70` |  |
 | Jump to a letter | VoiceOver | `src/components/az-index.tsx:65` |  |
-| Find a name or a word | placeholder | `src/components/home-bottom-bar.tsx:73` |  |
-| Find a name or a word | VoiceOver | `src/components/home-bottom-bar.tsx:75` |  |
-| Clear | VoiceOver | `src/components/home-bottom-bar.tsx:85` |  |
-| Clear | text | `src/components/home-bottom-bar.tsx:94` |  |
-| Cancel | VoiceOver | `src/components/home-bottom-bar.tsx:102` |  |
-| Cancel | text | `src/components/home-bottom-bar.tsx:111` |  |
-| Advanced search | VoiceOver | `src/components/home-bottom-bar.tsx:121` |  |
-| Advanced search: {…} | VoiceOver | `src/components/home-bottom-bar.tsx:121` |  |
-| Advanced search | text | `src/components/home-bottom-bar.tsx:129` |  |
-| Advanced search: “{…}” | text | `src/components/home-bottom-bar.tsx:129` |  |
-| Advanced search needs a connection. Names and words still work. | text | `src/components/home-bottom-bar.tsx:135` |  |
-| New note | VoiceOver | `src/components/home-bottom-bar.tsx:144` |  |
-| New note | text | `src/components/home-bottom-bar.tsx:153` |  |
+| Find a name or a word | placeholder | `src/components/home-bottom-bar.tsx:74` |  |
+| Find a name or a word | VoiceOver | `src/components/home-bottom-bar.tsx:76` |  |
+| Clear | VoiceOver | `src/components/home-bottom-bar.tsx:86` |  |
+| Clear | text | `src/components/home-bottom-bar.tsx:95` |  |
+| Cancel | VoiceOver | `src/components/home-bottom-bar.tsx:103` |  |
+| Cancel | text | `src/components/home-bottom-bar.tsx:112` |  |
+| Advanced search | VoiceOver | `src/components/home-bottom-bar.tsx:122` |  |
+| Advanced search: {…} | VoiceOver | `src/components/home-bottom-bar.tsx:122` |  |
+| Advanced search | text | `src/components/home-bottom-bar.tsx:130` |  |
+| Advanced search: “{…}” | text | `src/components/home-bottom-bar.tsx:130` |  |
+| Advanced search needs a connection. Names and words still work. | text | `src/components/home-bottom-bar.tsx:136` |  |
+| New note | VoiceOver | `src/components/home-bottom-bar.tsx:145` |  |
+| New note | text | `src/components/home-bottom-bar.tsx:154` |  |
 | M-4 118 C 24 114, 36 90, 46 74 C 54 60, 72 56, 84 64 C 70 56, 56 66, 56 82 C 56 100, 80 100, 85 68 C 84 84, 86 96, 94 98 C 100 96, 104 72, 106 62 C 108 80, 108 94, 108 100 C 110 80, 118 60, 128 62 C 138 64, 134 88, 138 98 C 140 102, 146 100, 150 92 C 153 72, 160 56, 174 56 C 180 56, 184 60, 185 64 C 172 58, 158 68, 158 84 C 158 100, 184 100, 188 70 C 190 50, 192 32, 190 20 C 188 40, 186 80, 192 98 C 194 102, 202 102, 206 94 C 208 86, 210 72, 212 62 C 212 80, 214 96, 224 96 C 234 96, 236 78, 238 62 C 238 90, 238 120, 232 136 C 226 150, 208 146, 216 130 C 224 116, 252 104, 270 96 C 288 90, 300 84, 312 76 C 328 64, 338 42, 324 38 C 310 34, 304 54, 318 64 C 332 74, 356 60, 404 46 | text | `src/components/name-mark.tsx:25` |  |
 | Andy | VoiceOver | `src/components/name-mark.tsx:46` |  |
 | People | text | `src/components/name-results.tsx:19` |  |
@@ -588,61 +587,61 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 | Delete {…} | VoiceOver | `src/components/removable-line.tsx:54` |  |
 | Delete | text | `src/components/removable-line.tsx:59` |  |
 | M-4 80 C 14 76, 28 68, 38 60 C 54 48, 64 26, 50 22 C 36 18, 30 38, 44 48 C 58 58, 80 44, 104 30 | text | `src/components/thread-loop.tsx:19` |  |
-| Andy couldn't write that just now. Your text is still here. Try again. | text | `src/components/write-to.tsx:114` |  |
-| Nothing was sent. Tap the arrow when you want Andy to write it. | text | `src/components/write-to.tsx:115` |  |
-| Andy couldn't reach the clipboard. Your text is still here — select it to copy it by hand. | text | `src/components/write-to.tsx:116` |  |
-| Messages didn't open. Copy the text instead. | text | `src/components/write-to.tsx:117` |  |
-| That screenshot didn't come through. Try again. | text | `src/components/write-to.tsx:118` |  |
-| Andy couldn't find a message in that screenshot. Try another, or type what they said. | text | `src/components/write-to.tsx:119` |  |
-| That screenshot is too large for Andy to read. Try another. | text | `src/components/write-to.tsx:120` |  |
-| Nothing was sent, and the picture wasn't kept. | text | `src/components/write-to.tsx:121` |  |
-| Nothing was sent. Tap Ask Andy when you want Andy to write it. | text | `src/components/write-to.tsx:125` |  |
-| You're offline. Asking Andy needs a connection — your text stays here. | text | `src/components/write-to.tsx:127` |  |
-| Andy is writing… | text | `src/components/write-to.tsx:128` |  |
-| That's the most Andy can do in one go. Copy it, or close and start again. | text | `src/components/write-to.tsx:129` |  |
-| Edit the text above, or tell Andy what to change. | text | `src/components/write-to.tsx:130` |  |
-| Keep writing | button | `src/components/write-to.tsx:274` |  |
-| Close | button | `src/components/write-to.tsx:275` |  |
-| Asking Andy needs a connection. | text | `src/components/write-to.tsx:549` |  |
-| Shorten the text to ask Andy. | text | `src/components/write-to.tsx:552` |  |
-| Write something first. | text | `src/components/write-to.tsx:555` |  |
-| That's the most Andy can do in one go. | text | `src/components/write-to.tsx:561` |  |
-| That's too long for Andy to read at once. Shorten it by {…} characters to ask. | button | `src/components/write-to.tsx:574` |  |
-| Shorten this by {…} characters. | button | `src/components/write-to.tsx:593` |  |
-| Check: {…} | button | `src/components/write-to.tsx:599` |  |
-| Andy is writing | VoiceOver | `src/components/write-to.tsx:618` |  |
-| Ask Andy | VoiceOver | `src/components/write-to.tsx:623` |  |
-| Ask | text | `src/components/write-to.tsx:634` |  |
-| Reading {…}'s message… | text | `src/components/write-to.tsx:671` |  |
-| Write to {…} | text | `src/components/write-to.tsx:718` |  |
-| {…}wrote | text | `src/components/write-to.tsx:742` |  |
-| Remove {…}'s message | VoiceOver | `src/components/write-to.tsx:747` |  |
-| {…} wrote: {…} | VoiceOver | `src/components/write-to.tsx:762` |  |
-| Double-tap to fix a word. | VoiceOver | `src/components/write-to.tsx:763` |  |
-| What to write to {…} | VoiceOver | `src/components/write-to.tsx:774` |  |
-| Write what you want to say to {…}, or tell Andy what to write, or both. | placeholder | `src/components/write-to.tsx:776` |  |
-| Replying to a message from another app? Add a screenshot of it. | placeholder | `src/components/write-to.tsx:777` |  |
-| e.g. Do you want to hang out and talk about our new product? Make it sound casual but still professional. | placeholder | `src/components/write-to.tsx:778` |  |
-| Add a screenshot | VoiceOver | `src/components/write-to.tsx:791` |  |
-| Andy reads their message from it. The picture isn't kept. | VoiceOver | `src/components/write-to.tsx:794` |  |
-| Reading a screenshot needs a connection. | VoiceOver | `src/components/write-to.tsx:795` |  |
-| Photo | text | `src/components/write-to.tsx:806` |  |
-| Edited | text | `src/components/write-to.tsx:821` |  |
-| Copy the message | VoiceOver | `src/components/write-to.tsx:828` |  |
-| The box is empty. | VoiceOver | `src/components/write-to.tsx:829` |  |
-| Copied | text | `src/components/write-to.tsx:836` |  |
-| Copy | text | `src/components/write-to.tsx:841` |  |
-| Message to {…}, edited | VoiceOver | `src/components/write-to.tsx:846` |  |
-| Message to {…} | VoiceOver | `src/components/write-to.tsx:846` |  |
-| Previous version | VoiceOver | `src/components/write-to.tsx:858` |  |
-| {…}of {…} | text | `src/components/write-to.tsx:865` |  |
-| Version {…} of {…} | VoiceOver | `src/components/write-to.tsx:865` |  |
-| Next version | VoiceOver | `src/components/write-to.tsx:870` |  |
-| Anything else for Andy? Optional | VoiceOver | `src/components/write-to.tsx:888` |  |
-| Anything else? (optional) e.g. Warmer but simpler. | placeholder | `src/components/write-to.tsx:889` |  |
-| Open Messages | VoiceOver | `src/components/write-to.tsx:902` |  |
-| Opens Messages with this text. You choose who it goes to and send it. | VoiceOver | `src/components/write-to.tsx:906` |  |
-| Open Messages | text | `src/components/write-to.tsx:913` |  |
+| Andy couldn't write that just now. Your text is still here. Try again. | text | `src/components/write-to.tsx:115` |  |
+| Nothing was sent. Tap the arrow when you want Andy to write it. | text | `src/components/write-to.tsx:116` |  |
+| Andy couldn't reach the clipboard. Your text is still here — select it to copy it by hand. | text | `src/components/write-to.tsx:117` |  |
+| Messages didn't open. Copy the text instead. | text | `src/components/write-to.tsx:118` |  |
+| That screenshot didn't come through. Try again. | text | `src/components/write-to.tsx:119` |  |
+| Andy couldn't find a message in that screenshot. Try another, or type what they said. | text | `src/components/write-to.tsx:120` |  |
+| That screenshot is too large for Andy to read. Try another. | text | `src/components/write-to.tsx:121` |  |
+| Nothing was sent, and the picture wasn't kept. | text | `src/components/write-to.tsx:122` |  |
+| Nothing was sent. Tap Ask Andy when you want Andy to write it. | text | `src/components/write-to.tsx:126` |  |
+| You're offline. Asking Andy needs a connection — your text stays here. | text | `src/components/write-to.tsx:128` |  |
+| Andy is writing… | text | `src/components/write-to.tsx:129` |  |
+| That's the most Andy can do in one go. Copy it, or close and start again. | text | `src/components/write-to.tsx:130` |  |
+| Edit the text above, or tell Andy what to change. | text | `src/components/write-to.tsx:131` |  |
+| Keep writing | button | `src/components/write-to.tsx:275` |  |
+| Close | button | `src/components/write-to.tsx:276` |  |
+| Asking Andy needs a connection. | text | `src/components/write-to.tsx:550` |  |
+| Shorten the text to ask Andy. | text | `src/components/write-to.tsx:553` |  |
+| Write something first. | text | `src/components/write-to.tsx:556` |  |
+| That's the most Andy can do in one go. | text | `src/components/write-to.tsx:562` |  |
+| That's too long for Andy to read at once. Shorten it by {…} characters to ask. | button | `src/components/write-to.tsx:575` |  |
+| Shorten this by {…} characters. | button | `src/components/write-to.tsx:594` |  |
+| Check: {…} | button | `src/components/write-to.tsx:600` |  |
+| Andy is writing | VoiceOver | `src/components/write-to.tsx:619` |  |
+| Ask Andy | VoiceOver | `src/components/write-to.tsx:624` |  |
+| Ask | text | `src/components/write-to.tsx:635` |  |
+| Reading {…}'s message… | text | `src/components/write-to.tsx:686` |  |
+| Write to {…} | text | `src/components/write-to.tsx:733` |  |
+| {…}wrote | text | `src/components/write-to.tsx:758` |  |
+| Remove {…}'s message | VoiceOver | `src/components/write-to.tsx:763` |  |
+| {…} wrote: {…} | VoiceOver | `src/components/write-to.tsx:778` |  |
+| Double-tap to fix a word. | VoiceOver | `src/components/write-to.tsx:779` |  |
+| What to write to {…} | VoiceOver | `src/components/write-to.tsx:790` |  |
+| Write what you want to say to {…}, or tell Andy what to write, or both. | placeholder | `src/components/write-to.tsx:792` |  |
+| Replying to a message from another app? Add a screenshot of it. | placeholder | `src/components/write-to.tsx:793` |  |
+| e.g. Do you want to hang out and talk about our new product? Make it sound casual but still professional. | placeholder | `src/components/write-to.tsx:794` |  |
+| Add a screenshot | VoiceOver | `src/components/write-to.tsx:807` |  |
+| Andy reads their message from it. The picture isn't kept. | VoiceOver | `src/components/write-to.tsx:810` |  |
+| Reading a screenshot needs a connection. | VoiceOver | `src/components/write-to.tsx:811` |  |
+| Photo | text | `src/components/write-to.tsx:822` |  |
+| Edited | text | `src/components/write-to.tsx:837` |  |
+| Copy the message | VoiceOver | `src/components/write-to.tsx:844` |  |
+| The box is empty. | VoiceOver | `src/components/write-to.tsx:845` |  |
+| Copied | text | `src/components/write-to.tsx:852` |  |
+| Copy | text | `src/components/write-to.tsx:857` |  |
+| Message to {…}, edited | VoiceOver | `src/components/write-to.tsx:862` |  |
+| Message to {…} | VoiceOver | `src/components/write-to.tsx:862` |  |
+| Previous version | VoiceOver | `src/components/write-to.tsx:874` |  |
+| {…}of {…} | text | `src/components/write-to.tsx:881` |  |
+| Version {…} of {…} | VoiceOver | `src/components/write-to.tsx:881` |  |
+| Next version | VoiceOver | `src/components/write-to.tsx:886` |  |
+| Anything else for Andy? Optional | VoiceOver | `src/components/write-to.tsx:904` |  |
+| Anything else? (optional) e.g. Warmer but simpler. | placeholder | `src/components/write-to.tsx:905` |  |
+| Open Messages | VoiceOver | `src/components/write-to.tsx:918` |  |
+| Opens Messages with this text. You choose who it goes to and send it. | VoiceOver | `src/components/write-to.tsx:922` |  |
+| Open Messages | text | `src/components/write-to.tsx:929` |  |
 | What the card says | text | `src/lib/note-source.ts:27` |  |
 | What the card said | text | `src/lib/note-source.ts:27` |  |
 | What the photo says | text | `src/lib/note-source.ts:29` |  |

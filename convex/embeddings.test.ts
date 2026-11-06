@@ -10,6 +10,7 @@ import {
   embeddingTextFor,
 } from "./embeddingModel";
 import schema from "./schema";
+import { SHORT_BREAK } from "./spendLimit";
 import { aiNotEnforced } from "../test-support/ai-permission";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -321,6 +322,77 @@ test("should log why a request failed without writing the note's contents into t
   // and none of this is needed to diagnose the failure.
   expect(all).not.toContain("Priya");
   expect(all).not.toContain("mother");
+});
+
+function quotaResponse(type: string, code: string) {
+  return {
+    ok: false,
+    status: 429,
+    json: async () => ({
+      error: { message: "You exceeded your current quota", type, code },
+    }),
+    text: async () => "",
+  };
+}
+
+test("should tell the person Andy is taking a short break when OpenAI's spend limit is reached while indexing", async () => {
+  const t = await aiNotEnforced(convexTest(schema, modules));
+  const { noteId } = await seedNote(t, {
+    text: "Priya's mother is unwell and she is struggling.",
+  });
+  const logged: string[] = [];
+  const consoleError = vi
+    .spyOn(console, "error")
+    .mockImplementation((...args: unknown[]) => {
+      logged.push(args.join(" "));
+    });
+  fetchMock.mockResolvedValueOnce(
+    quotaResponse("insufficient_quota", "insufficient_quota"),
+  );
+
+  await expect(
+    t.action(internal.embeddings.embedNotes, { noteIds: [noteId] }),
+  ).rejects.toThrow(SHORT_BREAK);
+  consoleError.mockRestore();
+
+  const all = logged.join("\n");
+  expect(all).toContain("429");
+  expect(all).toContain("backfillEmbeddings");
+  expect(all).not.toContain("Priya");
+  expect(all).not.toContain("mother");
+  const stored = await t.run(async (ctx) => ctx.db.get("notes", noteId));
+  expect(stored?.embedding).toBeUndefined();
+});
+
+test.each([
+  ["only the type", "insufficient_quota", "none"],
+  ["only the code", "requests", "insufficient_quota"],
+])("should recognise the spend limit when %s says insufficient_quota", async (_case, type, code) => {
+  const t = await aiNotEnforced(convexTest(schema, modules));
+  const { noteId } = await seedNote(t);
+  const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+  fetchMock.mockResolvedValueOnce(quotaResponse(type, code));
+
+  await expect(
+    t.action(internal.embeddings.embedNotes, { noteIds: [noteId] }),
+  ).rejects.toThrow(SHORT_BREAK);
+  consoleError.mockRestore();
+});
+
+test("should keep the index message when OpenAI answers 429 for an ordinary rate limit", async () => {
+  const t = await aiNotEnforced(convexTest(schema, modules));
+  const { noteId } = await seedNote(t);
+  const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+  fetchMock.mockResolvedValueOnce(
+    quotaResponse("requests", "rate_limit_exceeded"),
+  );
+
+  const failure = t.action(internal.embeddings.embedNotes, {
+    noteIds: [noteId],
+  });
+  await expect(failure).rejects.toThrow("Andy couldn't index that note for search.");
+  await expect(failure).rejects.not.toThrow(SHORT_BREAK);
+  consoleError.mockRestore();
 });
 
 // ---------------------------------------------------------------------------
