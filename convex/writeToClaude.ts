@@ -10,9 +10,8 @@ import {
   WRITE_TO_SCHEMA,
   WRITE_TO_SYSTEM_PROMPT,
   buildWriteToMessage,
+  detailsToKeep,
   formatOf,
-  keyDetails,
-  missingDetails,
   writeToAnswerValidator,
 } from "./writeToPrompt";
 import type { WriteToAnswer, WriteToInput, WriteToTone } from "./writeToPrompt";
@@ -46,13 +45,11 @@ export const compose = internalAction({
     // Key details are checked in code, not only asked for (Final design;
     // owner, 2026-11-04): on a later ask, every day, date, time, number and
     // link in box B must still be there. Not on the first ask — box A mixes
-    // the message with instructions like "two sentences" — and not when the
-    // new chat line names a detail itself, because then changing one is what
-    // the person asked for.
-    if (args.current === undefined || keyDetails(args.instruction ?? "").length > 0) {
-      return first;
-    }
-    const missing = missingDetails(args.current, first.text);
+    // the message with instructions like "two sentences" — and not for a
+    // kind of detail the new chat line names itself, because then changing
+    // one is what the person asked for (`detailsToKeep`).
+    if (args.current === undefined) return first;
+    const missing = detailsToKeep(args.current, first.text, args.instruction ?? "");
     if (missing.length === 0) return first;
 
     // Once more, told exactly what to keep. Whatever comes back is returned

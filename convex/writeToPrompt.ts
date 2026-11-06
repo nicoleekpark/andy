@@ -216,10 +216,17 @@ const SPELLINGS: Readonly<Record<string, readonly string[]>> = {
 };
 // "May" is not in the list: it is a month only with a day next to it.
 const FULL_NAMES = Object.keys(SPELLINGS).join("|");
+const MONTHS = Object.keys(SPELLINGS).filter((name) => !name.endsWith("day"));
 const capitalized = (word: string) => word[0]!.toUpperCase() + word.slice(1);
+// A month with its day is one date ("Sept 5", "May 5"), so the 5 cannot be
+// freed or dropped apart from the month it belongs to.
+// "March 5th" is one date like "March 5"; the ordinal is part of the day.
+const ORDINAL = String.raw`\d{1,2}(?:st|nd|rd|th)?\b`;
+const MONTH_DAY = String.raw`(?:${[...MONTHS, "may"].join("|")})\s+${ORDINAL}`;
+const SHORT_MONTH_DAY = String.raw`(?:${MONTHS.flatMap((m) => SPELLINGS[m]!).map(capitalized).join("|")})\.?\s+${ORDINAL}`;
 // Built from the same list, so a name and its short forms cannot drift apart.
 const SHORT_FORM = new RegExp(
-  String.raw`\b(?:${Object.values(SPELLINGS).flat().map(capitalized).join("|")})\b`,
+  String.raw`\b(?:${SHORT_MONTH_DAY}|${Object.values(SPELLINGS).flat().map(capitalized).join("|")})\b`,
   "g",
 );
 const DETAIL = new RegExp(
@@ -228,8 +235,10 @@ const DETAIL = new RegExp(
     String.raw`www\.[^\s<>"]+`,
     String.raw`[\w.+-]+@[\w-]+(?:\.[\w-]+)+`,
     // "May" is a month only with a day next to it; on its own it is the verb.
-    String.raw`\bmay\s+\d{1,2}\b`,
+    String.raw`\b${MONTH_DAY}`,
     String.raw`\b(?:${FULL_NAMES})\b`,
+    // "3pm" is a time, not the number 3.
+    String.raw`\b\d{1,2}(?::\d{2})?\s?[ap]\.?m\b\.?`,
     String.raw`\d+(?:[.:,/-]\d+)*`,
   ].join("|"),
   "gi",
@@ -244,13 +253,22 @@ function dayOrMonth(detail: string): string | null {
 }
 
 export function keyDetails(text: string): string[] {
-  const main = [...text.matchAll(DETAIL)];
-  // A short form inside a link or email is part of that detail, not another one.
-  const inside = (at: number) =>
-    main.some((match) => at >= match.index && at < match.index + match[0].length);
-  const short = [...text.matchAll(SHORT_FORM)].filter((match) => !inside(match.index));
-  const matches = [...main, ...short]
-    .sort((a, b) => a.index - b.index)
+  const all = [...text.matchAll(DETAIL), ...text.matchAll(SHORT_FORM)];
+  // A match inside a longer one is part of it, not another detail: "Oct" in a
+  // link, the "5" of "Sept 5".
+  const end = (match: RegExpMatchArray) => match.index! + match[0].length;
+  const matches = all
+    .filter(
+      (match) =>
+        !all.some(
+          (other) =>
+            other !== match &&
+            other[0].length > match[0].length &&
+            other.index! <= match.index! &&
+            end(other) >= end(match),
+        ),
+    )
+    .sort((a, b) => a.index! - b.index!)
     .map((match) => match[0]);
   const found = matches.map((detail) => detail.replace(/[.,;:!?)]+$/, ""));
   // One entry per detail whatever its case; the first spelling is kept.
@@ -281,6 +299,13 @@ function stillHas(answer: string, detail: string, matchCase = false): boolean {
  */
 export function missingDetails(sent: string, answer: string): string[] {
   return keyDetails(sent).filter((detail) => {
+    const monthDay = /^([A-Za-z]+)\.?\s+(\d{1,2})(?:st|nd|rd|th)?$/i.exec(detail);
+    if (monthDay !== null) return !stillHasMonthDay(answer, monthDay[1]!, monthDay[2]!);
+    // "3pm" is kept by "3 PM" or "3 p.m.": the same hour, written differently.
+    const clock = /^(\d{1,2}(?::\d{2})?)\s?([ap])\.?m\.?$/i.exec(detail);
+    if (clock !== null) {
+      return !new RegExp(String.raw`(?<![\d:])${clock[1]}\s?${clock[2]}\.?m\b`, "i").test(answer);
+    }
     const name = dayOrMonth(detail);
     if (name === null) return !stillHas(answer, detail);
     // A short form counts only capitalized, in the answer as in the text:
@@ -290,6 +315,74 @@ export function missingDetails(sent: string, answer: string): string[] {
       SPELLINGS[name]!.some((short) => stillHas(answer, capitalized(short), true))
     );
   });
+}
+
+/** "Sept 5" is kept by "September 5", "Sept. 5" or "Sept 5", never by "Sept 15". */
+function stillHasMonthDay(answer: string, word: string, day: string): boolean {
+  const month = word.toLowerCase() === "may" ? "may" : dayOrMonth(word);
+  if (month === null) return stillHas(answer, `${word} ${day}`);
+  const tail = String.raw`\.?\s+${day}(?!\d)`;
+  const full = new RegExp(String.raw`(?<![\p{L}\p{N}])${month}${tail}`, "iu");
+  const short = (SPELLINGS[month] ?? []).map(
+    (spelling) => new RegExp(String.raw`(?<![\p{L}\p{N}])${capitalized(spelling)}${tail}`, "u"),
+  );
+  return full.test(answer) || short.some((pattern) => pattern.test(answer));
+}
+
+/** What kind of detail it is, for telling which ones a chat line changes. */
+export type DetailKind = "date" | "time" | "number" | "link" | "email";
+
+export function detailKind(detail: string): DetailKind {
+  if (/^(?:https?:\/\/|www\.)/i.test(detail)) return "link";
+  if (detail.includes("@")) return "email";
+  if (/^\d{1,2}:\d{2}/.test(detail) || /[ap]\.?m\.?$/i.test(detail)) return "time";
+  // "11/5", "11/5/2026", "2026-11-05": dates written in numbers.
+  if (/^(?:\d{1,2}\/\d{1,2}(?:\/\d{2,4})?|\d{4}-\d{2}-\d{2})$/.test(detail)) return "date";
+  if (/^\d/.test(detail)) return "number";
+  // A day or month name, short or full, or a month with its day.
+  return "date";
+}
+
+/**
+ * Words that name a kind without writing one: "drop the link", "change the
+ * time", "move it to tomorrow". Without them the detail being changed would
+ * be forced back by the retry. Only right after a change verb: "I am excited",
+ * "have a good day" or "at times" ask for no change, so they free nothing.
+ */
+const CHANGE = String.raw`\b(?:drop|remove|delete|change|move|shift|push|update|fix|replace|swap|skip|cut|lose|take\s+out|leave\s+out)\b[^.!?\n]{0,30}?`;
+/**
+ * "Don't change the date", "without changing the time", "keep the link": a
+ * line that protects something names it too. Telling the two apart from a
+ * word list is guesswork, so a line with any of these frees nothing by name;
+ * a detail it writes ("move it to Friday") still frees its kind.
+ */
+const KEEPS = /\b(?:keep|keeping|same|don'?t|doesn'?t|do\s+not|not|never|without|leave\s+(?:the|it|that))\b/i;
+const KIND_WORDS: Readonly<Record<DetailKind, RegExp>> = {
+  link: new RegExp(String.raw`${CHANGE}\b(?:links?|urls?|websites?)\b`, "i"),
+  email: new RegExp(String.raw`${CHANGE}\be-?mails?\b`, "i"),
+  time: new RegExp(String.raw`${CHANGE}\b(?:times?|o'?clock)\b`, "i"),
+  date: new RegExp(
+    String.raw`${CHANGE}\b(?:dates?|days?|weekdays?|weekends?)\b|\b(?:move|push|shift|change)\b[^.!?\n]{0,20}?\b(?:today|tomorrow|tonight|yesterday|next\s+(?:week|month))\b`,
+    "i",
+  ),
+  number: new RegExp(String.raw`${CHANGE}\b(?:numbers?|counts?|guests?|amounts?|prices?)\b`, "i"),
+};
+
+/**
+ * The details to hold Andy to on a later ask (owner, 2026-11-05, option b):
+ * everything in the text Andy no longer has, except details of a kind the
+ * new chat line names itself, by writing one or by naming its kind — "move it
+ * to Friday" frees the day but still holds the time and the link; "under 50
+ * words" frees numbers, not the day or the time; "drop the link" frees links.
+ */
+export function detailsToKeep(current: string, answer: string, instruction: string): string[] {
+  const freed = new Set<DetailKind>([
+    ...keyDetails(instruction).map(detailKind),
+    ...(KEEPS.test(instruction)
+      ? []
+      : (Object.keys(KIND_WORDS) as DetailKind[]).filter((kind) => KIND_WORDS[kind].test(instruction))),
+  ]);
+  return missingDetails(current, answer).filter((detail) => !freed.has(detailKind(detail)));
 }
 
 /** What a `<keep_exactly>` block may carry: a few short items, never a paragraph. */

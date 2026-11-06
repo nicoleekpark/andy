@@ -12,6 +12,8 @@ import {
   MAX_INSTRUCTION_CHARS,
   WRITE_TO_STALE_BLOCK,
   buildWriteToMessage,
+  detailKind,
+  detailsToKeep,
   keyDetails,
   missingDetails,
 } from "./writeToPrompt";
@@ -650,7 +652,7 @@ test("should list only the details the answer lost, whatever their case", () => 
 test("should find short day and month forms in key details when they are capitalized", () => {
   expect(keyDetails("see you Fri")).toEqual(["Fri"]);
   expect(keyDetails("Thu or Thurs or Tues")).toEqual(["Thu", "Thurs", "Tues"]);
-  expect(keyDetails("Sept 5, Sep 6, Oct 7")).toEqual(["Sept", "5", "Sep", "6", "Oct", "7"]);
+  expect(keyDetails("Sept 5, Sep 6, Oct 7")).toEqual(["Sept 5", "Sep 6", "Oct 7"]); // a month with its day is one date
   expect(keyDetails("lunch Fri. then")).toEqual(["Fri"]);
   expect(keyDetails("Fri at 3:30 with https://a.com/x")).toEqual(["Fri", "3:30", "https://a.com/x"]);
 });
@@ -666,7 +668,7 @@ test("should not treat lowercase ordinary words as details when they spell a sho
 test("should not count a short form again when it is part of a link or email", () => {
   expect(keyDetails("see https://a.com/Oct")).toEqual(["https://a.com/Oct"]);
   expect(keyDetails("write to Jan@x.com")).toEqual(["Jan@x.com"]);
-  expect(keyDetails("Oct 5 at https://a.com/Oct")).toEqual(["Oct", "5", "https://a.com/Oct"]);
+  expect(keyDetails("Oct 5 at https://a.com/Oct")).toEqual(["Oct 5", "https://a.com/Oct"]);
 });
 
 test("should not let an ordinary word in the answer keep a short form", () => {
@@ -730,6 +732,119 @@ test("should not ask again when the new chat line names a detail itself", async 
   const answer = await composeLater({ current: "Dinner Thursday?", instruction: "move it to Friday" });
   expect(createMessage).toHaveBeenCalledTimes(1);
   expect(answer.text).toBe("Dinner Friday?");
+});
+
+test("should sort a detail into link, email, number or date", () => {
+  expect(detailKind("https://a.com")).toBe("link");
+  expect(detailKind("www.a.com")).toBe("link");
+  expect(detailKind("a@b.com")).toBe("email");
+  expect(detailKind("3:30")).toBe("time");
+  expect(detailKind("4")).toBe("number");
+  expect(detailKind("10/30")).toBe("date");
+  expect(detailKind("2026-11-05")).toBe("date");
+  expect(detailKind("Sept 5")).toBe("date");
+  expect(detailKind("Thursday")).toBe("date");
+  expect(detailKind("Fri")).toBe("date");
+  expect(detailKind("Sept")).toBe("date");
+  expect(detailKind("May 5")).toBe("date");
+});
+
+const dinner = "Dinner Thursday at 3:30, https://a.com, 4 people";
+
+test("should free numbers but keep the day when the new chat line names only a number", () => {
+  expect(detailsToKeep(dinner, "Dinner at 3:30, https://a.com", "make it under 50 words")).toEqual(["Thursday"]);
+});
+
+test("should free the day but keep the time when the new chat line names only a day", () => {
+  expect(detailsToKeep(dinner, "Dinner, https://a.com, 4 people", "move it to Friday")).toEqual(["3:30"]);
+});
+
+test("should hold every missing detail when the new chat line names none", () => {
+  expect(detailsToKeep(dinner, "Dinner, https://a.com", "warmer")).toEqual(["Thursday", "3:30", "4"]);
+});
+
+test("should ask again for a day when a later ask only names a number", async () => {
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  createMessage.mockResolvedValueOnce(reply({ text: "Dinner soon?" }));
+  createMessage.mockResolvedValueOnce(reply({ text: "Dinner Thursday?" }));
+  await composeLater({ current: "Dinner Thursday?", instruction: "make it under 50 words" });
+  expect(createMessage).toHaveBeenCalledTimes(2);
+  const second: string = createMessage.mock.calls[1][0].messages[0].content[0].text;
+  expect(second).toContain("<keep_exactly>\n- Thursday\n</keep_exactly>");
+});
+
+test("should ask only once when a later ask changes the day and keeps the time", async () => {
+  createMessage.mockResolvedValueOnce(reply({ text: "Dinner Friday at 3:30?" }));
+  await composeLater({ current: "Dinner Thursday at 3:30?", instruction: "move it to Friday" });
+  expect(createMessage).toHaveBeenCalledTimes(1);
+});
+
+test("should ask again for the time when a later ask names only a day and the answer drops the time", async () => {
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  createMessage.mockResolvedValueOnce(reply({ text: "Dinner Friday?" }));
+  createMessage.mockResolvedValueOnce(reply({ text: "Dinner Friday at 3:30?" }));
+  await composeLater({ current: "Dinner Thursday at 3:30?", instruction: "move it to Friday" });
+  expect(createMessage).toHaveBeenCalledTimes(2);
+  const second: string = createMessage.mock.calls[1][0].messages[0].content[0].text;
+  expect(second).toContain("<keep_exactly>\n- 3:30\n</keep_exactly>");
+});
+
+test("should hold the time and the month-day when a later ask only names sentences", () => {
+  expect(detailsToKeep("Dinner Thursday at 3:30, Sept 5", "Dinner Thursday, Sept", "make it 2 sentences")).toEqual([
+    "3:30",
+    "Sept 5",
+  ]);
+});
+
+test("should treat a month with its day as one detail when checking an answer", () => {
+  expect(keyDetails("Sept 5")).toEqual(["Sept 5"]);
+  expect(missingDetails("on Sept 5", "on September 5")).toEqual([]);
+  expect(missingDetails("on Sept 5", "on Sept 15")).toEqual(["Sept 5"]);
+  expect(missingDetails("on Sept 5", "on Sept")).toEqual(["Sept 5"]);
+});
+
+test("should ask only once when the chat line says drop the link and the answer has none", async () => {
+  createMessage.mockResolvedValueOnce(reply({ text: "Dinner Thursday at 3:30?" }));
+  await composeLater({ current: "Dinner Thursday at 3:30 https://a.com?", instruction: "drop the link" });
+  expect(createMessage).toHaveBeenCalledTimes(1);
+});
+
+test("should free a kind the chat line names in words when it writes none", () => {
+  expect(detailsToKeep("Dinner Thursday", "Dinner", "move it to tomorrow")).toEqual([]);
+  expect(detailsToKeep("Dinner at 3:30, 4 people", "Dinner", "change the time to 7")).toEqual([]);
+  expect(detailsToKeep("Mail a@b.com", "Mail", "remove the email")).toEqual([]);
+});
+
+test("should hold the detail when a kind word appears without a change verb", () => {
+  expect(detailsToKeep("Dinner at 3:30", "Dinner", "make it sound like I am excited")).toEqual(["3:30"]);
+  expect(detailsToKeep("Dinner Thursday", "Dinner", "have a good day")).toEqual(["Thursday"]);
+  expect(detailsToKeep("Dinner at 3:30", "Dinner", "say hi, we text at times")).toEqual(["3:30"]);
+  expect(detailsToKeep("Dinner for 4", "Dinner", "make it warmer for people")).toEqual(["4"]);
+});
+
+test("should free the kind when a change verb comes before the kind word", () => {
+  expect(detailsToKeep("Dinner https://a.com", "Dinner", "drop the link")).toEqual([]);
+  expect(detailsToKeep("Dinner at 3:30", "Dinner", "change the time")).toEqual([]);
+  expect(detailsToKeep("Dinner Thursday", "Dinner", "move it to tomorrow")).toEqual([]);
+});
+
+test("should read an ordinal day as part of one date", () => {
+  expect(keyDetails("Dinner March 5th")).toEqual(["March 5th"]);
+  expect(detailsToKeep("Dinner March 5th at 3:30", "Dinner Friday at 3:30", "move it to Friday")).toEqual([]);
+  expect(missingDetails("March 5th", "March 5")).toEqual([]);
+});
+
+test("should read am and pm times as one time and keep them across spellings", () => {
+  expect(keyDetails("at 3pm")).toEqual(["3pm"]);
+  expect(detailKind("3pm")).toBe("time");
+  expect(detailsToKeep("Dinner at 3pm", "Dinner", "change the time")).toEqual([]);
+  expect(missingDetails("at 3pm", "at 3 PM")).toEqual([]);
+  expect(missingDetails("at 3pm", "at 3 p.m.")).toEqual([]);
+  expect(missingDetails("at 3pm", "at 13pm")).toEqual(["3pm"]);
+});
+
+test("should free the day when the chat line moves it to a numeric date", () => {
+  expect(detailsToKeep("Dinner Thursday at 3:30", "Dinner 11/5 at 3:30", "move it to 11/5")).toEqual([]);
 });
 
 test("should return the second answer as is, with no third call and no error, when it still misses the detail", async () => {
@@ -800,4 +915,15 @@ test("should log none of the person's words when it asks once more", async () =>
   expect(logs[1]).toHaveBeenCalled(); // the retry did log: fixed words only
   const everything = JSON.stringify(logs.flatMap((spy) => spy.mock.calls.map((call) => call.map(String))));
   for (const word of ["SECRET", "Thursday", "3:30", "a.com"]) expect(everything).not.toContain(word);
+});
+
+test("should hold the detail when the chat line protects a kind it names in words", () => {
+  expect(detailsToKeep("Dinner at 3:30", "Dinner", "make it friendlier without changing the time")).toEqual(["3:30"]);
+  expect(detailsToKeep("Dinner Thursday", "Dinner", "don't change the date")).toEqual(["Thursday"]);
+  expect(detailsToKeep("Dinner at 3:30", "Dinner", "remove the fluff but keep the time")).toEqual(["3:30"]);
+  expect(detailsToKeep("Dinner Thursday", "Dinner", "no worries, have a great day")).toEqual(["Thursday"]);
+});
+
+test("should free the day but hold the time when a protecting line also writes a new day", () => {
+  expect(detailsToKeep("Dinner Thursday at 3:30", "Dinner", "don't be formal, move it to Friday")).toEqual(["3:30"]);
 });
