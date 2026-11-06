@@ -477,4 +477,6 @@ Decided on 2026-11-05/06 under the owner's overnight instruction (decide small d
 - **The placeholder leaves out the screenshot sentence until the screenshot button exists** (slice 6): telling people to add a screenshot with no button to do it would send them looking for one.
 - **Until slice 4d, Close and a swipe down both close the sheet, losing the text** (no question yet). Dev builds only: Write to is not on any shipped build.
 - **The arrow and the status line sit inside and under box A as the mock shows; the copy icon is SF Symbol `doc.on.doc` → `checkmark` with "Copied" beside it; the arrow is `arrow.up.circle.fill` in moss at `size.touch`** (slice 4a, from STYLE.md: icons are SF Symbols).
+- **One status line, in this order** (slice 4b): Andy is writing… → a failed ask / Not now / clipboard → too long (box, chat line) → **Check: …** → the 10-ask cap → offline. "Check" sits above the cap and offline because it is about the text the person is about to send, and copying works offline; the greyed arrow still says why it can't ask (VoiceOver hint).
+- **"Andy's answer is ready." without "Version n of n" until the stepper exists** (slice 4c adds versions and the count).
 - **"March 5th" is one date and "3pm" is a time** (code review): before, "5th" was a separate number and "3pm" a number, so a date or time change triggered a needless retry.

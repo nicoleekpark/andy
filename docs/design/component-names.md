@@ -414,17 +414,20 @@ Each screen lists its captured states, then the parts that belong to it (shared 
 
 ### `write-to` (draft-editing.md — Final design F, 2026-10-30)
 
-한 시트. 만들어지는 중: slice 4a에 아래 행들. 다시 묻기·채팅 줄·Edited(4b), 버전(4c), Close 질문·쓸어내려도 유지(4d), Open Messages(5), 스크린샷(6)은 각 PR에서 행 추가.
+한 시트. 만들어지는 중: 4a(묻기·박스 B·복사·상태 줄), 4b(다시 묻기·Edited·힌트·채팅 줄). 버전(4c), Close 질문·쓸어내려도 유지(4d), Open Messages(5), 스크린샷(6)은 각 PR에서 행 추가.
 
 | Name | 설명 |
 |---|---|
 | `write-to` | Write to {이름} 시트 — 박스 A에 쓰고 화살표 → Andy의 답이 박스 B. 열어도 호출 없음. 메모리에만(프로필 화면이 들고 있음, 앱 잠금이 시트를 숨겨도 글은 남음) |
 | `write-to-close-button` | 왼쪽 위 Close. 지금은 바로 닫음(4d에서 복사 안 했으면 먼저 물음) |
 | `write-to-ask-box` | 박스 A — 자리표시 "Write what you want to say to {이름}, or tell Andy what to write, or both." + 예시. VoiceOver "What to write to {이름}". 높이 `size.writeBox`. Andy가 쓰는 동안 흐려지고 잠김 |
-| `write-to-arrow` | 박스 A 오른쪽 아래 둥근 화살표(SF Symbol `arrow.up.circle.fill`, moss) — Andy에게 묻는 유일한 버튼. VoiceOver "Ask Andy". 글이 없거나·오프라인·4,000자 넘으면 흐림(힌트가 이유를 말함). 쓰는 동안 스피너 |
-| `write-to-draft-box` | 박스 B — Andy의 답, 그냥 편집되는 칸. VoiceOver "Message to {이름}". 박스 A와 같은 높이 |
+| `write-to-arrow` | 둥근 화살표(SF Symbol `arrow.up.circle.fill`, moss) — Andy에게 묻는 유일한 버튼. 답 전엔 박스 A 오른쪽 아래, 답 뒤엔 채팅 줄 끝. VoiceOver "Ask Andy". 새로운 게 있을 때만 켜짐(박스 B가 보이는 답과 다르거나 채팅 줄에 글) — 아니면 흐림, 힌트가 이유(빈 글·새로운 것 없음·오프라인·너무 김·10번). 쓰는 동안 스피너 |
+| `write-to-draft-box` | 박스 B — Andy의 답, 그냥 편집되는 칸. 화살표를 누를 때 박스 B에 있는 게 Andy에게 감. VoiceOver "Message to {이름}"(고쳤으면 ", edited"). 박스 A와 같은 높이. Andy가 쓰는 동안 흐려지고 잠김 |
+| `write-to-edited-tag` | 박스 B 왼쪽 위 "Edited" — 박스 B가 보이는 답과 다를 때. 따로 읽히지 않고 박스 B 라벨에 붙음 |
+| `write-to-hint` | 박스 B 아래 "Edit the text above, or tell Andy what to change." — 상태 줄이 있으면 그 자리를 내줌 |
+| `write-to-chat-line` | 힌트 아래 한 줄 칸 — 자리표시 "Anything else? (optional) e.g. Warmer but simpler.", VoiceOver "Anything else for Andy? Optional". 500자까지. 보낸 줄은 비워지고, 이 시트에서 보낸 모든 줄을 Andy가 계속 지킴. 쓰는 동안 잠김 |
 | `write-to-copy-button` | 박스 B 오른쪽 위 복사 아이콘(`doc.on.doc`) → 누르면 체크 + "Copied"(고치면 사라짐). VoiceOver "Copy the message". 복사하면 그 답의 톤·형식이 이 사람의 기본값이 됨(`writeTo.rememberStyle`). 클립보드 지문은 로그아웃 때 지워짐 |
-| `write-to-status-line` | 박스 아래 한 줄, 한 번에 하나 — Andy is writing… · 오프라인 · 너무 김(몇 자 줄일지) · 실패 · Not now 뒤 · 클립보드 실패(alert 색) · "Check: Thursday, 3:30"(재요청 뒤에도 빠진 세부, 서버 `droppedDetails`) |
+| `write-to-status-line` | 박스 아래 한 줄, 한 번에 하나 — Andy is writing… · 실패 · Not now 뒤 · 클립보드 실패 · 너무 김(박스, 채팅 줄) · "Check: Thursday, 3:30"(재요청 뒤에도 빠진 세부, 서버 `droppedDetails`) · 10번 끝 · 오프라인. 순서도 이대로(Check가 10번·오프라인보다 위). 읽어 줌(VoiceOver) |
 
 ### `ai-permission-sheet`
 

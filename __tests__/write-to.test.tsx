@@ -163,7 +163,7 @@ describe("copy", () => {
     });
 
     await act(async () => {
-      fireEvent.changeText(screen.getByLabelText("Message to Nina"), "Hi Nina, Saturday?");
+      fireEvent.changeText(screen.getByTestId("write-to-draft-box"), "Hi Nina, Saturday?");
     });
     expect(screen.queryByText("Copied")).toBeNull();
   });
@@ -371,4 +371,230 @@ test("should not show the clipboard line or remember the style on the next sheet
   expect(screen.queryByText(/couldn't reach the clipboard/)).toBeNull();
   expect(screen.queryByText("Copied")).toBeNull();
   expect(rememberStyle).not.toHaveBeenCalled();
+});
+
+describe("asking again (slice 4b)", () => {
+  const CHAT = "write-to-chat-line";
+  const ARROW = "write-to-arrow";
+  const ANSWER_2 = { ...ANSWER, text: "Hi Nina, Friday?" };
+
+  async function chat(text: string) {
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId(CHAT), text);
+    });
+  }
+  async function editB(text: string) {
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId("write-to-draft-box"), text);
+    });
+  }
+  async function arrow() {
+    await act(async () => {
+      fireEvent.press(screen.getByTestId(ARROW));
+    });
+  }
+
+  test("should show the hint and a disabled arrow after an answer, and enable it when the chat line has text", async () => {
+    await askAndy(jest.fn(async () => ANSWER));
+
+    expect(screen.getByTestId("write-to-hint")).toBeTruthy();
+    expect(screen.getByLabelText("Anything else for Andy? Optional")).toBeTruthy();
+    expect(screen.getByTestId(ARROW)).toBeDisabled();
+
+    await chat("warmer");
+    expect(screen.getByTestId(ARROW)).not.toBeDisabled();
+  });
+
+  test("should show Edited, the edited label and an enabled arrow when box B differs from the answer", async () => {
+    await askAndy(jest.fn(async () => ANSWER));
+    const hidden = { includeHiddenElements: true };
+    expect(screen.queryByText("Edited", hidden)).toBeNull();
+
+    await editB("Hi Nina, Friday instead?");
+
+    expect(screen.getByText("Edited", hidden)).toBeTruthy();
+    expect(screen.getByLabelText("Message to Nina, edited")).toBeTruthy();
+    expect(screen.getByTestId(ARROW)).not.toBeDisabled();
+  });
+
+  test("should send box B, the last answer and the chat line, empty the line and send earlier lines on the next ask", async () => {
+    const write = jest.fn().mockResolvedValueOnce(ANSWER).mockResolvedValue(ANSWER_2);
+    await askAndy(write);
+
+    await editB("Hi Nina, mine");
+    await chat("warmer");
+    await arrow();
+    expect(write).toHaveBeenLastCalledWith({
+      profileId: "profile-1",
+      today: expect.any(String),
+      request: "ask if she is free Thursday",
+      earlierInstructions: [],
+      current: "Hi Nina, mine",
+      lastAnswer: ANSWER.text,
+      instruction: "warmer",
+    });
+    expect(screen.getByTestId(CHAT).props.value).toBe("");
+
+    await chat("shorter");
+    await arrow();
+    expect(write).toHaveBeenLastCalledWith(
+      expect.objectContaining({ earlierInstructions: ["warmer"], instruction: "shorter", lastAnswer: ANSWER_2.text }),
+    );
+    expect(screen.getByTestId(CHAT).props.value).toBe("");
+  });
+
+  test("should keep box B and the chat line and not count the line when a later ask fails", async () => {
+    const write = jest.fn().mockResolvedValueOnce(ANSWER).mockRejectedValueOnce(new Error("boom")).mockResolvedValue(ANSWER_2);
+    await askAndy(write);
+    await editB("my edit");
+    await chat("warmer");
+    await arrow();
+
+    expect(screen.getByTestId("write-to-draft-box").props.value).toBe("my edit");
+    expect(screen.getByTestId(CHAT).props.value).toBe("warmer");
+    expect(screen.getByTestId("write-to-status-line")).toHaveTextContent(/couldn't write that/);
+
+    await arrow();
+    expect(write).toHaveBeenLastCalledWith(expect.objectContaining({ earlierInstructions: [] }));
+  });
+
+  test("should show the cap line and disable the arrow when ten later asks have been answered", async () => {
+    const write = jest.fn(async () => ANSWER);
+    await askAndy(write);
+    for (let i = 0; i < 10; i++) {
+      expect(screen.queryByText(/That's the most Andy can do/)).toBeNull();
+      await chat(`change ${i}`);
+      await arrow();
+    }
+
+    expect(screen.getByTestId("write-to-status-line")).toHaveTextContent(
+      "That's the most Andy can do in one go. Copy it, or close and start again.",
+    );
+    await chat("one more");
+    expect(screen.getByTestId(ARROW)).toBeDisabled();
+    expect(write).toHaveBeenCalledTimes(11);
+  });
+
+  test("should keep the Check line above the cap line when the last answer still left a detail out", async () => {
+    const write = jest.fn(async () => ANSWER);
+    await askAndy(write);
+    for (let i = 0; i < 9; i++) {
+      await chat(`change ${i}`);
+      await arrow();
+    }
+    write.mockResolvedValueOnce({ ...ANSWER, droppedDetails: ["Thursday"] });
+    await chat("last change");
+    await arrow();
+
+    // At the cap, copying is all that is left: the missing detail matters most.
+    expect(screen.getByTestId("write-to-status-line")).toHaveTextContent("Check: Thursday");
+    expect(screen.getByTestId(ARROW)).toBeDisabled();
+  });
+
+  test("should say how much to cut and disable the arrow when the chat line is over 500 characters", async () => {
+    await askAndy(jest.fn(async () => ANSWER));
+    await chat("a".repeat(501));
+
+    expect(screen.getByTestId("write-to-status-line")).toHaveTextContent("Shorten this by 1 characters.");
+    expect(screen.getByTestId(ARROW)).toBeDisabled();
+  });
+
+  test("should lock box B and the chat line while a later ask is writing", async () => {
+    let resolve!: (a: typeof ANSWER) => void;
+    const write = jest
+      .fn()
+      .mockResolvedValueOnce(ANSWER)
+      .mockImplementationOnce(
+        () =>
+          new Promise<typeof ANSWER>((r) => {
+            resolve = r;
+          }),
+      );
+    await askAndy(write);
+    await chat("warmer");
+    await arrow();
+
+    expect(screen.getByTestId("write-to-draft-box").props.editable).toBe(false);
+    expect(screen.getByTestId(CHAT).props.editable).toBe(false);
+    expect(screen.getByTestId("write-to-status-line")).toHaveTextContent("Andy is writing…");
+
+    await act(async () => {
+      resolve(ANSWER_2);
+    });
+    expect(screen.getByTestId("write-to-draft-box").props.editable).toBe(true);
+    expect(screen.getByTestId(CHAT).props.editable).toBe(true);
+  });
+
+  test("should remove the failed line when the chat line is typed in after a later ask fails", async () => {
+    const write = jest.fn().mockResolvedValueOnce(ANSWER).mockRejectedValueOnce(new Error("boom"));
+    await askAndy(write);
+    await chat("warmer");
+    await arrow();
+    expect(screen.getByTestId("write-to-status-line")).toHaveTextContent(/couldn't write that/);
+
+    await chat("warmer please");
+    expect(screen.queryByText(/couldn't write that/)).toBeNull();
+
+    await chat("a".repeat(501));
+    expect(screen.getByTestId("write-to-status-line")).toHaveTextContent("Shorten this by 1 characters.");
+  });
+
+  test("should not show Edited and keep the arrow disabled when box B only gains a trailing space", async () => {
+    await askAndy(jest.fn(async () => ANSWER));
+
+    await editB(`${ANSWER.text} \n`);
+
+    expect(screen.queryByText("Edited", { includeHiddenElements: true })).toBeNull();
+    expect(screen.getByTestId(ARROW)).toBeDisabled();
+  });
+
+  test("should disable the copy button while a later ask is writing", async () => {
+    const write = jest
+      .fn()
+      .mockResolvedValueOnce(ANSWER)
+      .mockImplementationOnce(() => new Promise<typeof ANSWER>(() => {}));
+    await askAndy(write);
+    expect(screen.getByTestId("write-to-copy-button")).not.toBeDisabled();
+
+    await chat("warmer");
+    await arrow();
+
+    expect(screen.getByTestId("write-to-copy-button")).toBeDisabled();
+  });
+
+  test("should show the offline line and disable the arrow when the connection drops after an answer", async () => {
+    const { Pressable, Text } = jest.requireActual("react-native") as typeof import("react-native");
+    function Sheet() {
+      const controller = useWriteTo("profile-1");
+      return (
+        <>
+          <WriteToSheet personName="Nina" controller={controller} />
+          <Pressable testID="open-it" onPress={controller.show}>
+            <Text>open</Text>
+          </Pressable>
+        </>
+      );
+    }
+    const tree = () => (
+      <OfflineCopyProvider ownerId="user-1">
+        <Sheet />
+      </OfflineCopyProvider>
+    );
+    answerByName(useAction, { [nameOf(api.writeTo.write)]: jest.fn(async () => ANSWER) }, quietCall);
+    answerByName(useMutation, {}, quietCall);
+    answerByName(useQuery, { [nameOf(api.featureFlags.switchedOff)]: ["aiPermission"] }, () => undefined);
+    const { rerender } = await render(tree());
+    await fireEvent.press(screen.getByTestId("open-it"));
+    await typeAsk("hi");
+    await press(ASK);
+    await chat("warmer");
+    expect(screen.queryByText(/You're offline/)).toBeNull();
+    expect(screen.getByTestId(ARROW)).not.toBeDisabled();
+
+    online(false);
+    await rerender(tree());
+
+    expect(screen.getByTestId("write-to-status-line")).toHaveTextContent(/You're offline/);
+    expect(screen.getByTestId(ARROW)).toBeDisabled();
+  });
 });

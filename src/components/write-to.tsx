@@ -14,7 +14,7 @@ import { SymbolView } from "expo-symbols";
 import { useAction, useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "@convex/_generated/api";
-import { MAX_WRITE_TO_CHARS } from "../../convex/writeToPrompt";
+import { MAX_ASKS_AFTER_FIRST, MAX_INSTRUCTION_CHARS, MAX_WRITE_TO_CHARS } from "../../convex/writeToPrompt";
 import { colors, disabledOpacity, fonts, radius, size, space, textOpacity, textSize } from "../constants/theme";
 import { useAiGoAhead } from "@/lib/ai-go-ahead";
 import { putOnClipboard } from "@/lib/clipboard";
@@ -26,9 +26,10 @@ import { useOnline } from "@/lib/offline-copy";
  * Write to {name} (`docs/design/decisions/draft-editing.md` → Final design, F).
  *
  * One sheet: box A, the arrow, then Andy's answer in box B, editable, with a
- * copy button. This is the first part of it (slice 4a). Asking again, the chat
- * line, versions, the Close question and keeping the sheet when it is swiped
- * away follow in their own slices; until then Close and a swipe both close.
+ * copy button; then edit it, or tell Andy what to change on the chat line, and
+ * ask again (slices 4a, 4b). Versions, the Close question and keeping the
+ * sheet when it is swiped away follow in their own slices; until then Close
+ * and a swipe both close.
  *
  * Nothing is kept: the text lives in memory in the profile screen, above the
  * sheet, so the app lock can hide the sheet without losing it.
@@ -49,6 +50,8 @@ const PROBLEMS_SPOKEN: Partial<Record<Problem, string>> = {
 };
 const OFFLINE = "You're offline. Asking Andy needs a connection — your text stays here.";
 const WRITING = "Andy is writing…";
+const CAP = "That's the most Andy can do in one go. Copy it, or close and start again.";
+const HINT = "Edit the text above, or tell Andy what to change.";
 
 /** The sheet's state and what it can do, held by the screen that opens it. */
 export function useWriteTo(profileId: string) {
@@ -63,6 +66,11 @@ export function useWriteTo(profileId: string) {
   const [problem, setProblem] = useState<Problem | null>(null);
   /** Cleared by editing, not by a timer: "Copied" stops being true when the text moves. */
   const [copied, setCopied] = useState(false);
+  /** The chat line, and every line already sent in this sheet (Andy keeps them all). */
+  const [instruction, setInstruction] = useState("");
+  const [earlier, setEarlier] = useState<string[]>([]);
+  /** Asks after the first, counted here: the server keeps nothing to count with. */
+  const [asksAfterFirst, setAsksAfterFirst] = useState(0);
   const inFlight = useRef(false);
   /**
    * Which opening of the sheet this is. Close moves it on, so an answer that
@@ -84,6 +92,9 @@ export function useWriteTo(profileId: string) {
     setDraftText("");
     setProblem(null);
     setCopied(false);
+    setInstruction("");
+    setEarlier([]);
+    setAsksAfterFirst(0);
   }, []);
 
   const ask = useCallback(async () => {
@@ -100,15 +111,30 @@ export function useWriteTo(profileId: string) {
       setProblem(null);
       setWriting(true);
       AccessibilityInfo.announceForAccessibility("Andy is writing");
-      const written = await write({ profileId, today: localToday(), request, earlierInstructions: [] });
+      // A later ask: box B as it is, Andy's last answer (the server drops it
+      // when unedited), every chat line so far, and the new one if any.
+      const said = instruction.trim();
+      const written = await write({
+        profileId,
+        today: localToday(),
+        request,
+        earlierInstructions: earlier,
+        ...(answer === null ? {} : { current: draft, lastAnswer: answer.text, instruction: said }),
+      });
       if (mine !== session.current) return;
       setAnswer(written);
       setDraftText(written.text);
       draftNow.current = written.text;
       setCopied(false);
-      AccessibilityInfo.announceForAccessibility("Andy's answer is ready. Version 1 of 1.");
+      if (answer !== null) {
+        setAsksAfterFirst((n) => n + 1);
+        if (said !== "") setEarlier((lines) => [...lines, said]);
+        setInstruction("");
+      }
+      AccessibilityInfo.announceForAccessibility("Andy's answer is ready.");
     } catch {
-      // Every server failure shows the one line (Strings): box A stays as it was.
+      // Every server failure shows the one line (Strings), and changes nothing:
+      // both boxes and the chat line stay, and it does not count toward the 10.
       if (mine === session.current) setProblem("failed");
     } finally {
       // Close has already reset these for the sheet that comes next.
@@ -117,13 +143,25 @@ export function useWriteTo(profileId: string) {
         setWriting(false);
       }
     }
-  }, [goAhead, write, profileId, request]);
+  }, [goAhead, write, profileId, request, earlier, answer, draft, instruction]);
 
+  /**
+   * Any edit makes a failed ask, a Not now or a clipboard miss old news: the
+   * line would otherwise sit over the reason the arrow is greyed now.
+   */
   const setDraft = useCallback((text: string) => {
     setDraftText(text);
     draftNow.current = text;
     setCopied(false);
-    setProblem((now) => (now === "clipboard" ? null : now));
+    setProblem(null);
+  }, []);
+  const editRequest = useCallback((text: string) => {
+    setRequest(text);
+    setProblem(null);
+  }, []);
+  const editInstruction = useCallback((text: string) => {
+    setInstruction(text);
+    setProblem(null);
   }, []);
 
   const copy = useCallback(async () => {
@@ -156,10 +194,13 @@ export function useWriteTo(profileId: string) {
     show: useCallback(() => setOpen(true), []),
     close,
     request,
-    setRequest,
+    setRequest: editRequest,
     answer,
     draft,
     setDraft,
+    instruction,
+    setInstruction: editInstruction,
+    asksAfterFirst,
     writing,
     problem,
     copied,
@@ -170,33 +211,94 @@ export function useWriteTo(profileId: string) {
 
 export type WriteToController = ReturnType<typeof useWriteTo>;
 
-/** The one line under the box (`write-to-status-line`), or nothing. */
-function statusOf(
-  controller: WriteToController,
-  online: boolean,
-): { text: string; spoken?: string; alert: boolean } | null {
-  const { writing, problem, request, answer } = controller;
-  if (writing) return { text: WRITING, alert: false };
-  // Only asking needs a connection, and until slice 4b asking ends at the
-  // answer: after it, the line would cover "Check: …" for a reason that no
-  // longer applies (copying works offline).
-  if (!online && answer === null) return { text: OFFLINE, alert: false };
-  if (answer === null && request.length > MAX_WRITE_TO_CHARS) {
-    const over = request.length - MAX_WRITE_TO_CHARS;
-    return { text: `That's too long for Andy to read at once. Shorten it by ${over} characters to ask.`, alert: true };
+/** Why the arrow is greyed, said as its VoiceOver hint (Strings), or null when it is on. */
+function arrowBlock(controller: WriteToController, online: boolean): string | null {
+  const { writing, request, answer, draft, instruction, asksAfterFirst } = controller;
+  if (writing) return null;
+  if (!online) return "Asking Andy needs a connection.";
+  if (answer === null) {
+    if (request.length > MAX_WRITE_TO_CHARS) return "Shorten the text to ask Andy.";
+    if (request.trim() === "") return "Write something first.";
+    return null;
   }
-  if (problem !== null) return { text: PROBLEMS[problem], spoken: PROBLEMS_SPOKEN[problem], alert: problem !== "notNow" };
-  // Key details Andy still left out after its second try (slice ③).
-  const dropped = answer?.droppedDetails ?? [];
-  if (dropped.length > 0) return { text: `Check: ${dropped.join(", ")}`, alert: false };
+  if (draft.length > MAX_WRITE_TO_CHARS || instruction.length > MAX_INSTRUCTION_CHARS) {
+    return "Shorten the text to ask Andy.";
+  }
+  if (asksAfterFirst >= MAX_ASKS_AFTER_FIRST) return "That's the most Andy can do in one go.";
+  // Something new: box B differs from the answer shown, or the chat line has text.
+  // Compared trimmed, as the server compares them: a trailing space is not an edit.
+  if (draft.trim() === "" || (!isEdited(draft, answer.text) && instruction.trim() === "")) return HINT;
   return null;
+}
+
+/** Box B differs from Andy's answer, the way the server judges it (trimmed). */
+const isEdited = (draft: string, answer: string) => draft.trim() !== answer.trim();
+
+type Status = { text: string; spoken?: string; alert: boolean };
+
+const tooLong = (over: number): Status => ({
+  text: `That's too long for Andy to read at once. Shorten it by ${over} characters to ask.`,
+  alert: true,
+});
+
+/** The one line under the boxes (`write-to-status-line`), or nothing. */
+function statusOf(controller: WriteToController, online: boolean): Status | null {
+  const { writing, problem, request, answer, draft, instruction, asksAfterFirst } = controller;
+  if (writing) return { text: WRITING, alert: false };
+  const said: Status | null =
+    problem === null ? null : { text: PROBLEMS[problem], spoken: PROBLEMS_SPOKEN[problem], alert: problem !== "notNow" };
+  if (answer === null) {
+    if (!online) return { text: OFFLINE, alert: false };
+    if (request.length > MAX_WRITE_TO_CHARS) return tooLong(request.length - MAX_WRITE_TO_CHARS);
+    return said;
+  }
+  if (said !== null) return said;
+  if (draft.length > MAX_WRITE_TO_CHARS) return tooLong(draft.length - MAX_WRITE_TO_CHARS);
+  if (instruction.length > MAX_INSTRUCTION_CHARS) {
+    return { text: `Shorten this by ${instruction.length - MAX_INSTRUCTION_CHARS} characters.`, alert: true };
+  }
+  // Key details Andy still left out after its second try (slice ③): above the
+  // cap and offline lines, because it is about the text about to be copied —
+  // most of all at the cap, when copying is all that is left.
+  const dropped = answer.droppedDetails ?? [];
+  if (dropped.length > 0) return { text: `Check: ${dropped.join(", ")}`, alert: false };
+  if (asksAfterFirst >= MAX_ASKS_AFTER_FIRST) return { text: CAP, alert: false };
+  if (!online) return { text: OFFLINE, alert: false };
+  return null;
+}
+
+/** The round arrow: the only thing that asks Andy (`write-to-arrow`). */
+function Arrow({ writing, block, onPress }: { writing: boolean; block: string | null; onPress: () => void }) {
+  if (writing) return <ActivityIndicator color={colors.moss} accessibilityLabel="Andy is writing" />;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Ask Andy"
+      accessibilityHint={block ?? undefined}
+      disabled={block !== null}
+      onPress={onPress}
+      style={[styles.arrow, block !== null && styles.disabled]}
+      testID="write-to-arrow"
+    >
+      <SymbolView
+        name="arrow.up.circle.fill"
+        size={size.touch}
+        tintColor={colors.moss}
+        fallback={<Text style={styles.arrowFallback}>Ask</Text>}
+      />
+    </Pressable>
+  );
 }
 
 export function WriteToSheet({ personName, controller }: { personName: string; controller: WriteToController }) {
   const locked = useLocked();
   const online = useOnline();
-  const { request, setRequest, answer, draft, setDraft, writing, copied, ask, copy, close } = controller;
+  const { request, setRequest, answer, draft, setDraft, instruction, setInstruction, writing, copied, ask, copy, close } =
+    controller;
   const status = statusOf(controller, online);
+  const block = arrowBlock(controller, online);
+  // Edited: box B differs from Andy's answer shown — Andy hasn't seen this text.
+  const edited = answer !== null && isEdited(draft, answer.text);
   // Said aloud when it changes: `accessibilityLiveRegion` is Android only, and
   // VoiceOver reads changed text only where its focus already is (WCAG 4.1.3).
   // "Andy is writing" is announced by `ask` itself.
@@ -204,14 +306,17 @@ export function WriteToSheet({ personName, controller }: { personName: string; c
   useEffect(() => {
     if (spoken !== null) AccessibilityInfo.announceForAccessibility(spoken);
   }, [spoken]);
-  const canAsk = online && !writing && request.trim() !== "" && request.length <= MAX_WRITE_TO_CHARS;
-  const arrowHint = !online
-    ? "Asking Andy needs a connection."
-    : request.length > MAX_WRITE_TO_CHARS
-      ? "Shorten the text to ask Andy."
-      : request.trim() === ""
-        ? "Write something first."
-        : undefined;
+
+  const statusLine =
+    status !== null ? (
+      <Text
+        style={[styles.status, status.alert && styles.statusAlert]}
+        accessibilityLabel={status.spoken}
+        testID="write-to-status-line"
+      >
+        {status.text}
+      </Text>
+    ) : null;
 
   return (
     <Modal
@@ -248,86 +353,91 @@ export function WriteToSheet({ personName, controller }: { personName: string; c
           automaticallyAdjustKeyboardInsets
         >
           {answer === null ? (
-            <View style={styles.box}>
-              <TextInput
-                accessibilityLabel={`What to write to ${personName}`}
-                placeholder={
-                  // The screenshot sentence joins with its button (slice 6).
-                  `Write what you want to say to ${personName}, or tell Andy what to write, or both.\n\n` +
-                  "e.g. Do you want to hang out and talk about our new product? Make it sound casual but still professional."
-                }
-                placeholderTextColor={colors.placeholder}
-                value={request}
-                onChangeText={setRequest}
-                editable={!writing}
-                multiline
-                style={[styles.boxText, writing && styles.dimmed]}
-                testID="write-to-ask-box"
-              />
-              <View style={styles.boxCorner}>
-                {writing ? (
-                  <ActivityIndicator color={colors.moss} accessibilityLabel="Andy is writing" />
-                ) : (
+            <>
+              <View style={styles.box}>
+                <TextInput
+                  accessibilityLabel={`What to write to ${personName}`}
+                  placeholder={
+                    // The screenshot sentence joins with its button (slice 6).
+                    `Write what you want to say to ${personName}, or tell Andy what to write, or both.\n\n` +
+                    "e.g. Do you want to hang out and talk about our new product? Make it sound casual but still professional."
+                  }
+                  placeholderTextColor={colors.placeholder}
+                  value={request}
+                  onChangeText={setRequest}
+                  editable={!writing}
+                  multiline
+                  style={[styles.boxText, writing && styles.dimmed]}
+                  testID="write-to-ask-box"
+                />
+                <View style={styles.boxCorner}>
+                  <Arrow writing={writing} block={block} onPress={() => void ask()} />
+                </View>
+              </View>
+              {statusLine}
+            </>
+          ) : (
+            <>
+              <View style={styles.box}>
+                <View style={styles.boxTop}>
+                  {edited ? (
+                    // Read as part of box B's label, not on its own (Strings).
+                    <Text style={styles.edited} importantForAccessibility="no" accessibilityElementsHidden>
+                      Edited
+                    </Text>
+                  ) : (
+                    <View />
+                  )}
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel="Ask Andy"
-                    accessibilityHint={arrowHint}
-                    disabled={!canAsk}
-                    onPress={() => void ask()}
-                    style={[styles.arrow, !canAsk && styles.disabled]}
-                    testID="write-to-arrow"
+                    accessibilityLabel="Copy the message"
+                    accessibilityHint={draft === "" ? "The box is empty." : undefined}
+                    // Off while Andy writes: box B is about to be replaced.
+                    disabled={draft === "" || writing}
+                    onPress={() => void copy()}
+                    style={[styles.copy, (draft === "" || writing) && styles.disabled]}
+                    testID="write-to-copy-button"
                   >
+                    {copied ? <Text style={styles.copied}>Copied</Text> : null}
                     <SymbolView
-                      name="arrow.up.circle.fill"
-                      size={size.touch}
-                      tintColor={colors.moss}
-                      fallback={<Text style={styles.arrowFallback}>Ask</Text>}
+                      name={copied ? "checkmark" : "doc.on.doc"}
+                      size={size.icon}
+                      tintColor={colors.ink}
+                      fallback={copied ? null : <Text style={styles.copied}>Copy</Text>}
                     />
                   </Pressable>
-                )}
+                </View>
+                <TextInput
+                  accessibilityLabel={edited ? `Message to ${personName}, edited` : `Message to ${personName}`}
+                  value={draft}
+                  onChangeText={setDraft}
+                  editable={!writing}
+                  multiline
+                  style={[styles.boxText, writing && styles.dimmed]}
+                  testID="write-to-draft-box"
+                />
               </View>
-            </View>
-          ) : (
-            <View style={styles.box}>
-              <View style={styles.boxTop}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Copy the message"
-                  accessibilityHint={draft === "" ? "The box is empty." : undefined}
-                  disabled={draft === ""}
-                  onPress={() => void copy()}
-                  style={[styles.copy, draft === "" && styles.disabled]}
-                  testID="write-to-copy-button"
-                >
-                  {copied ? <Text style={styles.copied}>Copied</Text> : null}
-                  <SymbolView
-                    name={copied ? "checkmark" : "doc.on.doc"}
-                    size={size.icon}
-                    tintColor={colors.ink}
-                    fallback={copied ? null : <Text style={styles.copied}>Copy</Text>}
-                  />
-                </Pressable>
+              {/* The status line takes the hint's place while it shows. */}
+              {statusLine ?? (
+                <Text style={styles.status} testID="write-to-hint">
+                  {HINT}
+                </Text>
+              )}
+              <View style={styles.chatRow}>
+                <TextInput
+                  accessibilityLabel="Anything else for Andy? Optional"
+                  placeholder="Anything else? (optional) e.g. Warmer but simpler."
+                  placeholderTextColor={colors.placeholder}
+                  value={instruction}
+                  onChangeText={setInstruction}
+                  editable={!writing}
+                  style={[styles.chatLine, writing && styles.dimmed]}
+                  testID="write-to-chat-line"
+                />
+                <Arrow writing={writing} block={block} onPress={() => void ask()} />
               </View>
-              <TextInput
-                accessibilityLabel={`Message to ${personName}`}
-                value={draft}
-                onChangeText={setDraft}
-                multiline
-                style={styles.boxText}
-                testID="write-to-draft-box"
-              />
-            </View>
+            </>
           )}
-
-          {status !== null ? (
-            <Text
-              style={[styles.status, status.alert && styles.statusAlert]}
-              accessibilityLabel={status.spoken}
-              testID="write-to-status-line"
-            >
-              {status.text}
-            </Text>
-          ) : null}
         </ScrollView>
       </View>
     </Modal>
@@ -364,7 +474,19 @@ const styles = StyleSheet.create({
     fontSize: textSize.lg,
     textAlignVertical: "top",
   },
-  boxTop: { flexDirection: "row", justifyContent: "flex-end" },
+  boxTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  edited: { color: colors.ink, fontSize: textSize.sm, opacity: textOpacity.secondary },
+  // A rounded one-line field with the arrow inside, as in the mock; its only
+  // edge is `edge` (3:1, WCAG 1.4.11).
+  chatRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.edge,
+    borderRadius: radius.pill,
+    paddingLeft: space.lg,
+  },
+  chatLine: { flex: 1, minHeight: size.touch, color: colors.ink, fontSize: textSize.lg },
   boxCorner: { flexDirection: "row", justifyContent: "flex-end" },
   arrow: { minWidth: size.touch, minHeight: size.touch, alignItems: "center", justifyContent: "center" },
   arrowFallback: { color: colors.moss, fontSize: textSize.lg },

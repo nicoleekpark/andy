@@ -959,7 +959,7 @@ Name updates (rename or add alias) are now automatic — no checkbox. QA feedbac
 
 ## 40. Write to (draft-editing.md, Final design F)
 
-Needs the `writeTo` switch on (no row = on) and a dev build against the dev deployment. Built so far: box A, the arrow, box B, Copy and the status line (slice 4a). Not yet, so not a bug: asking again, the chat line and its hint, **Edited**, versions (‹ ›), the Close question, the sheet surviving a swipe down, Open Messages, the screenshot button. Until the Close question exists, **Close and a swipe down both lose the text**.
+Needs the `writeTo` switch on (no row = on) and a dev build against the dev deployment. Built so far: box A, the arrow, box B, Copy and the status line (slice 4a); asking again, **Edited**, the hint and the chat line (4b). Not yet, so not a bug: versions (‹ ›), the Close question, the sheet surviving a swipe down, Open Messages, the screenshot button. Until the Close question exists, **Close and a swipe down both lose the text**.
 
 | # | Do this | Expect | |
 |---|---|---|---|
@@ -968,7 +968,7 @@ Needs the `writeTo` switch on (no row = on) and a dev build against the dev depl
 | 40.3 | Type *coffee Thursday at 3:30? make it casual*, tap the arrow | The text dims and locks, the arrow becomes a spinner, *Andy is writing…* under the box. Then Andy's message replaces it in a box of the same height, with a copy icon top right | ⬜ |
 | 40.4 | Edit the message, tap the copy icon, paste in Notes | It turns into a check and *Copied*; the paste is your edited text. Editing again takes *Copied* away | ⬜ |
 | 40.5 | Copy a message Andy wrote as an email (*write her an email…*), Close, open Write to again for her, ask *say thanks* | The new draft is an email too (the copied text's tone and format became her default). Ask *text her: thanks* and it is a plain message | ⬜ |
-| 40.6 | Airplane mode with the sheet open, before asking | *You're offline. Asking Andy needs a connection — your text stays here.*; the arrow greys; typing still works. After an answer, airplane mode shows no line: Copy still works offline | ⬜ |
+| 40.6 | Airplane mode with the sheet open, before or after an answer | *You're offline. Asking Andy needs a connection — your text stays here.*; the arrow greys; typing and Copy still work. If a *Check: …* line is showing it stays instead | ⬜ |
 | 40.6a | Tap the arrow, then Close while Andy is writing; open Write to again | An empty box A: the answer you walked away from does not appear | ⬜ |
 | 40.7 | Paste more than 4,000 characters into the box | *That's too long for Andy to read at once. Shorten it by {n} characters to ask.*, in the alert colour; the arrow greys; nothing is cut | ⬜ |
 | 40.8 | Fresh account that hasn't allowed AI: tap the arrow | *Let Andy read your notes?* first. **Not now**: *Nothing was sent. Tap the arrow when you want Andy to write it.*; the text stays | ⬜ |
@@ -976,6 +976,14 @@ Needs the `writeTo` switch on (no row = on) and a dev build against the dev depl
 | 40.10 | Someone with no notes (only mentioned, or all notes deleted) | **Write to** is still offered, and Andy writes from what you typed | ⬜ |
 | 40.11 | Switch off: insert `{ key: "writeTo", enabled: false }` | The old **Draft a follow-up** sheet, unchanged | ⬜ |
 | 40.12 | Largest Dynamic Type; VoiceOver | Title reads as a header; box A *What to write to {name}*; the arrow *Ask Andy*, dimmed with its reason; on the answer *Andy's answer is ready. Version 1 of 1.*; box B *Message to {name}*; Copy *Copy the message*, then *Copied*. Long text scrolls inside the box | ⬜ |
+| 40.13 | After an answer, without touching anything | The hint *Edit the text above, or tell Andy what to change.*; the chat line under it; the arrow at its end is greyed | ⬜ |
+| 40.14 | Change *Thursday* to *Friday* in box B | **Edited** appears top left; the arrow turns on. Tap it: Andy carries your edit through and keeps *Friday*; **Edited** goes away; the chat line stays empty | ⬜ |
+| 40.15 | Type *warmer but simpler* on the chat line, tap its arrow | Box B, the chat line and the arrow lock and dim; *Andy is writing…* replaces the hint. The new text is warmer and keeps every day, time and number; the chat line empties | ⬜ |
+| 40.16 | Then ask *shorter* | Shorter and still warmer (Andy keeps every earlier line in this sheet) | ⬜ |
+| 40.17 | Airplane mode during an ask | *Andy couldn't write that just now. Your text is still here. Try again.*; box B and the chat line exactly as they were | ⬜ |
+| 40.18 | Ask again ten times | After the tenth answer: *That's the most Andy can do in one go. Copy it, or close and start again.*; the arrow stays greyed; Copy still works | ⬜ |
+| 40.19 | Paste more than 500 characters on the chat line | *Shorten this by {n} characters.*; the arrow greys | ⬜ |
+| 40.20 | VoiceOver, keyboard up, after an answer | Box B reads *Message to {name}, edited* once edited (Edited is not read on its own); the cap and *Shorten this…* lines are read aloud when they appear; the chat line and its arrow stay above the keyboard; the hint and status line swap without the layout jumping | ⬜ |
 
 ## 35. Asking before Andy sends anything (pre-submission-privacy.md, A)
 
