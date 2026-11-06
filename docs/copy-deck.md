@@ -13,7 +13,7 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 
 **For the designer:** read top to bottom and mark anything that sounds wrong, unclear, or unlike the rest. Quote the string and its `Where` when you report it.
 
-542 strings, 13 with a planned change.
+550 strings, 13 with a planned change.
 
 ## Sign-in
 
@@ -586,29 +586,37 @@ Each row shows where the string lives. Developer-only text (inside `__DEV__`) an
 | Delete {…} | VoiceOver | `src/components/removable-line.tsx:54` |  |
 | Delete | text | `src/components/removable-line.tsx:59` |  |
 | M-4 80 C 14 76, 28 68, 38 60 C 54 48, 64 26, 50 22 C 36 18, 30 38, 44 48 C 58 58, 80 44, 104 30 | text | `src/components/thread-loop.tsx:19` |  |
-| Andy couldn't write that just now. Your text is still here. Try again. | text | `src/components/write-to.tsx:42` |  |
-| Nothing was sent. Tap the arrow when you want Andy to write it. | text | `src/components/write-to.tsx:43` |  |
-| Andy couldn't reach the clipboard. Your text is still here — select it to copy it by hand. | text | `src/components/write-to.tsx:44` |  |
-| Nothing was sent. Tap Ask Andy when you want Andy to write it. | text | `src/components/write-to.tsx:48` |  |
-| You're offline. Asking Andy needs a connection — your text stays here. | text | `src/components/write-to.tsx:50` |  |
-| Andy is writing… | text | `src/components/write-to.tsx:51` |  |
-| That's too long for Andy to read at once. Shorten it by {…} characters to ask. | button | `src/components/write-to.tsx:186` |  |
-| Check: {…} | button | `src/components/write-to.tsx:191` |  |
-| Asking Andy needs a connection. | text | `src/components/write-to.tsx:209` |  |
-| Shorten the text to ask Andy. | text | `src/components/write-to.tsx:211` |  |
-| Write something first. | text | `src/components/write-to.tsx:213` |  |
-| Write to {…} | text | `src/components/write-to.tsx:237` |  |
-| What to write to {…} | VoiceOver | `src/components/write-to.tsx:253` |  |
-| Write what you want to say to {…}, or tell Andy what to write, or both. | placeholder | `src/components/write-to.tsx:256` |  |
-| e.g. Do you want to hang out and talk about our new product? Make it sound casual but still professional. | placeholder | `src/components/write-to.tsx:257` |  |
-| Andy is writing | VoiceOver | `src/components/write-to.tsx:269` |  |
-| Ask Andy | VoiceOver | `src/components/write-to.tsx:273` |  |
-| Ask | text | `src/components/write-to.tsx:284` |  |
-| Copy the message | VoiceOver | `src/components/write-to.tsx:295` |  |
-| The box is empty. | VoiceOver | `src/components/write-to.tsx:296` |  |
-| Copied | text | `src/components/write-to.tsx:302` |  |
-| Copy | text | `src/components/write-to.tsx:307` |  |
-| Message to {…} | VoiceOver | `src/components/write-to.tsx:312` |  |
+| Andy couldn't write that just now. Your text is still here. Try again. | text | `src/components/write-to.tsx:43` |  |
+| Nothing was sent. Tap the arrow when you want Andy to write it. | text | `src/components/write-to.tsx:44` |  |
+| Andy couldn't reach the clipboard. Your text is still here — select it to copy it by hand. | text | `src/components/write-to.tsx:45` |  |
+| Nothing was sent. Tap Ask Andy when you want Andy to write it. | text | `src/components/write-to.tsx:49` |  |
+| You're offline. Asking Andy needs a connection — your text stays here. | text | `src/components/write-to.tsx:51` |  |
+| Andy is writing… | text | `src/components/write-to.tsx:52` |  |
+| That's the most Andy can do in one go. Copy it, or close and start again. | text | `src/components/write-to.tsx:53` |  |
+| Edit the text above, or tell Andy what to change. | text | `src/components/write-to.tsx:54` |  |
+| Asking Andy needs a connection. | text | `src/components/write-to.tsx:218` |  |
+| Shorten the text to ask Andy. | text | `src/components/write-to.tsx:220` |  |
+| Write something first. | text | `src/components/write-to.tsx:221` |  |
+| That's the most Andy can do in one go. | text | `src/components/write-to.tsx:227` |  |
+| That's too long for Andy to read at once. Shorten it by {…} characters to ask. | button | `src/components/write-to.tsx:240` |  |
+| Shorten this by {…} characters. | button | `src/components/write-to.tsx:258` |  |
+| Check: {…} | button | `src/components/write-to.tsx:264` |  |
+| Andy is writing | VoiceOver | `src/components/write-to.tsx:272` |  |
+| Ask Andy | VoiceOver | `src/components/write-to.tsx:276` |  |
+| Ask | text | `src/components/write-to.tsx:287` |  |
+| Write to {…} | text | `src/components/write-to.tsx:342` |  |
+| What to write to {…} | VoiceOver | `src/components/write-to.tsx:359` |  |
+| Write what you want to say to {…}, or tell Andy what to write, or both. | placeholder | `src/components/write-to.tsx:362` |  |
+| e.g. Do you want to hang out and talk about our new product? Make it sound casual but still professional. | placeholder | `src/components/write-to.tsx:363` |  |
+| Edited | text | `src/components/write-to.tsx:386` |  |
+| Copy the message | VoiceOver | `src/components/write-to.tsx:393` |  |
+| The box is empty. | VoiceOver | `src/components/write-to.tsx:394` |  |
+| Copied | text | `src/components/write-to.tsx:401` |  |
+| Copy | text | `src/components/write-to.tsx:406` |  |
+| Message to {…}, edited | VoiceOver | `src/components/write-to.tsx:411` |  |
+| Message to {…} | VoiceOver | `src/components/write-to.tsx:411` |  |
+| Anything else for Andy? Optional | VoiceOver | `src/components/write-to.tsx:428` |  |
+| Anything else? (optional) e.g. Warmer but simpler. | placeholder | `src/components/write-to.tsx:429` |  |
 | What the card says | text | `src/lib/note-source.ts:27` |  |
 | What the card said | text | `src/lib/note-source.ts:27` |  |
 | What the photo says | text | `src/lib/note-source.ts:29` |  |
