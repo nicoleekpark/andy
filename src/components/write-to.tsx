@@ -19,6 +19,7 @@ import { MAX_ASKS_AFTER_FIRST, MAX_INSTRUCTION_CHARS, MAX_WRITE_TO_CHARS } from 
 import { colors, disabledOpacity, fonts, radius, size, space, textOpacity, textSize } from "../constants/theme";
 import { useAiGoAhead } from "@/lib/ai-go-ahead";
 import { putOnClipboard } from "@/lib/clipboard";
+import { canSendTexts, openMessages } from "@/lib/messages";
 import { localToday } from "@/lib/dates";
 import { useLocked } from "../lib/lock-context";
 import { onForgetOnThisPhone } from "@/lib/on-phone";
@@ -74,11 +75,12 @@ export function forgetWriteToSheets(): void {
 onForgetOnThisPhone(forgetWriteToSheets);
 
 /** Said in the Strings table's words; one line at a time. */
-type Problem = "failed" | "notNow" | "clipboard";
+type Problem = "failed" | "notNow" | "clipboard" | "messages";
 const PROBLEMS: Record<Problem, string> = {
   failed: "Andy couldn't write that just now. Your text is still here. Try again.",
   notNow: "Nothing was sent. Tap the arrow when you want Andy to write it.",
   clipboard: "Andy couldn't reach the clipboard. Your text is still here — select it to copy it by hand.",
+  messages: "Messages didn't open. Copy the text instead.",
 };
 /** VoiceOver's version of a line, where the Strings table gives one. */
 const PROBLEMS_SPOKEN: Partial<Record<Problem, string>> = {
@@ -117,6 +119,17 @@ export function useWriteTo(profileId: string) {
   const [asksAfterFirst, setAsksAfterFirst] = useState(start?.asksAfterFirst ?? 0);
   /** Copied (or, from slice 5, opened in Messages) at least once: Close need not ask. */
   const [copiedOnce, setCopiedOnce] = useState(start?.copiedOnce ?? false);
+  /** Whether this phone can send texts: Open Messages is hidden where it can't. */
+  const [canText, setCanText] = useState(false);
+  useEffect(() => {
+    let live = true;
+    void canSendTexts().then((can) => {
+      if (live) setCanText(can);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
   const inFlight = useRef(false);
   /**
    * Which opening of the sheet this is. Close moves it on, so an answer that
@@ -316,6 +329,19 @@ export function useWriteTo(profileId: string) {
     setProblem(null);
   }, []);
 
+  /**
+   * The text left the sheet — copied, or opened in Messages. Close need not ask
+   * any more, and its tone and format become how Andy writes to this person
+   * next time (Final design; slice 3). A failed save only means the next draft
+   * starts from the older default, so it is not worth a line.
+   */
+  const finished = useCallback(() => {
+    setCopiedOnce(true);
+    if (answer !== null) {
+      rememberStyle({ profileId, style: { tone: answer.tone, format: answer.format } }).catch(() => {});
+    }
+  }, [answer, rememberStyle, profileId]);
+
   const copy = useCallback(async () => {
     if (draft === "") return;
     const mine = session.current;
@@ -332,15 +358,27 @@ export function useWriteTo(profileId: string) {
     if (draftNow.current !== draft) return;
     setProblem((now) => (now === "clipboard" ? null : now));
     setCopied(true);
-    setCopiedOnce(true);
     AccessibilityInfo.announceForAccessibility("Copied");
-    if (answer !== null) {
-      // The tone and format of the text copied become how Andy writes to this
-      // person next time (Final design; slice 3). A miss only means the next
-      // draft starts from the older default, so it is not worth a line.
-      rememberStyle({ profileId, style: { tone: answer.tone, format: answer.format } }).catch(() => {});
+    finished();
+  }, [draft, finished]);
+
+  /**
+   * Open Messages: the composer with box B in it (behaviour 6). It counts as
+   * copied once the text may have gone; a cancelled composer leaves nothing
+   * sent, so Close still protects the text.
+   */
+  const openInMessages = useCallback(async () => {
+    if (draft.trim() === "") return;
+    const mine = session.current;
+    const outcome = await openMessages(draft);
+    if (mine !== session.current) return;
+    if (outcome === "failed") {
+      setProblem("messages");
+      return;
     }
-  }, [draft, answer, rememberStyle, profileId]);
+    setProblem((now) => (now === "messages" ? null : now));
+    if (outcome === "sent") finished();
+  }, [draft, finished]);
 
   return {
     open,
@@ -364,6 +402,8 @@ export function useWriteTo(profileId: string) {
     copied,
     ask,
     copy,
+    canText,
+    openInMessages,
   };
 }
 
@@ -472,6 +512,8 @@ export function WriteToSheet({ personName, controller }: { personName: string; c
     copy,
     close,
     tuck,
+    canText,
+    openInMessages,
   } = controller;
   const status = statusOf(controller, online);
   const block = arrowBlock(controller, online);
@@ -641,6 +683,23 @@ export function WriteToSheet({ personName, controller }: { personName: string; c
                 />
                 <Arrow writing={writing} block={block} onPress={() => void ask()} />
               </View>
+              {canText ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Open Messages"
+                  accessibilityHint={
+                    draft.trim() === ""
+                      ? "The box is empty."
+                      : "Opens Messages with this text. You choose who it goes to and send it."
+                  }
+                  disabled={draft.trim() === "" || writing}
+                  onPress={() => void openInMessages()}
+                  style={[styles.messages, (draft.trim() === "" || writing) && styles.disabled]}
+                  testID="write-to-open-messages-button"
+                >
+                  <Text style={styles.messagesLabel}>Open Messages</Text>
+                </Pressable>
+              ) : null}
             </>
           )}
         </ScrollView>
@@ -693,6 +752,16 @@ const styles = StyleSheet.create({
     paddingLeft: space.lg,
   },
   chatLine: { flex: 1, minHeight: size.touch, color: colors.ink, fontSize: textSize.lg },
+  // The sheet's one filled button, as the old sheet's Copy was.
+  messages: {
+    minHeight: size.touch,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.control,
+    backgroundColor: colors.moss,
+    marginTop: space.sm,
+  },
+  messagesLabel: { color: colors.paper, fontSize: textSize.base },
   stepper: { flexDirection: "row", alignItems: "center" },
   step: { minWidth: size.touch, minHeight: size.touch, alignItems: "center", justifyContent: "center" },
   stepLabel: { color: colors.moss, fontSize: textSize.xxl },
