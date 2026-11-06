@@ -186,10 +186,42 @@ export function formatOf(text: string): "message" | "email" {
  *
  * Found by pattern, so it errs towards finding too much: a stray number in the
  * text only costs one extra ask, a missed date costs the person a wrong day.
+ *
+ * Short forms too (owner, 2026-11-05): "Fri", "Thu", "Sept". Only capitalized,
+ * because "sat", "sun", "wed", "mar" and "jan" are also ordinary words, and
+ * holding Andy to a stray "sat" would be worse than missing one. Capitalized
+ * ones still count even when they are not dates — "Jan" the person, a
+ * sentence that starts "Sat down" — on purpose: that costs one extra ask.
  */
-const DAY = "monday|tuesday|wednesday|thursday|friday|saturday|sunday";
-const MONTH =
-  "january|february|march|april|june|july|august|september|october|november|december";
+/** Each day and month, with the short forms that mean the same. */
+const SPELLINGS: Readonly<Record<string, readonly string[]>> = {
+  monday: ["mon"],
+  tuesday: ["tue", "tues"],
+  wednesday: ["wed"],
+  thursday: ["thu", "thur", "thurs"],
+  friday: ["fri"],
+  saturday: ["sat"],
+  sunday: ["sun"],
+  january: ["jan"],
+  february: ["feb"],
+  march: ["mar"],
+  april: ["apr"],
+  june: ["jun"],
+  july: ["jul"],
+  august: ["aug"],
+  september: ["sep", "sept"],
+  october: ["oct"],
+  november: ["nov"],
+  december: ["dec"],
+};
+// "May" is not in the list: it is a month only with a day next to it.
+const FULL_NAMES = Object.keys(SPELLINGS).join("|");
+const capitalized = (word: string) => word[0]!.toUpperCase() + word.slice(1);
+// Built from the same list, so a name and its short forms cannot drift apart.
+const SHORT_FORM = new RegExp(
+  String.raw`\b(?:${Object.values(SPELLINGS).flat().map(capitalized).join("|")})\b`,
+  "g",
+);
 const DETAIL = new RegExp(
   [
     String.raw`https?:\/\/[^\s<>"]+`,
@@ -197,14 +229,30 @@ const DETAIL = new RegExp(
     String.raw`[\w.+-]+@[\w-]+(?:\.[\w-]+)+`,
     // "May" is a month only with a day next to it; on its own it is the verb.
     String.raw`\bmay\s+\d{1,2}\b`,
-    String.raw`\b(?:${DAY}|${MONTH})\b`,
+    String.raw`\b(?:${FULL_NAMES})\b`,
     String.raw`\d+(?:[.:,/-]\d+)*`,
   ].join("|"),
   "gi",
 );
 
+/** The full day or month a detail names, or null when it names neither. */
+function dayOrMonth(detail: string): string | null {
+  const word = detail.toLowerCase();
+  if (Object.prototype.hasOwnProperty.call(SPELLINGS, word)) return word;
+  const full = Object.keys(SPELLINGS).find((name) => SPELLINGS[name]!.includes(word));
+  return full ?? null;
+}
+
 export function keyDetails(text: string): string[] {
-  const found = (text.match(DETAIL) ?? []).map((detail) => detail.replace(/[.,;:!?)]+$/, ""));
+  const main = [...text.matchAll(DETAIL)];
+  // A short form inside a link or email is part of that detail, not another one.
+  const inside = (at: number) =>
+    main.some((match) => at >= match.index && at < match.index + match[0].length);
+  const short = [...text.matchAll(SHORT_FORM)].filter((match) => !inside(match.index));
+  const matches = [...main, ...short]
+    .sort((a, b) => a.index - b.index)
+    .map((match) => match[0]);
+  const found = matches.map((detail) => detail.replace(/[.,;:!?)]+$/, ""));
   // One entry per detail whatever its case; the first spelling is kept.
   const byKey = new Map<string, string>();
   for (const detail of found) {
@@ -218,17 +266,30 @@ export function keyDetails(text: string): string[] {
  * may not run into other digits ("3" is not in "13" or "3:30"), and a word or
  * link may not run into other letters ("Thursday" is not in "Thursdays").
  */
-function stillHas(answer: string, detail: string): boolean {
+function stillHas(answer: string, detail: string, matchCase = false): boolean {
   const escaped = detail.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const pattern = /^\d/.test(detail)
     ? String.raw`(?<!\d)(?<!\d[.,:/-])${escaped}(?!\d)(?![.,:/-]\d)`
     : String.raw`(?<![\p{L}\p{N}])${escaped}(?![\p{L}\p{N}])`;
-  return new RegExp(pattern, "iu").test(answer);
+  return new RegExp(pattern, matchCase ? "u" : "iu").test(answer);
 }
 
-/** Details in `sent` that `answer` no longer has (case does not matter). */
+/**
+ * Details in `sent` that `answer` no longer has (case does not matter). A day
+ * or month counts as kept in any of its spellings: "Fri" written as "Friday"
+ * is the same day.
+ */
 export function missingDetails(sent: string, answer: string): string[] {
-  return keyDetails(sent).filter((detail) => !stillHas(answer, detail));
+  return keyDetails(sent).filter((detail) => {
+    const name = dayOrMonth(detail);
+    if (name === null) return !stillHas(answer, detail);
+    // A short form counts only capitalized, in the answer as in the text:
+    // "we sat down" does not keep "Sat".
+    return !(
+      stillHas(answer, name) ||
+      SPELLINGS[name]!.some((short) => stillHas(answer, capitalized(short), true))
+    );
+  });
 }
 
 /** What a `<keep_exactly>` block may carry: a few short items, never a paragraph. */
