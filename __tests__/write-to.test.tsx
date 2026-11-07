@@ -177,10 +177,7 @@ describe("copy", () => {
 
     expect(set).toHaveBeenCalledWith("Hi Nina, Friday instead?");
     expect(screen.getByText("Copied")).toBeTruthy();
-    expect(rememberStyle).toHaveBeenCalledWith({
-      profileId: "profile-1",
-      style: { tone: "casual", format: "message" },
-    });
+    expect(rememberStyle).toHaveBeenCalledWith({ style: { tone: "casual", format: "message" } });
 
     await act(async () => {
       fireEvent.changeText(screen.getByTestId("write-to-draft-box"), "Hi Nina, Saturday?");
@@ -767,12 +764,12 @@ describe("versions (slice 4c)", () => {
     await back();
     await press("Copy the message");
     expect(set).toHaveBeenLastCalledWith("my edit");
-    expect(rememberStyle).toHaveBeenLastCalledWith({ profileId: "profile-1", style: { tone: "formal", format: "email" } });
+    expect(rememberStyle).toHaveBeenLastCalledWith({ style: { tone: "formal", format: "email" } });
 
     await back(2);
     await press("Copy the message");
     expect(set).toHaveBeenLastCalledWith(A1.text);
-    expect(rememberStyle).toHaveBeenLastCalledWith({ profileId: "profile-1", style: { tone: "casual", format: "message" } });
+    expect(rememberStyle).toHaveBeenLastCalledWith({ style: { tone: "casual", format: "message" } });
   });
 
   test("should keep another version's unsent edit when asking again from an edited version", async () => {
@@ -802,7 +799,7 @@ describe("versions (slice 4c)", () => {
     expect(draftBox().props.value).toBe("edit of one");
     await press("Copy the message");
 
-    expect(rememberStyle).toHaveBeenLastCalledWith({ profileId: "profile-1", style: { tone: "casual", format: "message" } });
+    expect(rememberStyle).toHaveBeenLastCalledWith({ style: { tone: "casual", format: "message" } });
   });
 
   describe("box height", () => {
@@ -1181,10 +1178,7 @@ describe("Open Messages (slice 5)", () => {
     });
 
     expect(sms.sendSMSAsync).toHaveBeenCalledWith([], "Hi Nina, Friday instead?");
-    expect(rememberStyle).toHaveBeenCalledWith({
-      profileId: "profile-1",
-      style: { tone: "casual", format: "message" },
-    });
+    expect(rememberStyle).toHaveBeenCalledWith({ style: { tone: "casual", format: "message" } });
 
     await press("Close");
     expect(screen.queryByTestId("confirm-dialog")).toBeNull();

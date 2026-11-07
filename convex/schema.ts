@@ -1,6 +1,7 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { followUpStyleValidator } from "./emailPrompt";
+import { writeToStyleValidator } from "./writeToPrompt";
 import { EMBEDDING_DIMENSIONS } from "./embeddingModel";
 
 /**
@@ -33,6 +34,12 @@ export default defineSchema({
      * needs it. Cleared by a yes. Additive; goes with the account.
      */
     aiDeclinedAt: v.optional(v.number()),
+    /**
+     * Write to's tone and format, one for the account (owner, 2026-11-06): the
+     * label of the text last copied or sent from Messages, to anyone. Absent
+     * until the first copy. Additive; goes with the account.
+     */
+    writeToStyle: v.optional(writeToStyleValidator),
   }).index("by_token", ["tokenIdentifier"]),
 
   profiles: defineTable({
