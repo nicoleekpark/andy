@@ -467,9 +467,9 @@ export function useWriteTo(profileId: string) {
   const finished = useCallback(() => {
     setCopiedOnce(true);
     if (answer !== null) {
-      rememberStyle({ profileId, style: { tone: answer.tone, format: answer.format } }).catch(() => {});
+      rememberStyle({ style: { tone: answer.tone, format: answer.format } }).catch(() => {});
     }
-  }, [answer, rememberStyle, profileId]);
+  }, [answer, rememberStyle]);
 
   const copy = useCallback(async () => {
     if (draft === "") return;

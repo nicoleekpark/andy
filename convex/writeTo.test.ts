@@ -993,10 +993,23 @@ test("should return at most MAX_KEEP_EXACTLY_ITEMS dropped details when more are
 
 const STYLE = { format: "email", tone: "brief" } as const;
 
-const followUpStyleOf = (t: ReturnType<typeof convexTest>, id: Id<"profiles">) =>
-  t.run(async (ctx) => (await ctx.db.get("profiles", id))?.followUpStyle ?? null);
+const accountStyleOf = (t: ReturnType<typeof convexTest>, userId: Id<"users">) =>
+  t.run(async (ctx) => (await ctx.db.get("users", userId))?.writeToStyle ?? null);
 
-test("should send the saved tone and format in a default_style block when the person has one", async () => {
+test("should send the account's default_style for any of her people when the account has a style", async () => {
+  const t = await aiNotEnforced(convexTest(schema, modules));
+  const { userId, amy, john } = await seed(t);
+  await t.run((ctx) => ctx.db.patch("users", userId, { writeToStyle: STYLE }));
+
+  for (const person of [amy, john]) {
+    createMessage.mockReset();
+    createMessage.mockResolvedValueOnce(reply());
+    await t.withIdentity(ALICE).action(api.writeTo.write, base(person));
+    expect(promptSent()).toContain("<default_style>\ntone: brief\nformat: email\n</default_style>");
+  }
+});
+
+test("should send no default_style when only the person has an old followUpStyle and the account has none", async () => {
   const t = await aiNotEnforced(convexTest(schema, modules));
   const { amy } = await seed(t);
   await t.run((ctx) => ctx.db.patch("profiles", amy, { followUpStyle: STYLE }));
@@ -1004,7 +1017,7 @@ test("should send the saved tone and format in a default_style block when the pe
 
   await t.withIdentity(ALICE).action(api.writeTo.write, base(amy));
 
-  expect(promptSent()).toContain("<default_style>\ntone: brief\nformat: email\n</default_style>");
+  expect(promptSent()).not.toContain("<default_style");
 });
 
 test("should send no default_style block when the person has no saved style", async () => {
@@ -1044,62 +1057,48 @@ test("should count the default_style tags among the app's own when the message i
   expect(message.match(/</g) ?? []).toHaveLength(10);
 });
 
-test("should save the style on the caller's own person", async () => {
+test("should save the style on the caller's own users row when rememberStyle is called", async () => {
   const t = await aiNotEnforced(convexTest(schema, modules));
-  const { amy } = await seed(t);
+  const { userId } = await seed(t);
 
-  await t.withIdentity(ALICE).mutation(api.writeTo.rememberStyle, { profileId: amy, style: STYLE });
+  await t.withIdentity(ALICE).mutation(api.writeTo.rememberStyle, { style: STYLE });
 
-  expect(await followUpStyleOf(t, amy)).toEqual(STYLE);
+  expect(await accountStyleOf(t, userId)).toEqual(STYLE);
 });
 
-test("should not write again when the style is unchanged", async () => {
+test("should replace the saved style when a different one is saved", async () => {
   const t = await aiNotEnforced(convexTest(schema, modules));
-  const { amy } = await seed(t);
-  await t.withIdentity(ALICE).mutation(api.writeTo.rememberStyle, { profileId: amy, style: STYLE });
-  const before = await t.run((ctx) => ctx.db.get("profiles", amy));
+  const { userId } = await seed(t);
+  await t.withIdentity(ALICE).mutation(api.writeTo.rememberStyle, { style: STYLE });
+  const before = await t.run((ctx) => ctx.db.get("users", userId));
 
-  await t.withIdentity(ALICE).mutation(api.writeTo.rememberStyle, { profileId: amy, style: STYLE });
-  expect(await t.run((ctx) => ctx.db.get("profiles", amy))).toEqual(before);
+  await t.withIdentity(ALICE).mutation(api.writeTo.rememberStyle, { style: STYLE });
+  const after = await t.run((ctx) => ctx.db.get("users", userId));
+  expect(after).toEqual(before);
+  expect(after?._creationTime).toBe(before?._creationTime);
 
-  await t.withIdentity(ALICE).mutation(api.writeTo.rememberStyle, {
-    profileId: amy,
-    style: { format: "message", tone: "brief" },
-  });
-  expect(await followUpStyleOf(t, amy)).toEqual({ format: "message", tone: "brief" });
+  await t.withIdentity(ALICE).mutation(api.writeTo.rememberStyle, { style: { format: "message", tone: "brief" } });
+  expect(await accountStyleOf(t, userId)).toEqual({ format: "message", tone: "brief" });
 });
 
-test("should leave another user's person untouched when a second user saves a style on it", async () => {
+test("should leave Alice's style untouched when a second user saves a style", async () => {
   const t = await aiNotEnforced(convexTest(schema, modules));
-  const { amy } = await seed(t);
-  await t.withIdentity(BOB).mutation(api.users.ensureUser, {});
+  const { userId } = await seed(t);
+  await t.withIdentity(ALICE).mutation(api.writeTo.rememberStyle, { style: STYLE });
+  const bob = await t.withIdentity(BOB).mutation(api.users.ensureUser, {});
 
-  const result = await t.withIdentity(BOB).mutation(api.writeTo.rememberStyle, { profileId: amy, style: STYLE });
+  await t.withIdentity(BOB).mutation(api.writeTo.rememberStyle, { style: { format: "message", tone: "friendly" } });
 
-  expect(result).toBeNull();
-  expect(await followUpStyleOf(t, amy)).toBeNull();
-});
-
-test("should return null without throwing when the id is malformed or the person is deleted", async () => {
-  const t = await aiNotEnforced(convexTest(schema, modules));
-  const { amy } = await seed(t);
-
-  expect(
-    await t.withIdentity(ALICE).mutation(api.writeTo.rememberStyle, { profileId: "not-an-id", style: STYLE }),
-  ).toBeNull();
-
-  await t.run((ctx) => ctx.db.delete("profiles", amy));
-  expect(
-    await t.withIdentity(ALICE).mutation(api.writeTo.rememberStyle, { profileId: amy, style: STYLE }),
-  ).toBeNull();
+  expect(await accountStyleOf(t, userId)).toEqual(STYLE);
+  expect(await accountStyleOf(t, bob)).toEqual({ format: "message", tone: "friendly" });
 });
 
 test("should refuse a signed-out caller when saving a style", async () => {
   const t = await aiNotEnforced(convexTest(schema, modules));
-  const { amy } = await seed(t);
+  const { userId } = await seed(t);
 
-  await expect(t.mutation(api.writeTo.rememberStyle, { profileId: amy, style: STYLE })).rejects.toThrow();
-  expect(await followUpStyleOf(t, amy)).toBeNull();
+  await expect(t.mutation(api.writeTo.rememberStyle, { style: STYLE })).rejects.toThrow();
+  expect(await accountStyleOf(t, userId)).toBeNull();
 });
 
 // 11. Reply with a screenshot (slice 6) ---------------------------------------

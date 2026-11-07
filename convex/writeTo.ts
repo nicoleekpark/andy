@@ -79,7 +79,8 @@ export const notesForWriteTo = internalQuery({
         recordedOn: new Date(note.createdAt).toISOString().slice(0, 10),
         facts: note.facts,
       })),
-      ...(profile.followUpStyle === undefined ? {} : { style: profile.followUpStyle }),
+      // One default for the account, not per person (owner, 2026-11-06).
+      ...(user.writeToStyle === undefined ? {} : { style: user.writeToStyle }),
     };
   },
 });
@@ -202,25 +203,27 @@ export const write = action({
 });
 
 /**
- * Save the tone and format of the text the person just copied or opened in
- * Messages: it becomes how Andy writes to this person next time
- * (draft-editing.md → Final design, "Tone and format"; owner: "whatever the
- * final tone for the message before"). Kept on the person's record, where the
- * old follow-up sheet keeps it too.
+ * Save the tone and format of the text the person just copied or sent from
+ * Messages: it becomes how Andy writes next time, to anyone — one default for
+ * the account (draft-editing.md → Final design, "Tone and format"; owner:
+ * "whatever the final tone for the message before", then one per account,
+ * 2026-11-06).
  */
 export const rememberStyle = mutation({
-  args: { profileId: v.string(), style: writeToStyleValidator },
+  args: { style: writeToStyleValidator },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await saveStyle(ctx, args.profileId, args.style);
+    const user = await getAuthenticatedUser(ctx);
+    await ctx.db.patch("users", user._id, { writeToStyle: args.style });
     return null;
   },
 });
 
 /**
- * The one place a person's tone and format is written. Owner-checked like
- * every write; a person who is gone, or not the caller's, is left alone, and
- * an unchanged style is not written again.
+ * The old follow-up sheet's tone and format, kept on the person's record
+ * (`followUp.rememberStyle`; goes with that sheet in slice 7). Owner-checked
+ * like every write; a person who is gone, or not the caller's, is left alone,
+ * and an unchanged style is not written again.
  */
 export async function saveStyle(ctx: MutationCtx, profileIdArg: string, style: WriteToStyle) {
   const user = await getAuthenticatedUser(ctx);
