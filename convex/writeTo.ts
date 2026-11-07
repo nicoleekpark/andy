@@ -160,9 +160,11 @@ export const write = action({
     } else {
       // A later ask is something new only if the text changed or there is a
       // new line for Andy. The phone greys the arrow; this refuses the same
-      // request handed over anyway, before it is paid for.
+      // request handed over anyway, before it is paid for. An emptied box B
+      // with a line for Andy is a fresh start (owner, 2026-11-06); emptied
+      // with nothing said is nothing to work on.
       const edited = lastAnswer !== undefined && lastAnswer !== current;
-      if (current === "" || (!edited && instruction === "")) {
+      if ((current === "" && instruction === "") || (!edited && instruction === "")) {
         throw new ConvexError(NOTHING_NEW);
       }
     }

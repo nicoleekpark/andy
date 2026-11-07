@@ -59,7 +59,10 @@ export const compose = internalAction({
     // one is what the person asked for (`detailsToKeep`).
     if (args.current === undefined) return first;
     const instruction = args.instruction ?? "";
-    const missing = detailsToKeep(args.current, first.text, instruction);
+    // An emptied box B starts afresh, but the details the last answer held
+    // (a day, a time, a link) are still the person's unless a line names them.
+    const base = args.current === "" ? (args.lastAnswer ?? "") : args.current;
+    const missing = detailsToKeep(base, first.text, instruction);
     if (missing.length === 0) return first;
 
     // Once more, told exactly what to keep. Whatever comes back is returned
@@ -74,7 +77,7 @@ export const compose = internalAction({
       console.error("Write to's second try failed; returning the first answer.");
       return withDropped(first, missing);
     }
-    return withDropped(second, detailsToKeep(args.current, second.text, instruction));
+    return withDropped(second, detailsToKeep(base, second.text, instruction));
   },
 });
 

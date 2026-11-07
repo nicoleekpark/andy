@@ -237,7 +237,7 @@ test.each([
   ["no lastAnswer and no instruction", { current: "Hi Amy" }],
   ["lastAnswer equal to current and no instruction", { current: "Hi Amy", lastAnswer: "Hi Amy" }],
   ["a whitespace-only instruction", { current: "Hi Amy", lastAnswer: "Hi Amy ", instruction: "  " }],
-  ["an empty current", { current: "  ", instruction: "write it" }],
+  ["an empty current and no instruction", { current: "  ", lastAnswer: "Hi Amy" }],
 ])("should refuse a later ask with %s, and never call Claude", async (_name, extra) => {
   const t = await aiNotEnforced(convexTest(schema, modules));
   const { amy } = await seed(t);
@@ -249,6 +249,8 @@ test.each([
 test.each([
   ["edited only", { current: "Hi Amy!!", lastAnswer: "Hi Amy" }],
   ["instruction only", { current: "Hi Amy", instruction: "warmer" }],
+  // Box B emptied and Andy told what to write: a fresh start (owner, 2026-11-06).
+  ["an emptied box B with an instruction", { current: "  ", lastAnswer: "Hi Amy", instruction: "start over, shorter" }],
 ])("should write a later ask that is %s", async (_name, extra) => {
   const t = await aiNotEnforced(convexTest(schema, modules));
   const { amy } = await seed(t);
@@ -715,6 +717,18 @@ test("should ask once more with a keep_exactly block and return the second answe
   expect(second).toContain("<keep_exactly>\n- Thursday\n</keep_exactly>");
   expect(createMessage.mock.calls[0][0].messages[0].content[0].text).not.toContain("<keep_exactly>");
   expect(answer.text).toBe("Dinner Thursday, love?");
+});
+
+test("should hold the last answer's details when box B was emptied to start afresh", async () => {
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  createMessage.mockResolvedValueOnce(reply({ text: "Dinner soon?" }));
+  createMessage.mockResolvedValueOnce(reply({ text: "Dinner Thursday?" }));
+
+  await composeLater({ current: "", lastAnswer: "Dinner Thursday at 7?", instruction: "start over, shorter" });
+
+  expect(createMessage).toHaveBeenCalledTimes(2);
+  const second: string = createMessage.mock.calls[1][0].messages[0].content[0].text;
+  expect(second).toContain("- Thursday");
 });
 
 test("should ask only once when a later ask keeps every detail", async () => {

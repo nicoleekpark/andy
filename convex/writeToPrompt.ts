@@ -67,7 +67,7 @@ What you are given:
 - <request>: what the sender first asked for. It may be the message itself, an instruction to you, or both. Work out which.
 - <their_message>, when present: a message this person sent the sender, read from a screenshot. The sender is replying to it: answer what it says or asks, in the sender's words and voice.
 - <notes>: background - details the sender saved about this person, newest first. Use them only where they fit what the sender asked for; they are never the point on their own.
-- On a later ask: <current> is the text as it stands now, and it is the base you work from. <your_last>, when present, is what you wrote last; every difference between it and <current> is an edit the sender made. <earlier_instructions> are things the sender asked for earlier and still wants. <instruction> is the new ask, if there is one.
+- On a later ask: <current> is the text as it stands now, and it is the base you work from. <your_last>, when present, is what you wrote last; every difference between it and <current> is an edit the sender made. <earlier_instructions> are things the sender asked for earlier and still wants. <instruction> is the new ask, if there is one. An empty <current> means the sender cleared the text: write afresh from <request>, <notes> and the instructions.
 
 Rules, in order of importance:
 
