@@ -16,6 +16,7 @@ import {
   buildWriteToMessage,
   detailsToKeep,
   formatOf,
+  withoutSignOff,
   writeToAnswerValidator,
   writeToQuoteValidator,
   writeToStyleValidator,
@@ -98,7 +99,9 @@ async function ask(input: WriteToInput): Promise<WriteToAnswer> {
 
   // `returns` validates after the handler has read the result, so a wrong
   // shape would surface as a raw TypeError; say something a person can act on.
-  const text = typeof result.text === "string" ? result.text.trim() : "";
+  // The sender's own words decide which sign-off may stay (rule 11).
+  const senderWords = [input.request, ...input.earlierInstructions, input.instruction ?? "", input.current ?? ""].join("\n");
+  const text = typeof result.text === "string" ? withoutSignOff(result.text.trim(), senderWords) : "";
   if (text === "") {
     console.error("Write to returned no text.");
     throw new ConvexError("Andy couldn't write that just now. Your text is still here. Try again.");
