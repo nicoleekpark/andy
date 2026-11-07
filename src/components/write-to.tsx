@@ -87,7 +87,7 @@ type Kept = {
   instruction: string;
   earlier: string[];
   asksAfterFirst: number;
-  copiedOnce: boolean;
+  lastCopied: string | null;
 };
 
 /**
@@ -161,8 +161,12 @@ export function useWriteTo(profileId: string) {
   const [earlier, setEarlier] = useState<string[]>(start?.earlier ?? []);
   /** Asks after the first, counted here: the server keeps nothing to count with. */
   const [asksAfterFirst, setAsksAfterFirst] = useState(start?.asksAfterFirst ?? 0);
-  /** Copied (or, from slice 5, opened in Messages) at least once: Close need not ask. */
-  const [copiedOnce, setCopiedOnce] = useState(start?.copiedOnce ?? false);
+  /**
+   * Box B's text as it was last copied or sent from Messages, or null. Close
+   * asks first unless box B still holds exactly that (owner, 2026-11-06: an
+   * edit after a copy is not protected by the copy).
+   */
+  const [lastCopied, setLastCopied] = useState<string | null>(start?.lastCopied ?? null);
   /** Whether this phone can send texts: Open Messages is hidden where it can't. */
   const [canText, setCanText] = useState(false);
   useEffect(() => {
@@ -206,7 +210,7 @@ export function useWriteTo(profileId: string) {
     setInstruction(theirs?.instruction ?? "");
     setEarlier(theirs?.earlier ?? []);
     setAsksAfterFirst(theirs?.asksAfterFirst ?? 0);
-    setCopiedOnce(theirs?.copiedOnce ?? false);
+    setLastCopied(theirs?.lastCopied ?? null);
   }
 
   // The previous person's ask or copy, still running, must not land here.
@@ -235,9 +239,9 @@ export function useWriteTo(profileId: string) {
       instruction,
       earlier,
       asksAfterFirst,
-      copiedOnce,
+      lastCopied,
     });
-  }, [profileId, quoteText, request, versions, drafts, shown, instruction, earlier, asksAfterFirst, copiedOnce]);
+  }, [profileId, quoteText, request, versions, drafts, shown, instruction, earlier, asksAfterFirst, lastCopied]);
 
   /** Close, for good: every version and the text are gone (behaviour 5). */
   const discard = useCallback(() => {
@@ -256,18 +260,27 @@ export function useWriteTo(profileId: string) {
     setInstruction("");
     setEarlier([]);
     setAsksAfterFirst(0);
-    setCopiedOnce(false);
+    setLastCopied(null);
     kept.delete(profileId);
   }, [profileId]);
 
   /** A swipe down only tucks the sheet away; everything stays (behaviour 4). */
   const tuck = useCallback(() => setOpen(false), []);
 
-  /** The Close button: asks first when there is text and none of it was copied. */
+  /**
+   * The Close button: asks first when there is text and anything in the sheet
+   * has not left it — box B not exactly what was last copied or sent, another
+   * version holding an edit nobody asked with, or words on the chat line. (Box A and the quote are gone once there is
+   * anything to copy, so they cannot change after a copy.)
+   */
   const close = useCallback(() => {
     const anyText =
       request.trim() !== "" || quoteText.trim() !== "" || versions.length > 0 || instruction.trim() !== "";
-    if (!anyText || copiedOnce) {
+    const boxB = drafts[shown] ?? null;
+    const unsentElsewhere = drafts.some((text, i) => i !== shown && text !== versions[i]?.text);
+    // An ask in flight needs an edited box B or chat-line words, so it is covered.
+    const safe = boxB !== null && boxB === lastCopied && !unsentElsewhere && instruction.trim() === "";
+    if (!anyText || safe) {
       discard();
       return;
     }
@@ -275,7 +288,7 @@ export function useWriteTo(profileId: string) {
       { text: "Keep writing", style: "cancel" },
       { text: "Close", onPress: discard },
     ]);
-  }, [request, quoteText, versions.length, instruction, copiedOnce, confirm, discard]);
+  }, [request, quoteText, versions, instruction, drafts, shown, lastCopied, confirm, discard]);
 
   const version = versions[shown] ?? null;
   const draft = drafts[shown] ?? "";
@@ -459,13 +472,14 @@ export function useWriteTo(profileId: string) {
   }, []);
 
   /**
-   * The text left the sheet — copied, or opened in Messages. Close need not ask
-   * any more, and its tone and format become how Andy writes to this person
-   * next time (Final design; slice 3). A failed save only means the next draft
-   * starts from the older default, so it is not worth a line.
+   * The text left the sheet — copied, or opened in Messages. Close need not
+   * ask while box B still holds exactly it, and its tone and format become how
+   * Andy writes to this person next time (Final design; slice 3). A failed save
+   * only means the next draft starts from the older default, so it is not
+   * worth a line.
    */
-  const finished = useCallback(() => {
-    setCopiedOnce(true);
+  const finished = useCallback((text: string) => {
+    setLastCopied(text);
     if (answer !== null) {
       rememberStyle({ profileId, style: { tone: answer.tone, format: answer.format } }).catch(() => {});
     }
@@ -488,7 +502,7 @@ export function useWriteTo(profileId: string) {
     setProblem((now) => (now === "clipboard" ? null : now));
     setCopied(true);
     AccessibilityInfo.announceForAccessibility("Copied");
-    finished();
+    finished(draft);
   }, [draft, finished]);
 
   /**
@@ -506,7 +520,7 @@ export function useWriteTo(profileId: string) {
       return;
     }
     setProblem((now) => (now === "messages" ? null : now));
-    if (outcome === "sent") finished();
+    if (outcome === "sent") finished(draft);
   }, [draft, finished]);
 
   return {

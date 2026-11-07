@@ -991,6 +991,99 @@ describe("Close and swipe-down (slice 4d)", () => {
     expect(screen.getByLabelText("What to write to Nina").props.value).toBe("");
   });
 
+  async function editBox(text: string) {
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId("write-to-draft-box"), text);
+    });
+  }
+
+  test("should ask on Close when box B was edited after a copy", async () => {
+    jest.spyOn(Clipboard, "setStringAsync").mockResolvedValue(true);
+    await askAndy(jest.fn(async () => ANSWER));
+    await press("Copy the message");
+    await editBox("Hi Nina, Friday instead?");
+
+    await press("Close");
+
+    expect(screen.getByTestId("confirm-dialog")).toHaveTextContent(/Close without copying\?/);
+  });
+
+  test("should ask on Close when another version is shown after a copy", async () => {
+    jest.spyOn(Clipboard, "setStringAsync").mockResolvedValue(true);
+    await askAndy(jest.fn().mockResolvedValueOnce(ANSWER).mockResolvedValue(A2));
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId(CHAT), "warmer");
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("write-to-arrow"));
+    });
+    await press("Copy the message");
+    await press("Previous version");
+
+    await press("Close");
+
+    expect(screen.getByTestId("confirm-dialog")).toHaveTextContent(/Close without copying\?/);
+  });
+
+  test("should ask on Close when an edit on another version was never sent and the shown version was copied", async () => {
+    jest.spyOn(Clipboard, "setStringAsync").mockResolvedValue(true);
+    await askAndy(jest.fn().mockResolvedValueOnce(ANSWER).mockResolvedValue(A2));
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId(CHAT), "warmer");
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("write-to-arrow"));
+    });
+    await press("Previous version");
+    await editBox("my own edit of version one");
+    await press("Next version");
+    await press("Copy the message");
+
+    await press("Close");
+
+    expect(screen.getByTestId("confirm-dialog")).toHaveTextContent(/Close without copying\?/);
+  });
+
+  test("should ask on Close when words are on the chat line after a copy", async () => {
+    jest.spyOn(Clipboard, "setStringAsync").mockResolvedValue(true);
+    await askAndy(jest.fn(async () => ANSWER));
+    await press("Copy the message");
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId(CHAT), "make it shorter");
+    });
+
+    await press("Close");
+
+    expect(screen.getByTestId("confirm-dialog")).toHaveTextContent(/Close without copying\?/);
+  });
+
+  test("should close at once when box B was edited after a copy and then edited back to exactly the copied text", async () => {
+    jest.spyOn(Clipboard, "setStringAsync").mockResolvedValue(true);
+    await askAndy(jest.fn(async () => ANSWER));
+    await press("Copy the message");
+    await editBox("something else");
+    await editBox(ANSWER.text);
+
+    await press("Close");
+
+    expect(screen.queryByTestId("confirm-dialog")).toBeNull();
+    expect(screen.queryByLabelText("What to write to Nina")).toBeNull();
+  });
+
+  test("should still close without asking after a copy when the sheet was tucked away and the screen opened again", async () => {
+    jest.spyOn(Clipboard, "setStringAsync").mockResolvedValue(true);
+    await askAndy(jest.fn(async () => ANSWER));
+    await press("Copy the message");
+    await swipeDown();
+    await screen.unmount();
+    await open(jest.fn(async () => ANSWER));
+
+    await press("Close");
+
+    expect(screen.queryByTestId("confirm-dialog")).toBeNull();
+    expect(screen.queryByLabelText("What to write to Nina")).toBeNull();
+  });
+
   test("should close at once without asking when there is no text", async () => {
     await open(jest.fn(async () => ANSWER));
 
@@ -1189,6 +1282,20 @@ describe("Open Messages (slice 5)", () => {
     await press("Close");
     expect(screen.queryByTestId("confirm-dialog")).toBeNull();
     expect(screen.queryByLabelText("What to write to Nina")).toBeNull();
+  });
+
+  test("should ask on Close when box B was edited after Messages was opened", async () => {
+    await askAndy(jest.fn(async () => ANSWER));
+    await act(async () => {
+      fireEvent.press(screen.getByTestId(BUTTON));
+    });
+    await act(async () => {
+      fireEvent.changeText(screen.getByLabelText("Message to Nina"), "Hi Nina, Friday instead?");
+    });
+
+    await press("Close");
+
+    expect(screen.getByTestId("confirm-dialog")).toHaveTextContent(/Close without copying\?/);
   });
 
   test("should say Messages didn't open and still ask on Close when the composer rejects", async () => {
