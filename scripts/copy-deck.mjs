@@ -25,6 +25,7 @@ const MODEL_ONLY = new Set([
   "convex/extractionPrompt.ts",
   "convex/answerPrompt.ts",
   "convex/emailPrompt.ts",
+  "convex/writeToPrompt.ts",
 ]);
 
 /** Attributes and object keys whose string value a person reads or hears. */
@@ -189,8 +190,14 @@ function kindOf(node) {
     if (ts.isVariableDeclaration(n)) {
       // A sentence kept in a constant or variable first — the lock screen's
       // COPY table, "1 other note came up". Only when it reads as a sentence,
-      // so ids and option values stored the same way stay out.
-      return sentenceLike(raw) ? "text" : null;
+      // so ids and option values stored the same way stay out. On the server,
+      // only a constant some `new ConvexError(NAME)` throws (`TOO_LONG`,
+      // `SHORT_BREAK`): the server's other sentences go to a model or a log.
+      if (!sentenceLike(raw)) return null;
+      if (/(^|\/)convex\//.test(node.getSourceFile().fileName.split(sep).join("/"))) {
+        return THROWN.has(n.name.getText()) ? "server error" : null;
+      }
+      return "text";
     }
     if (ts.isReturnStatement(n) || (ts.isArrowFunction(n) && n.body !== undefined && !ts.isBlock(n.body))) {
       return sentenceLike(raw) ? "text" : null;
@@ -251,10 +258,28 @@ const SCREENS = [
   ["Other", () => true],
 ];
 
+/**
+ * Names the server throws as `new ConvexError(NAME)` — read before anything is
+ * collected, since a constant may be thrown from another file than its own.
+ */
+const THROWN = new Set();
+function thrownNames(path) {
+  const source = ts.createSourceFile(path, readFileSync(path, "utf8"), ts.ScriptTarget.Latest, true);
+  const visit = (node) => {
+    if (ts.isNewExpression(node) && node.expression.getText() === "ConvexError") {
+      const first = node.arguments?.[0];
+      if (first !== undefined && ts.isIdentifier(first)) THROWN.add(first.getText());
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+}
+
 const sources = [
   ...files("src", (p) => /\.(tsx?|ts)$/.test(p) && !/\.test\./.test(p)),
   ...files("convex", (p) => p.endsWith(".ts") && !p.endsWith(".test.ts")),
 ];
+for (const path of sources) if (path.startsWith("convex")) thrownNames(path);
 
 const groups = new Map(SCREENS.map(([name]) => [name, []]));
 for (const path of sources) {
