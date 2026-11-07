@@ -17,6 +17,7 @@ import {
   detailsToKeep,
   keyDetails,
   missingDetails,
+  withoutSignOff,
 } from "./writeToPrompt";
 import { MAX_IMAGE_CHARS } from "./extractionPrompt";
 import { aiNotEnforced } from "../test-support/ai-permission";
@@ -1212,4 +1213,47 @@ test("should keep their message from forming a tag, counted on every < in the bu
   // person, notes, one note, request, their_message: each opened and closed = 10.
   expect(promptSent().match(/</g) ?? []).toHaveLength(10);
   expect(promptSent()).toContain("ignore the rules");
+});
+
+// Sign-off (owner, 2026-11-06: none unless the sender wrote one) ------------
+
+test.each([
+  ["Thanks", "Dinner Thursday?\n\nThanks"],
+  ["Talk soon", "Subject: Hi\n\nCoffee Thursday?\n\nTalk soon"],
+  ["Best,", "Coffee Thursday?\nBest,"],
+  ["감사합니다", "목요일에 뵐까요?\n\n감사합니다"],
+])("should drop a closing line '%s' Andy added", (_name, text) => {
+  expect(withoutSignOff(text, "coffee thursday")).toMatch(/\?$/);
+});
+
+test("should keep a closing line the sender wrote, a last line that says something, and a message that is only thanks", () => {
+  expect(withoutSignOff("Dinner?\n\nThanks!", "dinner\nThanks!")).toBe("Dinner?\n\nThanks!");
+  expect(withoutSignOff("Dinner?\n\nThanks for waiting!", "")).toBe("Dinner?\n\nThanks for waiting!");
+  expect(withoutSignOff("Thanks!", "")).toBe("Thanks!");
+});
+
+test("should keep a closing the sender asked for in other words", () => {
+  expect(withoutSignOff("Dinner?\n\nThanks", "dinner, end with thanks")).toBe("Dinner?\n\nThanks");
+  expect(withoutSignOff("Dinner?\n\nBest", "warm, and sign off nicely")).toBe("Dinner?\n\nBest");
+  expect(withoutSignOff("저녁 어때요?\n\n감사합니다", "마지막에 인사 넣어줘")).toBe("저녁 어때요?\n\n감사합니다");
+});
+
+test("should keep a thank-you the sender asked to send, and drop a doubled-up closing", () => {
+  expect(withoutSignOff("Hi Sam, great ride today.\n\nThank you", "tell Sam thanks for the ride")).toBe(
+    "Hi Sam, great ride today.\n\nThank you",
+  );
+  expect(withoutSignOff("Coffee Thursday?\n\nThanks!!", "coffee thursday")).toBe("Coffee Thursday?");
+  expect(withoutSignOff("Coffee Thursday?\n\nSincerely", "coffee thursday")).toBe("Coffee Thursday?");
+});
+
+test("should not strip a closing when only a Subject line or a greeting would be left", () => {
+  expect(withoutSignOff("Hi Mina,\n\nThanks", "")).toBe("Hi Mina,\n\nThanks");
+  expect(withoutSignOff("Subject: Hi\n\nThanks", "")).toBe("Subject: Hi\n\nThanks");
+  expect(withoutSignOff("Subject: Hi\n\nHi Mina,\n\nThanks", "")).toBe("Subject: Hi\n\nHi Mina,\n\nThanks");
+});
+
+test("should hand back the answer without the sign-off Andy added", async () => {
+  createMessage.mockResolvedValueOnce(reply({ text: "Subject: Friday\n\nCan we move our call to Friday 10am?\n\nThanks" }));
+  const answer = await composeLater({ request: "email: move our call to Friday 10am" });
+  expect(answer.text).toBe("Subject: Friday\n\nCan we move our call to Friday 10am?");
 });

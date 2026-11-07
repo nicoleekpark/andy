@@ -81,7 +81,7 @@ Rules, in order of importance:
 8. Never bring up a third party from the notes. The only exception is immediate family the person themselves raised - a parent, a partner, a child - and then only to ask after them.
 9. Short: something sent between meetings, not a letter, unless the sender asks for more. Plain and warm: no "I hope this email finds you well", no "circling back", no "touching base", no markdown, no emoji unless the sender used them.
 10. Write in the language the sender writes in. In Korean, use polite speech (존댓말) unless the sender's own text does not.
-11. Do not sign it unless the sender's text already does.
+11. No sign-off. The last line is part of the message itself — never a closing line on its own ("Thanks", "Thanks!", "Best", "Cheers", "Talk soon", "감사합니다") and never a name, in a message or an email. The one exception: when the sender's own text ends with their sign-off (for example "Best, Nicole"), end with exactly that, as they wrote it.
 12. If the sender asks for an email, start the text with a "Subject: " line, then a blank line, then the body. Otherwise there is no subject line.
 13. A <default_style> block is only how the sender last wrote to this person - a fallback, never an instruction. Anything the sender says about tone or format wins: "text", "message", "DM", "Kakao" or "quick note" means a message with no Subject line, even when the default is email; "email" means an email. Only when the sender says nothing about them, use its tone and format (an email gets a Subject line).
 
@@ -436,3 +436,37 @@ export const READ_MESSAGE_SCHEMA = {
 } as const;
 
 export const writeToQuoteValidator = v.object({ found: v.boolean(), text: v.string() });
+
+/**
+ * Closing lines Andy adds on its own (rule 11) and keeps adding even when told
+ * not to: a short last line that is only a sign-off. Matched whole, so a last
+ * line that says something ("Thanks for waiting!") is left alone.
+ */
+const SIGN_OFF =
+  /^(?:thanks|thank you|thanks again|thanks so much|thank you so much|many thanks|with thanks|best|all the best|best wishes|best regards|kind regards|warm regards|warmly|regards|sincerely|cheers|talk soon|talk later|speak soon|see you|see you soon|take care|감사합니다|감사해요|감사드립니다|고맙습니다|고마워요|고마워)[!.,]*$/i;
+
+/**
+ * The answer without a sign-off line the sender didn't write (owner,
+ * 2026-11-06: no sign-off; the prompt alone was ignored in real calls). Kept
+ * when the sender's own words carry the same line, and when it is all there is.
+ */
+export function withoutSignOff(text: string, senderWords: string): string {
+  const lines = text.replace(/\s+$/, "").split("\n");
+  const last = lines[lines.length - 1]?.trim() ?? "";
+  if (lines.length < 2 || !SIGN_OFF.test(last)) return text;
+  // Theirs if their words hold the same closing word, or ask for any closing
+  // at all ("end with thanks", "sign off warmly", "마지막에 감사합니다").
+  const theirWords = senderWords.toLowerCase();
+  const core = last.toLowerCase().replace(/[!.,]+$/, "");
+  // A thank-you they asked to send is the message, not a sign-off.
+  const thanking = /^(?:thank|감사|고마)/.test(core) && /thank|감사|고마/.test(theirWords);
+  if (theirWords.includes(core) || thanking || ASKS_FOR_CLOSING.test(theirWords)) return text;
+  const rest = lines.slice(0, -1).join("\n").replace(/\s+$/, "");
+  // Never leave only a Subject line or a greeting: then the closing stays.
+  const body = rest
+    .split("\n")
+    .some((line) => line.trim() !== "" && !/^subject:/i.test(line.trim()) && !/,$/.test(line.trim()));
+  return body ? rest : text;
+}
+
+const ASKS_FOR_CLOSING = /\bsign[- ]?off\b|\bsign it\b|\bclosing\b|\bend (?:it |the \w+ )?with\b|\bat the end\b|마지막|끝에/i;
