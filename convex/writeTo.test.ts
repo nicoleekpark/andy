@@ -805,29 +805,28 @@ test("should treat a month with its day as one detail when checking an answer", 
   expect(missingDetails("on Sept 5", "on Sept")).toEqual(["Sept 5"]);
 });
 
-test("should ask only once when the chat line says drop the link and the answer has none", async () => {
+test("should still hold a link the chat line only names in words (owner: no word rules)", async () => {
+  vi.spyOn(console, "error").mockImplementation(() => {});
   createMessage.mockResolvedValueOnce(reply({ text: "Dinner Thursday at 3:30?" }));
+  createMessage.mockResolvedValueOnce(reply({ text: "Dinner Thursday at 3:30? https://a.com" }));
   await composeLater({ current: "Dinner Thursday at 3:30 https://a.com?", instruction: "drop the link" });
-  expect(createMessage).toHaveBeenCalledTimes(1);
+  expect(createMessage).toHaveBeenCalledTimes(2);
 });
 
-test("should free a kind the chat line names in words when it writes none", () => {
-  expect(detailsToKeep("Dinner Thursday", "Dinner", "move it to tomorrow")).toEqual([]);
-  expect(detailsToKeep("Dinner at 3:30, 4 people", "Dinner", "change the time to 7")).toEqual([]);
-  expect(detailsToKeep("Mail a@b.com", "Mail", "remove the email")).toEqual([]);
+test("should free only what the chat line writes, never a kind it names in words", () => {
+  expect(detailsToKeep("Dinner Thursday", "Dinner", "move it to tomorrow")).toEqual(["Thursday"]);
+  expect(detailsToKeep("Dinner https://a.com", "Dinner", "drop the link")).toEqual(["https://a.com"]);
+  expect(detailsToKeep("Mail a@b.com", "Mail", "remove the email")).toEqual(["a@b.com"]);
+  expect(detailsToKeep("Dinner at 3:30", "Dinner", "change the time")).toEqual(["3:30"]);
+  // Writing one does free it: "7pm" is a time.
+  expect(detailsToKeep("Dinner at 3:30", "Dinner", "make it 7pm")).toEqual([]);
 });
 
-test("should hold the detail when a kind word appears without a change verb", () => {
+test("should hold the detail when the chat line writes none of that kind", () => {
   expect(detailsToKeep("Dinner at 3:30", "Dinner", "make it sound like I am excited")).toEqual(["3:30"]);
   expect(detailsToKeep("Dinner Thursday", "Dinner", "have a good day")).toEqual(["Thursday"]);
   expect(detailsToKeep("Dinner at 3:30", "Dinner", "say hi, we text at times")).toEqual(["3:30"]);
   expect(detailsToKeep("Dinner for 4", "Dinner", "make it warmer for people")).toEqual(["4"]);
-});
-
-test("should free the kind when a change verb comes before the kind word", () => {
-  expect(detailsToKeep("Dinner https://a.com", "Dinner", "drop the link")).toEqual([]);
-  expect(detailsToKeep("Dinner at 3:30", "Dinner", "change the time")).toEqual([]);
-  expect(detailsToKeep("Dinner Thursday", "Dinner", "move it to tomorrow")).toEqual([]);
 });
 
 test("should read an ordinal day as part of one date", () => {
@@ -839,7 +838,6 @@ test("should read an ordinal day as part of one date", () => {
 test("should read am and pm times as one time and keep them across spellings", () => {
   expect(keyDetails("at 3pm")).toEqual(["3pm"]);
   expect(detailKind("3pm")).toBe("time");
-  expect(detailsToKeep("Dinner at 3pm", "Dinner", "change the time")).toEqual([]);
   expect(missingDetails("at 3pm", "at 3 PM")).toEqual([]);
   expect(missingDetails("at 3pm", "at 3 p.m.")).toEqual([]);
   expect(missingDetails("at 3pm", "at 13pm")).toEqual(["3pm"]);

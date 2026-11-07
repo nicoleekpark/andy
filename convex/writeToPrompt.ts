@@ -368,44 +368,16 @@ export function detailKind(detail: string): DetailKind {
 }
 
 /**
- * Words that name a kind without writing one: "drop the link", "change the
- * time", "move it to tomorrow". Without them the detail being changed would
- * be forced back by the retry. Only right after a change verb: "I am excited",
- * "have a good day" or "at times" ask for no change, so they free nothing.
- */
-const CHANGE = String.raw`\b(?:drop|remove|delete|change|move|shift|push|update|fix|replace|swap|skip|cut|lose|take\s+out|leave\s+out)\b[^.!?\n]{0,30}?`;
-/**
- * "Don't change the date", "without changing the time", "keep the link": a
- * line that protects something names it too. Telling the two apart from a
- * word list is guesswork, so a line with any of these frees nothing by name;
- * a detail it writes ("move it to Friday") still frees its kind.
- */
-const KEEPS = /\b(?:keep|keeping|same|don'?t|doesn'?t|do\s+not|not|never|without|leave\s+(?:the|it|that))\b/i;
-const KIND_WORDS: Readonly<Record<DetailKind, RegExp>> = {
-  link: new RegExp(String.raw`${CHANGE}\b(?:links?|urls?|websites?)\b`, "i"),
-  email: new RegExp(String.raw`${CHANGE}\be-?mails?\b`, "i"),
-  time: new RegExp(String.raw`${CHANGE}\b(?:times?|o'?clock)\b`, "i"),
-  date: new RegExp(
-    String.raw`${CHANGE}\b(?:dates?|days?|weekdays?|weekends?)\b|\b(?:move|push|shift|change)\b[^.!?\n]{0,20}?\b(?:today|tomorrow|tonight|yesterday|next\s+(?:week|month))\b`,
-    "i",
-  ),
-  number: new RegExp(String.raw`${CHANGE}\b(?:numbers?|counts?|guests?|amounts?|prices?)\b`, "i"),
-};
-
-/**
  * The details to hold Andy to on a later ask (owner, 2026-11-05, option b):
  * everything in the text Andy no longer has, except details of a kind the
- * new chat line names itself, by writing one or by naming its kind — "move it
- * to Friday" frees the day but still holds the time and the link; "under 50
- * words" frees numbers, not the day or the time; "drop the link" frees links.
+ * new chat line writes itself — "move it to Friday" frees the day but still
+ * holds the time and the link; "under 50 words" frees numbers, not the day
+ * or the time. Only what is written counts, never a word that names a kind
+ * (owner, 2026-11-06): "drop the link" frees nothing, so a link is held —
+ * delete it in box B instead.
  */
 export function detailsToKeep(current: string, answer: string, instruction: string): string[] {
-  const freed = new Set<DetailKind>([
-    ...keyDetails(instruction).map(detailKind),
-    ...(KEEPS.test(instruction)
-      ? []
-      : (Object.keys(KIND_WORDS) as DetailKind[]).filter((kind) => KIND_WORDS[kind].test(instruction))),
-  ]);
+  const freed = new Set<DetailKind>(keyDetails(instruction).map(detailKind));
   return missingDetails(current, answer).filter((detail) => !freed.has(detailKind(detail)));
 }
 
