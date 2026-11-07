@@ -992,7 +992,7 @@ Needs the `writeTo` switch on (no row = on) and a dev build against the dev depl
 | 40.26 | VoiceOver, three or more versions | ‹ › read *Previous version* / *Next version*, dimmed at the ends; each step says *Version n of N*; the targets are easy to hit at the largest text size | ⬜ |
 | 40.27 | Settings → Accessibility → Larger Text, the largest size, on the smallest iPhone you have | Both boxes grow with the text but stop at twice their height (longer text scrolls inside); inside box B the copy row, three or more lines of text and ‹ › all show. **With the keyboard up**, tap in box B, then drag on the strip below the box: the sheet scrolls until the chat line and **Open Messages** sit above the keyboard, and both can be tapped | ⬜ |
 | 40.28 | With text in either box and nothing copied, tap **Close** | *Close without copying?* / *Your text won't be kept.* — **Keep writing** leaves everything as it was; **Close** closes, and Write to opens empty next time | ⬜ |
-| 40.29 | Copy, then **Close** | Closes at once, no question | ⬜ |
+| 40.29 | Copy, then **Close** | Closes at once, no question. Copy, change a word, **Close** → it asks again; step to another version after copying, **Close** → it asks | ⬜ |
 | 40.30 | Swipe the sheet down mid-draft (two versions, text on the chat line), go to home, come back to the same person, **Write to** | Everything as you left it: both versions, the version you were on, the chat line | ⬜ |
 | 40.31 | Same, but open **Write to** for someone else | Their own sheet (empty, or theirs as left) — never the first person's text | ⬜ |
 | 40.32 | Swipe down with text, then sign out and back in, open the same person | Write to opens empty (sign-out leaves nothing) | ⬜ |
