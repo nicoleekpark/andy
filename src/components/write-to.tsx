@@ -316,7 +316,8 @@ export function useWriteTo(profileId: string) {
       if (mine !== session.current) return;
       // Box B's edit, when there is one, becomes a version of its own, and the
       // version it came from goes back to how it was; Andy's answer goes last.
-      const editedShown = answer !== null && isEdited(draft, answer.text);
+      // An emptied box B is a fresh start, not a version worth stepping back to.
+      const editedShown = answer !== null && draft.trim() !== "" && isEdited(draft, answer.text);
       const added: Version[] =
         editedShown && version !== null ? [{ text: draft, answer: null, label: version.label }] : [];
       added.push({ text: written.text, answer: written, label: written });
@@ -561,8 +562,9 @@ function arrowBlock(controller: WriteToController, online: boolean): string | nu
   }
   if (asksAfterFirst >= MAX_ASKS_AFTER_FIRST) return "That's the most Andy can do in one go.";
   // Something new: box B differs from the answer shown, or the chat line has text.
-  // Compared trimmed, as the server compares them: a trailing space is not an edit.
-  if (draft.trim() === "" || (!isEdited(draft, answer.text) && instruction.trim() === "")) return HINT;
+  // Compared trimmed, as the server compares them: a trailing space is not an
+  // edit. An emptied box B is a fresh start once Andy is told what to write.
+  if (instruction.trim() === "" && (draft.trim() === "" || !isEdited(draft, answer.text))) return HINT;
   return null;
 }
 

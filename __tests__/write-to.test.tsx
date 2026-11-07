@@ -429,6 +429,23 @@ describe("asking again (slice 4b)", () => {
     expect(screen.getByTestId(ARROW)).not.toBeDisabled();
   });
 
+  test("should let an emptied box B ask once the chat line says what to write, and send it empty", async () => {
+    const write = jest.fn().mockResolvedValueOnce(ANSWER).mockResolvedValue(ANSWER_2);
+    await askAndy(write);
+    await editB("");
+    // Nothing to work on yet: the arrow waits for a line.
+    expect(screen.getByTestId(ARROW)).toBeDisabled();
+
+    await chat("start over, shorter");
+    expect(screen.getByTestId(ARROW)).not.toBeDisabled();
+    await arrow();
+    expect(write).toHaveBeenLastCalledWith(
+      expect.objectContaining({ current: "", instruction: "start over, shorter" }),
+    );
+    // No empty version in between: Andy's first answer, then the fresh one.
+    expect(screen.getByLabelText("Version 2 of 2")).toBeTruthy();
+  });
+
   test("should show Edited, the edited label and an enabled arrow when box B differs from the answer", async () => {
     await askAndy(jest.fn(async () => ANSWER));
     const hidden = { includeHiddenElements: true };

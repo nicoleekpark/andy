@@ -979,6 +979,7 @@ Needs the `writeTo` switch on (no row = on) and a dev build against the dev depl
 | 40.13 | After an answer, without touching anything | The hint *Edit the text above, or tell Andy what to change.*; the chat line under it; the arrow at its end is greyed | ⬜ |
 | 40.14 | Change *Thursday* to *Friday* in box B | **Edited** appears top left; the arrow turns on. Tap it: Andy carries your edit through and keeps *Friday*; **Edited** goes away; the chat line stays empty | ⬜ |
 | 40.15 | Type *warmer but simpler* on the chat line, tap its arrow | Box B, the chat line and the arrow lock and dim; *Andy is writing…* replaces the hint. The new text is warmer and keeps every day, time and number; the chat line empties | ⬜ |
+| 40.15a | Empty box B completely; then type *start over, shorter* on the chat line, tap its arrow | Empty with no line: the arrow is greyed. With the line: Andy writes a fresh, shorter message from what you first asked, keeping its day and time | ⬜ |
 | 40.16 | Then ask *shorter* | Shorter and still warmer (Andy keeps every earlier line in this sheet) | ⬜ |
 | 40.17 | Airplane mode during an ask | *Andy couldn't write that just now. Your text is still here. Try again.*; box B and the chat line exactly as they were | ⬜ |
 | 40.18 | Ask again ten times | After the tenth answer: *That's the most Andy can do in one go. Copy it, or close and start again.*; the arrow stays greyed; Copy still works | ⬜ |
