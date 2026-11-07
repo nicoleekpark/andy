@@ -55,7 +55,7 @@ export const compose = internalAction({
     // owner, 2026-11-04): on a later ask, every day, date, time, number and
     // link in box B must still be there. Not on the first ask — box A mixes
     // the message with instructions like "two sentences" — and not for a
-    // kind of detail the new chat line names itself, because then changing
+    // kind of detail the new chat line writes itself, because then changing
     // one is what the person asked for (`detailsToKeep`).
     if (args.current === undefined) return first;
     const instruction = args.instruction ?? "";
